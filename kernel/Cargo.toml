@@ -1,0 +1,12 @@
+[package]
+name = "ftl_kernel"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+
+[lib]
+path = "lib.rs"
+
+[dependencies]
+arrayvec = { workspace = true }
+ftl_utils = { workspace = true }

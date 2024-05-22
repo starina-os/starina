@@ -1,0 +1,14 @@
+[package]
+name = "boot_riscv64"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "boot_riscv64"
+path = "main.rs"
+
+[dependencies]
+arrayvec = { workspace = true }
+ftl_kernel = { workspace = true }
+ftl_utils = { workspace = true }

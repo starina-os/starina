@@ -1,0 +1,14 @@
+[workspace]
+resolver = "2"
+members = ["kernel", "boot/*", "libs/rust/*"]
+
+[workspace.package]
+version = "0.0.0"
+authors = ["Seiya Nuta <nuta@seiya.me>"]
+edition = "2021"
+
+[workspace.dependencies]
+arrayvec = { version = "0.7.4", default-features = false }
+
+ftl_kernel = { path = "kernel" }
+ftl_utils = { path = "libs/rust/ftl_utils" }

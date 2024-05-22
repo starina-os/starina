@@ -1,0 +1,10 @@
+edition = "2021"
+
+# My personal preferences. Don't even try to convince me ;)
+force_multiline_blocks = true
+hex_literal_case = "Lower"
+
+# This option causes lengthy import headers but is very useful for mitigating
+# merge conflicts.
+imports_granularity = "Item"
+group_imports = "StdExternalCrate"
