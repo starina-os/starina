@@ -2,6 +2,7 @@ use arrayvec::ArrayVec;
 use ftl_utils::byte_size::ByteSize;
 
 use crate::arch;
+use crate::memory;
 
 /// A free region of memory available for software.
 #[derive(Debug)]
@@ -23,14 +24,12 @@ pub struct BootInfo {
 pub fn boot(_cpu_id: usize, bootinfo: BootInfo) -> ! {
     println!("\nFTL - Faster Than \"L\"\n");
 
-    for e in bootinfo.free_mems.iter() {
-        println!(
-            "free memory: {:#x} - {:#x} ({})",
-            e.start,
-            e.start + e.size.in_bytes(),
-            e.size
-        );
-    }
+    memory::init(&bootinfo);
+
+    let mut v = alloc::vec::Vec::new();
+    v.push(alloc::string::String::from("Hello, "));
+    v.push(alloc::string::String::from("world!"));
+    println!("alloc test: {:?}", v);
 
     println!("kernel is ready!");
     arch::halt();

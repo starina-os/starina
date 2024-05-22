@@ -12,3 +12,4 @@ arrayvec = { version = "0.7.4", default-features = false }
 
 ftl_kernel = { path = "kernel" }
 ftl_utils = { path = "libs/rust/ftl_utils" }
+ftl_bump_allocator = { path = "libs/rust/bump_allocator" }

@@ -24,7 +24,7 @@ CARGO    ?= cargo
 PROGRESS ?= printf "  \\033[1;96m%8s\\033[0m  \\033[1;m%s\\033[0m\\n"
 
 RUSTFLAGS += -Z macro-backtrace
-CARGOFLAGS += -Z build-std=core -Z build-std-features=compiler-builtins-mem
+CARGOFLAGS += -Z build-std=core,alloc -Z build-std-features=compiler-builtins-mem
 CARGOFLAGS += --target boot/$(ARCH)/$(ARCH)-$(MACHINE).json
 
 QEMUFLAGS += -machine virt -m 256 -bios default

@@ -1,0 +1,10 @@
+[package]
+name = "ftl_bump_allocator"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+
+[lib]
+path = "./lib.rs"
+
+[dependencies]
