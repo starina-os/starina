@@ -1,6 +1,9 @@
 use core::arch::asm;
 
+mod backtrace;
 mod sbi;
+
+pub use backtrace::backtrace;
 
 pub fn halt() -> ! {
     loop {

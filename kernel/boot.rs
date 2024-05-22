@@ -31,6 +31,8 @@ pub fn boot(_cpu_id: usize, bootinfo: BootInfo) -> ! {
     v.push(alloc::string::String::from("world!"));
     println!("alloc test: {:?}", v);
 
+    oops!("backtrace test");
+
     println!("kernel is ready!");
     arch::halt();
 }
