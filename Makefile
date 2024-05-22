@@ -56,7 +56,7 @@ clippy:
 
 .PHONY: fmt
 fmt:
-	$(CARGO) fmt
+	find boot kernel libs -name '*.rs' | xargs rustup run nightly rustfmt
 
 ftl.elf: $(sources) Makefile
 	$(PROGRESS) "CARGO" "boot/$(ARCH)"
