@@ -2,6 +2,8 @@ use arrayvec::ArrayVec;
 use ftl_utils::byte_size::ByteSize;
 
 use crate::arch;
+use crate::cpuvar;
+use crate::cpuvar::CpuId;
 use crate::memory;
 
 /// A free region of memory available for software.
@@ -21,15 +23,18 @@ pub struct BootInfo {
 }
 
 /// The entry point of the kernel.
-pub fn boot(_cpu_id: usize, bootinfo: BootInfo) -> ! {
+pub fn boot(cpu_id: CpuId, bootinfo: BootInfo) -> ! {
     println!("\nFTL - Faster Than \"L\"\n");
 
     memory::init(&bootinfo);
+    cpuvar::percpu_init(cpu_id);
 
     let mut v = alloc::vec::Vec::new();
     v.push(alloc::string::String::from("Hello, "));
     v.push(alloc::string::String::from("world!"));
     println!("alloc test: {:?}", v);
+
+    println!("cpuvar test: CPU {}", arch::cpuvar().cpu_id);
 
     oops!("backtrace test");
 

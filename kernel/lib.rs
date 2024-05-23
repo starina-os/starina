@@ -6,6 +6,7 @@ extern crate alloc;
 mod print;
 
 pub mod boot;
+pub mod cpuvar;
 
 mod arch;
 mod memory;

@@ -6,6 +6,7 @@ use core::arch::global_asm;
 use arrayvec::ArrayVec;
 use ftl_kernel::boot::BootInfo;
 use ftl_kernel::boot::FreeMem;
+use ftl_kernel::cpuvar::CpuId;
 use ftl_utils::byte_size::ByteSize;
 
 global_asm!(include_str!("boot.S"));
@@ -34,7 +35,7 @@ unsafe extern "C" fn riscv64_boot(hartid: u64, dtb_addr: u64) -> ! {
     });
 
     ftl_kernel::boot::boot(
-        hartid as usize,
+        CpuId::new(hartid.try_into().expect("too big hartid")),
         BootInfo {
             free_mems,
             dtb_addr: dtb_addr as *const u8,
