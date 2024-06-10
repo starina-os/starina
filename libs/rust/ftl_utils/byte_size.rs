@@ -15,6 +15,10 @@ use core::fmt;
 pub struct ByteSize(pub usize);
 
 impl ByteSize {
+    pub const fn from_kib(kib: usize) -> Self {
+        Self(kib * 1024)
+    }
+
     pub fn in_bytes(&self) -> usize {
         self.0
     }
