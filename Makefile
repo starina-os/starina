@@ -58,6 +58,10 @@ clippy:
 fmt:
 	find boot kernel libs -name '*.rs' | xargs rustup run nightly rustfmt
 
+.PHONY: fix
+fix:
+	cargo clippy --fix --allow-dirty --allow-staged $(CARGOFLAGS)
+
 ftl.elf: $(sources) Makefile
 	$(PROGRESS) "CARGO" "boot/$(ARCH)"
 	RUSTFLAGS="$(RUSTFLAGS)" CARGO_TARGET_DIR="build/cargo" $(CARGO) build $(CARGOFLAGS) --manifest-path boot/$(ARCH)/Cargo.toml
