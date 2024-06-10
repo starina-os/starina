@@ -1,13 +1,18 @@
 use core::arch::asm;
 
-#[repr(C)]
+use super::thread::Context;
+use crate::ref_counted::SharedRef;
+use crate::thread::Thread;
+
 pub struct CpuVar {
-    pub hartid: u8,
+    pub(super) context: *mut Context,
 }
 
 impl CpuVar {
-    pub const fn new() -> Self {
-        Self { hartid: 0 }
+    pub const fn new(idle_thread: &SharedRef<Thread>) -> Self {
+        Self {
+            context: &idle_thread.arch().context as *const _ as *mut _,
+        }
     }
 }
 
@@ -20,7 +25,7 @@ pub fn cpuvar() -> &'static crate::cpuvar::CpuVar {
     unsafe { &*cpuvar }
 }
 
-pub fn set_cpuvar(cpuvar: *const crate::cpuvar::CpuVar) {
+pub fn set_cpuvar(cpuvar: *mut crate::cpuvar::CpuVar) {
     // Store the address of the current CPU's `CpuVar` to `tp`.
     unsafe {
         asm!("mv tp, {}", in(reg) cpuvar);
