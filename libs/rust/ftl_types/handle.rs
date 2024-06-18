@@ -1,6 +1,5 @@
 use core::num::NonZeroIsize;
 
-
 /// A handle ID.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct HandleId(NonZeroIsize);

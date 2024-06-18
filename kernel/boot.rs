@@ -1,10 +1,10 @@
 use arrayvec::ArrayVec;
 use ftl_utils::byte_size::ByteSize;
 
+use crate::app_loader::AppLoader;
 use crate::arch;
 use crate::cpuvar;
 use crate::cpuvar::CpuId;
-use crate::app_loader::AppLoader;
 use crate::memory;
 use crate::syscall::VSYSCALL_PAGE;
 

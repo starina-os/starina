@@ -1,8 +1,8 @@
 use ftl_elf::Elf;
 use ftl_elf::PhdrType;
 use ftl_elf::ET_DYN;
-use ftl_types::syscall::VsyscallPage;
 use ftl_types::handle::HandleRights;
+use ftl_types::syscall::VsyscallPage;
 use ftl_utils::alignment::align_up;
 
 use crate::arch::PAGE_SIZE;
@@ -130,6 +130,7 @@ impl<'a> AppLoader<'a> {
     #[cfg(target_arch = "riscv64")]
     fn relocate_riscv(&mut self) -> Result<(), Error> {
         use core::mem::size_of;
+
         use ftl_elf::Rela;
 
         let rela_dyn = self.get_shdr_by_name(".rela.dyn").ok_or(Error::NoRelaDyn)?;
@@ -149,12 +150,10 @@ impl<'a> AppLoader<'a> {
             use ftl_elf::riscv::R_RISCV_RELATIVE;
 
             match rela.r_info {
-                R_RISCV_RELATIVE => {
-                    unsafe {
-                        let ptr = (self.base_addr() + rela.r_offset as usize) as *mut i64;
-                        *ptr += (self.base_addr() as i64) + rela.r_addend;
-                    }
-                }
+                R_RISCV_RELATIVE => unsafe {
+                    let ptr = (self.base_addr() + rela.r_offset as usize) as *mut i64;
+                    *ptr += (self.base_addr() as i64) + rela.r_addend;
+                },
                 _ => panic!("unsupported relocation type: {}", rela.r_info),
             }
         }

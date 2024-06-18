@@ -15,9 +15,9 @@ mod print;
 pub mod boot;
 pub mod cpuvar;
 
+mod app_loader;
 mod arch;
 mod handle;
-mod app_loader;
 mod memory;
 mod panic;
 mod process;

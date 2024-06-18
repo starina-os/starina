@@ -3,7 +3,8 @@ use core::num::NonZeroIsize;
 use core::ops::Deref;
 
 use ftl_types::error::FtlError;
-use ftl_types::handle::{HandleId, HandleRights};
+use ftl_types::handle::HandleId;
+use ftl_types::handle::HandleRights;
 use ftl_utils::downcast::Downcastable;
 use hashbrown::HashMap;
 
