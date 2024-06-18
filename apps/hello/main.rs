@@ -3,9 +3,7 @@
 
 use ftl_api::prelude::*;
 
-extern crate ftl_api;
-
-#[no_mangle]
+#[ftl_api::main]
 pub fn main() {
     println!("Hello World from hello app!");
     loop {}
