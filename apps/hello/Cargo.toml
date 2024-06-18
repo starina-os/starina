@@ -1,0 +1,12 @@
+[package]
+name = "hello"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "hello"
+path = "main.rs"
+
+[dependencies]
+ftl_api = { workspace = true }

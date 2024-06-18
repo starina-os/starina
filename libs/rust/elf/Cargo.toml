@@ -1,0 +1,10 @@
+[package]
+name = "ftl_elf"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+
+[lib]
+path = "./lib.rs"
+
+[dependencies]

@@ -3,6 +3,7 @@ use core::sync::atomic::AtomicIsize;
 use core::sync::atomic::Ordering;
 
 use crate::arch::{self};
+use crate::handle::Handleable;
 use crate::ref_counted::SharedRef;
 use crate::scheduler::GLOBAL_SCHEDULER;
 
@@ -43,6 +44,14 @@ pub struct Thread {
 }
 
 impl Thread {
+    pub fn test() -> Thread {
+        Thread {
+            id: ThreadId::new_idle(),
+            state: State::Runnable,
+            arch: arch::Thread::new_idle(),
+        }
+    }
+
     pub fn new_idle() -> SharedRef<Thread> {
         SharedRef::new(Thread {
             id: ThreadId::new_idle(),
@@ -51,14 +60,15 @@ impl Thread {
         })
     }
 
-    pub fn spawn_kernel(pc: fn(usize), arg: usize) {
+    pub fn spawn_kernel(pc: fn(usize), arg: usize) -> SharedRef<Thread> {
         let thread = SharedRef::new(Thread {
             id: ThreadId::alloc(),
             state: State::Runnable,
             arch: arch::Thread::new_kernel(pc as usize, arg),
         });
 
-        GLOBAL_SCHEDULER.push(thread);
+        GLOBAL_SCHEDULER.push(thread.clone());
+        thread
     }
 
     pub fn id(&self) -> ThreadId {
@@ -81,3 +91,5 @@ impl Thread {
         self.arch.resume();
     }
 }
+
+impl Handleable for Thread {}

@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["kernel", "boot/*", "libs/rust/*"]
+members = ["kernel", "boot/*", "libs/rust/*", "apps/*"]
 
 [workspace.package]
 version = "0.0.0"
@@ -9,7 +9,13 @@ edition = "2021"
 
 [workspace.dependencies]
 arrayvec = { version = "0.7.4", default-features = false }
+hashbrown = "0.14.5"
+spin = "0.9.8"
+linked_list_allocator = "0.10.5"
 
 ftl_kernel = { path = "kernel" }
+ftl_types = { path = "libs/rust/ftl_types" }
+ftl_api = { path = "libs/rust/ftl_api" }
 ftl_utils = { path = "libs/rust/ftl_utils" }
 ftl_bump_allocator = { path = "libs/rust/bump_allocator" }
+ftl_elf = { path = "libs/rust/elf" }

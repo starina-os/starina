@@ -12,6 +12,7 @@ pub use cpuvar::CpuVar;
 pub use thread::yield_cpu;
 pub use thread::Thread;
 
+pub const PAGE_SIZE: usize = 4096;
 pub const NUM_CPUS_MAX: usize = 8;
 
 pub fn halt() -> ! {
