@@ -7,5 +7,5 @@ pub enum SyscallNumber {
 }
 
 pub struct VsyscallPage {
-    pub entry: fn(isize, isize, isize, isize, isize, isize) -> Result<isize, FtlError>,
+    pub entry: fn(isize, isize, isize, isize, isize, isize, isize) -> Result<isize, FtlError>,
 }

@@ -13,6 +13,7 @@ pub fn syscall_entry(
     a2: isize,
     a3: isize,
     a4: isize,
+    a5: isize,
 ) -> Result<isize, FtlError> {
     match n {
         _ if n == SyscallNumber::Print as isize => {

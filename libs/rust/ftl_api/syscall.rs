@@ -12,9 +12,10 @@ pub fn syscall(
     a2: isize,
     a3: isize,
     a4: isize,
+    a5: isize,
 ) -> Result<isize, FtlError> {
     let vsyscall = VSYSCALL_PAGE.lock().expect("vsyscall not set");
-    (vsyscall.entry)(n as isize, a0, a1, a2, a3, a4)
+    (vsyscall.entry)(n as isize, a0, a1, a2, a3, a4, a5)
 }
 
 pub fn print(s: &[u8]) -> Result<(), FtlError> {
@@ -22,6 +23,7 @@ pub fn print(s: &[u8]) -> Result<(), FtlError> {
         SyscallNumber::Print,
         s.as_ptr() as isize,
         s.len() as isize,
+        0,
         0,
         0,
         0,
