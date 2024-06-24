@@ -1,3 +1,4 @@
+use core::fmt;
 use core::ops::Deref;
 
 use ftl_types::error::FtlError;
@@ -55,6 +56,17 @@ impl AnyHandle {
     }
 }
 
+impl fmt::Debug for AnyHandle {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // TODO: Implement Debug for each handle type.
+        match self {
+            AnyHandle::Channel(_) => write!(f, "Channel"),
+            AnyHandle::Thread(_) => write!(f, "Thread"),
+            AnyHandle::KernelAppMemory(_) => write!(f, "KernelAppMemory"),
+        }
+    }
+}
+
 impl Into<AnyHandle> for Handle<Channel> {
     fn into(self) -> AnyHandle {
         AnyHandle::Channel(self)
@@ -94,6 +106,10 @@ impl HandleTable {
         }
     }
 
+    pub fn is_movable(&self, id: HandleId) -> bool {
+        self.handles.get(&id).is_some()
+    }
+
     /// Add a handle to the table.
     pub fn add<H: Into<AnyHandle>>(&mut self, handle: H) -> Result<HandleId, FtlError> {
         if self.next_id >= NUM_HANDLES_MAX {
@@ -109,6 +125,12 @@ impl HandleTable {
     /// Get a handle by ID.
     pub fn get_owned(&self, id: HandleId) -> Result<&AnyHandle, FtlError> {
         let handle = self.handles.get(&id).ok_or(FtlError::HandleNotFound)?;
+        Ok(handle)
+    }
+
+    /// Removes a handle out of the table.
+    pub fn remove(&mut self, id: HandleId) -> Result<AnyHandle, FtlError> {
+        let handle = self.handles.remove(&id).ok_or(FtlError::HandleNotFound)?;
         Ok(handle)
     }
 }

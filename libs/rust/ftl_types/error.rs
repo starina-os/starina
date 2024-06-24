@@ -4,6 +4,7 @@ pub enum FtlError {
     UnknownSyscall,
     TooManyHandles,
     HandleNotFound,
+    HandleNotMovable,
     UnexpectedHandleType,
     InvalidSyscallReturnValue,
     NoPeer,

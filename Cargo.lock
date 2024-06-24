@@ -212,6 +212,7 @@ dependencies = [
  "arrayvec",
  "ftl_bump_allocator",
  "ftl_elf",
+ "ftl_inlinedvec",
  "ftl_types",
  "ftl_utils",
  "hashbrown",
