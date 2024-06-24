@@ -19,6 +19,13 @@ fn panic(info: &PanicInfo) -> ! {
             // First panic: Try whatever we can do including complicated stuff
             // which may panic again.
             println!("kernel panic: {}", info);
+
+            let mut i = 0;
+            arch::backtrace(|pc| {
+                println!("    #{} at {:08x}", i, pc);
+                i += 1;
+            });
+
             arch::halt();
         }
         1 => {
