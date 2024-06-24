@@ -1,0 +1,28 @@
+{
+    "protocols": [
+        {
+            "name": "ping",
+            "rpcs": [
+                {
+                    "name": "ping",
+                    "request": {
+                        "fields": [
+                            {
+                                "name": "int_value1",
+                                "type": "int32"
+                            }
+                        ]
+                    },
+                    "response": {
+                        "fields": [
+                            {
+                                "name": "int_value2",
+                                "type": "int32"
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+    ]
+}

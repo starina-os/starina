@@ -1,9 +1,9 @@
 use ftl_types::error::FtlError;
+use ftl_types::message::MessageBody;
+use ftl_types::message::MessageBuffer;
 use ftl_types::message::MessageInfo;
 
 use crate::handle::OwnedHandle;
-use crate::message::MessageBody;
-use crate::message::MessageBuffer;
 use crate::syscall;
 
 #[derive(Debug, PartialEq, Eq)]
@@ -42,7 +42,9 @@ impl Channel {
         buffer: &mut MessageBuffer,
         msg: M,
     ) -> Result<(), FtlError> {
-        buffer.write(msg);
+        unsafe {
+            buffer.write(msg);
+        }
 
         // TODO: return send error to keep owning handles
         // TODO: Optimize parameter order to avoid unnecessary register swaps.

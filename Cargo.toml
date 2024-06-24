@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["kernel", "boot/*", "libs/rust/*", "apps/*"]
+members = ["kernel", "boot/*", "libs/rust/*", "apps/*", "tools/idlc"]
 
 [workspace.package]
 version = "0.0.0"
@@ -12,16 +12,23 @@ arrayvec = { version = "0.7.4", default-features = false }
 hashbrown = "0.14.5"
 spin = "0.9.8"
 linked_list_allocator = "0.10.5"
+serde = { version = "1.0.203", default-features = false }
 
+anyhow = "1.0.86"
 quote = "1.0.36"
 syn = "2.0.66"
 proc-macro2 = "1.0.85"
 proc-macro-error = "1.0.4"
+serde_json = "1.0.117"
+clap = "4.5.7"
+minijinja = "2.0.2"
 
 ftl_kernel = { path = "kernel" }
 ftl_types = { path = "libs/rust/ftl_types" }
 ftl_api = { path = "libs/rust/ftl_api" }
+ftl_api_autogen = { path = "libs/rust/ftl_api_autogen" }
 ftl_api_macros = { path = "libs/rust/ftl_api_macros" }
 ftl_utils = { path = "libs/rust/ftl_utils" }
 ftl_bump_allocator = { path = "libs/rust/bump_allocator" }
 ftl_elf = { path = "libs/rust/elf" }
+ftl_idlc = { path = "tools/idlc" }

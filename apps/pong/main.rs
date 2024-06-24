@@ -1,12 +1,13 @@
 #![no_std]
 #![no_main]
 
+use ftl_api::autogen::protocols::PingReply;
+use ftl_api::autogen::protocols::PingRequest;
 use ftl_api::channel::Channel;
 use ftl_api::handle::OwnedHandle;
-use ftl_api::message::MessageBuffer;
-use ftl_api::message::PingPongMessage;
 use ftl_api::prelude::*;
 use ftl_api::types::handle::HandleId;
+use ftl_api::types::message::MessageBuffer;
 
 #[ftl_api::main]
 pub fn main() {
@@ -19,12 +20,12 @@ pub fn main() {
     for i in 0.. {
         println!("[pong] {}: receiving message", i);
         let r = ch
-            .recv_with_buffer::<PingPongMessage>(&mut buffer)
+            .recv_with_buffer::<PingRequest>(&mut buffer)
             .expect("failed to recv");
-        println!("[pong] {}: received message: {}", i, r.value());
+        println!("[pong] {}: received message: {}", i, r.int_value1());
 
         println!("[pong] {}: replying message", i);
-        ch.send_with_buffer(&mut buffer, PingPongMessage { value: 84 })
+        ch.send_with_buffer(&mut buffer, PingReply { int_value2: 84 })
             .expect("failed to send");
     }
 }
