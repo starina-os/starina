@@ -1,10 +1,10 @@
+use core::cell::Ref;
 use core::cell::RefCell;
 use core::fmt;
 
 use arrayvec::ArrayVec;
 
-use crate::arch::set_cpuvar;
-use crate::arch::{self};
+use crate::arch;
 use crate::ref_counted::SharedRef;
 use crate::spinlock::SpinLock;
 use crate::thread::Thread;
@@ -46,6 +46,10 @@ pub struct CpuVar {
 //         and thus won't be accessed at once.
 unsafe impl Sync for CpuVar {}
 
+pub fn current_thread() -> Ref<'static, SharedRef<Thread>> {
+    arch::cpuvar().current_thread.borrow()
+}
+
 static CPUVARS: SpinLock<ArrayVec<CpuVar, { arch::NUM_CPUS_MAX }>> =
     SpinLock::new(ArrayVec::new_const());
 
@@ -63,5 +67,5 @@ pub fn percpu_init(cpu_id: CpuId) {
         });
     }
 
-    set_cpuvar(&mut cpuvars[cpu_id.as_usize()] as *mut CpuVar);
+    arch::set_cpuvar(&mut cpuvars[cpu_id.as_usize()] as *mut CpuVar);
 }
