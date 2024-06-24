@@ -29,6 +29,7 @@ ftl_api = { path = "libs/rust/ftl_api" }
 ftl_api_autogen = { path = "libs/rust/ftl_api_autogen" }
 ftl_api_macros = { path = "libs/rust/ftl_api_macros" }
 ftl_utils = { path = "libs/rust/ftl_utils" }
+ftl_inlinedvec = { path = "libs/rust/inlinedvec" }
 ftl_bump_allocator = { path = "libs/rust/bump_allocator" }
 ftl_elf = { path = "libs/rust/elf" }
 ftl_idlc = { path = "tools/idlc" }

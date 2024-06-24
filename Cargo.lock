@@ -199,6 +199,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "ftl_inlinedvec"
+version = "0.0.0"
+dependencies = [
+ "arrayvec",
+]
+
+[[package]]
 name = "ftl_kernel"
 version = "0.0.0"
 dependencies = [

@@ -1,0 +1,11 @@
+[package]
+name = "ftl_inlinedvec"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+
+[lib]
+path = "./lib.rs"
+
+[dependencies]
+arrayvec = { workspace = true }
