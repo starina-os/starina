@@ -79,7 +79,8 @@ pub fn syscall_entry(
             let handle = HandleId::from_raw_isize_truncated(a0);
             let msginfo = MessageInfo::from_raw(a1);
             let buf = unsafe { &*(a2 as usize as *const [u8; MESSAGE_DATA_MAX_LEN]) };
-            let handles = unsafe { &*(a3 as usize as *const [HandleId; MESSAGE_HANDLES_MAX_COUNT]) };
+            let handles =
+                unsafe { &*(a3 as usize as *const [HandleId; MESSAGE_HANDLES_MAX_COUNT]) };
             let err = channel_send(handle, msginfo, buf, handles);
             if let Err(e) = err {
                 println!("channel_send failed: {:?}", e);
@@ -91,7 +92,8 @@ pub fn syscall_entry(
         _ if n == SyscallNumber::ChannelRecv as isize => {
             let handle = HandleId::from_raw_isize_truncated(a0);
             let buf = unsafe { &mut *(a1 as usize as *mut [u8; MESSAGE_DATA_MAX_LEN]) };
-            let handles = unsafe { &mut *(a2 as usize as *mut [HandleId; MESSAGE_HANDLES_MAX_COUNT]) };
+            let handles =
+                unsafe { &mut *(a2 as usize as *mut [HandleId; MESSAGE_HANDLES_MAX_COUNT]) };
             let msginfo = channel_recv(handle, buf, handles)?;
             Ok(msginfo.as_raw())
         }

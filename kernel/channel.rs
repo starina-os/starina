@@ -55,7 +55,7 @@ impl Channel {
         &self,
         msginfo: MessageInfo,
         buf: &[u8; MESSAGE_DATA_MAX_LEN],
-        handles: &[HandleId; MESSAGE_HANDLES_MAX_COUNT]
+        handles: &[HandleId; MESSAGE_HANDLES_MAX_COUNT],
     ) -> Result<(), FtlError> {
         debug_assert!(msginfo.num_handles() == 0, "TODO: handle passing");
 
@@ -74,7 +74,11 @@ impl Channel {
         Ok(())
     }
 
-    pub fn recv(&self, buf: &mut [u8; MESSAGE_DATA_MAX_LEN], handles: &mut[HandleId; MESSAGE_HANDLES_MAX_COUNT]) -> Result<MessageInfo, FtlError> {
+    pub fn recv(
+        &self,
+        buf: &mut [u8; MESSAGE_DATA_MAX_LEN],
+        handles: &mut [HandleId; MESSAGE_HANDLES_MAX_COUNT],
+    ) -> Result<MessageInfo, FtlError> {
         let entry = self.event_point.poll_loop(&self.mutable, |mutable| {
             if let Some(entry) = mutable.queue.pop_front() {
                 return PollResult::Ready(entry);
