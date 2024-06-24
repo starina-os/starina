@@ -1,11 +1,12 @@
 [package]
-name = "ftl_types"
+name = "ping"
 version.workspace = true
 authors.workspace = true
 edition.workspace = true
 
-[lib]
-path = "lib.rs"
+[[bin]]
+name = "ping"
+path = "main.rs"
 
 [dependencies]
-ftl_utils = { path = "../ftl_utils" }
+ftl_api = { workspace = true }

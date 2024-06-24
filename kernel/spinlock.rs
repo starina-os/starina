@@ -53,6 +53,12 @@ pub struct SpinLockGuard<'a, T: ?Sized + 'a> {
     this: &'a SpinLock<T>,
 }
 
+impl<T> SpinLockGuard<'_, T> {
+    pub fn lock(&self) -> &SpinLock<T> {
+        &self.this
+    }
+}
+
 impl<T: ?Sized> Drop for SpinLockGuard<'_, T> {
     fn drop(&mut self) {
         self.this.lock.store(false, Ordering::Release);

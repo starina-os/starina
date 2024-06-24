@@ -2,10 +2,12 @@ use core::num::NonZeroIsize;
 use core::sync::atomic::AtomicIsize;
 use core::sync::atomic::Ordering;
 
-use crate::arch::{self};
-use crate::handle::Handleable;
+use crate::arch;
+use crate::process::kernel_process;
+use crate::process::Process;
 use crate::ref_counted::SharedRef;
 use crate::scheduler::GLOBAL_SCHEDULER;
+use crate::spinlock::SpinLock;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ThreadId(NonZeroIsize);
@@ -35,36 +37,44 @@ impl ThreadId {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum State {
     Runnable,
+    Blocked,
+}
+
+struct Mutable {
+    state: State,
 }
 
 pub struct Thread {
     id: ThreadId,
-    state: State,
+    mutable: SpinLock<Mutable>,
     arch: arch::Thread,
+    process: SharedRef<Process>,
 }
 
 impl Thread {
-    pub fn test() -> Thread {
-        Thread {
-            id: ThreadId::new_idle(),
-            state: State::Runnable,
-            arch: arch::Thread::new_idle(),
-        }
-    }
-
     pub fn new_idle() -> SharedRef<Thread> {
         SharedRef::new(Thread {
             id: ThreadId::new_idle(),
-            state: State::Runnable,
+            mutable: SpinLock::new(Mutable {
+                state: State::Runnable,
+            }),
             arch: arch::Thread::new_idle(),
+            process: kernel_process().clone(),
         })
     }
 
-    pub fn spawn_kernel(pc: fn(usize), arg: usize) -> SharedRef<Thread> {
+    pub fn spawn_kernel(
+        process: SharedRef<Process>,
+        pc: fn(usize),
+        arg: usize,
+    ) -> SharedRef<Thread> {
         let thread = SharedRef::new(Thread {
             id: ThreadId::alloc(),
-            state: State::Runnable,
+            mutable: SpinLock::new(Mutable {
+                state: State::Runnable,
+            }),
             arch: arch::Thread::new_kernel(pc as usize, arg),
+            process,
         });
 
         GLOBAL_SCHEDULER.push(thread.clone());
@@ -80,7 +90,11 @@ impl Thread {
     }
 
     pub fn is_runnable(&self) -> bool {
-        matches!(self.state, State::Runnable)
+        matches!(self.mutable.lock().state, State::Runnable)
+    }
+
+    pub fn process(&self) -> &SharedRef<Process> {
+        &self.process
     }
 
     pub const fn arch(&self) -> &arch::Thread {
@@ -90,6 +104,19 @@ impl Thread {
     pub fn resume(&self) -> ! {
         self.arch.resume();
     }
-}
 
-impl Handleable for Thread {}
+    pub fn set_blocked(self: &SharedRef<Thread>) {
+        let mut mutable = self.mutable.lock();
+        debug_assert!(matches!(mutable.state, State::Runnable));
+
+        mutable.state = State::Blocked;
+    }
+
+    pub fn set_runnable(self: &SharedRef<Thread>) {
+        let mut mutable = self.mutable.lock();
+        debug_assert!(matches!(mutable.state, State::Blocked));
+
+        mutable.state = State::Runnable;
+        GLOBAL_SCHEDULER.push(self.clone());
+    }
+}

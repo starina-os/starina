@@ -53,6 +53,8 @@ version = "0.0.0"
 dependencies = [
  "ftl_api_macros",
  "ftl_types",
+ "ftl_utils",
+ "hashbrown",
  "linked_list_allocator",
  "spin",
 ]
@@ -85,11 +87,15 @@ dependencies = [
  "ftl_types",
  "ftl_utils",
  "hashbrown",
+ "spin",
 ]
 
 [[package]]
 name = "ftl_types"
 version = "0.0.0"
+dependencies = [
+ "ftl_utils",
+]
 
 [[package]]
 name = "ftl_utils"
@@ -136,6 +142,20 @@ name = "once_cell"
 version = "1.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3fdb12b2476b595f9358c5161aa467c2438859caa136dec86c26fdd2efe17b92"
+
+[[package]]
+name = "ping"
+version = "0.0.0"
+dependencies = [
+ "ftl_api",
+]
+
+[[package]]
+name = "pong"
+version = "0.0.0"
+dependencies = [
+ "ftl_api",
+]
 
 [[package]]
 name = "proc-macro-error"

@@ -2,9 +2,7 @@
 
 use alloc::boxed::Box;
 use core::any::Any;
-use core::marker::Unsize;
 use core::mem;
-use core::ops::CoerceUnsized;
 use core::ops::Deref;
 use core::ptr::NonNull;
 use core::sync::atomic;
@@ -13,7 +11,7 @@ use core::sync::atomic::Ordering;
 
 struct RefCounted<T: ?Sized> {
     counter: AtomicUsize,
-    inner: T,
+    value: T,
 }
 
 /// A reference-counted object.
@@ -39,10 +37,10 @@ pub struct SharedRef<T: ?Sized> {
 
 impl<T> SharedRef<T> {
     /// Creates a new reference-counted object.
-    pub fn new(inner: T) -> Self {
+    pub fn new(value: T) -> Self {
         let ptr = Box::leak(Box::new(RefCounted {
             counter: AtomicUsize::new(1),
-            inner,
+            value,
         }));
 
         Self {
@@ -118,12 +116,9 @@ impl<T> Deref for SharedRef<T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
-        &self.inner().inner
+        &self.inner().value
     }
 }
 
 unsafe impl<T: Sync> Sync for SharedRef<T> {}
 unsafe impl<T: Send> Send for SharedRef<T> {}
-
-// Allow `x as SharedRef<dyn Handleable>`, where `x: SharedRef<T: Handleable>`.
-impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<SharedRef<U>> for SharedRef<T> {}

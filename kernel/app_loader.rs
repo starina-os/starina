@@ -7,7 +7,7 @@ use ftl_utils::alignment::align_up;
 
 use crate::arch::PAGE_SIZE;
 use crate::handle::AnyHandle;
-use crate::handle::Handleable;
+use crate::handle::Handle;
 use crate::memory::AllocPagesError;
 use crate::memory::AllocatedPages;
 use crate::process::Process;
@@ -28,8 +28,6 @@ pub struct KernelAppMemory {
     #[allow(dead_code)]
     pages: AllocatedPages,
 }
-
-impl Handleable for KernelAppMemory {}
 
 pub struct AppLoader<'a> {
     elf_file: &'a [u8],
@@ -161,22 +159,33 @@ impl<'a> AppLoader<'a> {
         Ok(())
     }
 
-    pub fn load(mut self, vsyscall_page: *const VsyscallPage) -> Result<Process, Error> {
+    pub fn load(
+        mut self,
+        vsyscall_page: *const VsyscallPage,
+        first_handle: AnyHandle,
+    ) -> Result<SharedRef<Process>, Error> {
         self.load_segments();
 
         #[cfg(target_arch = "riscv64")]
         self.relocate_riscv()?;
 
         let entry = unsafe { core::mem::transmute(self.entry_addr()) };
-        let thread = Thread::spawn_kernel(entry, vsyscall_page as usize);
-        let mut proc = Process::create();
+        let proc = SharedRef::new(Process::create());
+        let thread = Thread::spawn_kernel(proc.clone(), entry, vsyscall_page as usize);
 
         let kernel_app_memory = SharedRef::new(KernelAppMemory { pages: self.memory });
 
-        proc.add_handle(AnyHandle::new(kernel_app_memory, HandleRights::NONE))
-            .unwrap();
-        proc.add_handle(AnyHandle::new(thread, HandleRights::NONE))
-            .unwrap();
+        {
+            let mut handles = proc.handles().lock();
+            handles.add(first_handle).unwrap();
+
+            handles
+                .add(Handle::new(kernel_app_memory, HandleRights::NONE))
+                .unwrap();
+            handles
+                .add(Handle::new(thread, HandleRights::NONE))
+                .unwrap();
+        }
 
         Ok(proc)
     }

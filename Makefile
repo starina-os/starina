@@ -3,6 +3,7 @@ MACHINE ?= qemu-virt
 RELEASE ?=            # "1" to build release version
 V       ?=            # "1" to enable verbose output
 STARTUP ?= apps/hello
+APPS    ?= apps/ping apps/pong
 
 # Disable builtin implicit rules and variables.
 MAKEFLAGS += --no-builtin-rules --no-builtin-variables
@@ -32,6 +33,7 @@ QEMUFLAGS += -nographic -serial mon:stdio --no-reboot
 QEMUFLAGS += -d cpu_reset,unimp,guest_errors,int -D qemu.log
 QEMUFLAGS += $(if $(GDB),-gdb tcp::7789 -S)
 
+app_elfs := $(foreach app,$(APPS),build/$(app).elf)
 sources += \
 	$(shell find \
 		boot/$(ARCH) kernel libs apps \
@@ -62,7 +64,7 @@ fmt:
 fix:
 	cargo clippy --fix --allow-dirty --allow-staged $(CARGOFLAGS)
 
-ftl.elf: $(sources) Makefile build/startup.elf
+ftl.elf: $(sources) Makefile $(app_elfs)
 	$(PROGRESS) "CARGO" "boot/$(ARCH)"
 	RUSTFLAGS="$(RUSTFLAGS)" CARGO_TARGET_DIR="build/cargo" $(CARGO) build $(CARGOFLAGS) \
 		--target boot/$(ARCH)/$(ARCH)-$(MACHINE).json \

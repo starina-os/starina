@@ -14,3 +14,6 @@ ftl_types = { workspace = true }
 ftl_bump_allocator = { workspace = true }
 ftl_elf = { workspace = true }
 hashbrown = { workspace = true }
+
+# TODO: Remove this dependency
+spin = { workspace = true }

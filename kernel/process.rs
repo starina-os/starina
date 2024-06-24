@@ -1,21 +1,33 @@
-use ftl_types::error::FtlError;
-use ftl_types::handle::HandleId;
-
-use crate::handle::AnyHandle;
 use crate::handle::HandleTable;
+use crate::ref_counted::SharedRef;
+use crate::spinlock::SpinLock;
 
 pub struct Process {
-    handles: HandleTable,
+    handles: SpinLock<HandleTable>,
 }
 
 impl Process {
     pub fn create() -> Process {
         Process {
-            handles: HandleTable::new(),
+            handles: SpinLock::new(HandleTable::new()),
         }
     }
 
-    pub fn add_handle(&mut self, handle: AnyHandle) -> Result<HandleId, FtlError> {
-        self.handles.add(handle)
+    pub fn handles(&self) -> &SpinLock<HandleTable> {
+        &self.handles
     }
+}
+
+static KERNEL_PROCESS: spin::Lazy<SharedRef<Process>> = spin::Lazy::new(|| {
+    let proc = Process::create();
+    SharedRef::new(proc)
+});
+
+pub fn kernel_process() -> &'static SharedRef<Process> {
+    &*KERNEL_PROCESS
+}
+
+pub fn init() {
+    // TODO: Make sure it's not accidentally dereferenced before.
+    spin::Lazy::force(&KERNEL_PROCESS);
 }

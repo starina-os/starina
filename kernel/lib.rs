@@ -4,8 +4,7 @@
 #![feature(const_trait_impl)]
 #![feature(offset_of)]
 #![feature(naked_functions)]
-#![feature(unsize)]
-#![feature(coerce_unsized)]
+#![feature(arbitrary_self_types)]
 
 extern crate alloc;
 
@@ -17,9 +16,11 @@ pub mod cpuvar;
 
 mod app_loader;
 mod arch;
+mod channel;
 mod handle;
 mod memory;
 mod panic;
+mod poll;
 mod process;
 mod ref_counted;
 mod scheduler;
