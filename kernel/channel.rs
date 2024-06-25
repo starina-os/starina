@@ -3,9 +3,8 @@ use alloc::vec::Vec;
 
 use ftl_inlinedvec::InlinedVec;
 use ftl_types::error::FtlError;
-use ftl_types::handle::HandleId;
+use ftl_types::message::MessageBuffer;
 use ftl_types::message::MessageInfo;
-use ftl_types::message::MESSAGE_DATA_MAX_LEN;
 use ftl_types::message::MESSAGE_HANDLES_MAX_COUNT;
 
 use crate::cpuvar::current_thread;
@@ -55,12 +54,7 @@ impl Channel {
         Ok((ch0, ch1))
     }
 
-    pub fn send(
-        &self,
-        msginfo: MessageInfo,
-        buf: &[u8; MESSAGE_DATA_MAX_LEN],
-        handles: &[HandleId; MESSAGE_HANDLES_MAX_COUNT],
-    ) -> Result<(), FtlError> {
+    pub fn send(&self, msginfo: MessageInfo, msgbuffer: &MessageBuffer) -> Result<(), FtlError> {
         let mutable = self.mutable.lock();
         let peer_ch = mutable.peer.as_ref().ok_or(FtlError::NoPeer)?;
 
@@ -80,7 +74,7 @@ impl Channel {
 
             // First loop: make sure moving handles won't fail.
             for i in 0..num_handles {
-                if !our_handles.is_movable(handles[i]) {
+                if !our_handles.is_movable(msgbuffer.handles[i]) {
                     return Err(FtlError::HandleNotMovable);
                 }
             }
@@ -89,7 +83,7 @@ impl Channel {
             for i in 0..num_handles {
                 // SAFETY: unwrap() won't panic because we've checked the handle
                 //         is movable in the previous loop.
-                let handle = our_handles.remove(handles[i]).unwrap();
+                let handle = our_handles.remove(msgbuffer.handles[i]).unwrap();
 
                 // SAFETY: unwrap() won't panic because `handles` should have
                 //         enough capacity up to MESSAGE_HANDLES_MAX_COUNT.
@@ -99,7 +93,7 @@ impl Channel {
 
         // Copy message data into the kernel memory.
         let data_len = msginfo.data_len();
-        let data = buf[0..data_len].to_vec();
+        let data = msgbuffer.data[0..data_len].to_vec();
 
         let entry = MessageEntry {
             msginfo,
@@ -114,11 +108,7 @@ impl Channel {
         Ok(())
     }
 
-    pub fn recv(
-        &self,
-        buf: &mut [u8; MESSAGE_DATA_MAX_LEN],
-        handles: &mut [HandleId; MESSAGE_HANDLES_MAX_COUNT],
-    ) -> Result<MessageInfo, FtlError> {
+    pub fn recv(&self, msgbuffer: &mut MessageBuffer) -> Result<MessageInfo, FtlError> {
         let mut entry = self.event_point.poll_loop(&self.mutable, |mutable| {
             if let Some(entry) = mutable.queue.pop_front() {
                 return PollResult::Ready(entry);
@@ -132,11 +122,11 @@ impl Channel {
         let mut handle_table = current_thread.process().handles().lock();
         for (i, any_handle) in entry.handles.drain(..).enumerate() {
             // TODO: Define the expected behavior when it fails to add a handle.
-            handles[i] = handle_table.add(any_handle)?;
+            msgbuffer.handles[i] = handle_table.add(any_handle)?;
         }
 
         let data_len = entry.msginfo.data_len();
-        buf[0..data_len].copy_from_slice(&entry.data[0..data_len]);
+        msgbuffer.data[0..data_len].copy_from_slice(&entry.data[0..data_len]);
         Ok(entry.msginfo)
     }
 }

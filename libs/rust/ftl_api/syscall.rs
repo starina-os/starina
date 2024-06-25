@@ -1,5 +1,6 @@
 use ftl_types::error::FtlError;
 use ftl_types::handle::HandleId;
+use ftl_types::message::MessageBuffer;
 use ftl_types::message::MessageInfo;
 use ftl_types::syscall::SyscallNumber;
 use ftl_types::syscall::VsyscallPage;
@@ -89,29 +90,25 @@ pub fn channel_create() -> Result<(HandleId, HandleId), FtlError> {
 pub fn channel_send(
     handle: HandleId,
     msginfo: MessageInfo,
-    buf: *const u8,
-    handles: *const HandleId,
+    msgbuffer: *const MessageBuffer,
 ) -> Result<(), FtlError> {
-    syscall4(
+    syscall3(
         SyscallNumber::ChannelSend,
         handle.as_isize(),
         msginfo.as_raw(),
-        buf as isize,
-        handles as isize,
+        msgbuffer as isize,
     )?;
     Ok(())
 }
 
 pub fn channel_recv(
     handle: HandleId,
-    buf: *mut u8,
-    handles: *mut HandleId,
+    msgbuffer: *mut MessageBuffer,
 ) -> Result<MessageInfo, FtlError> {
-    let ret = syscall3(
+    let ret = syscall2(
         SyscallNumber::ChannelRecv,
         handle.as_isize(),
-        buf as isize,
-        handles as isize,
+        msgbuffer as isize,
     )?;
     Ok(MessageInfo::from_raw(ret))
 }

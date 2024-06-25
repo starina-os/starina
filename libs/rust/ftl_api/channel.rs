@@ -48,12 +48,7 @@ impl Channel {
 
         // TODO: return send error to keep owning handles
         // TODO: Optimize parameter order to avoid unnecessary register swaps.
-        syscall::channel_send(
-            self.handle.id(),
-            M::MSGINFO,
-            buffer.data.as_ptr(),
-            buffer.handles.as_ptr(),
-        )
+        syscall::channel_send(self.handle.id(), M::MSGINFO, buffer)
     }
 
     pub fn recv_with_buffer<'a, M: MessageBody>(
@@ -61,12 +56,8 @@ impl Channel {
         buffer: &'a mut MessageBuffer,
     ) -> Result<M::Reader<'a>, RecvError> {
         // TODO: Optimize parameter order to avoid unnecessary register swaps.
-        let msginfo = syscall::channel_recv(
-            self.handle.id(),
-            buffer.data.as_mut_ptr(),
-            buffer.handles.as_mut_ptr(),
-        )
-        .map_err(RecvError::KernelError)?;
+        let msginfo =
+            syscall::channel_recv(self.handle.id(), buffer).map_err(RecvError::KernelError)?;
 
         // Is it really the message we're expecting?
         if msginfo != M::MSGINFO {
