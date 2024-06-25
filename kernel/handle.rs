@@ -89,9 +89,7 @@ impl Into<AnyHandle> for Handle<KernelAppMemory> {
 ///
 /// The current 64K limit has no particular reason, but it should be low
 /// enough to prevent an overflow in `next_id + 1` in `HandleTable::add`.
-///
-/// The hard limit is `2^HANDLE_ID_BITS - 1`.
-const NUM_HANDLES_MAX: i32 = 64 * 1024 - 1;
+const NUM_HANDLES_MAX: usize = 64 * 1024;
 
 pub struct HandleTable {
     next_id: i32,
@@ -112,7 +110,7 @@ impl HandleTable {
 
     /// Add a handle to the table.
     pub fn add<H: Into<AnyHandle>>(&mut self, handle: H) -> Result<HandleId, FtlError> {
-        if self.next_id >= NUM_HANDLES_MAX {
+        if self.handles.len() >= NUM_HANDLES_MAX {
             return Err(FtlError::TooManyHandles);
         }
 
