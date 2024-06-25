@@ -1,13 +1,18 @@
 use ftl_types::error::FtlError;
 use ftl_types::handle::HandleId;
+use ftl_types::handle::HandleRights;
 use ftl_types::message::MessageBuffer;
 use ftl_types::message::MessageInfo;
 use ftl_types::syscall::SyscallNumber;
 use ftl_types::syscall::VsyscallPage;
 
+use crate::buffer::Buffer;
 use crate::channel::Channel;
 use crate::cpuvar::current_thread;
+use crate::handle::AnyHandle;
 use crate::handle::Handle;
+use crate::memory::AllocPagesError;
+use crate::ref_counted::SharedRef;
 
 pub const VSYSCALL_PAGE: VsyscallPage = VsyscallPage {
     entry: syscall_entry,
@@ -50,6 +55,24 @@ fn channel_recv(handle: HandleId, msgbuffer: &mut MessageBuffer) -> Result<Messa
     };
 
     ch.recv(msgbuffer)
+}
+
+fn buffer_create(len: usize) -> Result<HandleId, FtlError> {
+    let buffer = match Buffer::alloc(len) {
+        Ok(buffer) => buffer,
+        Err(AllocPagesError::InvalidLayout(error)) => {
+            return Err(FtlError::InvalidArg);
+        }
+    };
+
+    let handle = Handle::new(SharedRef::new(buffer), HandleRights::NONE);
+    let handle_id = current_thread()
+        .process()
+        .handles()
+        .lock()
+        .add(AnyHandle::Buffer(handle))?;
+
+    Ok(handle_id)
 }
 
 pub fn syscall_entry(

@@ -6,6 +6,7 @@ use ftl_types::syscall::VsyscallPage;
 use ftl_utils::alignment::align_up;
 
 use crate::arch::PAGE_SIZE;
+use crate::buffer::Buffer;
 use crate::handle::AnyHandle;
 use crate::handle::Handle;
 use crate::memory::AllocPagesError;
@@ -18,21 +19,16 @@ use crate::thread::Thread;
 pub enum Error {
     ParseElf(ftl_elf::ParseError),
     NoPhdrs,
-    AllocPages(AllocPagesError),
+    AllocBuffer(AllocPagesError),
     NotPIE,
     #[cfg(target_arch = "riscv64")]
     NoRelaDyn,
 }
 
-pub struct KernelAppMemory {
-    #[allow(dead_code)]
-    pages: AllocatedPages,
-}
-
 pub struct AppLoader<'a> {
     elf_file: &'a [u8],
     elf: Elf<'a>,
-    memory: AllocatedPages,
+    memory: Buffer,
 }
 
 impl<'a> AppLoader<'a> {
@@ -61,7 +57,7 @@ impl<'a> AppLoader<'a> {
             .ok_or(Error::NoPhdrs)?;
 
         let elf_len = align_up(highest_addr - lowest_addr, PAGE_SIZE);
-        let memory = AllocatedPages::alloc(elf_len).map_err(Error::AllocPages)?;
+        let memory = Buffer::alloc(elf_len).map_err(Error::AllocBuffer)?;
         Ok(AppLoader {
             elf_file,
             elf,
@@ -70,7 +66,7 @@ impl<'a> AppLoader<'a> {
     }
 
     fn base_addr(&self) -> usize {
-        self.memory.as_ptr() as usize
+        self.memory.allocated_pages().as_ptr() as usize
     }
 
     fn entry_addr(&self) -> usize {
@@ -78,7 +74,7 @@ impl<'a> AppLoader<'a> {
     }
 
     fn load_segments(&mut self) {
-        let memory = self.memory.as_slice_mut();
+        let memory = self.memory.allocated_pages_mut().as_slice_mut();
         for phdr in self.elf.phdrs {
             if phdr.p_type != ftl_elf::PhdrType::Load {
                 continue;
@@ -173,14 +169,14 @@ impl<'a> AppLoader<'a> {
         let proc = SharedRef::new(Process::create());
         let thread = Thread::spawn_kernel(proc.clone(), entry, vsyscall_page as usize);
 
-        let kernel_app_memory = SharedRef::new(KernelAppMemory { pages: self.memory });
+        let buffer = SharedRef::new(self.memory);
 
         {
             let mut handles = proc.handles().lock();
             handles.add(first_handle).unwrap();
 
             handles
-                .add(Handle::new(kernel_app_memory, HandleRights::NONE))
+                .add(Handle::new(buffer, HandleRights::NONE))
                 .unwrap();
             handles
                 .add(Handle::new(thread, HandleRights::NONE))

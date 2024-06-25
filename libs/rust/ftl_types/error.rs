@@ -8,4 +8,5 @@ pub enum FtlError {
     UnexpectedHandleType,
     InvalidSyscallReturnValue,
     NoPeer,
+    InvalidArg,
 }

@@ -6,7 +6,7 @@ use ftl_types::handle::HandleId;
 use ftl_types::handle::HandleRights;
 use hashbrown::HashMap;
 
-use crate::app_loader::KernelAppMemory;
+use crate::buffer::Buffer;
 use crate::channel::Channel;
 use crate::ref_counted::SharedRef;
 use crate::thread::Thread;
@@ -44,7 +44,7 @@ impl<T> Deref for Handle<T> {
 pub enum AnyHandle {
     Channel(Handle<Channel>),
     Thread(Handle<Thread>),
-    KernelAppMemory(Handle<KernelAppMemory>),
+    Buffer(Handle<Buffer>),
 }
 
 impl AnyHandle {
@@ -62,7 +62,7 @@ impl fmt::Debug for AnyHandle {
         match self {
             AnyHandle::Channel(_) => write!(f, "Channel"),
             AnyHandle::Thread(_) => write!(f, "Thread"),
-            AnyHandle::KernelAppMemory(_) => write!(f, "KernelAppMemory"),
+            AnyHandle::Buffer(_) => write!(f, "Buffer"),
         }
     }
 }
@@ -79,9 +79,9 @@ impl Into<AnyHandle> for Handle<Thread> {
     }
 }
 
-impl Into<AnyHandle> for Handle<KernelAppMemory> {
+impl Into<AnyHandle> for Handle<Buffer> {
     fn into(self) -> AnyHandle {
-        AnyHandle::KernelAppMemory(self)
+        AnyHandle::Buffer(self)
     }
 }
 
