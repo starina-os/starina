@@ -25,7 +25,7 @@ pub enum Event<'a, St, M: MessageBody> {
     Message {
         ch: &'a mut Channel,
         state: &'a mut St,
-        message: M::Reader<'a>,
+        m: M::Reader<'a>,
     },
 }
 
@@ -88,7 +88,7 @@ impl<St, AllM: MessageBody> Mainloop<St, AllM> {
                     return Ok(Event::Message {
                         ch,
                         state: &mut entry.state,
-                        message,
+                        m: message,
                     });
                 }
             }
