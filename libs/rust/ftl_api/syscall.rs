@@ -82,6 +82,12 @@ pub fn print(s: &[u8]) -> Result<(), FtlError> {
     Ok(())
 }
 
+pub fn poll_create() -> Result<HandleId, FtlError> {
+    let ret = syscall0(SyscallNumber::PollCreate)?;
+    let handle_id = HandleId::from_raw_isize_truncated(ret);
+    Ok(handle_id)
+}
+
 pub fn poll_add(
     poll_handle_id: HandleId,
     target_handle_id: HandleId,

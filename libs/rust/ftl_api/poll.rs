@@ -10,6 +10,13 @@ pub struct Poll {
 }
 
 impl Poll {
+    pub fn new() -> Result<Poll, FtlError> {
+        let handle = syscall::poll_create()?;
+        Ok(Poll {
+            handle: OwnedHandle::from_raw(handle),
+        })
+    }
+
     pub fn from_handle(handle: OwnedHandle) -> Poll {
         Poll { handle }
     }
