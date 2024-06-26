@@ -110,6 +110,10 @@ pub fn syscall_entry(
             let msginfo = channel_recv(handle, msgbuffer)?;
             Ok(msginfo.as_raw())
         }
+        _ if n == SyscallNumber::BufferCreate as isize => {
+            let handle_id = buffer_create(a0 as usize)?;
+            Ok(handle_id.as_isize())
+        }
         _ => {
             println!(
                 "unknown syscall: n={}, a0={}, a1={}, a2={}, a3={}, a4={}, a5={}",
