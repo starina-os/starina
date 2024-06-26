@@ -11,9 +11,9 @@ pub mod protocols {
     {% for m in messages %}
     #[repr(C)]
     pub struct {{ m.name }} {
-        {% for f in m.fields %}
+        {%- for f in m.fields %}
         pub {{ f.name }}: {{ f.ty }},
-        {% endfor %}
+        {%- endfor %}
     }
 
     // TODO: static_assert for size
@@ -37,7 +37,6 @@ pub mod protocols {
             }
         }
     }
-
 
     pub struct {{ m.name }}Reader<'a> {
         buffer: &'a MessageBuffer,
