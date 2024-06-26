@@ -4,6 +4,7 @@ use core::ops::Deref;
 use ftl_types::error::FtlError;
 use ftl_types::handle::HandleId;
 use ftl_types::handle::HandleRights;
+use ftl_types::handle::HANDLE_ID_MASK;
 use hashbrown::HashMap;
 
 use crate::buffer::Buffer;
@@ -88,7 +89,7 @@ impl Into<AnyHandle> for Handle<Buffer> {
 /// The number of maximum handles per process.
 ///
 /// The current 64K limit has no particular reason, but it should be low
-/// enough to prevent an overflow in `next_id + 1` in `HandleTable::add`.
+/// enough to prevent a process from consuming too many resources.
 const NUM_HANDLES_MAX: usize = 64 * 1024;
 
 pub struct HandleTable {
@@ -114,8 +115,14 @@ impl HandleTable {
             return Err(FtlError::TooManyHandles);
         }
 
+        if self.next_id == 0 {
+            self.next_id += 1;
+        }
+
         let id = HandleId::from_raw(self.next_id);
-        self.next_id = self.next_id + 1;
+        self.next_id = (self.next_id + 1) & HANDLE_ID_MASK;
+
+        debug_assert!(id.as_i32() != 0);
         self.handles.insert(id, handle.into());
         Ok(id)
     }
