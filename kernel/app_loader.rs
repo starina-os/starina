@@ -10,7 +10,6 @@ use crate::buffer::Buffer;
 use crate::handle::AnyHandle;
 use crate::handle::Handle;
 use crate::memory::AllocPagesError;
-use crate::memory::AllocatedPages;
 use crate::process::Process;
 use crate::ref_counted::SharedRef;
 use crate::thread::Thread;

@@ -60,7 +60,7 @@ fn channel_recv(handle: HandleId, msgbuffer: &mut MessageBuffer) -> Result<Messa
 fn buffer_create(len: usize) -> Result<HandleId, FtlError> {
     let buffer = match Buffer::alloc(len) {
         Ok(buffer) => buffer,
-        Err(AllocPagesError::InvalidLayout(error)) => {
+        Err(AllocPagesError::InvalidLayout(_err)) => {
             return Err(FtlError::InvalidArg);
         }
     };
