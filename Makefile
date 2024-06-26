@@ -88,7 +88,7 @@ build/%.elf: $(sources) libs/rust/ftl_api_autogen/lib.rs Makefile
 		--manifest-path $(patsubst build/%.elf,%,$(@))/Cargo.toml
 	cp build/cargo/$(ARCH)-user/$(BUILD)/$(patsubst build/apps/%.elf,%,$(@)) $(@)
 
-build/ftl_idlc: $(shell find tools/idlc -name '*.rs')
+build/ftl_idlc: $(shell find tools/idlc -name '*.rs') $(shell find tools/idlc -name '*.j2')
 	mkdir -p $(@D)
 	$(PROGRESS) "CARGO" "tools/idlc"
 	RUSTFLAGS="$(RUSTFLAGS)" \
