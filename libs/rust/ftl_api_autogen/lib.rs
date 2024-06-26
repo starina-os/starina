@@ -8,23 +8,36 @@ use ftl_types::message::MessageInfo;
 pub mod protocols {
     use super::*;
 
+
     #[repr(C)]
     pub struct PingRequest {
+
         pub int_value1: i32,
+
     }
 
     // TODO: static_assert for size
 
     impl MessageBody for PingRequest {
-        const MSGINFO: MessageInfo =
-            MessageInfo::from_raw(0 << 14 | ::core::mem::size_of::<PingRequest>() as isize);
+        const MSGINFO: MessageInfo = MessageInfo::from_raw(
+            0 << 14
+            | ::core::mem::size_of::<PingRequest>() as isize,
+        );
 
         type Reader<'a> = PingRequestReader<'a>;
 
-        fn deserialize<'a>(buffer: &'a MessageBuffer) -> Self::Reader<'a> {
-            PingRequestReader { buffer }
+        fn deserialize<'a>(
+            buffer: &'a MessageBuffer,
+            msginfo: MessageInfo
+        ) -> Option<Self::Reader<'a>> {
+            if msginfo == Self::MSGINFO {
+                Some(PingRequestReader { buffer })
+            } else {
+                None
+            }
         }
     }
+
 
     pub struct PingRequestReader<'a> {
         buffer: &'a MessageBuffer,
@@ -35,29 +48,43 @@ pub mod protocols {
             unsafe { &*(buffer as *const _ as *const PingRequest) }
         }
 
+
         pub fn int_value1(&self) -> i32 {
             let m = self.as_ref(self.buffer);
             m.int_value1
         }
+
     }
 
     #[repr(C)]
     pub struct PingReply {
+
         pub int_value2: i32,
+
     }
 
     // TODO: static_assert for size
 
     impl MessageBody for PingReply {
-        const MSGINFO: MessageInfo =
-            MessageInfo::from_raw(0 << 14 | ::core::mem::size_of::<PingReply>() as isize);
+        const MSGINFO: MessageInfo = MessageInfo::from_raw(
+            0 << 14
+            | ::core::mem::size_of::<PingReply>() as isize,
+        );
 
         type Reader<'a> = PingReplyReader<'a>;
 
-        fn deserialize<'a>(buffer: &'a MessageBuffer) -> Self::Reader<'a> {
-            PingReplyReader { buffer }
+        fn deserialize<'a>(
+            buffer: &'a MessageBuffer,
+            msginfo: MessageInfo
+        ) -> Option<Self::Reader<'a>> {
+            if msginfo == Self::MSGINFO {
+                Some(PingReplyReader { buffer })
+            } else {
+                None
+            }
         }
     }
+
 
     pub struct PingReplyReader<'a> {
         buffer: &'a MessageBuffer,
@@ -68,9 +95,12 @@ pub mod protocols {
             unsafe { &*(buffer as *const _ as *const PingReply) }
         }
 
+
         pub fn int_value2(&self) -> i32 {
             let m = self.as_ref(self.buffer);
             m.int_value2
         }
+
     }
+
 }
