@@ -90,5 +90,6 @@ impl MessageBuffer {
 pub trait MessageBody {
     const MSGINFO: MessageInfo;
     type Reader<'a>: 'a;
-    fn deserialize<'a>(buffer: &'a MessageBuffer) -> Self::Reader<'a>;
+    fn deserialize<'a>(buffer: &'a MessageBuffer, msginfo: MessageInfo)
+        -> Option<Self::Reader<'a>>;
 }

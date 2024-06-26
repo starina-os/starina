@@ -1,3 +1,5 @@
+use core::fmt;
+
 use ftl_types::error::FtlError;
 use ftl_types::message::MessageBody;
 use ftl_types::message::MessageBuffer;
@@ -8,8 +10,8 @@ use crate::syscall;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum RecvError {
-    KernelError(FtlError),
-    UnexpectedMessageType(MessageInfo),
+    Syscall(FtlError),
+    Deserialize(MessageInfo),
 }
 
 pub struct Channel {
@@ -57,23 +59,31 @@ impl Channel {
     ) -> Result<M::Reader<'a>, RecvError> {
         // TODO: Optimize parameter order to avoid unnecessary register swaps.
         let msginfo =
-            syscall::channel_recv(self.handle.id(), buffer).map_err(RecvError::KernelError)?;
+            syscall::channel_recv(self.handle.id(), buffer).map_err(RecvError::Syscall)?;
 
-        // Is it really the message we're expecting?
-        if msginfo != M::MSGINFO {
-            // Close transferred handles to prevent resource leaks.
-            //
-            // Also, if they're IPC-related handles like channels, this might
-            // let the sender know that we don't never use them. Otherwise, the
-            // sender might be waiting for a message from us.
-            for i in 0..msginfo.num_handles() {
-                let handle_id = buffer.handles[i];
-                syscall::handle_close(handle_id).expect("failed to close handle");
+        match M::deserialize(buffer, msginfo) {
+            Some(msg) => {
+                return Ok(msg);
             }
+            None => {
+                // Close transferred handles to prevent resource leaks.
+                //
+                // Also, if they're IPC-related handles like channels, this might
+                // let the sender know that we don't never use them. Otherwise, the
+                // sender might be waiting for a message from us.
+                for i in 0..msginfo.num_handles() {
+                    let handle_id = buffer.handles[i];
+                    syscall::handle_close(handle_id).expect("failed to close handle");
+                }
 
-            return Err(RecvError::UnexpectedMessageType(msginfo));
+                return Err(RecvError::Deserialize(msginfo));
+            }
         }
+    }
+}
 
-        Ok(M::deserialize(buffer))
+impl fmt::Debug for Channel {
+    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        todo!()
     }
 }
