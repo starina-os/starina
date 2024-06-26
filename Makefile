@@ -50,7 +50,7 @@ run: ftl.elf
 
 .PHONY: clean
 clean:
-	rm -f build
+	rm -rf build
 
 .PHONY: clippy
 clippy:
