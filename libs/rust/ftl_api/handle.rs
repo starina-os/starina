@@ -1,5 +1,6 @@
 use ftl_types::handle::HandleId;
 
+use crate::println;
 use crate::syscall;
 
 /// An owned handle, which will be closed when dropped.
@@ -26,9 +27,10 @@ impl OwnedHandle {
 impl Drop for OwnedHandle {
     fn drop(&mut self) {
         if let Err(err) = syscall::handle_close(self.0) {
-            // TODO: Closing a handle may fail, but `Drop::drop` doesn't allow
-            //       returning an error. We should log this error here to notice
-            //       the potential bugs.
+            // Closing a handle may fail, but Drop::drop doesn't allow
+            // returning an error. Log the fact here to notice the potential
+            // bug.
+            println!("failed to close handle: {:?}", err);
         }
     }
 }
