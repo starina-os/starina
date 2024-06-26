@@ -6,12 +6,14 @@ use ftl_types::error::FtlError;
 use ftl_types::message::MessageBuffer;
 use ftl_types::message::MessageInfo;
 use ftl_types::message::MESSAGE_HANDLES_MAX_COUNT;
+use ftl_types::poll::PollEvent;
 
 use crate::cpuvar::current_thread;
 use crate::handle::AnyHandle;
-use crate::poll::PollPoint;
-use crate::poll::PollResult;
+use crate::poll::Poller;
 use crate::ref_counted::SharedRef;
+use crate::sleep::SleepCallbackResult;
+use crate::sleep::SleepPoint;
 use crate::spinlock::SpinLock;
 
 struct MessageEntry {
@@ -23,27 +25,30 @@ struct MessageEntry {
 struct Mutable {
     peer: Option<SharedRef<Channel>>,
     queue: VecDeque<MessageEntry>,
+    pollers: Vec<SharedRef<Poller>>,
 }
 
 pub struct Channel {
     mutable: SpinLock<Mutable>,
-    event_point: PollPoint,
+    sleep_point: SleepPoint,
 }
 
 impl Channel {
     pub fn new() -> Result<(SharedRef<Channel>, SharedRef<Channel>), FtlError> {
         let ch0 = SharedRef::new(Channel {
-            event_point: PollPoint::new(),
+            sleep_point: SleepPoint::new(),
             mutable: SpinLock::new(Mutable {
                 peer: None,
                 queue: VecDeque::new(),
+                pollers: Vec::new(),
             }),
         });
         let ch1 = SharedRef::new(Channel {
-            event_point: PollPoint::new(),
+            sleep_point: SleepPoint::new(),
             mutable: SpinLock::new(Mutable {
                 peer: None,
                 queue: VecDeque::new(),
+                pollers: Vec::new(),
             }),
         });
 
@@ -52,6 +57,16 @@ impl Channel {
         ch1.mutable.lock().peer = Some(ch0.clone());
 
         Ok((ch0, ch1))
+    }
+
+    pub fn add_poller(&self, poller: SharedRef<Poller>) {
+        let mut mutable = self.mutable.lock();
+
+        if !mutable.queue.is_empty() {
+            poller.set_ready(PollEvent::READABLE);
+        }
+
+        mutable.pollers.push(poller);
     }
 
     pub fn send(&self, msginfo: MessageInfo, msgbuffer: &MessageBuffer) -> Result<(), FtlError> {
@@ -103,18 +118,22 @@ impl Channel {
 
         let mut peer_mutable = peer_ch.mutable.lock();
         peer_mutable.queue.push_back(entry);
-        peer_ch.event_point.wake();
+        peer_ch.sleep_point.wake_all();
+
+        for poller in &peer_mutable.pollers {
+            poller.set_ready(PollEvent::READABLE);
+        }
 
         Ok(())
     }
 
     pub fn recv(&self, msgbuffer: &mut MessageBuffer) -> Result<MessageInfo, FtlError> {
-        let mut entry = self.event_point.poll_loop(&self.mutable, |mutable| {
+        let mut entry = self.sleep_point.sleep_loop(&self.mutable, |mutable| {
             if let Some(entry) = mutable.queue.pop_front() {
-                return PollResult::Ready(entry);
+                return SleepCallbackResult::Ready(entry);
             }
 
-            PollResult::Sleep
+            SleepCallbackResult::Sleep
         });
 
         // Install handles into the current (receiver) process.

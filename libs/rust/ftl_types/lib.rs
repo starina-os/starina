@@ -6,4 +6,5 @@ pub mod error;
 pub mod handle;
 pub mod idl;
 pub mod message;
+pub mod poll;
 pub mod syscall;

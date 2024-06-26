@@ -1,3 +1,5 @@
+use alloc::vec::Vec;
+
 use ftl_elf::Elf;
 use ftl_elf::PhdrType;
 use ftl_elf::ET_DYN;
@@ -157,7 +159,7 @@ impl<'a> AppLoader<'a> {
     pub fn load(
         mut self,
         vsyscall_page: *const VsyscallPage,
-        first_handle: AnyHandle,
+        init_handles: Vec<AnyHandle>,
     ) -> Result<SharedRef<Process>, Error> {
         self.load_segments();
 
@@ -172,7 +174,9 @@ impl<'a> AppLoader<'a> {
 
         {
             let mut handles = proc.handles().lock();
-            handles.add(first_handle).unwrap();
+            for init_handle in init_handles {
+                handles.add(init_handle).unwrap();
+            }
 
             handles
                 .add(Handle::new(buffer, HandleRights::NONE))

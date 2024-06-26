@@ -1,65 +1,95 @@
-use alloc::vec::Vec;
+use core::sync::atomic::AtomicU8;
+use core::sync::atomic::Ordering;
 
-use crate::arch;
-use crate::cpuvar::current_thread;
+use ftl_types::error::FtlError;
+use ftl_types::handle::HandleId;
+use ftl_types::poll::PollEvent;
+use hashbrown::HashMap;
+
+use crate::handle::AnyHandle;
 use crate::ref_counted::SharedRef;
+use crate::sleep::SleepCallbackResult;
+use crate::sleep::SleepPoint;
 use crate::spinlock::SpinLock;
-use crate::spinlock::SpinLockGuard;
-use crate::thread::Thread;
 
-struct Poller {
-    thread: SharedRef<Thread>,
+pub struct Poller {
+    sleep_point: SharedRef<SleepPoint>,
+    handle_id: HandleId,
+    interests: PollEvent,
+    ready: AtomicU8,
 }
 
-pub enum PollResult<T> {
-    Ready(T),
-    Sleep,
-}
-
-pub struct PollPoint {
-    pollers: SpinLock<Vec<Poller>>,
-}
-
-impl PollPoint {
-    pub const fn new() -> PollPoint {
-        PollPoint {
-            pollers: SpinLock::new(Vec::new()),
+impl Poller {
+    pub fn set_ready(&self, ready: PollEvent) {
+        let intersects = ready & self.interests;
+        if intersects.is_empty() {
+            return;
         }
+
+        self.ready.fetch_or(intersects.as_raw(), Ordering::SeqCst); // TODO: correct ordering
+        self.sleep_point.wake_all();
+    }
+}
+
+impl Drop for Poller {
+    fn drop(&mut self) {
+        self.set_ready(PollEvent::CLOSED);
+    }
+}
+
+pub struct Poll {
+    entries: SpinLock<HashMap<HandleId, SharedRef<Poller>>>,
+    sleep_point: SharedRef<SleepPoint>,
+}
+
+impl Poll {
+    pub fn new() -> SharedRef<Poll> {
+        let poll = Poll {
+            entries: SpinLock::new(HashMap::new()),
+            sleep_point: SharedRef::new(SleepPoint::new()),
+        };
+
+        SharedRef::new(poll)
     }
 
-    pub fn wake(&self) {
-        for poller in self.pollers.lock().drain(..) {
-            poller.thread.set_runnable();
-        }
-    }
+    pub fn add(&self, object: &AnyHandle, object_id: HandleId, interests: PollEvent) {
+        let poller = SharedRef::new(Poller {
+            sleep_point: self.sleep_point.clone(),
+            handle_id: object_id,
+            interests,
+            ready: AtomicU8::new(0),
+        });
 
-    pub fn poll_loop<'a, F, T, U>(&self, lock: &'a SpinLock<T>, is_ready: F) -> U
-    where
-        F: Fn(&mut SpinLockGuard<'a, T>) -> PollResult<U>,
-    {
-        loop {
-            let mut pollers = self.pollers.lock();
-            let mut guard = lock.lock();
-            match is_ready(&mut guard) {
-                PollResult::Ready(ret) => {
-                    return ret;
-                }
-                PollResult::Sleep => {
-                    let current_thread = current_thread();
-                    pollers.push(Poller {
-                        thread: current_thread.clone(),
-                    });
-
-                    current_thread.set_blocked();
-
-                    // Release the lock.
-                    drop(current_thread);
-                    drop(guard);
-                    drop(pollers);
-
-                    arch::yield_cpu();
-                }
+        match object {
+            AnyHandle::Channel(ch) => {
+                ch.add_poller(poller.clone());
+            }
+            _ => {
+                todo!(); // TODO: support other handle types
             }
         }
+
+        self.entries.lock().insert(object_id, poller);
+    }
+
+    pub fn wait(&self) -> Result<(PollEvent, HandleId), FtlError> {
+        self.sleep_point.sleep_loop(&self.entries, |entries| {
+            for entry in entries.values() {
+                let raw_ready = entry.ready.swap(0, Ordering::SeqCst); // TODO: correct ordering
+                let ready = PollEvent::from_raw(raw_ready);
+                if ready.is_empty() {
+                    continue;
+                }
+
+                let handle_id = entry.handle_id;
+                if ready.contains(PollEvent::CLOSED) {
+                    entries.remove(&handle_id);
+                }
+
+                return SleepCallbackResult::Ready(Ok((ready, handle_id)));
+            }
+
+            SleepCallbackResult::Sleep
+        })
     }
 }

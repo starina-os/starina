@@ -9,6 +9,7 @@ use hashbrown::HashMap;
 
 use crate::buffer::Buffer;
 use crate::channel::Channel;
+use crate::poll::Poll;
 use crate::ref_counted::SharedRef;
 use crate::thread::Thread;
 
@@ -46,12 +47,20 @@ pub enum AnyHandle {
     Channel(Handle<Channel>),
     Thread(Handle<Thread>),
     Buffer(Handle<Buffer>),
+    Poll(Handle<Poll>),
 }
 
 impl AnyHandle {
     pub fn as_channel(&self) -> Result<&Handle<Channel>, FtlError> {
         match self {
             AnyHandle::Channel(ref channel) => Ok(channel),
+            _ => Err(FtlError::UnexpectedHandleType),
+        }
+    }
+
+    pub fn as_poll(&self) -> Result<&Handle<Poll>, FtlError> {
+        match self {
+            AnyHandle::Poll(ref poll) => Ok(poll),
             _ => Err(FtlError::UnexpectedHandleType),
         }
     }
@@ -64,6 +73,7 @@ impl fmt::Debug for AnyHandle {
             AnyHandle::Channel(_) => write!(f, "Channel"),
             AnyHandle::Thread(_) => write!(f, "Thread"),
             AnyHandle::Buffer(_) => write!(f, "Buffer"),
+            AnyHandle::Poll(_) => write!(f, "Poll"),
         }
     }
 }
@@ -83,6 +93,12 @@ impl Into<AnyHandle> for Handle<Thread> {
 impl Into<AnyHandle> for Handle<Buffer> {
     fn into(self) -> AnyHandle {
         AnyHandle::Buffer(self)
+    }
+}
+
+impl Into<AnyHandle> for Handle<Poll> {
+    fn into(self) -> AnyHandle {
+        AnyHandle::Poll(self)
     }
 }
 

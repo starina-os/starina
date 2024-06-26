@@ -25,6 +25,7 @@ mod poll;
 mod process;
 mod ref_counted;
 mod scheduler;
+mod sleep;
 mod spinlock;
 mod syscall;
 mod thread;

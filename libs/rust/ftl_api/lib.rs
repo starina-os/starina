@@ -11,6 +11,7 @@ pub mod arch;
 pub mod channel;
 pub mod handle;
 pub mod panic;
+pub mod poll;
 pub mod prelude;
 pub mod print;
 pub mod syscall;

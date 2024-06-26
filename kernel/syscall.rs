@@ -3,6 +3,8 @@ use ftl_types::handle::HandleId;
 use ftl_types::handle::HandleRights;
 use ftl_types::message::MessageBuffer;
 use ftl_types::message::MessageInfo;
+use ftl_types::poll::PollEvent;
+use ftl_types::poll::PollSyscallResult;
 use ftl_types::syscall::SyscallNumber;
 use ftl_types::syscall::VsyscallPage;
 
@@ -12,6 +14,7 @@ use crate::cpuvar::current_thread;
 use crate::handle::AnyHandle;
 use crate::handle::Handle;
 use crate::memory::AllocPagesError;
+use crate::poll::Poll;
 use crate::ref_counted::SharedRef;
 
 pub const VSYSCALL_PAGE: VsyscallPage = VsyscallPage {
@@ -75,6 +78,47 @@ fn buffer_create(len: usize) -> Result<HandleId, FtlError> {
     Ok(handle_id)
 }
 
+fn poll_create() -> Result<HandleId, FtlError> {
+    let poll = Poll::new();
+    let handle = Handle::new(poll, HandleRights::NONE);
+
+    let handle_id = current_thread()
+        .process()
+        .handles()
+        .lock()
+        .add(AnyHandle::Poll(handle))?;
+
+    Ok(handle_id)
+}
+
+fn poll_add(
+    poll_handle_id: HandleId,
+    target_handle_id: HandleId,
+    interests: PollEvent,
+) -> Result<(), FtlError> {
+    let current_thread = current_thread();
+    let handles = current_thread.process().handles().lock();
+    let poll = handles.get_owned(poll_handle_id)?.as_poll()?;
+    let object = handles.get_owned(target_handle_id)?;
+    poll.add(object, target_handle_id, interests);
+    Ok(())
+}
+
+fn poll_wait(handle_id: HandleId) -> Result<PollSyscallResult, FtlError> {
+    let poll = {
+        current_thread()
+            .process()
+            .handles()
+            .lock()
+            .get_owned(handle_id)?
+            .as_poll()?
+            .clone()
+    };
+
+    let (ev, ready_handle_id) = poll.wait()?;
+    Ok(PollSyscallResult::new(ev, ready_handle_id))
+}
+
 pub fn syscall_entry(
     n: isize,
     a0: isize,
@@ -113,6 +157,25 @@ pub fn syscall_entry(
         _ if n == SyscallNumber::BufferCreate as isize => {
             let handle_id = buffer_create(a0 as usize)?;
             Ok(handle_id.as_isize())
+        }
+        _ if n == SyscallNumber::PollCreate as isize => {
+            let handle_id = poll_create()?;
+            Ok(handle_id.as_isize())
+        }
+        _ if n == SyscallNumber::PollAdd as isize => {
+            let poll_handle_id = HandleId::from_raw_isize_truncated(a0);
+            let target_handle_id = HandleId::from_raw_isize_truncated(a1);
+            let interests = PollEvent::from_raw(a2 as u8);
+            if let Err(e) = poll_add(poll_handle_id, target_handle_id, interests) {
+                println!("poll_add failed: {:?}", e);
+                return Err(e);
+            }
+            Ok(0)
+        }
+        _ if n == SyscallNumber::PollWait as isize => {
+            let handle_id = HandleId::from_raw_isize_truncated(a0);
+            let result = poll_wait(handle_id)?;
+            Ok(result.as_raw())
         }
         _ => {
             println!(
