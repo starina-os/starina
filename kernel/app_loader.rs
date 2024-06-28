@@ -22,6 +22,7 @@ use crate::syscall::syscall_entry;
 use crate::thread::Thread;
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub enum Error {
     ParseElf(ftl_elf::ParseError),
     NoPhdrs,

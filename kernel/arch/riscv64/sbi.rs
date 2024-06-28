@@ -3,6 +3,7 @@ use core::arch::asm;
 #[allow(non_camel_case_types)]
 type c_long = i64;
 
+#[allow(dead_code)]
 pub enum Error {
     Unknown(c_long),
 }

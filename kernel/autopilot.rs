@@ -30,6 +30,7 @@ struct App {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub enum Error {
     CreateChannel(FtlError),
     SendMessage(FtlError),
