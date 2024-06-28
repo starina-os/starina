@@ -1,6 +1,5 @@
 #![no_std]
 #![feature(asm_const)]
-#![feature(const_trait_impl)]
 #![feature(naked_functions)]
 #![feature(arbitrary_self_types)]
 
