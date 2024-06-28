@@ -9,7 +9,7 @@ pub struct CpuVar {
 }
 
 impl CpuVar {
-    pub const fn new(idle_thread: &SharedRef<Thread>) -> Self {
+    pub fn new(idle_thread: &SharedRef<Thread>) -> Self {
         Self {
             context: &idle_thread.arch().context as *const _ as *mut _,
         }
