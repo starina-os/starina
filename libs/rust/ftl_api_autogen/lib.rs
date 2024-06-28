@@ -64,11 +64,8 @@ pub mod apps {
 
         pub enum Message<'a> {
             NewclientRequest(ftl_autogen::protocols::autopilot::NewclientRequestReader<'a>),
-
             NewclientReply(ftl_autogen::protocols::autopilot::NewclientReplyReader<'a>),
-
             PingRequest(ftl_autogen::protocols::ping::PingRequestReader<'a>),
-
             PingReply(ftl_autogen::protocols::ping::PingReplyReader<'a>),
         }
 
@@ -164,11 +161,8 @@ pub mod apps {
 
         pub enum Message<'a> {
             NewclientRequest(ftl_autogen::protocols::autopilot::NewclientRequestReader<'a>),
-
             NewclientReply(ftl_autogen::protocols::autopilot::NewclientReplyReader<'a>),
-
             PingRequest(ftl_autogen::protocols::ping::PingRequestReader<'a>),
-
             PingReply(ftl_autogen::protocols::ping::PingReplyReader<'a>),
         }
 

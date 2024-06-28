@@ -1,5 +1,6 @@
 use std::fmt;
 use std::fs::File;
+use std::path::Path;
 use std::path::PathBuf;
 
 use anyhow::Context;
@@ -96,6 +97,24 @@ fn visit_fields(idl_fields: &[idl::Field]) -> Vec<Field> {
     }
 
     fields
+}
+
+fn run_rustfmt(file: &Path) -> Result<()> {
+    let output = std::process::Command::new("rustup")
+        .args(["run", "nightly", "rustfmt"])
+        .arg(file)
+        .output()
+        .with_context(|| format!("failed to run rustfmt on {}", file.display()))?;
+
+    if !output.status.success() {
+        anyhow::bail!(
+            "rustfmt failed with status {}: {}",
+            output.status,
+            std::str::from_utf8(&output.stderr).unwrap()
+        );
+    }
+
+    Ok(())
 }
 
 #[derive(Parser, Debug)]
@@ -200,12 +219,14 @@ fn main() -> Result<()> {
         protocols => protocols,
     })?;
     std::fs::write(&args.autogen_outfile, lib_rs)?;
+    run_rustfmt(&args.autogen_outfile)?;
 
     let template = j2env.get_template("ftl_api_autogen")?;
     let api_lib_rs = template.render(context! {
         apps => apps,
     })?;
     std::fs::write(&args.api_autogen_outfile, api_lib_rs)?;
+    run_rustfmt(&args.api_autogen_outfile)?;
 
     Ok(())
 }

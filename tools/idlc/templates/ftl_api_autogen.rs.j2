@@ -49,9 +49,9 @@ pub mod apps {
         }
 
         pub struct Depends {
-            {% for dep in app.depends %}
+            {%- for dep in app.depends %}
             pub {{ dep }}: Option<ftl_api::channel::Channel>,
-            {% endfor %}
+            {%- endfor %}
         }
 
         #[derive(serde::Serialize, serde::Deserialize)]
@@ -62,15 +62,15 @@ pub mod apps {
 
         #[derive(serde::Serialize, serde::Deserialize)]
         struct DependsJson {
-            {% for dep in app.depends %}
+            {%- for dep in app.depends %}
             pub {{ dep }}: i32 /* Handle ID */,
-            {% endfor %}
+            {%- endfor %}
         }
 
         pub enum Message<'a> {
-            {% for m in app.used_messages %}
+            {%- for m in app.used_messages %}
             {{ m.camel_name }}({{ m.ty }}Reader<'a>),
-            {% endfor %}
+            {%- endfor %}
         }
 
         use ftl_types::message::MessageSerialize;
