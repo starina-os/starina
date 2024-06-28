@@ -2,7 +2,6 @@
 #![feature(asm_const)]
 #![feature(effects)]
 #![feature(const_trait_impl)]
-#![feature(offset_of)]
 #![feature(naked_functions)]
 #![feature(arbitrary_self_types)]
 
