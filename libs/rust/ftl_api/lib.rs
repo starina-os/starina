@@ -1,6 +1,5 @@
 #![no_std]
 #![feature(start)]
-#![feature(offset_of)]
 
 extern crate alloc;
 
