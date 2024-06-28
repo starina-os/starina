@@ -1,6 +1,26 @@
 {
     "protocols": [
         {
+            "name": "autopilot",
+            "rpcs": [
+                {
+                    "name": "newclient",
+                    "request": {
+                        "fields": [
+                            {
+                                "name": "handle",
+                                "type": "handle"
+                            }
+                        ]
+                    },
+                    "response": {
+                        "fields": [
+                        ]
+                    }
+                }
+            ]
+        },
+        {
             "name": "ping",
             "rpcs": [
                 {

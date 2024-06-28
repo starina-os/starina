@@ -6,7 +6,6 @@ use ftl_types::message::MessageInfo;
 use ftl_types::poll::PollEvent;
 use ftl_types::poll::PollSyscallResult;
 use ftl_types::syscall::SyscallNumber;
-use ftl_types::syscall::VsyscallPage;
 
 use crate::buffer::Buffer;
 use crate::channel::Channel;
@@ -16,10 +15,6 @@ use crate::handle::Handle;
 use crate::memory::AllocPagesError;
 use crate::poll::Poll;
 use crate::ref_counted::SharedRef;
-
-pub const VSYSCALL_PAGE: VsyscallPage = VsyscallPage {
-    entry: syscall_entry,
-};
 
 fn channel_create() -> Result<isize, FtlError> {
     todo!();

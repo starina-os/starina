@@ -1,9 +1,10 @@
 use core::fmt;
 
 use ftl_types::error::FtlError;
-use ftl_types::message::MessageBody;
 use ftl_types::message::MessageBuffer;
+use ftl_types::message::MessageDeserialize;
 use ftl_types::message::MessageInfo;
+use ftl_types::message::MessageSerialize;
 
 use crate::handle::OwnedHandle;
 use crate::syscall;
@@ -39,21 +40,19 @@ impl Channel {
         &self.handle
     }
 
-    pub fn send_with_buffer<M: MessageBody>(
+    pub fn send_with_buffer<M: MessageSerialize>(
         &self,
         buffer: &mut MessageBuffer,
         msg: M,
     ) -> Result<(), FtlError> {
-        unsafe {
-            buffer.write(msg);
-        }
+        msg.serialize(buffer);
 
         // TODO: return send error to keep owning handles
         // TODO: Optimize parameter order to avoid unnecessary register swaps.
         syscall::channel_send(self.handle.id(), M::MSGINFO, buffer)
     }
 
-    pub fn recv_with_buffer<'a, M: MessageBody>(
+    pub fn recv_with_buffer<'a, M: MessageDeserialize>(
         &self,
         buffer: &'a mut MessageBuffer,
     ) -> Result<M::Reader<'a>, RecvError> {

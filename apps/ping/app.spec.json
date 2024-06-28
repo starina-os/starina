@@ -1,0 +1,8 @@
+{
+    "name": "ping",
+    "kind": "app/v0",
+    "spec": {
+        "depends": ["ping_server"],
+        "provides": []
+    }
+}

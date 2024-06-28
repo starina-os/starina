@@ -8,4 +8,8 @@ edition.workspace = true
 path = "lib.rs"
 
 [dependencies]
+ftl_api = { workspace = true }
+ftl_autogen = { workspace = true }
 ftl_types = { workspace = true }
+serde = { workspace = true, features = ["derive", "alloc"] }
+serde_json = { workspace = true, features = ["alloc"] }

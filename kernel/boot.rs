@@ -1,17 +1,18 @@
+use alloc::string::String;
+use alloc::vec;
+
 use arrayvec::ArrayVec;
-use ftl_types::handle::HandleRights;
+use ftl_types::spec::AppSpec;
+use ftl_types::spec::Spec;
+use ftl_types::spec::SpecFile;
 use ftl_utils::byte_size::ByteSize;
 
-use crate::app_loader::AppLoader;
 use crate::arch;
-use crate::channel::Channel;
+use crate::autopilot::Autopilot;
 use crate::cpuvar;
 use crate::cpuvar::CpuId;
-use crate::handle::Handle;
 use crate::memory;
-use crate::poll::Poll;
 use crate::process;
-use crate::syscall::VSYSCALL_PAGE;
 
 /// A free region of memory available for software.
 #[derive(Debug)]
@@ -29,7 +30,10 @@ pub struct BootInfo {
     pub dtb_addr: *const u8,
 }
 
-// const STARTUP_ELF: &[u8] = include_bytes!("../build/startup.elf");
+#[repr(C, align(4096))]
+struct AlignedBytes<T: ?Sized>(T);
+static PING_ELF: &AlignedBytes<[u8]> = &AlignedBytes(*include_bytes!("../build/apps/ping.elf"));
+static PONG_ELF: &AlignedBytes<[u8]> = &AlignedBytes(*include_bytes!("../build/apps/pong.elf"));
 
 /// The entry point of the kernel.
 pub fn boot(cpu_id: CpuId, bootinfo: BootInfo) -> ! {
@@ -39,30 +43,21 @@ pub fn boot(cpu_id: CpuId, bootinfo: BootInfo) -> ! {
     process::init();
     cpuvar::percpu_init(cpu_id);
 
-    // AppLoader::parse(STARTUP_ELF)
-    //     .expect("startup.elf is invalid")
-    //     .load(&VSYSCALL_PAGE)
-    //     .expect("failed to load startup.elf");
+    fn load_app_spec(spec: &[u8], elf_file: &'static [u8]) -> (String, AppSpec, &'static [u8]) {
+        let spec_file: SpecFile = serde_json::from_slice(spec).expect("failed to parse app spec");
+        let Spec::App(app_spec) = spec_file.spec;
+        (spec_file.name, app_spec, elf_file)
+    }
 
-    let (ch0, ch1) = Channel::new().expect("failed to create channel");
-    let ch0_handle = Handle::new(ch0, HandleRights::NONE);
-    let ch1_handle = Handle::new(ch1, HandleRights::NONE);
-    let pong_poll = Handle::new(Poll::new(), HandleRights::NONE);
-
-    AppLoader::parse(include_bytes!("../build/apps/ping.elf"))
-        .expect("ping.elf is invalid")
-        .load(&VSYSCALL_PAGE, alloc::vec![ch0_handle.into()])
-        .expect("failed to load ping.elf");
-    AppLoader::parse(include_bytes!("../build/apps/pong.elf"))
-        .expect("pong.elf is invalid")
-        .load(
-            &VSYSCALL_PAGE,
-            alloc::vec![ch1_handle.into(), pong_poll.into()],
-        )
-        .expect("failed to load pong.elf");
+    let mut autopilot = Autopilot::new();
+    autopilot
+        .start_apps(vec![
+            load_app_spec(include_bytes!("../apps/ping/app.spec.json"), &PING_ELF.0),
+            load_app_spec(include_bytes!("../apps/pong/app.spec.json"), &PONG_ELF.0),
+        ])
+        .expect("failed to start apps");
 
     arch::yield_cpu();
 
-    println!("kernel is ready!");
-    arch::halt();
+    panic!("halt");
 }

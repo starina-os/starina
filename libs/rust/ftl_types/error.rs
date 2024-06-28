@@ -9,4 +9,5 @@ pub enum FtlError {
     InvalidSyscallReturnValue,
     NoPeer,
     InvalidArg,
+    TooLarge,
 }

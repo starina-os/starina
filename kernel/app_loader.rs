@@ -1,19 +1,24 @@
+use alloc::string::String;
 use alloc::vec::Vec;
 
 use ftl_elf::Elf;
 use ftl_elf::PhdrType;
 use ftl_elf::ET_DYN;
+use ftl_types::handle::HandleId;
 use ftl_types::handle::HandleRights;
 use ftl_types::syscall::VsyscallPage;
 use ftl_utils::alignment::align_up;
 
 use crate::arch::PAGE_SIZE;
 use crate::buffer::Buffer;
+use crate::channel::Channel;
 use crate::handle::AnyHandle;
 use crate::handle::Handle;
+use crate::handle::HandleTable;
 use crate::memory::AllocPagesError;
 use crate::process::Process;
 use crate::ref_counted::SharedRef;
+use crate::syscall::syscall_entry;
 use crate::thread::Thread;
 
 #[derive(Debug)]
@@ -156,10 +161,49 @@ impl<'a> AppLoader<'a> {
         Ok(())
     }
 
+    fn install_handles_and_environ(
+        &mut self,
+        autopilot_ch_id: HandleId,
+        handles: &mut HandleTable,
+        depends: Vec<(String, AnyHandle)>,
+    ) -> (usize, usize) {
+        let mut depends_map = serde_json::Map::with_capacity(depends.len());
+        for (depend_name, handle) in depends {
+            let handle_id = handles.add(handle).unwrap();
+            depends_map.insert(
+                depend_name,
+                serde_json::Value::Number(serde_json::Number::from(handle_id.as_i32())),
+            );
+        }
+
+        let environ_json = serde_json::to_string(&serde_json::json!({
+            "autopilot_ch": autopilot_ch_id.as_i32(),
+            "depends": depends_map
+        }))
+        .unwrap();
+
+        // Copy into a buffer.
+        let mut buffer = Buffer::alloc(align_up(environ_json.len(), PAGE_SIZE))
+            .expect("failed to allocate buffer");
+        buffer.allocated_pages_mut().as_slice_mut()[..environ_json.len()]
+            .copy_from_slice(environ_json.as_bytes());
+        let args = (
+            buffer.allocated_pages().as_ptr() as usize,
+            environ_json.len(),
+        );
+
+        // Move the ownership of the buffer to the process.
+        handles
+            .add(Handle::new(SharedRef::new(buffer), HandleRights::NONE))
+            .unwrap();
+
+        args
+    }
+
     pub fn load(
         mut self,
-        vsyscall_page: *const VsyscallPage,
-        init_handles: Vec<AnyHandle>,
+        autopilot_ch: Handle<Channel>,
+        depends: Vec<(String, AnyHandle)>,
     ) -> Result<SharedRef<Process>, Error> {
         self.load_segments();
 
@@ -168,23 +212,32 @@ impl<'a> AppLoader<'a> {
 
         let entry = unsafe { core::mem::transmute(self.entry_addr()) };
         let proc = SharedRef::new(Process::create());
-        let thread = Thread::spawn_kernel(proc.clone(), entry, vsyscall_page as usize);
 
-        let buffer = SharedRef::new(self.memory);
+        let mut handles = proc.handles().lock();
+        let autopilot_ch_id = handles.add(autopilot_ch).unwrap();
 
-        {
-            let mut handles = proc.handles().lock();
-            for init_handle in init_handles {
-                handles.add(init_handle).unwrap();
-            }
+        let (environ_ptr, environ_len) =
+            self.install_handles_and_environ(autopilot_ch_id, &mut *handles, depends);
 
-            handles
-                .add(Handle::new(buffer, HandleRights::NONE))
-                .unwrap();
-            handles
-                .add(Handle::new(thread, HandleRights::NONE))
-                .unwrap();
+        let mut vsyscall_buffer = Buffer::alloc(PAGE_SIZE).unwrap();
+        let vsyscall_ptr = vsyscall_buffer.allocated_pages_mut().as_ptr() as *mut VsyscallPage;
+        unsafe {
+            vsyscall_ptr.write(VsyscallPage {
+                entry: syscall_entry,
+                environ_ptr: environ_ptr as *const u8,
+                environ_len,
+            });
         }
+
+        let thread = Thread::spawn_kernel(proc.clone(), entry, vsyscall_ptr as usize);
+
+        handles
+            .add(Handle::new(thread, HandleRights::NONE))
+            .unwrap();
+        handles
+            .add(Handle::new(SharedRef::new(self.memory), HandleRights::NONE))
+            .unwrap();
+        drop(handles);
 
         Ok(proc)
     }

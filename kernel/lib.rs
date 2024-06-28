@@ -16,6 +16,7 @@ pub mod cpuvar;
 
 mod app_loader;
 mod arch;
+mod autopilot;
 mod buffer;
 mod channel;
 mod handle;

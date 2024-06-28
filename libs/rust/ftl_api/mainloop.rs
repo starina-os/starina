@@ -2,8 +2,8 @@ use core::marker::PhantomData;
 
 use ftl_types::error::FtlError;
 use ftl_types::handle::HandleId;
-use ftl_types::message::MessageBody;
 use ftl_types::message::MessageBuffer;
+use ftl_types::message::MessageDeserialize;
 use ftl_types::poll::PollEvent;
 use hashbrown::HashMap;
 
@@ -21,12 +21,13 @@ pub enum Error {
 }
 
 #[derive(Debug)]
-pub enum Event<'a, St, M: MessageBody> {
+pub enum Event<'a, St, M: MessageDeserialize> {
     Message {
-        ch: &'a mut Channel,
         state: &'a mut St,
+        ch: &'a mut Channel,
         m: M::Reader<'a>,
     },
+    Error(Error),
 }
 
 enum Object {
@@ -45,7 +46,7 @@ pub struct Mainloop<St, AllM> {
     _pd: PhantomData<AllM>,
 }
 
-impl<St, AllM: MessageBody> Mainloop<St, AllM> {
+impl<St, AllM: MessageDeserialize> Mainloop<St, AllM> {
     pub fn new() -> Result<Self, Error> {
         let poll = Poll::new().map_err(Error::PollCreate)?;
 
@@ -76,20 +77,26 @@ impl<St, AllM: MessageBody> Mainloop<St, AllM> {
         Ok(())
     }
 
-    pub fn next(&mut self) -> Result<Event<'_, St, AllM>, Error> {
-        let (poll_ev, handle_id) = self.poll.wait().map_err(Error::PollWait)?;
+    pub fn next(&mut self) -> Event<'_, St, AllM> {
+        let (poll_ev, handle_id) = match self.poll.wait() {
+            Ok(ev) => ev,
+            Err(err) => return Event::Error(Error::PollWait(err)),
+        };
+
         let entry = self.objects.get_mut(&handle_id).unwrap();
         if poll_ev.contains(PollEvent::READABLE) {
             match &mut entry.object {
                 Object::Channel(ch) => {
-                    let message = ch
-                        .recv_with_buffer::<AllM>(&mut self.msgbuffer)
-                        .map_err(Error::ChannelRecv)?;
-                    return Ok(Event::Message {
+                    let m = match ch.recv_with_buffer::<AllM>(&mut self.msgbuffer) {
+                        Ok(m) => m,
+                        Err(err) => return Event::Error(Error::ChannelRecv(err)),
+                    };
+
+                    return Event::Message {
                         ch,
                         state: &mut entry.state,
-                        m: message,
-                    });
+                        m,
+                    };
                 }
             }
         }

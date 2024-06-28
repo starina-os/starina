@@ -1,4 +1,4 @@
-// a0: vsyscall_page
+// a0: *const VsyscallPage
 .section .text
 .align 4
 .global start
@@ -6,7 +6,7 @@ start:
     mv ra, zero
     mv fp, zero
     la sp, __stack_top
-    call start_ftl_api
+    call ftl_app_main
 
     // Reachable if main returns.
     unimp

@@ -4,6 +4,7 @@ use proc_macro_error::proc_macro_error;
 use quote::quote;
 use syn::parse_macro_input;
 use syn::spanned::Spanned;
+use syn::FnArg;
 
 #[proc_macro_error]
 #[proc_macro_attribute]
@@ -31,16 +32,40 @@ pub fn main(_args: TokenStream, item: TokenStream) -> TokenStream {
         );
     }
 
-    if func.sig.inputs.len() > 0 {
-        abort!(
-            func.span(),
-            "main function should not have any arguments (ftl_api_macros::main)"
-        );
-    }
+    let environ_type = match func.sig.inputs.first() {
+        Some(FnArg::Typed(arg)) => &*arg.ty,
+        Some(x) => {
+            abort!(
+                x.span(),
+                "unexpected parameter type in main function (ftl_api_macros::main)"
+            );
+        }
+        _ => {
+            abort!(
+                func.sig.inputs.span(),
+                "main function should have one parameter, i.e. fn main(env: ftl_api_autogen::apps::<APP NAME>::Environ) (ftl_api_macros::main)"
+            );
+        }
+    };
 
     let output: proc_macro2::TokenStream = quote! {
-        #[no_mangle]
         #func
+
+        #[no_mangle]
+        pub extern "C" fn ftl_app_main(
+            vsyscall: *const ::ftl_api::types::syscall::VsyscallPage,
+        ) {
+            // SAFETY: We won't call this function twice.
+            unsafe {
+                ::ftl_api::init::init_internal(vsyscall);
+            }
+
+            let env = #environ_type::from_environ_ptr(
+                unsafe { (*vsyscall).environ_ptr },
+                unsafe { (*vsyscall).environ_len }
+            );
+            main(env);
+        }
     };
 
     proc_macro::TokenStream::from(output)

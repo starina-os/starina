@@ -3,56 +3,122 @@
 #![feature(custom_inner_attributes)] // For #![rustfmt::skip]
 #![rustfmt::skip]
 
-use ftl_types::message::MessageBody;
+use ftl_types::message::MessageSerialize;
+use ftl_types::message::MessageDeserialize;
 use ftl_types::message::MessageBuffer;
 use ftl_types::message::MessageInfo;
+use ftl_types::message::HandleOwnership;
 
 pub mod protocols {
     use super::*;
 
-    {% for m in messages %}
-    #[repr(C)]
-    pub struct {{ m.name }} {
-        {%- for f in m.fields %}
-        pub {{ f.name }}: {{ f.ty }},
-        {%- endfor %}
-    }
+    {% for protocol in protocols %}
+    pub mod {{ protocol.name }} {
+        use super::*;
 
-    // TODO: static_assert for size
+        {% for m in protocol.messages %}
+        #[repr(C)]
+        pub struct {{ m.name }} {
+            {%- for f in m.fields %}
+                {% if not f.is_handle %}
+                    pub {{ f.name }}: {{ f.builder_ty }},
+                {%- endif %}
+            {%- endfor %}
 
-    impl MessageBody for {{ m.name }} {
-        const MSGINFO: MessageInfo = MessageInfo::from_raw(
-            {{ m.msgid }} << 14
-            | ::core::mem::size_of::<{{ m.name }}>() as isize,
-        );
+            {%- for f in m.fields %}
+                {% if f.is_handle %}
+                    pub {{ f.name }}: HandleOwnership,
+                {% endif %}
+            {%- endfor %}
+        }
 
-        type Reader<'a> = {{ m.name }}Reader<'a>;
+        #[repr(C)]
+        struct InlinedPart{{ m.name }} {
+            {%- for f in m.fields %}
+                {% if not f.is_handle %}
+                    pub {{ f.name }}: {{ f.raw_ty }},
+                {% endif %}
+            {%- endfor %}
+        }
 
-        fn deserialize<'a>(
-            buffer: &'a MessageBuffer,
-            msginfo: MessageInfo
-        ) -> Option<Self::Reader<'a>> {
-            if msginfo == Self::MSGINFO {
-                Some({{ m.name }}Reader { buffer })
-            } else {
-                None
+        // TODO: static_assert for size
+
+        impl MessageSerialize for {{ m.name }} {
+            const MSGINFO: MessageInfo = MessageInfo::from_raw(
+                ({{ m.msgid }} << 14)
+                | ({{ m.num_handles }} << 12)
+                | ::core::mem::size_of::<{{ m.name }}>() as isize,
+            );
+
+            fn serialize(self, buffer: &mut MessageBuffer) {
+                let object = InlinedPart{{ m.name }} {
+                    {%- for f in m.fields %}
+                        {% if not f.is_handle %}
+                            {{ f.name }}: self.{{ f.name }},
+                        {%- endif %}
+                    {%- endfor %}
+                };
+
+                let dst = buffer as *mut _ as *mut InlinedPart{{ m.name }};
+                let src = &object as *const _ as *const InlinedPart{{ m.name }};
+
+                unsafe {
+                    core::ptr::copy_nonoverlapping::<InlinedPart{{ m.name }}>(src, dst, 1);
+                }
+
+                // FIXME: Support multiple handles.
+                debug_assert!(MessageInfo::from_raw(Self::MSGINFO.as_raw()).num_handles() <= 1);
+
+                {%- for f in m.fields %}
+                    {% if f.is_handle %}
+                        buffer.handles[0] = self.{{ f.name }}.0;
+                    {%- endif %}
+                {%- endfor %}
+
+                // Don't call destructors on handles transferred to this buffer.
+                core::mem::forget(self);
             }
         }
-    }
 
-    pub struct {{ m.name }}Reader<'a> {
-        buffer: &'a MessageBuffer,
-    }
+        impl MessageDeserialize for {{ m.name }} {
+            type Reader<'a> = {{ m.name }}Reader<'a>;
 
-    impl<'a> {{ m.name }}Reader<'a> {
-        fn as_ref(&self, buffer: &'a MessageBuffer) -> &'a {{ m.name }} {
-            unsafe { &*(buffer as *const _ as *const {{ m.name }}) }
+            fn deserialize<'a>(
+                buffer: &'a MessageBuffer,
+                msginfo: MessageInfo
+            ) -> Option<{{ m.name }}Reader<'a>> {
+                if msginfo == Self::MSGINFO {
+                    Some({{ m.name }}Reader { buffer })
+                } else {
+                    None
+                }
+            }
         }
 
-        {% for f in m.fields %}
-        pub fn {{ f.name }}(&self) -> {{ f.ty }} {
-            let m = self.as_ref(self.buffer);
-            m.{{ f.name }}
+        pub struct {{ m.name }}Reader<'a> {
+            #[allow(dead_code)]
+            buffer: &'a MessageBuffer,
+        }
+
+        impl<'a> {{ m.name }}Reader<'a> {
+            #[allow(dead_code)]
+            fn as_ref(&self, buffer: &'a MessageBuffer) -> &'a InlinedPart{{ m.name }} {
+                unsafe { &*(buffer as *const _ as *const InlinedPart{{ m.name }}) }
+            }
+
+            {% for f in m.fields %}
+                {% if f.is_handle %}
+                    pub fn {{ f.name }}(&self) -> ftl_types::handle::HandleId { // TODO: return OwnedHandle
+                        // FIXME: Support multiple handles.
+                        self.buffer.handles[0]
+                    }
+                {% else %}
+                    pub fn {{ f.name }}(&self) -> {{ f.builder_ty }} {
+                        let m = self.as_ref(self.buffer);
+                        m.{{ f.name }}
+                    }
+                {% endif %}
+            {% endfor %}
         }
         {% endfor %}
     }

@@ -152,7 +152,6 @@ checksum = "0b6a852b24ab71dffc585bcb46eaf7959d175cb865a7152e35b348d1b2960422"
 name = "ftl_api"
 version = "0.0.0"
 dependencies = [
- "ftl_api_autogen",
  "ftl_api_macros",
  "ftl_types",
  "ftl_utils",
@@ -165,7 +164,11 @@ dependencies = [
 name = "ftl_api_autogen"
 version = "0.0.0"
 dependencies = [
+ "ftl_api",
+ "ftl_autogen",
  "ftl_types",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -176,6 +179,13 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.68",
+]
+
+[[package]]
+name = "ftl_autogen"
+version = "0.0.0"
+dependencies = [
+ "ftl_types",
 ]
 
 [[package]]
@@ -210,12 +220,14 @@ name = "ftl_kernel"
 version = "0.0.0"
 dependencies = [
  "arrayvec",
+ "ftl_autogen",
  "ftl_bump_allocator",
  "ftl_elf",
  "ftl_inlinedvec",
  "ftl_types",
  "ftl_utils",
  "hashbrown",
+ "serde_json",
  "spin",
 ]
 
@@ -305,6 +317,7 @@ name = "ping"
 version = "0.0.0"
 dependencies = [
  "ftl_api",
+ "ftl_api_autogen",
 ]
 
 [[package]]
@@ -312,6 +325,7 @@ name = "pong"
 version = "0.0.0"
 dependencies = [
  "ftl_api",
+ "ftl_api_autogen",
 ]
 
 [[package]]

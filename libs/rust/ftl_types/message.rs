@@ -1,6 +1,3 @@
-use core::mem;
-use core::ptr;
-
 use crate::handle::HandleId;
 
 pub const MESSAGE_DATA_MAX_LEN: usize = 0xfff;
@@ -47,49 +44,20 @@ impl MessageBuffer {
             handles: [HandleId::from_raw(0); MESSAGE_HANDLES_MAX_COUNT],
         }
     }
-
-    pub unsafe fn write<T: MessageBody>(&mut self, msg: T) {
-        let dst = self as *mut _ as *mut T;
-        let src = &msg as *const T;
-
-        // Use ptr::copy_nonoverlapping to avoid calling destructors (i.e. avoid
-        // freeing moved handles) and to avoid unnecessary length checks.
-        //
-        // SAFETY: Let's check the requirements for ptr::copy_nonoverlapping one
-        //         by one:
-        //
-        // > src must be valid for reads of count * size_of::<T>() bytes.
-        //
-        // True because msg is a valid reference to a single T.
-        //
-        // > dst must be valid for writes of count * size_of::<T>() bytes.
-        //
-        // We assume size_of::<T>() <= size_of::<MessageBuffer> holds. It is
-        // guaranteed IDL stub generator.
-        //
-        // > Both src and dst must be properly aligned.
-        //
-        // True because MessageBuffer is aligned to 16 bytes through #[repr] and
-        // IDL stub generator guarantees that it's big enough for all field types
-        // in T.
-        //
-        // > The region of memory beginning at src with a size of
-        // > count * size_of::<T>() bytes must not overlap with the region of
-        // > memory beginning at dst with the same size.
-        //
-        // True because self.buffer is unique and we have an exclusive acces
-        //  (&mut self) to it.
-        ptr::copy_nonoverlapping::<T>(src, dst, 1);
-
-        // Don't call destructors on handles transferred to this buffer.
-        mem::forget(msg);
-    }
 }
 
 /// Invariant: size_of::<MessageBuffer> >= size_of::<T>().
-pub trait MessageBody {
+pub trait MessageSerialize: Sized {
     const MSGINFO: MessageInfo;
+    fn serialize(self, buffer: &mut MessageBuffer);
+}
+
+pub trait MessageDeserialize: Sized {
     type Reader<'a>: 'a;
     fn deserialize<'a>(buffer: &'a MessageBuffer, msginfo: MessageInfo)
         -> Option<Self::Reader<'a>>;
 }
+
+#[derive(Debug, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct HandleOwnership(pub HandleId);

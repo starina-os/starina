@@ -64,7 +64,7 @@ fmt:
 fix:
 	cargo clippy --fix --allow-dirty --allow-staged $(CARGOFLAGS)
 
-ftl.elf: $(sources) libs/rust/ftl_api_autogen/lib.rs Makefile $(app_elfs)
+ftl.elf: $(sources) libs/rust/ftl_autogen/lib.rs Makefile $(app_elfs)
 	$(PROGRESS) "CARGO" "boot/$(ARCH)"
 	RUSTFLAGS="$(RUSTFLAGS)" CARGO_TARGET_DIR="build/cargo" $(CARGO) build $(CARGOFLAGS) \
 		--target boot/$(ARCH)/$(ARCH)-$(MACHINE).json \
@@ -78,7 +78,7 @@ build/startup.elf: build/$(STARTUP).elf
 #       a change in compiler flags. Indeed it is, but it doesn't affect the output binary.
 #
 #       I'll file an issue on rust-lang/rust to hear  community's opinion.
-build/%.elf: $(sources) libs/rust/ftl_api_autogen/lib.rs Makefile
+build/%.elf: $(sources) libs/rust/ftl_autogen/lib.rs Makefile
 	$(PROGRESS) "CARGO" "$(@)"
 	mkdir -p $(@D)
 	RUSTFLAGS="$(RUSTFLAGS)" \
@@ -98,8 +98,11 @@ build/ftl_idlc: $(shell find tools/idlc -name '*.rs') $(shell find tools/idlc -n
 			--manifest-path tools/idlc/Cargo.toml
 	mv build/cargo/$(BUILD)/ftl_idlc $(@)
 
-libs/rust/ftl_api_autogen/lib.rs: idl.json build/ftl_idlc
+libs/rust/ftl_autogen/lib.rs: idl.json build/ftl_idlc $(shell find $(APPS) -name '*.spec.json')
 	mkdir -p build
 	$(PROGRESS) "ILDC" "$(@)"
-	./build/ftl_idlc idl.json > build/idlstub.rs.tmp
-	mv build/idlstub.rs.tmp $(@)
+	./build/ftl_idlc \
+		--autogen-outfile $(@) \
+		--api-autogen-outfile libs/rust/ftl_api_autogen/lib.rs \
+		--idl-file idl.json \
+		$(foreach app_dir,$(APPS),--app-specs $(app_dir)/app.spec.json)

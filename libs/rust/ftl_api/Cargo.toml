@@ -15,4 +15,3 @@ hashbrown = { workspace = true }
 ftl_types = { workspace = true }
 ftl_utils = { workspace = true }
 ftl_api_macros = { workspace = true }
-ftl_api_autogen = { workspace = true }

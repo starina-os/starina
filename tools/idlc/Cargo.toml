@@ -12,6 +12,6 @@ path = "main.rs"
 anyhow = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
 serde = { workspace = true, features = ["derive"] }
-serde_json = { workspace = true }
+serde_json = { workspace = true, features = ["std"] }
 ftl_types = { workspace = true }
 minijinja = { workspace = true }

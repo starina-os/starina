@@ -18,4 +18,9 @@ pub enum SyscallNumber {
 #[repr(C)]
 pub struct VsyscallPage {
     pub entry: fn(isize, isize, isize, isize, isize, isize, isize) -> Result<isize, FtlError>,
+    pub environ_ptr: *const u8,
+    pub environ_len: usize,
 }
+
+unsafe impl Sync for VsyscallPage {}
+unsafe impl Send for VsyscallPage {}
