@@ -23,7 +23,7 @@ pub enum Error {
 #[derive(Debug)]
 pub enum Event<'a, St, M: MessageDeserialize> {
     Message {
-        state: &'a mut St,
+        ctx: &'a mut St,
         ch: &'a mut Channel,
         m: M::Reader<'a>,
     },
@@ -35,7 +35,7 @@ enum Object {
 }
 
 struct Entry<St> {
-    state: St,
+    ctx: St,
     object: Object,
 }
 
@@ -46,7 +46,7 @@ pub struct Mainloop<St, AllM> {
     _pd: PhantomData<AllM>,
 }
 
-impl<St, AllM: MessageDeserialize> Mainloop<St, AllM> {
+impl<Ctx, AllM: MessageDeserialize> Mainloop<Ctx, AllM> {
     pub fn new() -> Result<Self, Error> {
         let poll = Poll::new().map_err(Error::PollCreate)?;
 
@@ -58,14 +58,14 @@ impl<St, AllM: MessageDeserialize> Mainloop<St, AllM> {
         })
     }
 
-    pub fn add_channel(&mut self, ch: Channel, state: St) -> Result<(), Error> {
+    pub fn add_channel(&mut self, ch: Channel, state: Ctx) -> Result<(), Error> {
         let handle_id = ch.handle().id();
         if self.objects.contains_key(&handle_id) {
             return Err(Error::ChannelAlreadyAdded(ch));
         }
 
         let entry = Entry {
-            state,
+            ctx: state,
             object: Object::Channel(ch),
         };
 
@@ -77,7 +77,7 @@ impl<St, AllM: MessageDeserialize> Mainloop<St, AllM> {
         Ok(())
     }
 
-    pub fn next(&mut self) -> Event<'_, St, AllM> {
+    pub fn next(&mut self) -> Event<'_, Ctx, AllM> {
         let (poll_ev, handle_id) = match self.poll.wait() {
             Ok(ev) => ev,
             Err(err) => return Event::Error(Error::PollWait(err)),
@@ -94,7 +94,7 @@ impl<St, AllM: MessageDeserialize> Mainloop<St, AllM> {
 
                     return Event::Message {
                         ch,
-                        state: &mut entry.state,
+                        ctx: &mut entry.ctx,
                         m,
                     };
                 }
