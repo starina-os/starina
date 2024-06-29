@@ -25,7 +25,7 @@ pub fn main(mut env: Environ) {
 
     let mut buffer = MessageBuffer::new();
     loop {
-        match mainloop.next() {
+        match mainloop.next(&mut buffer) {
             Event::Message { ch, ctx, m } => {
                 match (ctx, m) {
                     (Context::Autopilot, Message::NewclientRequest(m)) => {
@@ -35,8 +35,8 @@ pub fn main(mut env: Environ) {
                             .add_channel(new_ch, Context::Client { counter: 0 })
                             .unwrap();
                     }
-                    (Context::Client { counter }, Message::PingRequest(_m)) => {
-                        // println!("[pong] received message: {}", m.int_value1());
+                    (Context::Client { counter }, Message::PingRequest(m)) => {
+                        println!("[pong] received message: {}", m.int_value1());
                         *counter += 1;
 
                         let reply = PingReply {
