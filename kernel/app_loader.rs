@@ -10,7 +10,7 @@ use ftl_types::syscall::VsyscallPage;
 use ftl_utils::alignment::align_up;
 
 use crate::arch::PAGE_SIZE;
-use crate::buffer::Buffer;
+use crate::folio::Folio;
 use crate::channel::Channel;
 use crate::handle::AnyHandle;
 use crate::handle::Handle;
@@ -35,7 +35,7 @@ pub enum Error {
 pub struct AppLoader<'a> {
     elf_file: &'a [u8],
     elf: Elf<'a>,
-    memory: Buffer,
+    memory: Folio,
 }
 
 impl<'a> AppLoader<'a> {
@@ -64,7 +64,7 @@ impl<'a> AppLoader<'a> {
             .ok_or(Error::NoPhdrs)?;
 
         let elf_len = align_up(highest_addr - lowest_addr, PAGE_SIZE);
-        let memory = Buffer::alloc(elf_len).map_err(Error::AllocBuffer)?;
+        let memory = Folio::alloc(elf_len).map_err(Error::AllocBuffer)?;
         Ok(AppLoader {
             elf_file,
             elf,
@@ -183,19 +183,19 @@ impl<'a> AppLoader<'a> {
         }))
         .unwrap();
 
-        // Copy into a buffer.
-        let mut buffer = Buffer::alloc(align_up(environ_json.len(), PAGE_SIZE))
-            .expect("failed to allocate buffer");
-        buffer.allocated_pages_mut().as_slice_mut()[..environ_json.len()]
+        // Copy into a folio.
+        let mut folio = Folio::alloc(align_up(environ_json.len(), PAGE_SIZE))
+            .expect("failed to allocate folio");
+        folio.allocated_pages_mut().as_slice_mut()[..environ_json.len()]
             .copy_from_slice(environ_json.as_bytes());
         let args = (
-            buffer.allocated_pages().as_ptr() as usize,
+            folio.allocated_pages().as_ptr() as usize,
             environ_json.len(),
         );
 
-        // Move the ownership of the buffer to the process.
+        // Move the ownership of the folio to the process.
         handles
-            .add(Handle::new(SharedRef::new(buffer), HandleRights::NONE))
+            .add(Handle::new(SharedRef::new(folio), HandleRights::NONE))
             .unwrap();
 
         args
@@ -220,7 +220,7 @@ impl<'a> AppLoader<'a> {
         let (environ_ptr, environ_len) =
             self.install_handles_and_environ(autopilot_ch_id, &mut *handles, depends);
 
-        let mut vsyscall_buffer = Buffer::alloc(PAGE_SIZE).unwrap();
+        let mut vsyscall_buffer = Folio::alloc(PAGE_SIZE).unwrap();
         let vsyscall_ptr = vsyscall_buffer.allocated_pages_mut().as_ptr() as *mut VsyscallPage;
         unsafe {
             vsyscall_ptr.write(VsyscallPage {

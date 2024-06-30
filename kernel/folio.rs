@@ -1,15 +1,15 @@
 use crate::memory::AllocPagesError;
 use crate::memory::AllocatedPages;
 
-pub struct Buffer {
+pub struct Folio {
     #[allow(dead_code)]
     pages: AllocatedPages,
 }
 
-impl Buffer {
-    pub fn alloc(len: usize) -> Result<Buffer, AllocPagesError> {
+impl Folio {
+    pub fn alloc(len: usize) -> Result<Folio, AllocPagesError> {
         let pages = AllocatedPages::alloc(len)?;
-        Ok(Buffer { pages })
+        Ok(Folio { pages })
     }
 
     pub fn allocated_pages(&self) -> &AllocatedPages {

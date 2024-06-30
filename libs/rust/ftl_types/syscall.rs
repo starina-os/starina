@@ -12,7 +12,7 @@ pub enum SyscallNumber {
     PollCreate = 7,
     PollWait = 8,
     PollAdd = 9,
-    BufferCreate = 10,
+    FolioCreate = 10,
 }
 
 #[repr(C)]

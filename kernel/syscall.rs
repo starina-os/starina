@@ -7,7 +7,7 @@ use ftl_types::poll::PollEvent;
 use ftl_types::poll::PollSyscallResult;
 use ftl_types::syscall::SyscallNumber;
 
-use crate::buffer::Buffer;
+use crate::folio::Folio;
 use crate::channel::Channel;
 use crate::cpuvar::current_thread;
 use crate::handle::AnyHandle;
@@ -55,20 +55,20 @@ fn channel_recv(handle: HandleId, msgbuffer: &mut MessageBuffer) -> Result<Messa
     ch.recv(msgbuffer)
 }
 
-fn buffer_create(len: usize) -> Result<HandleId, FtlError> {
-    let buffer = match Buffer::alloc(len) {
-        Ok(buffer) => buffer,
+fn folio_create(len: usize) -> Result<HandleId, FtlError> {
+    let folio = match Folio::alloc(len) {
+        Ok(folio) => folio,
         Err(AllocPagesError::InvalidLayout(_err)) => {
             return Err(FtlError::InvalidArg);
         }
     };
 
-    let handle = Handle::new(SharedRef::new(buffer), HandleRights::NONE);
+    let handle = Handle::new(SharedRef::new(folio), HandleRights::NONE);
     let handle_id = current_thread()
         .process()
         .handles()
         .lock()
-        .add(AnyHandle::Buffer(handle))?;
+        .add(AnyHandle::Folio(handle))?;
 
     Ok(handle_id)
 }
@@ -149,8 +149,8 @@ pub fn syscall_entry(
             let msginfo = channel_recv(handle, msgbuffer)?;
             Ok(msginfo.as_raw())
         }
-        _ if n == SyscallNumber::BufferCreate as isize => {
-            let handle_id = buffer_create(a0 as usize)?;
+        _ if n == SyscallNumber::FolioCreate as isize => {
+            let handle_id = folio_create(a0 as usize)?;
             Ok(handle_id.as_isize())
         }
         _ if n == SyscallNumber::PollCreate as isize => {

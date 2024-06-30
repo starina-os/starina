@@ -7,7 +7,7 @@ use ftl_types::handle::HandleRights;
 use ftl_types::handle::HANDLE_ID_MASK;
 use hashbrown::HashMap;
 
-use crate::buffer::Buffer;
+use crate::folio::Folio;
 use crate::channel::Channel;
 use crate::poll::Poll;
 use crate::ref_counted::SharedRef;
@@ -46,7 +46,7 @@ impl<T> Deref for Handle<T> {
 pub enum AnyHandle {
     Channel(Handle<Channel>),
     Thread(Handle<Thread>),
-    Buffer(Handle<Buffer>),
+    Folio(Handle<Folio>),
     Poll(Handle<Poll>),
 }
 
@@ -72,7 +72,7 @@ impl fmt::Debug for AnyHandle {
         match self {
             AnyHandle::Channel(_) => write!(f, "Channel"),
             AnyHandle::Thread(_) => write!(f, "Thread"),
-            AnyHandle::Buffer(_) => write!(f, "Buffer"),
+            AnyHandle::Folio(_) => write!(f, "Buffer"),
             AnyHandle::Poll(_) => write!(f, "Poll"),
         }
     }
@@ -90,9 +90,9 @@ impl Into<AnyHandle> for Handle<Thread> {
     }
 }
 
-impl Into<AnyHandle> for Handle<Buffer> {
+impl Into<AnyHandle> for Handle<Folio> {
     fn into(self) -> AnyHandle {
-        AnyHandle::Buffer(self)
+        AnyHandle::Folio(self)
     }
 }
 
