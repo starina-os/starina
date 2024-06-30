@@ -2,7 +2,7 @@ use core::cell::Ref;
 use core::cell::RefCell;
 use core::fmt;
 
-use arrayvec::ArrayVec;
+use ftl_inlinedvec::InlinedVec;
 
 use crate::arch;
 use crate::ref_counted::SharedRef;
@@ -50,8 +50,8 @@ pub fn current_thread() -> Ref<'static, SharedRef<Thread>> {
     arch::cpuvar().current_thread.borrow()
 }
 
-static CPUVARS: SpinLock<ArrayVec<CpuVar, { arch::NUM_CPUS_MAX }>> =
-    SpinLock::new(ArrayVec::new_const());
+static CPUVARS: SpinLock<InlinedVec<CpuVar, { arch::NUM_CPUS_MAX }>> =
+    SpinLock::new(InlinedVec::new());
 
 /// Initializes Per-CPU variables for the current CPU.
 pub fn percpu_init(cpu_id: CpuId) {
@@ -59,12 +59,16 @@ pub fn percpu_init(cpu_id: CpuId) {
     let mut cpuvars = CPUVARS.lock();
     for _ in 0..=cpu_id.as_usize() {
         let idle_thread = Thread::new_idle();
-        cpuvars.push(CpuVar {
+        let cpuvar = CpuVar {
             arch: arch::CpuVar::new(&idle_thread),
             cpu_id,
             current_thread: RefCell::new(idle_thread.clone()),
             idle_thread,
-        });
+        };
+
+        if cpuvars.try_push(cpuvar).is_err() {
+            panic!("too many CPUs");
+        }
     }
 
     arch::set_cpuvar(&mut cpuvars[cpu_id.as_usize()] as *mut CpuVar);

@@ -1,7 +1,7 @@
 use alloc::string::String;
 use alloc::vec;
 
-use arrayvec::ArrayVec;
+use ftl_inlinedvec::InlinedVec;
 use ftl_types::spec::AppSpec;
 use ftl_types::spec::Spec;
 use ftl_types::spec::SpecFile;
@@ -26,7 +26,7 @@ pub struct FreeMem {
 /// The boot information passed from the bootloader.
 #[derive(Debug)]
 pub struct BootInfo {
-    pub free_mems: ArrayVec<FreeMem, 8>,
+    pub free_mems: InlinedVec<FreeMem, 8>,
     pub dtb_addr: *const u8,
 }
 

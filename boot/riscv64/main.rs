@@ -3,7 +3,7 @@
 
 use core::arch::global_asm;
 
-use arrayvec::ArrayVec;
+use ftl_inlinedvec::InlinedVec;
 use ftl_kernel::boot::BootInfo;
 use ftl_kernel::boot::FreeMem;
 use ftl_kernel::cpuvar::CpuId;
@@ -28,11 +28,13 @@ unsafe extern "C" fn riscv64_boot(hartid: u64, dtb_addr: u64) -> ! {
     // Clear bss section.
     core::ptr::write_bytes(bss_start as *mut u8, 0, bss_end - bss_start);
 
-    let mut free_mems = ArrayVec::<FreeMem, 8>::new();
-    free_mems.push(FreeMem {
-        start: free_ram,
-        size: ByteSize(free_ram_end - free_ram),
-    });
+    let mut free_mems = InlinedVec::<FreeMem, 8>::new();
+    free_mems
+        .try_push(FreeMem {
+            start: free_ram,
+            size: ByteSize(free_ram_end - free_ram),
+        })
+        .expect("too many free mems");
 
     ftl_kernel::boot::boot(
         CpuId::new(hartid.try_into().expect("too big hartid")),
