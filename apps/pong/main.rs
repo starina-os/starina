@@ -18,6 +18,7 @@ enum Context {
 
 #[ftl_api::main]
 pub fn main(mut env: Environ) {
+    info!("start main...");
     let mut mainloop = Mainloop::<Context, Message>::new().unwrap();
     mainloop
         .add_channel(env.autopilot_ch.take().unwrap(), Context::Autopilot)
@@ -29,21 +30,21 @@ pub fn main(mut env: Environ) {
             Event::Message { ch, ctx, m } => {
                 match (ctx, m) {
                     (Context::Autopilot, Message::NewclientRequest(m)) => {
-                        println!("got new client: {:?}", m.handle());
+                        info!("got new client: {:?}", m.handle());
                         let new_ch = Channel::from_handle(OwnedHandle::from_raw(m.handle()));
                         mainloop
                             .add_channel(new_ch, Context::Client { counter: 0 })
                             .unwrap();
                     }
                     (Context::Client { counter }, Message::PingRequest(m)) => {
-                        println!("[pong] received message: {}", m.int_value1());
+                        info!("received message: {}", m.int_value1());
                         *counter += 1;
 
                         let reply = PingReply {
                             int_value2: *counter,
                         };
                         if let Err(err) = ch.send_with_buffer(&mut buffer, reply) {
-                            println!("failed to reply: {:?}", err);
+                            info!("failed to reply: {:?}", err);
                         }
                     }
                     _ => {

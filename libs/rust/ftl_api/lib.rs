@@ -8,6 +8,7 @@ pub mod arch;
 pub mod channel;
 pub mod handle;
 pub mod init;
+pub mod log;
 pub mod mainloop;
 pub mod panic;
 pub mod poll;

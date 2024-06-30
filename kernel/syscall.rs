@@ -127,7 +127,7 @@ pub fn syscall_entry(
         _ if n == SyscallNumber::Print as isize => {
             let bytes = unsafe { core::slice::from_raw_parts(a0 as *const u8, a1 as usize) };
             let s = core::str::from_utf8(bytes).unwrap().trim_end();
-            println!("[print] {}", s);
+            println!("{}", s);
             Ok(0)
         }
         _ if n == SyscallNumber::ChannelCreate as isize => channel_create(),
