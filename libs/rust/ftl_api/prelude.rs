@@ -3,3 +3,9 @@ pub use crate::error;
 pub use crate::info;
 pub use crate::trace;
 pub use crate::warn;
+
+pub use alloc::borrow::ToOwned;
+pub use alloc::boxed::Box;
+pub use alloc::vec::Vec;
+pub use alloc::string::String;
+pub use alloc::string::ToString;
