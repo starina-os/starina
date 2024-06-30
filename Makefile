@@ -64,7 +64,7 @@ fmt:
 fix:
 	cargo clippy --fix --allow-dirty --allow-staged $(CARGOFLAGS)
 
-ftl.elf: $(sources) libs/rust/ftl_autogen/lib.rs Makefile $(app_elfs)
+ftl.elf: $(sources) libs/rust/ftl_autogen/lib.rs Makefile build/bootfs.bin
 	$(PROGRESS) "CARGO" "boot/$(ARCH)"
 	RUSTFLAGS="$(RUSTFLAGS)" CARGO_TARGET_DIR="build/cargo" $(CARGO) build $(CARGOFLAGS) \
 		--target boot/$(ARCH)/$(ARCH)-$(MACHINE).json \
@@ -73,6 +73,13 @@ ftl.elf: $(sources) libs/rust/ftl_autogen/lib.rs Makefile $(app_elfs)
 
 build/startup.elf: build/$(STARTUP).elf
 	cp $< $@
+
+build/bootfs.bin: build/ftl_mkbootfs $(app_elfs) Makefile
+	rm -rf build/bootfs
+	mkdir -p build/bootfs
+	cp -r build/apps build/bootfs
+	$(PROGRESS) "MKBOOTFS" "$(@)"
+	./build/ftl_mkbootfs -o $(@) build/bootfs
 
 # TODO: Can't add "-C link-args=-Map=$(@:.elf=.map)" to RUSTFLAGS because rustc considers it as
 #       a change in compiler flags. Indeed it is, but it doesn't affect the output binary.
@@ -97,6 +104,16 @@ build/ftl_idlc: $(shell find tools/idlc -name '*.rs') $(shell find tools/idlc -n
 			$(if $(RELEASE),--release,) \
 			--manifest-path tools/idlc/Cargo.toml
 	mv build/cargo/$(BUILD)/ftl_idlc $(@)
+
+build/ftl_mkbootfs: $(shell find tools/mkbootfs -name '*.rs')
+	mkdir -p $(@D)
+	$(PROGRESS) "CARGO" "tools/mkbootfs"
+	RUSTFLAGS="$(RUSTFLAGS)" \
+	CARGO_TARGET_DIR="build/cargo" \
+		$(CARGO) build \
+			$(if $(RELEASE),--release,) \
+			--manifest-path tools/mkbootfs/Cargo.toml
+	mv build/cargo/$(BUILD)/ftl_mkbootfs $(@)
 
 libs/rust/ftl_autogen/lib.rs: idl.json build/ftl_idlc $(shell find $(APPS) -name '*.spec.json')
 	mkdir -p build

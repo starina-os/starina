@@ -2,6 +2,7 @@
 
 extern crate alloc;
 
+pub mod bootfs;
 pub mod error;
 pub mod handle;
 pub mod idl;

@@ -1,0 +1,19 @@
+[package]
+name = "ftl_mkbootfs"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "ftl_mkbootfs"
+path = "main.rs"
+
+[dependencies]
+anyhow = { workspace = true }
+clap = { workspace = true, features = ["derive"] }
+tempfile = { workspace = true }
+bytes = { workspace = true }
+walkdir = { workspace = true }
+
+ftl_types = { workspace = true }
+ftl_utils = { workspace = true }

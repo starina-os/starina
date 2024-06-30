@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["kernel", "boot/*", "libs/rust/*", "apps/*", "tools/idlc"]
+members = ["kernel", "boot/*", "libs/rust/*", "apps/*", "tools/idlc", "tools/mkbootfs"]
 
 [workspace.package]
 version = "0.0.0"
@@ -22,6 +22,9 @@ proc-macro2 = "1.0.85"
 proc-macro-error = "1.0.4"
 clap = "4.5.7"
 minijinja = "2.0.2"
+bytes = "1.6.0"
+tempfile = "3.10.1"
+walkdir = "2.5.0"
 
 ftl_kernel = { path = "kernel" }
 ftl_types = { path = "libs/rust/ftl_types" }

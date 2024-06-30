@@ -9,6 +9,7 @@ use ftl_utils::byte_size::ByteSize;
 
 use crate::arch;
 use crate::autopilot::Autopilot;
+use crate::bootfs::Bootfs;
 use crate::cpuvar;
 use crate::cpuvar::CpuId;
 use crate::memory;
@@ -30,11 +31,6 @@ pub struct BootInfo {
     pub dtb_addr: *const u8,
 }
 
-#[repr(C, align(4096))]
-struct AlignedBytes<T: ?Sized>(T);
-static PING_ELF: &AlignedBytes<[u8]> = &AlignedBytes(*include_bytes!("../build/apps/ping.elf"));
-static PONG_ELF: &AlignedBytes<[u8]> = &AlignedBytes(*include_bytes!("../build/apps/pong.elf"));
-
 /// The entry point of the kernel.
 pub fn boot(cpu_id: CpuId, bootinfo: BootInfo) -> ! {
     println!("\nFTL - Faster Than \"L\"\n");
@@ -42,6 +38,12 @@ pub fn boot(cpu_id: CpuId, bootinfo: BootInfo) -> ! {
     memory::init(&bootinfo);
     process::init();
     cpuvar::percpu_init(cpu_id);
+
+    let bootfs = Bootfs::load();
+
+    for file in bootfs.files() {
+        println!("bootfs: file: {}", file.name);
+    }
 
     fn load_app_spec(spec: &[u8], elf_file: &'static [u8]) -> (String, AppSpec, &'static [u8]) {
         let spec_file: SpecFile = serde_json::from_slice(spec).expect("failed to parse app spec");
@@ -52,8 +54,8 @@ pub fn boot(cpu_id: CpuId, bootinfo: BootInfo) -> ! {
     let mut autopilot = Autopilot::new();
     autopilot
         .start_apps(vec![
-            load_app_spec(include_bytes!("../apps/ping/app.spec.json"), &PING_ELF.0),
-            load_app_spec(include_bytes!("../apps/pong/app.spec.json"), &PONG_ELF.0),
+            load_app_spec(include_bytes!("../apps/ping/app.spec.json"), &bootfs.find_by_name("apps/ping.elf").unwrap().data),
+            load_app_spec(include_bytes!("../apps/pong/app.spec.json"), &bootfs.find_by_name("apps/pong.elf").unwrap().data),
         ])
         .expect("failed to start apps");
 
