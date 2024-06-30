@@ -4,11 +4,15 @@ mod backtrace;
 mod cpuvar;
 mod sbi;
 mod thread;
+mod interrupt;
+mod csr;
 
 pub use backtrace::backtrace;
 pub use cpuvar::cpuvar;
 pub use cpuvar::set_cpuvar;
 pub use cpuvar::CpuVar;
+use csr::write_stvec;
+use csr::TrapMode;
 pub use thread::yield_cpu;
 pub use thread::Thread;
 
@@ -26,5 +30,17 @@ pub fn halt() -> ! {
 pub fn console_write(bytes: &[u8]) {
     for byte in bytes {
         sbi::console_putchar(*byte);
+    }
+}
+
+pub fn init() {
+    unsafe {
+        write_stvec(
+            interrupt::switch_to_kernel as *const () as usize,
+            TrapMode::Direct,
+        );
+
+        // riscv::register::sie::set_sext();
+        // write_sie(read_sie() | 1 << 9); // Supervisor External Interrupt Enable
     }
 }

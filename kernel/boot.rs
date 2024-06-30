@@ -36,6 +36,7 @@ pub fn boot(cpu_id: CpuId, bootinfo: BootInfo) -> ! {
     println!("\nFTL - Faster Than \"L\"\n");
 
     memory::init(&bootinfo);
+    arch::init();
     process::init();
     cpuvar::percpu_init(cpu_id);
 
