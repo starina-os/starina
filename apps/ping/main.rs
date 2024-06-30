@@ -22,7 +22,7 @@ pub fn main(mut env: Environ) {
         let r = ch.recv_with_buffer::<PingReply>(&mut buffer).unwrap();
         info!("{}: received message: {}", i, r.int_value2());
 
-        for i in 0..2000000 {
+        for _ in 0..2000000 {
             unsafe {
                 ::core::arch::asm!("nop");
             }
