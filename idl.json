@@ -30,6 +30,11 @@
                             {
                                 "name": "int_value1",
                                 "type": "int32"
+                            },
+                            {
+                                "name": "bytes_value1",
+                                "type": "bytes",
+                                "capacity": 16
                             }
                         ]
                     },

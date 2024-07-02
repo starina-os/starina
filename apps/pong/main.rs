@@ -37,7 +37,7 @@ pub fn main(mut env: Environ) {
                             .unwrap();
                     }
                     (Context::Client { counter }, Message::PingRequest(m)) => {
-                        info!("received message: {}", m.int_value1());
+                        info!("received message: {} {:02x?}", m.int_value1(), m.bytes_value1().as_slice());
                         *counter += 1;
 
                         let reply = PingReply {

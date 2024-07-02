@@ -2,6 +2,7 @@
 #![no_main]
 
 use ftl_api::prelude::*;
+use ftl_api::types::idl::BytesField;
 use ftl_api::types::message::MessageBuffer;
 use ftl_api_autogen::apps::ping::Environ;
 use ftl_api_autogen::protocols::ping::PingReply;
@@ -15,7 +16,7 @@ pub fn main(mut env: Environ) {
     let mut buffer = MessageBuffer::new();
     for i in 0.. {
         info!("{}: sending message", i);
-        ch.send_with_buffer(&mut buffer, PingRequest { int_value1: 42 })
+        ch.send_with_buffer(&mut buffer, PingRequest { int_value1: 42, bytes_value1: BytesField::try_from(b"asd".as_slice()).unwrap() })
             .unwrap();
 
         info!("{}: receiving message", i);

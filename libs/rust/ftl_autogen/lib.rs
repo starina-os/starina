@@ -165,11 +165,15 @@ pub mod protocols {
         #[repr(C)]
         pub struct PingRequest {
             pub int_value1: i32,
+
+            pub bytes_value1: ftl_types::idl::BytesField<16>,
         }
 
         #[repr(C)]
         struct InlinedPartPingRequest {
             pub int_value1: i32,
+
+            pub bytes_value1: ftl_types::idl::BytesField<16>,
         }
 
         // TODO: static_assert for size
@@ -185,6 +189,8 @@ pub mod protocols {
                 const fn do_serialize(this: PingRequest, buffer: &mut MessageBuffer) {
                     let object = InlinedPartPingRequest {
                         int_value1: this.int_value1,
+
+                        bytes_value1: this.bytes_value1,
                     };
 
                     let dst = buffer as *mut _ as *mut InlinedPartPingRequest;
@@ -236,6 +242,11 @@ pub mod protocols {
             pub fn int_value1(&self) -> i32 {
                 let m = self.as_ref(self.buffer);
                 m.int_value1
+            }
+
+            pub fn bytes_value1(&self) -> ftl_types::idl::BytesField<16> {
+                let m = self.as_ref(self.buffer);
+                m.bytes_value1
             }
         }
 
