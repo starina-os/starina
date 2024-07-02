@@ -13,8 +13,9 @@ impl Process {
         }
     }
 
-    pub fn is_kernel_process(self: &SharedRef<Process>) -> bool {
-        SharedRef::ptr_eq(self, kernel_process())
+    pub fn in_kernel_space(&self) -> bool {
+        // TODO: Support user space.
+        true
     }
 
     pub fn handles(&self) -> &SpinLock<HandleTable> {

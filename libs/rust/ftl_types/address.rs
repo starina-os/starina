@@ -16,6 +16,10 @@ impl PAddr {
         }
     }
 
+    pub const fn from_nonzero(addr: NonZeroUsize) -> PAddr {
+        PAddr(addr)
+    }
+
     #[inline(always)]
     pub const fn as_usize(self) -> usize {
         self.0.get()

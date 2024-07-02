@@ -5,6 +5,7 @@ use ftl_types::address::VAddr;
 use ftl_types::error::FtlError;
 
 use crate::arch;
+use crate::arch::vaddr2paddr;
 use crate::cpuvar::current_thread;
 use crate::memory::AllocPagesError;
 use crate::memory::AllocatedPages;
@@ -46,9 +47,9 @@ impl Folio {
     }
 
     pub fn vaddr(&self) -> Result<VAddr, FtlError> {
-        if current_thread().borrow().process().is_kernel_process() {
+        if current_thread().borrow().process().in_kernel_space() {
             let vaddr = match &self.pages {
-                Pages::Anonymous(pages) => pages.as_vaddr(),
+                Pages::Anonymous(pages) => pages.vaddr(),
                 Pages::Mmio { paddr } => arch::paddr2vaddr(*paddr).ok_or(FtlError::InvalidArg)?,
             };
 
@@ -61,8 +62,10 @@ impl Folio {
 
     pub fn paddr(&self) -> Result<PAddr, FtlError> {
         match &self.pages {
+            Pages::Anonymous(pages) => {
+                vaddr2paddr(pages.vaddr()).ok_or(FtlError::InvalidArg)
+            }
             Pages::Mmio { paddr, .. } => Ok(*paddr),
-            _ => Err(FtlError::NotSupported),
         }
     }
 }

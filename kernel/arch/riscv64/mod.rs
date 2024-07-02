@@ -26,6 +26,11 @@ pub fn paddr2vaddr(paddr: PAddr) -> Option<VAddr> {
     Some(VAddr::from_nonzero(paddr.as_nonzero()))
 }
 
+pub fn vaddr2paddr(vaddr: VAddr) -> Option<PAddr> {
+    // Identical mapping.
+    Some(PAddr::from_nonzero(vaddr.as_nonzero()))
+}
+
 pub fn halt() -> ! {
     loop {
         unsafe {

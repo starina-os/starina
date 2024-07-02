@@ -98,7 +98,7 @@ impl AllocatedPages {
         })
     }
 
-    pub fn as_vaddr(&self) -> VAddr {
+    pub fn vaddr(&self) -> VAddr {
         // SAFETY: NonNull guarantees it's non-zero.
         let nonzero = unsafe { NonZeroUsize::new_unchecked(self.base.as_ptr() as usize) };
 
