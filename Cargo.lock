@@ -284,6 +284,13 @@ name = "ftl_utils"
 version = "0.0.0"
 
 [[package]]
+name = "ftl_virtio"
+version = "0.0.0"
+dependencies = [
+ "ftl_api",
+]
+
+[[package]]
 name = "hashbrown"
 version = "0.14.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"

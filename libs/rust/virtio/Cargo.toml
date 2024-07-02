@@ -1,0 +1,11 @@
+[package]
+name = "ftl_virtio"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+
+[lib]
+path = "lib.rs"
+
+[dependencies]
+ftl_api = { workspace = true }
