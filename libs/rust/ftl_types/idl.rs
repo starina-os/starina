@@ -18,12 +18,6 @@ pub struct Protocol {
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub struct BytesTy {
-        capacity: usize
-}
-
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase", tag = "type")]
 pub enum Ty {
     Int32,
