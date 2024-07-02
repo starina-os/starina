@@ -68,7 +68,7 @@ fn main() -> Result<()> {
         4096,
     );
     for (path, filedata, padding) in &entries {
-        let name =  path
+        let name = path
             .strip_prefix(&args.indir)
             .context("failed to strip prefix")?
             .to_str()
