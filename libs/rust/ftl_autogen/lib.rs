@@ -253,11 +253,15 @@ pub mod protocols {
         #[repr(C)]
         pub struct PingReply {
             pub int_value2: i32,
+
+            pub str_value2: ftl_types::idl::StringField<32>,
         }
 
         #[repr(C)]
         struct InlinedPartPingReply {
             pub int_value2: i32,
+
+            pub str_value2: ftl_types::idl::StringField<32>,
         }
 
         // TODO: static_assert for size
@@ -273,6 +277,8 @@ pub mod protocols {
                 const fn do_serialize(this: PingReply, buffer: &mut MessageBuffer) {
                     let object = InlinedPartPingReply {
                         int_value2: this.int_value2,
+
+                        str_value2: this.str_value2,
                     };
 
                     let dst = buffer as *mut _ as *mut InlinedPartPingReply;
@@ -324,6 +330,11 @@ pub mod protocols {
             pub fn int_value2(&self) -> i32 {
                 let m = self.as_ref(self.buffer);
                 m.int_value2
+            }
+
+            pub fn str_value2(&self) -> ftl_types::idl::StringField<32> {
+                let m = self.as_ref(self.buffer);
+                m.str_value2
             }
         }
     }

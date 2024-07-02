@@ -43,6 +43,11 @@
                             {
                                 "name": "int_value2",
                                 "type": "int32"
+                            },
+                            {
+                                "name": "str_value2",
+                                "type": "string",
+                                "capacity": 32
                             }
                         ]
                     }

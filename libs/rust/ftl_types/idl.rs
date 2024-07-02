@@ -1,5 +1,7 @@
 use alloc::string::String;
 use alloc::vec::Vec;
+use core::str;
+use core::str::Utf8Error;
 
 use serde::Deserialize;
 use serde::Serialize;
@@ -27,6 +29,7 @@ pub enum Ty {
     Int32,
     Handle,
     Bytes { capacity: usize },
+    String { capacity: usize },
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -93,5 +96,24 @@ impl<const CAP: usize> TryFrom<&[u8]> for BytesField<CAP> {
         data[..value.len()].copy_from_slice(value);
 
         Ok(BytesField::new(data, value.len() as u16))
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[repr(transparent)]
+pub struct StringField<const CAP: usize>(BytesField<CAP>);
+
+impl<const CAP: usize> StringField<CAP> {
+    pub fn to_str(&self) -> Result<&str, Utf8Error> {
+        str::from_utf8(self.0.as_slice())
+    }
+}
+
+impl<const CAP: usize> TryFrom<&str> for StringField<CAP> {
+    type Error = TooManyItemsError;
+
+    fn try_from(value: &str) -> Result<StringField<CAP>, TooManyItemsError> {
+        let bytes = BytesField::try_from(value.as_bytes())?;
+        Ok(StringField(bytes))
     }
 }

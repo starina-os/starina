@@ -57,6 +57,7 @@ fn resolve_builder_type_name(ty: &idl::Ty) -> String {
         idl::Ty::Int32 => "i32".to_string(),
         idl::Ty::Handle => "ftl_types::handle::HandleId".to_string(),
         idl::Ty::Bytes { capacity } => format!("ftl_types::idl::BytesField<{capacity}>"),
+        idl::Ty::String { capacity } => format!("ftl_types::idl::StringField<{capacity}>"),
     }
 }
 
@@ -65,6 +66,7 @@ fn resolve_raw_type_name(ty: &idl::Ty) -> String {
         idl::Ty::Int32 => "i32".to_string(),
         idl::Ty::Handle => "ftl_types::handle::HandleId".to_string(),
         idl::Ty::Bytes { capacity } => format!("ftl_types::idl::BytesField<{capacity}>"),
+        idl::Ty::String { capacity } => format!("ftl_types::idl::StringField<{capacity}>"),
     }
 }
 

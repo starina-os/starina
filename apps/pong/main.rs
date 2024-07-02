@@ -6,6 +6,7 @@ use ftl_api::handle::OwnedHandle;
 use ftl_api::mainloop::Event;
 use ftl_api::mainloop::Mainloop;
 use ftl_api::prelude::*;
+use ftl_api::types::idl::StringField;
 use ftl_api::types::message::MessageBuffer;
 use ftl_api_autogen::apps::pong::Environ;
 use ftl_api_autogen::apps::pong::Message;
@@ -42,6 +43,7 @@ pub fn main(mut env: Environ) {
 
                         let reply = PingReply {
                             int_value2: *counter,
+                            str_value2: StringField::try_from("howdy!").unwrap(),
                         };
                         if let Err(err) = ch.send_with_buffer(&mut buffer, reply) {
                             info!("failed to reply: {:?}", err);
