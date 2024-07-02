@@ -57,10 +57,7 @@ pub struct BytesField<const CAP: usize> {
 
 impl<const CAP: usize> BytesField<CAP> {
     pub const fn new(data: [u8; CAP], len: u16) -> Self {
-        Self {
-            len,
-            data,
-        }
+        Self { len, data }
     }
 
     pub fn as_slice(&self) -> &[u8] {

@@ -62,9 +62,7 @@ impl Folio {
 
     pub fn paddr(&self) -> Result<PAddr, FtlError> {
         match &self.pages {
-            Pages::Anonymous(pages) => {
-                vaddr2paddr(pages.vaddr()).ok_or(FtlError::InvalidArg)
-            }
+            Pages::Anonymous(pages) => vaddr2paddr(pages.vaddr()).ok_or(FtlError::InvalidArg),
             Pages::Mmio { paddr, .. } => Ok(*paddr),
         }
     }
