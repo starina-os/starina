@@ -73,7 +73,7 @@ impl<const CAP: usize> TryFrom<&[u8]> for BytesField<CAP> {
     type Error = TooManyItemsError;
 
     fn try_from(value: &[u8]) -> Result<BytesField<CAP>, TooManyItemsError> {
-        debug_assert!(CAP <= u16::MAX as usize); // CAP must fit in u16
+        debug_assert!(CAP <= u16::MAX as usize); // FIXME: This assertion doesn't work
 
         if value.len() > CAP {
             return Err(TooManyItemsError);
