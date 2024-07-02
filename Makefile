@@ -3,7 +3,7 @@ MACHINE ?= qemu-virt
 RELEASE ?=            # "1" to build release version
 V       ?=            # "1" to enable verbose output
 STARTUP ?= apps/hello
-APPS    ?= apps/ping apps/pong
+APPS    ?= apps/ping apps/pong apps/virtio_blk
 
 # Disable builtin implicit rules and variables.
 MAKEFLAGS += --no-builtin-rules --no-builtin-variables
@@ -31,6 +31,9 @@ CARGOFLAGS += -Z build-std=core,alloc -Z build-std-features=compiler-builtins-me
 QEMUFLAGS += -machine virt -m 256 -bios default
 QEMUFLAGS += -nographic -serial mon:stdio --no-reboot
 QEMUFLAGS += -d cpu_reset,unimp,guest_errors,int -D qemu.log
+QEMUFLAGS += -global virtio-mmio.force-legacy=false
+QEMUFLAGS += -drive id=drive0,file=disk.img,format=raw
+QEMUFLAGS += -device virtio-blk-device,drive=drive0,bus=virtio-mmio-bus.0
 QEMUFLAGS += $(if $(GDB),-gdb tcp::7789 -S)
 
 app_elfs := $(foreach app,$(APPS),build/$(app).elf)
@@ -44,7 +47,7 @@ sources += \
 default: ftl.elf
 
 .PHONY: run
-run: ftl.elf
+run: ftl.elf disk.img
 	$(PROGRESS) "QEMU" "ftl.elf"
 	$(QEMU) $(QEMUFLAGS) -kernel ftl.elf
 
@@ -63,6 +66,10 @@ fmt:
 .PHONY: fix
 fix:
 	cargo clippy --fix --allow-dirty --allow-staged $(CARGOFLAGS)
+
+disk.img:
+	$(PROGRESS) "GEN" "$(@)"
+	dd if=/dev/zero of=$(@) bs=1M count=8
 
 ftl.elf: $(sources) libs/rust/ftl_autogen/lib.rs Makefile build/bootfs.bin
 	$(PROGRESS) "CARGO" "boot/$(ARCH)"

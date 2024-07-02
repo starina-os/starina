@@ -54,6 +54,7 @@ struct VirtqUsed {
     // The rings (an array of VirtqUsedElem) immediately follows here.
 }
 
+#[derive(Debug)]
 pub enum VirtqDescBuffer {
     ReadOnlyFromDevice { paddr: PAddr, len: usize },
     WritableFromDevice { paddr: PAddr, len: usize },

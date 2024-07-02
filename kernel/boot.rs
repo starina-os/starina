@@ -55,8 +55,18 @@ pub fn boot(cpu_id: CpuId, bootinfo: BootInfo) -> ! {
     let mut autopilot = Autopilot::new();
     autopilot
         .start_apps(vec![
-            load_app_spec(include_bytes!("../apps/ping/app.spec.json"), &bootfs.find_by_name("apps/ping.elf").unwrap().data),
-            load_app_spec(include_bytes!("../apps/pong/app.spec.json"), &bootfs.find_by_name("apps/pong.elf").unwrap().data),
+            // load_app_spec(
+            //     include_bytes!("../apps/ping/app.spec.json"),
+            //     &bootfs.find_by_name("apps/ping.elf").unwrap().data,
+            // ),
+            // load_app_spec(
+            //     include_bytes!("../apps/pong/app.spec.json"),
+            //     &bootfs.find_by_name("apps/pong.elf").unwrap().data,
+            // ),
+            load_app_spec(
+                include_bytes!("../apps/virtio_blk/app.spec.json"),
+                &bootfs.find_by_name("apps/virtio_blk.elf").unwrap().data,
+            ),
         ])
         .expect("failed to start apps");
 

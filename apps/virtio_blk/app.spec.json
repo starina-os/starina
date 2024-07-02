@@ -1,0 +1,8 @@
+{
+    "name": "virtio_blk",
+    "kind": "app/v0",
+    "spec": {
+        "depends": [],
+        "provides": []
+    }
+}
