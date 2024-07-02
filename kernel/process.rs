@@ -13,6 +13,10 @@ impl Process {
         }
     }
 
+    pub fn is_kernel_process(self: &SharedRef<Process>) -> bool {
+        SharedRef::ptr_eq(self, kernel_process())
+    }
+
     pub fn handles(&self) -> &SpinLock<HandleTable> {
         &self.handles
     }

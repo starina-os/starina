@@ -82,6 +82,28 @@ pub fn print(s: &[u8]) -> Result<(), FtlError> {
     Ok(())
 }
 
+pub fn folio_create(len: usize) -> Result<HandleId, FtlError> {
+    let ret = syscall1(SyscallNumber::FolioCreate, len as isize)?;
+    let handle_id = HandleId::from_raw_isize_truncated(ret);
+    Ok(handle_id)
+}
+
+pub fn folio_create_mmio(paddr: usize, len: usize) -> Result<HandleId, FtlError> {
+    let ret = syscall2(SyscallNumber::FolioCreateMmio, paddr as isize, len as isize)?;
+    let handle_id = HandleId::from_raw_isize_truncated(ret);
+    Ok(handle_id)
+}
+
+pub fn folio_vaddr(handle: HandleId) -> Result<usize, FtlError> {
+    let ret = syscall1(SyscallNumber::FolioVAddr, handle.as_isize())?;
+    Ok(ret as usize)
+}
+
+pub fn folio_paddr(handle: HandleId) -> Result<usize, FtlError> {
+    let ret = syscall1(SyscallNumber::FolioPAddr, handle.as_isize())?;
+    Ok(ret as usize)
+}
+
 pub fn poll_create() -> Result<HandleId, FtlError> {
     let ret = syscall0(SyscallNumber::PollCreate)?;
     let handle_id = HandleId::from_raw_isize_truncated(ret);

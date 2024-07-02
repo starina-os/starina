@@ -13,11 +13,18 @@ pub use cpuvar::set_cpuvar;
 pub use cpuvar::CpuVar;
 use csr::write_stvec;
 use csr::TrapMode;
+use ftl_types::address::PAddr;
+use ftl_types::address::VAddr;
 pub use thread::yield_cpu;
 pub use thread::Thread;
 
 pub const PAGE_SIZE: usize = 4096;
 pub const NUM_CPUS_MAX: usize = 8;
+
+pub fn paddr2vaddr(paddr: PAddr) -> Option<VAddr> {
+    // Identical mapping.
+    Some(VAddr::from_nonzero(paddr.as_nonzero()))
+}
 
 pub fn halt() -> ! {
     loop {

@@ -48,6 +48,10 @@ impl<T> SharedRef<T> {
             ptr: unsafe { NonNull::new_unchecked(ptr) },
         }
     }
+
+    pub fn ptr_eq(a: &SharedRef<T>, b: &SharedRef<T>) -> bool {
+        a.ptr == b.ptr
+    }
 }
 
 impl<T: ?Sized> SharedRef<T> {

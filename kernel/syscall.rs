@@ -1,3 +1,5 @@
+use ftl_types::address::PAddr;
+use ftl_types::address::VAddr;
 use ftl_types::error::FtlError;
 use ftl_types::handle::HandleId;
 use ftl_types::handle::HandleRights;
@@ -7,9 +9,9 @@ use ftl_types::poll::PollEvent;
 use ftl_types::poll::PollSyscallResult;
 use ftl_types::syscall::SyscallNumber;
 
-use crate::folio::Folio;
 use crate::channel::Channel;
 use crate::cpuvar::current_thread;
+use crate::folio::Folio;
 use crate::handle::AnyHandle;
 use crate::handle::Handle;
 use crate::memory::AllocPagesError;
@@ -71,6 +73,52 @@ fn folio_create(len: usize) -> Result<HandleId, FtlError> {
         .add(AnyHandle::Folio(handle))?;
 
     Ok(handle_id)
+}
+
+fn folio_create_mmio(paddr: PAddr, len: usize) -> Result<HandleId, FtlError> {
+    let folio = match Folio::alloc_mmio(paddr, len) {
+        Ok(folio) => folio,
+        Err(AllocPagesError::InvalidLayout(_err)) => {
+            return Err(FtlError::InvalidArg);
+        }
+    };
+
+    let handle = Handle::new(SharedRef::new(folio), HandleRights::NONE);
+    let handle_id = current_thread()
+        .process()
+        .handles()
+        .lock()
+        .add(AnyHandle::Folio(handle))?;
+
+    Ok(handle_id)
+}
+
+fn folio_vaddr(handle: HandleId) -> Result<VAddr, FtlError> {
+    let folio: Handle<Folio> = {
+        current_thread()
+            .process()
+            .handles()
+            .lock()
+            .get_owned(handle)?
+            .as_folio()?
+            .clone()
+    };
+
+    folio.vaddr()
+}
+
+fn folio_paddr(handle: HandleId) -> Result<PAddr, FtlError> {
+    let folio: Handle<Folio> = {
+        current_thread()
+            .process()
+            .handles()
+            .lock()
+            .get_owned(handle)?
+            .as_folio()?
+            .clone()
+    };
+
+    folio.paddr()
 }
 
 fn poll_create() -> Result<HandleId, FtlError> {
@@ -152,6 +200,22 @@ pub fn syscall_entry(
         _ if n == SyscallNumber::FolioCreate as isize => {
             let handle_id = folio_create(a0 as usize)?;
             Ok(handle_id.as_isize())
+        }
+        _ if n == SyscallNumber::FolioCreateMmio as isize => {
+            let paddr = PAddr::new(a0 as usize).ok_or(FtlError::InvalidArg)?;
+            let len = a1 as usize;
+            let handle_id = folio_create_mmio(paddr, len)?;
+            Ok(handle_id.as_isize())
+        }
+        _ if n == SyscallNumber::FolioVAddr as isize => {
+            let handle = HandleId::from_raw_isize_truncated(a0);
+            let vaddr = folio_vaddr(handle)?;
+            Ok(vaddr.as_usize() as isize) // FIXME: guarantee casting to isize is OK
+        }
+        _ if n == SyscallNumber::FolioPAddr as isize => {
+            let handle = HandleId::from_raw_isize_truncated(a0);
+            let paddr = folio_paddr(handle)?;
+            Ok(paddr.as_usize() as isize) // FIXME: guarantee casting to isize is OK
         }
         _ if n == SyscallNumber::PollCreate as isize => {
             let handle_id = poll_create()?;

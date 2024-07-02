@@ -1,9 +1,11 @@
 use core::alloc::GlobalAlloc;
 use core::alloc::Layout;
 use core::alloc::LayoutError;
+use core::num::NonZeroUsize;
 use core::ptr::NonNull;
 
 use ftl_bump_allocator::BumpAllocator;
+use ftl_types::address::VAddr;
 use ftl_utils::alignment::is_aligned;
 
 use crate::arch::PAGE_SIZE;
@@ -94,6 +96,17 @@ impl AllocatedPages {
             base: NonNull::new(ptr).unwrap(),
             len,
         })
+    }
+
+    pub fn as_vaddr(&self) -> VAddr {
+        // SAFETY: NonNull guarantees it's non-zero.
+        let nonzero = unsafe { NonZeroUsize::new_unchecked(self.base.as_ptr() as usize) };
+
+        VAddr::from_nonzero(nonzero)
+    }
+
+    pub fn len(&self) -> usize {
+        self.len
     }
 
     pub fn as_ptr(&self) -> *mut u8 {

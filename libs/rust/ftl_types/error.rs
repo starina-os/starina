@@ -10,4 +10,5 @@ pub enum FtlError {
     NoPeer,
     InvalidArg,
     TooLarge,
+    NotSupported,
 }

@@ -7,8 +7,8 @@ use ftl_types::handle::HandleRights;
 use ftl_types::handle::HANDLE_ID_MASK;
 use hashbrown::HashMap;
 
-use crate::folio::Folio;
 use crate::channel::Channel;
+use crate::folio::Folio;
 use crate::poll::Poll;
 use crate::ref_counted::SharedRef;
 use crate::thread::Thread;
@@ -61,6 +61,13 @@ impl AnyHandle {
     pub fn as_poll(&self) -> Result<&Handle<Poll>, FtlError> {
         match self {
             AnyHandle::Poll(ref poll) => Ok(poll),
+            _ => Err(FtlError::UnexpectedHandleType),
+        }
+    }
+
+    pub fn as_folio(&self) -> Result<&Handle<Folio>, FtlError> {
+        match self {
+            AnyHandle::Folio(ref folio) => Ok(folio),
             _ => Err(FtlError::UnexpectedHandleType),
         }
     }

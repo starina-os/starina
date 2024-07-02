@@ -10,12 +10,13 @@ use ftl_types::syscall::VsyscallPage;
 use ftl_utils::alignment::align_up;
 
 use crate::arch::PAGE_SIZE;
-use crate::folio::Folio;
 use crate::channel::Channel;
+use crate::folio::Folio;
 use crate::handle::AnyHandle;
 use crate::handle::Handle;
 use crate::handle::HandleTable;
 use crate::memory::AllocPagesError;
+use crate::memory::AllocatedPages;
 use crate::process::Process;
 use crate::ref_counted::SharedRef;
 use crate::syscall::syscall_entry;
@@ -35,7 +36,7 @@ pub enum Error {
 pub struct AppLoader<'a> {
     elf_file: &'a [u8],
     elf: Elf<'a>,
-    memory: Folio,
+    memory: AllocatedPages,
 }
 
 impl<'a> AppLoader<'a> {
@@ -64,7 +65,7 @@ impl<'a> AppLoader<'a> {
             .ok_or(Error::NoPhdrs)?;
 
         let elf_len = align_up(highest_addr - lowest_addr, PAGE_SIZE);
-        let memory = Folio::alloc(elf_len).map_err(Error::AllocBuffer)?;
+        let memory = AllocatedPages::alloc(elf_len).map_err(Error::AllocBuffer)?;
         Ok(AppLoader {
             elf_file,
             elf,
@@ -73,7 +74,7 @@ impl<'a> AppLoader<'a> {
     }
 
     fn base_addr(&self) -> usize {
-        self.memory.allocated_pages().as_ptr() as usize
+        self.memory.as_ptr() as usize
     }
 
     fn entry_addr(&self) -> usize {
@@ -81,7 +82,7 @@ impl<'a> AppLoader<'a> {
     }
 
     fn load_segments(&mut self) {
-        let memory = self.memory.allocated_pages_mut().as_slice_mut();
+        let memory = self.memory.as_slice_mut();
         for phdr in self.elf.phdrs {
             if phdr.p_type != ftl_elf::PhdrType::Load {
                 continue;
@@ -184,18 +185,17 @@ impl<'a> AppLoader<'a> {
         .unwrap();
 
         // Copy into a folio.
-        let mut folio = Folio::alloc(align_up(environ_json.len(), PAGE_SIZE))
+        let mut environ_pages = AllocatedPages::alloc(align_up(environ_json.len(), PAGE_SIZE))
             .expect("failed to allocate folio");
-        folio.allocated_pages_mut().as_slice_mut()[..environ_json.len()]
-            .copy_from_slice(environ_json.as_bytes());
-        let args = (
-            folio.allocated_pages().as_ptr() as usize,
-            environ_json.len(),
-        );
+        environ_pages.as_slice_mut()[..environ_json.len()].copy_from_slice(environ_json.as_bytes());
+        let args = (environ_pages.as_ptr() as usize, environ_json.len());
 
         // Move the ownership of the folio to the process.
         handles
-            .add(Handle::new(SharedRef::new(folio), HandleRights::NONE))
+            .add(Handle::new(
+                SharedRef::new(Folio::from_allocated_pages(environ_pages)),
+                HandleRights::NONE,
+            ))
             .unwrap();
 
         args
@@ -220,8 +220,8 @@ impl<'a> AppLoader<'a> {
         let (environ_ptr, environ_len) =
             self.install_handles_and_environ(autopilot_ch_id, &mut *handles, depends);
 
-        let mut vsyscall_buffer = Folio::alloc(PAGE_SIZE).unwrap();
-        let vsyscall_ptr = vsyscall_buffer.allocated_pages_mut().as_ptr() as *mut VsyscallPage;
+        let vsyscall_buffer = AllocatedPages::alloc(PAGE_SIZE).unwrap();
+        let vsyscall_ptr = vsyscall_buffer.as_ptr() as *mut VsyscallPage;
         unsafe {
             vsyscall_ptr.write(VsyscallPage {
                 entry: syscall_entry,
@@ -236,7 +236,16 @@ impl<'a> AppLoader<'a> {
             .add(Handle::new(thread, HandleRights::NONE))
             .unwrap();
         handles
-            .add(Handle::new(SharedRef::new(self.memory), HandleRights::NONE))
+            .add(Handle::new(
+                SharedRef::new(Folio::from_allocated_pages(self.memory)),
+                HandleRights::NONE,
+            ))
+            .unwrap();
+        handles
+            .add(Handle::new(
+                SharedRef::new(Folio::from_allocated_pages(vsyscall_buffer)),
+                HandleRights::NONE,
+            ))
             .unwrap();
         drop(handles);
 
