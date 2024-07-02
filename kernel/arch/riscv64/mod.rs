@@ -2,10 +2,10 @@ use core::arch::asm;
 
 mod backtrace;
 mod cpuvar;
+mod csr;
+mod interrupt;
 mod sbi;
 mod thread;
-mod interrupt;
-mod csr;
 
 pub use backtrace::backtrace;
 pub use cpuvar::cpuvar;
