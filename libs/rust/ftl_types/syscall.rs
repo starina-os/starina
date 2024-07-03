@@ -16,6 +16,9 @@ pub enum SyscallNumber {
     FolioCreateMmio = 11,
     FolioPAddr = 12,
     FolioVAddr = 13,
+    SignalCreate = 14,
+    SignalUpdate = 15,
+    SignalClear = 16,
 }
 
 #[repr(C)]

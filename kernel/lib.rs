@@ -19,6 +19,7 @@ mod bootfs;
 mod channel;
 mod device_tree;
 mod folio;
+mod signal;
 mod handle;
 mod memory;
 mod panic;

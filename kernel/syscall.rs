@@ -7,6 +7,7 @@ use ftl_types::message::MessageBuffer;
 use ftl_types::message::MessageInfo;
 use ftl_types::poll::PollEvent;
 use ftl_types::poll::PollSyscallResult;
+use ftl_types::signal::SignalBits;
 use ftl_types::syscall::SyscallNumber;
 
 use crate::channel::Channel;
@@ -17,6 +18,7 @@ use crate::handle::Handle;
 use crate::memory::AllocPagesError;
 use crate::poll::Poll;
 use crate::ref_counted::SharedRef;
+use crate::signal::Signal;
 
 fn channel_create() -> Result<isize, FtlError> {
     todo!();
@@ -162,6 +164,46 @@ fn poll_wait(handle_id: HandleId) -> Result<PollSyscallResult, FtlError> {
     Ok(PollSyscallResult::new(ev, ready_handle_id))
 }
 
+fn signal_create() -> Result<HandleId, FtlError> {
+    let signal = Signal::new()?;
+    let handle = Handle::new(signal, HandleRights::NONE);
+    let handle_id = current_thread()
+        .process()
+        .handles()
+        .lock()
+        .add(AnyHandle::Signal(handle))?;
+
+    Ok(handle_id)
+}
+
+fn signal_update(handle_id: HandleId, value: SignalBits) -> Result<(), FtlError> {
+    let signal: Handle<Signal> = {
+        current_thread()
+            .process()
+            .handles()
+            .lock()
+            .get_owned(handle_id)?
+            .as_signal()?
+            .clone()
+    };
+
+    signal.update(value)
+}
+
+fn signal_clear(handle_id: HandleId) -> Result<SignalBits, FtlError> {
+    let signal: Handle<Signal> = {
+        current_thread()
+            .process()
+            .handles()
+            .lock()
+            .get_owned(handle_id)?
+            .as_signal()?
+            .clone()
+    };
+
+    signal.clear()
+}
+
 pub fn syscall_entry(
     n: isize,
     a0: isize,
@@ -235,6 +277,24 @@ pub fn syscall_entry(
             let handle_id = HandleId::from_raw_isize_truncated(a0);
             let result = poll_wait(handle_id)?;
             Ok(result.as_raw())
+        }
+        _ if n == SyscallNumber::SignalCreate as isize => {
+            let handle_id = signal_create()?;
+            Ok(handle_id.as_isize())
+        }
+        _ if n == SyscallNumber::SignalUpdate as isize => {
+            let handle_id = HandleId::from_raw_isize_truncated(a0);
+            let value = SignalBits::from_raw(a1 as i32);
+            if let Err(e) = signal_update(handle_id, value) {
+                println!("signal_update failed: {:?}", e);
+                return Err(e);
+            }
+            Ok(0)
+        }
+        _ if n == SyscallNumber::SignalClear as isize => {
+            let handle_id = HandleId::from_raw_isize_truncated(a0);
+            let value = signal_clear(handle_id)?;
+            Ok(value.as_i32() as isize)
         }
         _ => {
             println!(

@@ -4,6 +4,7 @@ use ftl_types::message::MessageBuffer;
 use ftl_types::message::MessageInfo;
 use ftl_types::poll::PollEvent;
 use ftl_types::poll::PollSyscallResult;
+use ftl_types::signal::SignalBits;
 use ftl_types::syscall::SyscallNumber;
 use ftl_types::syscall::VsyscallPage;
 use spin::Mutex;
@@ -160,6 +161,22 @@ pub fn channel_recv(
         msgbuffer as isize,
     )?;
     Ok(MessageInfo::from_raw(ret))
+}
+
+pub fn signal_create() -> Result<HandleId, FtlError> {
+    let ret = syscall0(SyscallNumber::SignalCreate)?;
+    let handle_id = HandleId::from_raw_isize_truncated(ret);
+    Ok(handle_id)
+}
+
+pub fn signal_update(handle: HandleId, value: SignalBits) -> Result<(), FtlError> {
+    syscall2(SyscallNumber::SignalUpdate, handle.as_isize(), value.as_i32() as isize)?;
+    Ok(())
+}
+
+pub fn signal_clear(handle: HandleId) -> Result<SignalBits, FtlError> {
+    let ret = syscall1(SyscallNumber::SignalClear, handle.as_isize())?;
+    Ok(SignalBits::from_raw(ret as i32))
 }
 
 pub(crate) fn set_vsyscall(vsyscall: &'static VsyscallPage) {

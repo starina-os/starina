@@ -11,4 +11,5 @@ pub enum FtlError {
     InvalidArg,
     TooLarge,
     NotSupported,
+    WouldBlock,
 }

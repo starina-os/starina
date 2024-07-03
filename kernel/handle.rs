@@ -11,6 +11,7 @@ use crate::channel::Channel;
 use crate::folio::Folio;
 use crate::poll::Poll;
 use crate::ref_counted::SharedRef;
+use crate::signal::Signal;
 use crate::thread::Thread;
 
 /// Handle, a reference-counted pointer to a kernel object with allowed
@@ -48,6 +49,7 @@ pub enum AnyHandle {
     Thread(Handle<Thread>),
     Folio(Handle<Folio>),
     Poll(Handle<Poll>),
+    Signal(Handle<Signal>),
 }
 
 impl AnyHandle {
@@ -71,6 +73,13 @@ impl AnyHandle {
             _ => Err(FtlError::UnexpectedHandleType),
         }
     }
+
+    pub fn as_signal(&self) -> Result<&Handle<Signal>, FtlError> {
+        match self {
+            AnyHandle::Signal(ref signal) => Ok(signal),
+            _ => Err(FtlError::UnexpectedHandleType),
+        }
+    }
 }
 
 impl fmt::Debug for AnyHandle {
@@ -81,6 +90,7 @@ impl fmt::Debug for AnyHandle {
             AnyHandle::Thread(_) => write!(f, "Thread"),
             AnyHandle::Folio(_) => write!(f, "Buffer"),
             AnyHandle::Poll(_) => write!(f, "Poll"),
+            AnyHandle::Signal(_) => write!(f, "Signal"),
         }
     }
 }
@@ -106,6 +116,12 @@ impl Into<AnyHandle> for Handle<Folio> {
 impl Into<AnyHandle> for Handle<Poll> {
     fn into(self) -> AnyHandle {
         AnyHandle::Poll(self)
+    }
+}
+
+impl Into<AnyHandle> for Handle<Signal> {
+    fn into(self) -> AnyHandle {
+        AnyHandle::Signal(self)
     }
 }
 

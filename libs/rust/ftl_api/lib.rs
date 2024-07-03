@@ -16,6 +16,7 @@ pub mod panic;
 pub mod poll;
 pub mod prelude;
 pub mod print;
+pub mod signal;
 pub mod syscall;
 
 pub use ftl_api_macros::main;
