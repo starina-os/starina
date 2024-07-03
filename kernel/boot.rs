@@ -1,8 +1,4 @@
-use alloc::string::String;
-use alloc::vec;
-
 use ftl_inlinedvec::InlinedVec;
-use ftl_types::spec::AppSpec;
 use ftl_types::spec::Spec;
 use ftl_types::spec::SpecFile;
 use ftl_utils::byte_size::ByteSize;
@@ -46,29 +42,16 @@ pub fn boot(cpu_id: CpuId, bootinfo: BootInfo) -> ! {
         println!("bootfs: file: {}", file.name);
     }
 
-    fn load_app_spec(spec: &[u8], elf_file: &'static [u8]) -> (String, AppSpec, &'static [u8]) {
-        let spec_file: SpecFile = serde_json::from_slice(spec).expect("failed to parse app spec");
-        let Spec::App(app_spec) = spec_file.spec;
-        (spec_file.name, app_spec, elf_file)
-    }
+    let spec_file: SpecFile = serde_json::from_slice(include_bytes!("../boot.spec.json")).expect("failed to parse boot spec");
+    let boot_spec = match spec_file.spec {
+        Spec::Boot(boot_spec) => {
+            boot_spec
+        }
+        _ => panic!("unexpected boot spec"),
+    };
 
     let mut autopilot = Autopilot::new();
-    autopilot
-        .start_apps(vec![
-            load_app_spec(
-                include_bytes!("../apps/ping/app.spec.json"),
-                &bootfs.find_by_name("apps/ping.elf").unwrap().data,
-            ),
-            load_app_spec(
-                include_bytes!("../apps/pong/app.spec.json"),
-                &bootfs.find_by_name("apps/pong.elf").unwrap().data,
-            ),
-            // load_app_spec(
-            //     include_bytes!("../apps/virtio_blk/app.spec.json"),
-            //     &bootfs.find_by_name("apps/virtio_blk.elf").unwrap().data,
-            // ),
-        ])
-        .expect("failed to start apps");
+    autopilot.boot(&bootfs, &boot_spec);
 
     arch::yield_cpu();
 

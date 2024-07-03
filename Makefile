@@ -3,6 +3,8 @@ MACHINE ?= qemu-virt
 RELEASE ?=            # "1" to build release version
 V       ?=            # "1" to enable verbose output
 STARTUP ?= apps/hello
+
+# Note: Don't forget to update boot.spec.json as well!
 APPS    ?= apps/ping apps/pong apps/virtio_blk
 
 # Disable builtin implicit rules and variables.
@@ -84,7 +86,12 @@ build/startup.elf: build/$(STARTUP).elf
 build/bootfs.bin: build/ftl_mkbootfs $(app_elfs) Makefile
 	rm -rf build/bootfs
 	mkdir -p build/bootfs
-	cp -r build/apps build/bootfs
+	for app_elf in $(app_elfs); do \
+		app_name=$$(basename $${app_elf%.elf}); \
+		mkdir -p build/bootfs/apps/$${app_name}; \
+		cp $${app_elf} build/bootfs/apps/$${app_name}/app.elf; \
+		cp apps/$${app_name}/app.spec.json build/bootfs/apps/$${app_name}/app.spec.json; \
+	done
 	$(PROGRESS) "MKBOOTFS" "$(@)"
 	./build/ftl_mkbootfs -o $(@) build/bootfs
 

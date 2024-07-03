@@ -1,3 +1,4 @@
+use alloc::format;
 use alloc::string::String;
 use alloc::vec::Vec;
 
@@ -8,9 +9,12 @@ use ftl_types::message::HandleOwnership;
 use ftl_types::message::MessageBuffer;
 use ftl_types::message::MessageSerialize;
 use ftl_types::spec::AppSpec;
+use ftl_types::spec::BootSpec;
+use ftl_types::spec::Spec;
 use hashbrown::HashMap;
 
 use crate::app_loader::AppLoader;
+use crate::bootfs::Bootfs;
 use crate::channel::Channel;
 use crate::cpuvar::current_thread;
 use crate::handle::Handle;
@@ -55,7 +59,35 @@ impl Autopilot {
         }
     }
 
-    pub fn start_apps(&mut self, apps: Vec<(String, AppSpec, &'static [u8])>) -> Result<(), Error> {
+    pub fn boot(&mut self, bootfs: &Bootfs, boot_spec: &BootSpec) {
+        let mut apps = Vec::new();
+        for app_name in &boot_spec.autostart_apps {
+            let elf_file = match bootfs.find_by_name(&format!("apps/{}/app.elf", app_name)) {
+                Some(file) => file,
+                None => {
+                    panic!("app.elf not found for \"{}\"", app_name);
+                }
+            };
+
+            let spec_file = match bootfs.find_by_name(&format!("apps/{}/app.spec.json", app_name)) {
+                Some(file) => file,
+                None => {
+                    panic!("app.spec.json not found for \"{}\"", app_name);
+                }
+            };
+
+            let app_spec = match serde_json::from_slice(spec_file.data).expect("failed to parse spec"){
+                Spec::App(spec) => spec,
+                _ => panic!("unexpected spec type for \"{}\"", app_name),
+            };
+
+            apps.push((app_name.clone(), app_spec, elf_file.data));
+        }
+
+        self.start_apps(apps).expect("failed to start apps");
+    }
+
+    fn start_apps(&mut self, apps: Vec<(String, AppSpec, &'static [u8])>) -> Result<(), Error> {
         for (name, spec, elf_file) in apps {
             let app_name = AppName(name.clone());
 

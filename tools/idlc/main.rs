@@ -204,6 +204,9 @@ fn main() -> Result<()> {
                     used_messages,
                 });
             }
+            _ => {
+                anyhow::bail!("unexpected spec type for {}", spec_path.display());
+            }
         }
     }
 

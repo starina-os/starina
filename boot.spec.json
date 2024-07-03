@@ -1,0 +1,11 @@
+{
+    "name": "boot",
+    "kind": "boot/v0",
+    "spec": {
+        "autostart_apps": [
+            "ping",
+            "pong",
+            "virtio_blk"
+        ]
+    }
+}
