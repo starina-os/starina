@@ -16,6 +16,7 @@ ftl_autogen = { workspace = true }
 ftl_inlinedvec = { workspace = true }
 hashbrown = { workspace = true }
 serde_json = { workspace = true, features = ["alloc"] }
+fdt-rs = { workspace = true }
 
 # TODO: Remove this dependency
 spin = { workspace = true }

@@ -8,6 +8,7 @@ use crate::autopilot::Autopilot;
 use crate::bootfs::Bootfs;
 use crate::cpuvar;
 use crate::cpuvar::CpuId;
+use crate::device_tree::walk_device_nodes;
 use crate::memory;
 use crate::process;
 
@@ -36,8 +37,12 @@ pub fn boot(cpu_id: CpuId, bootinfo: BootInfo) -> ! {
     process::init();
     cpuvar::percpu_init(cpu_id);
 
-    let bootfs = Bootfs::load();
+    let devices = walk_device_nodes(bootinfo.dtb_addr);
+    for device in devices {
+        println!("device: {} ({})", device.compatible, device.name);
+    }
 
+    let bootfs = Bootfs::load();
     for file in bootfs.files() {
         println!("bootfs: file: {}", file.name);
     }
