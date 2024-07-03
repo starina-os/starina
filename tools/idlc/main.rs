@@ -8,6 +8,7 @@ use anyhow::Result;
 use clap::Parser;
 use ftl_types::idl;
 use ftl_types::idl::IdlFile;
+use ftl_types::spec::DependWithName;
 use ftl_types::spec::Spec;
 use ftl_types::spec::SpecFile;
 use minijinja::context;
@@ -48,7 +49,7 @@ struct Protocol {
 #[derive(Debug, Serialize)]
 struct App {
     name: String,
-    depends: Vec<String>,
+    depends: Vec<DependWithName>,
     used_messages: Vec<UsedMessage>,
 }
 

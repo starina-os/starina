@@ -4,6 +4,7 @@ use alloc::vec::Vec;
 use ftl_elf::Elf;
 use ftl_elf::PhdrType;
 use ftl_elf::ET_DYN;
+use ftl_types::environ::Device;
 use ftl_types::handle::HandleId;
 use ftl_types::handle::HandleRights;
 use ftl_types::syscall::VsyscallPage;
@@ -168,6 +169,7 @@ impl<'a> AppLoader<'a> {
         autopilot_ch_id: HandleId,
         handles: &mut HandleTable,
         depends: Vec<(String, AnyHandle)>,
+        devices: Vec<(String, Vec<Device>)>,
     ) -> (usize, usize) {
         let mut depends_map = serde_json::Map::with_capacity(depends.len());
         for (depend_name, handle) in depends {
@@ -175,6 +177,13 @@ impl<'a> AppLoader<'a> {
             depends_map.insert(
                 depend_name,
                 serde_json::Value::Number(serde_json::Number::from(handle_id.as_i32())),
+            );
+        }
+
+        for (dep_name, devices) in devices {
+            depends_map.insert(
+                dep_name.clone(),
+                serde_json::Value::Array(serde_json::to_value(devices).unwrap().as_array().unwrap().clone()),
             );
         }
 
@@ -205,6 +214,7 @@ impl<'a> AppLoader<'a> {
         mut self,
         autopilot_ch: Handle<Channel>,
         depends: Vec<(String, AnyHandle)>,
+        devices: Vec<(String, Vec<ftl_types::environ::Device>)>,
     ) -> Result<SharedRef<Process>, Error> {
         self.load_segments();
 
@@ -218,7 +228,7 @@ impl<'a> AppLoader<'a> {
         let autopilot_ch_id = handles.add(autopilot_ch).unwrap();
 
         let (environ_ptr, environ_len) =
-            self.install_handles_and_environ(autopilot_ch_id, &mut *handles, depends);
+            self.install_handles_and_environ(autopilot_ch_id, &mut *handles, depends, devices);
 
         let vsyscall_buffer = AllocatedPages::alloc(PAGE_SIZE).unwrap();
         let vsyscall_ptr = vsyscall_buffer.as_ptr() as *mut VsyscallPage;

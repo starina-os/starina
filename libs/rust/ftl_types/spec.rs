@@ -21,8 +21,31 @@ pub enum Spec {
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DeviceTree {
+    pub compatible: Vec<String>,
+}
+
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase", tag = "type")]
+pub enum Depend {
+    Service {
+        protocol: String,
+    },
+    Device {
+        device_tree: Option<DeviceTree>,
+    },
+}
+
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DependWithName {
+    pub name: String,
+    #[serde(flatten)]
+    pub depend: Depend,
+}
+
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AppSpec {
-    pub depends: Vec<String>,
+    pub depends: Vec<DependWithName>,
     pub provides: Vec<String>,
 }
 

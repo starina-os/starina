@@ -5,6 +5,7 @@ use ftl_api::folio::MmioFolio;
 use ftl_api::prelude::*;
 use ftl_api::types::address::PAddr;
 use ftl_api::types::address::VAddr;
+use ftl_api::types::environ::Device;
 use ftl_api_autogen::apps::virtio_blk::Environ;
 use ftl_virtio::transports::mmio::VirtioMmio;
 use ftl_virtio::transports::VirtioTransport;
@@ -73,27 +74,32 @@ impl BufferPool {
     }
 }
 
-#[ftl_api::main]
-pub fn main(_env: Environ) {
-    info!("vstarting irtio_blk");
-    let base_paddr = PAddr::new(0x10001000).unwrap();
-    let mmio = MmioFolio::create_pinned(base_paddr, 0x1000).unwrap();
+fn probe(devices: &[Device], device_type: u32) -> Option<VirtioMmio> {
+    for device in devices {
+        let base_paddr = PAddr::new(device.reg as usize).unwrap();
+        let mmio = MmioFolio::create_pinned(base_paddr, 0x1000).unwrap();
 
-    let mut transport = VirtioMmio::new(mmio);
-    match transport.probe() {
-        Some(device_type) if device_type == VIRTIO_DEVICE_TYPE_BLK => {
-            trace!("found a virtio_blk device");
-        }
-        Some(device_type) => {
-            error!("unexpected device type: {}", device_type);
-            return;
-        }
-        None => {
-            error!("failed to probe the device");
-            return;
+        let mut transport = VirtioMmio::new(mmio);
+        match transport.probe() {
+            Some(ty) if ty == device_type => {
+                return Some(transport);
+            }
+            Some(ty) => {
+                warn!("unexpected device type: {}", ty);
+            }
+            None => {
+                warn!("failed to probe the device");
+            }
         }
     }
 
+    None
+}
+
+#[ftl_api::main]
+pub fn main(env: Environ) {
+    info!("starting virtio_blk: {:?}", env.depends.virtio);
+    let transport = probe(&env.depends.virtio, VIRTIO_DEVICE_TYPE_BLK).unwrap();
     let mut transport = Box::new(transport) as Box<dyn VirtioTransport>;
     let mut virtqueues = transport.initialize(0, 1).unwrap();
 

@@ -11,7 +11,7 @@ use ftl_api_autogen::protocols::ping::PingRequest;
 #[ftl_api::main]
 pub fn main(mut env: Environ) {
     info!("starting ping");
-    let ch = env.depends.ping_server.take().unwrap();
+    let ch = env.depends.ping.take().unwrap();
 
     let mut buffer = MessageBuffer::new();
     for i in 0.. {

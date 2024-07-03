@@ -21,15 +21,19 @@ pub mod apps {
 
                 let depends = Depends {
                     {% for dep in app.depends %}
-                    {{ dep }}: {
-                        use ftl_api::channel::Channel;
-                        use ftl_api::handle::OwnedHandle;
-                        use ftl_types::handle::HandleId;
+                        {{ dep.name }}: {
+                            {% if dep.type == "service" %}
+                                use ftl_api::channel::Channel;
+                                use ftl_api::handle::OwnedHandle;
+                                use ftl_types::handle::HandleId;
 
-                        let handle_id = HandleId::from_raw(environ_json.depends.{{ dep }});
-                        let handle = OwnedHandle::from_raw(handle_id);
-                        Some(Channel::from_handle(handle))
-                    },
+                                let handle_id = HandleId::from_raw(environ_json.depends.{{ dep.name }});
+                                let handle = OwnedHandle::from_raw(handle_id);
+                                Some(Channel::from_handle(handle))
+                            {% elif dep.type == "device" %}
+                                environ_json.depends.{{ dep.name }}
+                            {% endif %}
+                        },
                     {% endfor %}
                 };
 
@@ -50,7 +54,11 @@ pub mod apps {
 
         pub struct Depends {
             {%- for dep in app.depends %}
-            pub {{ dep }}: Option<ftl_api::channel::Channel>,
+                {%- if dep.type == "service" %}
+                    pub {{ dep.name }}: Option<ftl_api::channel::Channel>,
+                {%- elif dep.type == "device" %}
+                    pub {{ dep.name }}: ftl_api::prelude::Vec<ftl_types::environ::Device>,
+                {%- endif %}
             {%- endfor %}
         }
 
@@ -63,7 +71,11 @@ pub mod apps {
         #[derive(serde::Serialize, serde::Deserialize)]
         struct DependsJson {
             {%- for dep in app.depends %}
-            pub {{ dep }}: i32 /* Handle ID */,
+                {%- if dep.type == "service" %}
+                    pub {{ dep.name }}: i32,
+                {%- elif dep.type == "device" %}
+                    pub {{ dep.name }}: ftl_api::prelude::Vec<ftl_types::environ::Device>,
+                {%- endif %}
             {%- endfor %}
         }
 

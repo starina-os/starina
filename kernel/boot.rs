@@ -38,7 +38,7 @@ pub fn boot(cpu_id: CpuId, bootinfo: BootInfo) -> ! {
     cpuvar::percpu_init(cpu_id);
 
     let devices = walk_device_nodes(bootinfo.dtb_addr);
-    for device in devices {
+    for device in &devices {
         println!("device: {} ({})", device.compatible, device.name);
     }
 
@@ -55,7 +55,7 @@ pub fn boot(cpu_id: CpuId, bootinfo: BootInfo) -> ! {
     };
 
     let mut autopilot = Autopilot::new();
-    autopilot.boot(&bootfs, &boot_spec);
+    autopilot.boot(&bootfs, &boot_spec, &devices);
 
     arch::yield_cpu();
 

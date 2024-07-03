@@ -2,7 +2,15 @@
     "name": "virtio_blk",
     "kind": "app/v0",
     "spec": {
-        "depends": [],
+        "depends": [
+            {
+                "type": "device",
+                "name": "virtio",
+                "device_tree": {
+                    "compatible": ["virtio,mmio"]
+                }
+            }
+        ],
         "provides": []
     }
 }

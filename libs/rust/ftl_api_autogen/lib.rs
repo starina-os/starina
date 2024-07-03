@@ -21,12 +21,12 @@ pub mod apps {
                     serde_json::from_slice(environ_bytes).expect("failed to parse environ JSON");
 
                 let depends = Depends {
-                    ping_server: {
+                    ping: {
                         use ftl_api::channel::Channel;
                         use ftl_api::handle::OwnedHandle;
                         use ftl_types::handle::HandleId;
 
-                        let handle_id = HandleId::from_raw(environ_json.depends.ping_server);
+                        let handle_id = HandleId::from_raw(environ_json.depends.ping);
                         let handle = OwnedHandle::from_raw(handle_id);
                         Some(Channel::from_handle(handle))
                     },
@@ -48,7 +48,7 @@ pub mod apps {
         }
 
         pub struct Depends {
-            pub ping_server: Option<ftl_api::channel::Channel>,
+            pub ping: Option<ftl_api::channel::Channel>,
         }
 
         #[derive(serde::Serialize, serde::Deserialize)]
@@ -59,7 +59,7 @@ pub mod apps {
 
         #[derive(serde::Serialize, serde::Deserialize)]
         struct DependsJson {
-            pub ping_server: i32, /* Handle ID */
+            pub ping: i32,
         }
 
         pub enum Message<'a> {
@@ -228,7 +228,9 @@ pub mod apps {
                 let environ_json: EnvironJson =
                     serde_json::from_slice(environ_bytes).expect("failed to parse environ JSON");
 
-                let depends = Depends {};
+                let depends = Depends {
+                    virtio: { environ_json.depends.virtio },
+                };
 
                 Self {
                     autopilot_ch: {
@@ -245,7 +247,9 @@ pub mod apps {
             }
         }
 
-        pub struct Depends {}
+        pub struct Depends {
+            pub virtio: ftl_api::prelude::Vec<ftl_types::environ::Device>,
+        }
 
         #[derive(serde::Serialize, serde::Deserialize)]
         struct EnvironJson {
@@ -254,7 +258,9 @@ pub mod apps {
         }
 
         #[derive(serde::Serialize, serde::Deserialize)]
-        struct DependsJson {}
+        struct DependsJson {
+            pub virtio: ftl_api::prelude::Vec<ftl_types::environ::Device>,
+        }
 
         pub enum Message<'a> {
             NewclientRequest(ftl_autogen::protocols::autopilot::NewclientRequestReader<'a>),

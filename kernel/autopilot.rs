@@ -1,5 +1,6 @@
 use alloc::format;
 use alloc::string::String;
+use alloc::string::ToString;
 use alloc::vec::Vec;
 
 use ftl_autogen::protocols::autopilot::NewclientRequest;
@@ -10,6 +11,7 @@ use ftl_types::message::MessageBuffer;
 use ftl_types::message::MessageSerialize;
 use ftl_types::spec::AppSpec;
 use ftl_types::spec::BootSpec;
+use ftl_types::spec::Depend;
 use ftl_types::spec::Spec;
 use hashbrown::HashMap;
 
@@ -17,6 +19,7 @@ use crate::app_loader::AppLoader;
 use crate::bootfs::Bootfs;
 use crate::channel::Channel;
 use crate::cpuvar::current_thread;
+use crate::device_tree;
 use crate::handle::Handle;
 use crate::ref_counted::SharedRef;
 
@@ -59,7 +62,7 @@ impl Autopilot {
         }
     }
 
-    pub fn boot(&mut self, bootfs: &Bootfs, boot_spec: &BootSpec) {
+    pub fn boot(&mut self, bootfs: &Bootfs, boot_spec: &BootSpec, device_tree_devices: &[device_tree::Device]) {
         let mut apps = Vec::new();
         for app_name in &boot_spec.autostart_apps {
             let elf_file = match bootfs.find_by_name(&format!("apps/{}/app.elf", app_name)) {
@@ -85,10 +88,10 @@ impl Autopilot {
             apps.push((app_name.clone(), app_spec, elf_file.data));
         }
 
-        self.start_apps(apps).expect("failed to start apps");
+        self.start_apps(apps,device_tree_devices).expect("failed to start apps");
     }
 
-    fn start_apps(&mut self, apps: Vec<(String, AppSpec, &'static [u8])>) -> Result<(), Error> {
+    fn start_apps(&mut self, apps: Vec<(String, AppSpec, &'static [u8])>, device_tree_devices: &[device_tree::Device]) -> Result<(), Error> {
         for (name, spec, elf_file) in apps {
             let app_name = AppName(name.clone());
 
@@ -117,41 +120,78 @@ impl Autopilot {
         let mut msgbuffer = MessageBuffer::new();
         for app in self.apps.values() {
             let mut depend_handles = Vec::new();
-            for name in &app.spec.depends {
-                let proto_name = ProtocolName(name.clone());
-                let (provider_ch, app_ch) = Channel::new().map_err(Error::CreateChannel)?;
-                let provider_name = match self.providers.get(&proto_name) {
-                    Some(name) => name,
-                    None => {
-                        return Err(Error::NoService {
-                            app: app.name.clone(),
-                            protocol: proto_name,
-                        });
+            let mut devices = Vec::new();
+            for dep in &app.spec.depends {
+                match &dep.depend {
+                    Depend::Device { device_tree } => {
+                        let mut found = Vec::new();
+                        for device in device_tree_devices {
+                            if let Some(device_tree) = &device_tree {
+                                if device_tree.compatible.iter().any(|compatible| compatible == device.compatible) {
+                                    let interrupts = match &device.interrupts {
+                                        Some(interrupts) => {
+                                            let mut vec = Vec::new();
+                                            for interrupt in interrupts.iter() {
+                                                vec.push(*interrupt);
+                                            }
+                                            Some(vec)
+                                        }
+                                        None => None,
+                                    };
+
+                                    found.push(ftl_types::environ::Device {
+                                        name: device.name.to_string(),
+                                        compatible: device.compatible.to_string(),
+                                        reg: device.reg,
+                                        interrupts,
+                                    });
+                                }
+                            }
+                        }
+
+                        if found.is_empty() {
+                            panic!("no device found for {:?}", device_tree);
+                        }
+
+                        devices.push((dep.name.clone(), found));
                     }
-                };
+                    Depend::Service { protocol } => {
+                        let proto_name = ProtocolName(protocol.clone());
+                        let (provider_ch, app_ch) = Channel::new().map_err(Error::CreateChannel)?;
+                        let provider_name = match self.providers.get(&proto_name) {
+                            Some(name) => name,
+                            None => {
+                                return Err(Error::NoService {
+                                    app: app.name.clone(),
+                                    protocol: proto_name,
+                                });
+                            }
+                        };
 
-                let handle_id = current_thread
-                    .process()
-                    .handles()
-                    .lock()
-                    .add(Handle::new(provider_ch.into(), HandleRights::NONE))
-                    .unwrap();
+                        let handle_id = current_thread
+                            .process()
+                            .handles()
+                            .lock()
+                            .add(Handle::new(provider_ch.into(), HandleRights::NONE))
+                            .unwrap();
 
-                let provider = self.apps.get(provider_name).unwrap();
-                (NewclientRequest {
-                    handle: HandleOwnership(handle_id),
-                })
-                .serialize(&mut msgbuffer);
+                        let provider = self.apps.get(provider_name).unwrap();
+                        (NewclientRequest {
+                            handle: HandleOwnership(handle_id),
+                        })
+                        .serialize(&mut msgbuffer);
 
-                provider
-                    .our_ch
-                    .send(NewclientRequest::MSGINFO, &msgbuffer)
-                    .map_err(Error::SendMessage)?;
+                        provider
+                            .our_ch
+                            .send(NewclientRequest::MSGINFO, &msgbuffer)
+                            .map_err(Error::SendMessage)?;
 
-                depend_handles.push((
-                    proto_name.0,
-                    Handle::new(app_ch.into(), HandleRights::NONE).into(),
-                ));
+                        depend_handles.push((
+                            proto_name.0,
+                            Handle::new(app_ch.into(), HandleRights::NONE).into(),
+                        ));
+                    }
+                }
             }
 
             let their_ch_handle = Handle::new(
@@ -162,7 +202,7 @@ impl Autopilot {
 
             AppLoader::parse(app.elf_file)
                 .expect("invalid ELF")
-                .load(their_ch_handle, depend_handles)
+                .load(their_ch_handle, depend_handles, devices)
                 .expect("failed to load ELF");
         }
 

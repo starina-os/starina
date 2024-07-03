@@ -5,14 +5,12 @@ use core::slice;
 use fdt_rs::base::*;
 use fdt_rs::prelude::*;
 use fdt_rs::spec::fdt_header;
-use fdt_rs::spec::Phandle;
 use ftl_inlinedvec::InlinedVec;
 
 pub struct Device {
     pub name: &'static str,
     pub compatible: &'static str,
     pub reg: u64,
-    pub interrupt_parent: Option<Phandle>,
     pub interrupts: Option<InlinedVec<u32, 2>>,
 }
 
@@ -33,7 +31,6 @@ pub fn walk_device_nodes(dtb_addr: *const u8) -> Vec<Device> {
         let mut prop_iter = node.props();
         let mut compatible = None;
         let mut reg = None;
-        let mut interrupt_parent = None;
         let mut interrupts = None;
         while let Ok(Some(prop)) = prop_iter.next() {
             match prop.name() {
@@ -42,9 +39,6 @@ pub fn walk_device_nodes(dtb_addr: *const u8) -> Vec<Device> {
                 }
                 Ok("reg") => {
                     reg = prop.u64(0).ok();
-                }
-                Ok("interrupt-parent") => {
-                    interrupt_parent = prop.phandle(0).ok();
                 }
                 Ok("interrupts") => {
                     if prop.length() > 0 {
@@ -67,7 +61,6 @@ pub fn walk_device_nodes(dtb_addr: *const u8) -> Vec<Device> {
                 name: node.name().unwrap(),
                 compatible,
                 reg,
-                interrupt_parent,
                 interrupts,
             });
         }
