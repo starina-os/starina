@@ -76,10 +76,11 @@ impl Autopilot {
                 }
             };
 
-            let app_spec = match serde_json::from_slice(spec_file.data).expect("failed to parse spec"){
-                Spec::App(spec) => spec,
-                _ => panic!("unexpected spec type for \"{}\"", app_name),
-            };
+            let app_spec =
+                match serde_json::from_slice(spec_file.data).expect("failed to parse spec") {
+                    Spec::App(spec) => spec,
+                    _ => panic!("unexpected spec type for \"{}\"", app_name),
+                };
 
             apps.push((app_name.clone(), app_spec, elf_file.data));
         }
