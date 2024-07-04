@@ -187,7 +187,7 @@ impl Autopilot {
                             .map_err(Error::SendMessage)?;
 
                         depend_handles.push((
-                            proto_name.0,
+                            dep.name.clone(),
                             Handle::new(app_ch.into(), HandleRights::NONE).into(),
                         ));
                     }
