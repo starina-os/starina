@@ -89,7 +89,7 @@ build/bootfs.bin: build/ftl_mkbootfs $(app_elfs) Makefile
 	for app_elf in $(app_elfs); do \
 		app_name=$$(basename $${app_elf%.elf}); \
 		mkdir -p build/bootfs/apps/$${app_name}; \
-		cp $${app_elf} build/bootfs/apps/$${app_name}/app.elf; \
+		cp $${app_elf}.stripped build/bootfs/apps/$${app_name}/app.elf; \
 		cp apps/$${app_name}/app.spec.json build/bootfs/apps/$${app_name}/app.spec.json; \
 	done
 	$(PROGRESS) "MKBOOTFS" "$(@)"
@@ -108,6 +108,7 @@ build/%.elf: $(sources) libs/rust/ftl_autogen/lib.rs Makefile
 		--target libs/rust/ftl_api/arch/$(ARCH)/$(ARCH)-user.json \
 		--manifest-path $(patsubst build/%.elf,%,$(@))/Cargo.toml
 	cp build/cargo/$(ARCH)-user/$(BUILD)/$(patsubst build/apps/%.elf,%,$(@)) $(@)
+	$(OBJCOPY) --strip-all --strip-debug $(@) $(@).stripped
 
 build/ftl_idlc: $(shell find tools/idlc libs/rust/ftl_types -name '*.rs') $(shell find tools/idlc -name '*.j2')
 	mkdir -p $(@D)
