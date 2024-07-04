@@ -1,0 +1,14 @@
+[package]
+name = "boot_arm64"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "boot_arm64"
+path = "main.rs"
+
+[dependencies]
+ftl_kernel = { workspace = true }
+ftl_utils = { workspace = true }
+ftl_inlinedvec = { workspace = true }

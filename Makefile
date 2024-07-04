@@ -1,4 +1,6 @@
-ARCH    ?= riscv64
+# "riscv64" or "arm64"
+ARCH    ?= arm64
+
 MACHINE ?= qemu-virt
 RELEASE ?=            # "1" to build release version
 V       ?=            # "1" to enable verbose output
@@ -23,19 +25,31 @@ else
 BUILD := debug
 endif
 
-QEMU     ?= qemu-system-riscv64
+ifeq ($(ARCH),riscv64)
+QEMU      ?= qemu-system-riscv64
+QEMUFLAGS += -machine virt -m 256 -bios default
+QEMUFLAGS += -global virtio-mmio.force-legacy=false
+QEMUFLAGS += -drive id=drive0,file=disk.img,format=raw,if=none
+QEMUFLAGS += -device virtio-blk-device,drive=drive0,bus=virtio-mmio-bus.0
+else ifeq ($(ARCH),arm64)
+QEMU      ?= qemu-system-aarch64
+QEMUFLAGS += -machine virt -cpu cortex-a53 -m 256
+QEMUFLAGS += -global virtio-mmio.force-legacy=false
+QEMUFLAGS += -drive id=drive0,file=disk.img,format=raw,if=none
+QEMUFLAGS += -device virtio-blk-device,drive=drive0,bus=virtio-mmio-bus.0
+else
+$(error "Unknown ARCH: $(ARCH)")
+endif
+
 CARGO    ?= cargo
 PROGRESS ?= printf "  \\033[1;96m%8s\\033[0m  \\033[1;m%s\\033[0m\\n"
+OBJCOPY  ?= llvm-objcopy
 
-RUSTFLAGS += -Z macro-backtrace
+RUSTFLAGS += -Z macro-backtrace --emit asm
 CARGOFLAGS += -Z build-std=core,alloc -Z build-std-features=compiler-builtins-mem
 
-QEMUFLAGS += -machine virt -m 256 -bios default
 QEMUFLAGS += -nographic -serial mon:stdio --no-reboot
 QEMUFLAGS += -d cpu_reset,unimp,guest_errors,int -D qemu.log
-QEMUFLAGS += -global virtio-mmio.force-legacy=false
-QEMUFLAGS += -drive id=drive0,file=disk.img,format=raw
-QEMUFLAGS += -device virtio-blk-device,drive=drive0,bus=virtio-mmio-bus.0
 QEMUFLAGS += $(if $(GDB),-gdb tcp::7789 -S)
 
 app_elfs := $(foreach app,$(APPS),build/$(app).elf)

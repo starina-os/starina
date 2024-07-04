@@ -1,0 +1,37 @@
+{
+    "arch": "aarch64",
+    "os": "none",
+    "crt-objects-fallback": "false",
+    "data-layout": "e-m:e-i8:8:32-i16:16:32-i64:64-i128:128-n32:64-S128-Fn32",
+    "disable-redzone": true,
+    "features": "+v8a,+strict-align,-neon,-fp-armv8",
+    "is-builtin": false,
+    "linker": "rust-lld",
+    "linker-flavor": "gnu-lld",
+    "llvm-target": "aarch64-unknown-none",
+    "max-atomic-width": 128,
+    "metadata": {
+      "description": null,
+      "host_tools": null,
+      "std": null,
+      "tier": null
+    },
+    "panic-strategy": "abort",
+    "pre-link-args": {
+        "ld.lld": [
+            "--pie",
+            "--script=libs/rust/ftl_api/arch/arm64/arm64-user.ld"
+        ]
+    },
+    "static-position-independent-executables": true,
+    "relocation-model": "pie",
+    "frame-pointer": "always",
+    "stack-probes": {
+      "kind": "inline"
+    },
+    "supported-sanitizers": [
+      "kcfi",
+      "kernel-address"
+    ],
+    "target-pointer-width": "64"
+}

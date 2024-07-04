@@ -30,7 +30,6 @@ pub enum Error {
     NoPhdrs,
     AllocBuffer(AllocPagesError),
     NotPIE,
-    #[cfg(target_arch = "riscv64")]
     NoRelaDyn,
 }
 
@@ -98,7 +97,7 @@ impl<'a> AppLoader<'a> {
         }
     }
 
-    #[cfg(target_arch = "riscv64")]
+    #[cfg(any(target_arch = "riscv64", target_arch = "aarch64"))]
     fn get_shdr_by_name(&self, name: &str) -> Option<&ftl_elf::Shdr> {
         fn get_cstr(buffer: &[u8], offset: usize) -> Option<&str> {
             let mut len = 0;
@@ -130,8 +129,7 @@ impl<'a> AppLoader<'a> {
         })
     }
 
-    #[cfg(target_arch = "riscv64")]
-    fn relocate_riscv(&mut self) -> Result<(), Error> {
+    fn relocate_rela_dyn(&mut self) -> Result<(), Error> {
         use core::mem::size_of;
 
         use ftl_elf::Rela;
@@ -150,10 +148,14 @@ impl<'a> AppLoader<'a> {
         };
 
         for rela in rela_entries {
-            use ftl_elf::riscv::R_RISCV_RELATIVE;
-
             match rela.r_info {
-                R_RISCV_RELATIVE => unsafe {
+                #[cfg(target_arch = "riscv64")]
+                ftl_elf::R_RISCV_RELATIVE => unsafe {
+                    let ptr = (self.base_addr() + rela.r_offset as usize) as *mut i64;
+                    *ptr += (self.base_addr() as i64) + rela.r_addend;
+                },
+                #[cfg(target_arch = "aarch64")]
+                ftl_elf::R_AARCH64_RELATIVE => unsafe {
                     let ptr = (self.base_addr() + rela.r_offset as usize) as *mut i64;
                     *ptr += (self.base_addr() as i64) + rela.r_addend;
                 },
@@ -223,9 +225,7 @@ impl<'a> AppLoader<'a> {
         devices: Vec<(String, Vec<ftl_types::environ::Device>)>,
     ) -> Result<SharedRef<Process>, Error> {
         self.load_segments();
-
-        #[cfg(target_arch = "riscv64")]
-        self.relocate_riscv()?;
+        self.relocate_rela_dyn()?;
 
         let entry = unsafe { core::mem::transmute(self.entry_addr()) };
         let proc = SharedRef::new(Process::create());

@@ -11,7 +11,7 @@ pub struct Device {
     pub name: &'static str,
     pub compatible: &'static str,
     pub reg: u64,
-    pub interrupts: Option<InlinedVec<u32, 2>>,
+    pub interrupts: Option<InlinedVec<u32, 16>>,
 }
 
 pub fn walk_device_nodes(dtb_addr: *const u8) -> Vec<Device> {
