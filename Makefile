@@ -100,6 +100,8 @@ build/startup.elf: build/$(STARTUP).elf
 build/bootfs.bin: build/ftl_mkbootfs $(app_elfs) Makefile
 	rm -rf build/bootfs
 	mkdir -p build/bootfs
+	mkdir -p build/bootfs/cfg
+	cp boot.spec.json build/bootfs/cfg/boot.spec.json
 	for app_elf in $(app_elfs); do \
 		app_name=$$(basename $${app_elf%.elf}); \
 		mkdir -p build/bootfs/apps/$${app_name}; \
