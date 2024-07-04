@@ -183,7 +183,13 @@ impl<'a> AppLoader<'a> {
         for (dep_name, devices) in devices {
             depends_map.insert(
                 dep_name.clone(),
-                serde_json::Value::Array(serde_json::to_value(devices).unwrap().as_array().unwrap().clone()),
+                serde_json::Value::Array(
+                    serde_json::to_value(devices)
+                        .unwrap()
+                        .as_array()
+                        .unwrap()
+                        .clone(),
+                ),
             );
         }
 

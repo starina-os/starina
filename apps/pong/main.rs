@@ -20,6 +20,7 @@ enum Context {
 #[ftl_api::main]
 pub fn main(mut env: Environ) {
     info!("start main...");
+
     let mut mainloop = Mainloop::<Context, Message>::new().unwrap();
     mainloop
         .add_channel(env.autopilot_ch.take().unwrap(), Context::Autopilot)

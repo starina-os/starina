@@ -6,7 +6,6 @@ use ftl_types::signal::SignalBits;
 use crate::handle::OwnedHandle;
 use crate::syscall;
 
-
 pub struct Signal {
     handle: OwnedHandle,
 }

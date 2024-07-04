@@ -1,7 +1,9 @@
+use alloc::string::String;
+use alloc::vec::Vec;
 use core::fmt;
 
-use alloc::{string::String, vec::Vec};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 #[derive(PartialEq, Eq, Deserialize, Serialize)]
 pub struct Device {

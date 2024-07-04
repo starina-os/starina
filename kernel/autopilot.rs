@@ -62,7 +62,12 @@ impl Autopilot {
         }
     }
 
-    pub fn boot(&mut self, bootfs: &Bootfs, boot_spec: &BootSpec, device_tree_devices: &[device_tree::Device]) {
+    pub fn boot(
+        &mut self,
+        bootfs: &Bootfs,
+        boot_spec: &BootSpec,
+        device_tree_devices: &[device_tree::Device],
+    ) {
         let mut apps = Vec::new();
         for app_name in &boot_spec.autostart_apps {
             let elf_file = match bootfs.find_by_name(&format!("apps/{}/app.elf", app_name)) {
@@ -88,10 +93,15 @@ impl Autopilot {
             apps.push((app_name.clone(), app_spec, elf_file.data));
         }
 
-        self.start_apps(apps,device_tree_devices).expect("failed to start apps");
+        self.start_apps(apps, device_tree_devices)
+            .expect("failed to start apps");
     }
 
-    fn start_apps(&mut self, apps: Vec<(String, AppSpec, &'static [u8])>, device_tree_devices: &[device_tree::Device]) -> Result<(), Error> {
+    fn start_apps(
+        &mut self,
+        apps: Vec<(String, AppSpec, &'static [u8])>,
+        device_tree_devices: &[device_tree::Device],
+    ) -> Result<(), Error> {
         for (name, spec, elf_file) in apps {
             let app_name = AppName(name.clone());
 
@@ -127,7 +137,11 @@ impl Autopilot {
                         let mut found = Vec::new();
                         for device in device_tree_devices {
                             if let Some(device_tree) = &device_tree {
-                                if device_tree.compatible.iter().any(|compatible| compatible == device.compatible) {
+                                if device_tree
+                                    .compatible
+                                    .iter()
+                                    .any(|compatible| compatible == device.compatible)
+                                {
                                     let interrupts = match &device.interrupts {
                                         Some(interrupts) => {
                                             let mut vec = Vec::new();

@@ -170,7 +170,11 @@ pub fn signal_create() -> Result<HandleId, FtlError> {
 }
 
 pub fn signal_update(handle: HandleId, value: SignalBits) -> Result<(), FtlError> {
-    syscall2(SyscallNumber::SignalUpdate, handle.as_isize(), value.as_i32() as isize)?;
+    syscall2(
+        SyscallNumber::SignalUpdate,
+        handle.as_isize(),
+        value.as_i32() as isize,
+    )?;
     Ok(())
 }
 
