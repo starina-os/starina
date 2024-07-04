@@ -1,5 +1,6 @@
 use alloc::string::String;
 use alloc::vec::Vec;
+use core::fmt;
 use core::str;
 use core::str::Utf8Error;
 
@@ -90,13 +91,22 @@ impl<const CAP: usize> TryFrom<&[u8]> for BytesField<CAP> {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy)]
 #[repr(transparent)]
 pub struct StringField<const CAP: usize>(BytesField<CAP>);
 
 impl<const CAP: usize> StringField<CAP> {
     pub fn to_str(&self) -> Result<&str, Utf8Error> {
         str::from_utf8(self.0.as_slice())
+    }
+}
+
+impl<const CAP: usize> fmt::Debug for StringField<CAP> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.to_str() {
+            Ok(s) => write!(f, "{:?}", s),
+            Err(_) => write!(f, "(invalid utf-8 string)"),
+        }
     }
 }
 
