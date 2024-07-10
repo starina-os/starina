@@ -7,7 +7,7 @@ V       ?=            # "1" to enable verbose output
 STARTUP ?= apps/hello
 
 # Note: Don't forget to update boot.spec.json as well!
-APPS    ?= apps/ping apps/pong apps/virtio_blk
+APPS    ?= apps/virtio_console
 
 # Disable builtin implicit rules and variables.
 MAKEFLAGS += --no-builtin-rules --no-builtin-variables
@@ -38,6 +38,9 @@ QEMUFLAGS += -machine virt $(if $(KVM), -accel kvm -cpu host, -cpu neoverse-v1)
 QEMUFLAGS += -global virtio-mmio.force-legacy=false
 QEMUFLAGS += -drive id=drive0,file=disk.img,format=raw,if=none
 QEMUFLAGS += -device virtio-blk-device,drive=drive0,bus=virtio-mmio-bus.0
+QEMUFLAGS += -device virtio-serial-device,bus=virtio-mmio-bus.1
+QEMUFLAGS += -device virtconsole,chardev=console0
+QEMUFLAGS += -chardev file,path=serial.log,id=console0
 else
 $(error "Unknown ARCH: $(ARCH)")
 endif

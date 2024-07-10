@@ -683,6 +683,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "virtio_console"
+version = "0.0.0"
+dependencies = [
+ "ftl_api",
+ "ftl_api_autogen",
+ "ftl_virtio",
+]
+
+[[package]]
 name = "walkdir"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
