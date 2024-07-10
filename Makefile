@@ -48,6 +48,8 @@ OBJCOPY  ?= llvm-objcopy
 RUSTFLAGS += -Z macro-backtrace --emit asm
 CARGOFLAGS += -Z build-std=core,alloc -Z build-std-features=compiler-builtins-mem
 
+export CARGO_TERM_HYPERLINKS=false
+
 QEMUFLAGS += -nographic -serial mon:stdio --no-reboot
 QEMUFLAGS += -d cpu_reset,unimp,guest_errors,int -D qemu.log
 QEMUFLAGS += $(if $(GDB),-gdb tcp::7789 -S)
