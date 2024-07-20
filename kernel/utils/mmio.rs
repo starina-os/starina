@@ -5,6 +5,7 @@ use ftl_types::error::FtlError;
 
 use crate::folio::Folio;
 
+#[allow(unused)]
 pub trait Endianess {
     fn into_host_u16(&self, n: u16) -> u16;
     fn into_host_u32(&self, n: u32) -> u32;
@@ -150,6 +151,7 @@ impl<E: Endianess, T: Copy> MmioReg<E, ReadWrite, T> {
 }
 
 pub struct MmioFolio {
+    #[allow(unused)]
     folio: Folio,
     vaddr: VAddr,
 }

@@ -11,7 +11,6 @@ use ftl_types::poll::PollSyscallResult;
 use ftl_types::signal::SignalBits;
 use ftl_types::syscall::SyscallNumber;
 
-use crate::arch;
 use crate::channel::Channel;
 use crate::cpuvar::current_thread;
 use crate::folio::Folio;

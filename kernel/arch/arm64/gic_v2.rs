@@ -46,6 +46,7 @@ const GICC_EOIR: MmioReg<LittleEndian, WriteOnly, u32> = MmioReg::new(0x010);
 struct Gic {
     dist_folio: MmioFolio,
     cpu_folio: MmioFolio,
+    num_max_intrs: usize,
 }
 
 impl Gic {
@@ -64,10 +65,13 @@ impl Gic {
         Self {
             dist_folio,
             cpu_folio,
+            num_max_intrs: num_max_intrs as usize,
         }
     }
 
     pub fn enable_irq(&mut self, irq: usize) {
+        debug_assert!(irq < self.num_max_intrs);
+
         let irq_shift = (irq % 4) * 8;
 
         // Enable the interrupt.

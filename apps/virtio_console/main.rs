@@ -6,12 +6,10 @@ use ftl_api::interrupt::Interrupt;
 use ftl_api::mainloop::Event;
 use ftl_api::mainloop::Mainloop;
 use ftl_api::prelude::*;
-use ftl_api::signal::Signal;
 use ftl_api::types::address::PAddr;
 use ftl_api::types::address::VAddr;
 use ftl_api::types::environ::Device;
 use ftl_api::types::interrupt::Irq;
-use ftl_api::types::message::HandleOwnership;
 use ftl_api::types::message::MessageBuffer;
 use ftl_api_autogen::apps::virtio_console::Environ;
 use ftl_api_autogen::apps::virtio_console::Message;
@@ -176,7 +174,7 @@ pub fn main(mut env: Environ) {
 
     loop {
         match mainloop.next(&mut buffer) {
-            Event::Interrupt { ctx, interrupt } => {
+            Event::Interrupt { ctx: _ctx, interrupt } => {
                 let status = transport.read_isr_status();
                 info!("got interrupt!: status={:?}", status.0);
                 transport.ack_interrupt(status);
@@ -213,7 +211,7 @@ pub fn main(mut env: Environ) {
                 }
                 receiveq.notify(&mut *transport);
 
-                interrupt.ack();
+                interrupt.ack().unwrap();
             }
             _ => {
                 warn!("unhandled event");

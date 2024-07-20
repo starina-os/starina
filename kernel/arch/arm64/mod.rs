@@ -15,13 +15,11 @@ pub use backtrace::backtrace;
 pub use cpuvar::cpuvar;
 pub use cpuvar::set_cpuvar;
 pub use cpuvar::CpuVar;
-use ftl_types::error::FtlError;
 pub use gic_v2::ack_interrupt;
 pub use gic_v2::create_interrupt;
 pub use thread::yield_cpu;
 pub use thread::Thread;
 
-use crate::device_tree;
 use crate::device_tree::DeviceTree;
 
 pub const PAGE_SIZE: usize = 4096;

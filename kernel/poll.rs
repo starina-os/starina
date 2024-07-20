@@ -7,7 +7,6 @@ use ftl_types::poll::PollEvent;
 use hashbrown::HashMap;
 
 use crate::handle::AnyHandle;
-use crate::interrupt;
 use crate::ref_counted::SharedRef;
 use crate::sleep::SleepCallbackResult;
 use crate::sleep::SleepPoint;
