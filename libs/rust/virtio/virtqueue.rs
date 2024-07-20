@@ -96,6 +96,8 @@ impl VirtQueue {
         transport.select_queue(index);
 
         let num_descs = transport.queue_max_size();
+        transport.set_queue_size(num_descs);
+
         let avail_ring_off = size_of::<VirtqDesc>() * (num_descs as usize);
         let avail_ring_size: usize = size_of::<u16>() * (3 + (num_descs as usize));
         let used_ring_off = align_up(avail_ring_off + avail_ring_size, PAGE_SIZE);
