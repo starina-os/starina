@@ -9,6 +9,7 @@ use hashbrown::HashMap;
 
 use crate::channel::Channel;
 use crate::folio::Folio;
+use crate::interrupt::Interrupt;
 use crate::poll::Poll;
 use crate::ref_counted::SharedRef;
 use crate::signal::Signal;
@@ -50,6 +51,7 @@ pub enum AnyHandle {
     Folio(Handle<Folio>),
     Poll(Handle<Poll>),
     Signal(Handle<Signal>),
+    Interrupt(Handle<Interrupt>),
 }
 
 impl AnyHandle {
@@ -80,6 +82,13 @@ impl AnyHandle {
             _ => Err(FtlError::UnexpectedHandleType),
         }
     }
+
+    pub fn as_interrupt(&self) -> Result<&Handle<Interrupt>, FtlError> {
+        match self {
+            AnyHandle::Interrupt(ref interrupt) => Ok(interrupt),
+            _ => Err(FtlError::UnexpectedHandleType),
+        }
+    }
 }
 
 impl fmt::Debug for AnyHandle {
@@ -91,6 +100,7 @@ impl fmt::Debug for AnyHandle {
             AnyHandle::Folio(_) => write!(f, "Buffer"),
             AnyHandle::Poll(_) => write!(f, "Poll"),
             AnyHandle::Signal(_) => write!(f, "Signal"),
+            AnyHandle::Interrupt(_) => write!(f, "Interrupt"),
         }
     }
 }

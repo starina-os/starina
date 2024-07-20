@@ -9,6 +9,7 @@ use hashbrown::HashMap;
 
 use crate::channel::Channel;
 use crate::channel::RecvError;
+use crate::interrupt::Interrupt;
 use crate::poll::Poll;
 
 #[derive(Debug)]
@@ -18,6 +19,7 @@ pub enum Error {
     PollWait(FtlError),
     ChannelRecv(RecvError),
     ChannelAlreadyAdded(Channel),
+    InterruptAlreadyAdded(Interrupt),
 }
 
 #[derive(Debug)]
@@ -27,11 +29,16 @@ pub enum Event<'a, 'b, St, M: MessageDeserialize> {
         ch: &'a mut Channel,
         m: M::Reader<'b>,
     },
+    Interrupt {
+        ctx: &'a mut St,
+        interrupt: &'a mut Interrupt,
+    },
     Error(Error),
 }
 
 enum Object {
     Channel(Channel),
+    Interrupt(Interrupt),
 }
 
 struct Entry<St> {
@@ -75,6 +82,25 @@ impl<Ctx, AllM: MessageDeserialize> Mainloop<Ctx, AllM> {
         Ok(())
     }
 
+    pub fn add_interrupt(&mut self, interrupt: Interrupt, state: Ctx) -> Result<(), Error> {
+        let handle_id = interrupt.handle().id();
+        if self.objects.contains_key(&handle_id) {
+            return Err(Error::InterruptAlreadyAdded(interrupt));
+        }
+
+        let entry = Entry {
+            ctx: state,
+            object: Object::Interrupt(interrupt),
+        };
+
+        self.objects.insert(handle_id, entry);
+        self.poll
+            .add(handle_id, PollEvent::READABLE)
+            .map_err(Error::PollAdd)?;
+
+        Ok(())
+    }
+
     pub fn next<'a, 'b>(
         &'a mut self,
         msgbuffer: &'b mut MessageBuffer,
@@ -97,6 +123,12 @@ impl<Ctx, AllM: MessageDeserialize> Mainloop<Ctx, AllM> {
                         ch,
                         ctx: &mut entry.ctx,
                         m,
+                    };
+                }
+                Object::Interrupt(interrupt) => {
+                    return Event::Interrupt {
+                        interrupt,
+                        ctx: &mut entry.ctx,
                     };
                 }
             }

@@ -3,6 +3,7 @@ use ftl_types::address::VAddr;
 use ftl_types::error::FtlError;
 use ftl_types::handle::HandleId;
 use ftl_types::handle::HandleRights;
+use ftl_types::interrupt::Irq;
 use ftl_types::message::MessageBuffer;
 use ftl_types::message::MessageInfo;
 use ftl_types::poll::PollEvent;
@@ -10,11 +11,13 @@ use ftl_types::poll::PollSyscallResult;
 use ftl_types::signal::SignalBits;
 use ftl_types::syscall::SyscallNumber;
 
+use crate::arch;
 use crate::channel::Channel;
 use crate::cpuvar::current_thread;
 use crate::folio::Folio;
 use crate::handle::AnyHandle;
 use crate::handle::Handle;
+use crate::interrupt::Interrupt;
 use crate::memory::AllocPagesError;
 use crate::poll::Poll;
 use crate::ref_counted::SharedRef;
@@ -204,6 +207,33 @@ fn signal_clear(handle_id: HandleId) -> Result<SignalBits, FtlError> {
     signal.clear()
 }
 
+fn interrupt_create(irq: Irq) -> Result<HandleId, FtlError> {
+    let interrupt = Interrupt::new(irq)?;
+    let handle = Handle::new(interrupt, HandleRights::NONE);
+    let handle_id = current_thread()
+        .process()
+        .handles()
+        .lock()
+        .add(AnyHandle::Interrupt(handle))?;
+
+    Ok(handle_id)
+}
+
+fn interrupt_ack(handle_id: HandleId) -> Result<(), FtlError> {
+    let interrupt: Handle<Interrupt> = {
+        current_thread()
+            .process()
+            .handles()
+            .lock()
+            .get_owned(handle_id)?
+            .as_interrupt()?
+            .clone()
+    };
+
+    interrupt.ack()
+}
+
+
 pub fn syscall_entry(
     n: isize,
     a0: isize,
@@ -295,6 +325,16 @@ pub fn syscall_entry(
             let handle_id = HandleId::from_raw_isize_truncated(a0);
             let value = signal_clear(handle_id)?;
             Ok(value.as_i32() as isize)
+        }
+        _ if n == SyscallNumber::InterruptCreate as isize => {
+            let irq = Irq::from_raw(a0 as usize);
+            let handle_id = interrupt_create(irq)?;
+            Ok(handle_id.as_isize())
+        }
+        _ if n == SyscallNumber::InterruptAck as isize => {
+            let handle_id = HandleId::from_raw_isize_truncated(a0);
+            interrupt_ack(handle_id)?;
+            Ok(0)
         }
         _ => {
             println!(

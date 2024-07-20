@@ -8,7 +8,7 @@ use crate::autopilot::Autopilot;
 use crate::bootfs::Bootfs;
 use crate::cpuvar;
 use crate::cpuvar::CpuId;
-use crate::device_tree::walk_device_nodes;
+use crate::device_tree::DeviceTree;
 use crate::memory;
 use crate::process;
 
@@ -33,14 +33,15 @@ pub fn boot(cpu_id: CpuId, bootinfo: BootInfo) -> ! {
     println!("\nFTL - Faster Than \"L\"\n");
 
     memory::init(&bootinfo);
-    arch::init();
-    process::init();
-    cpuvar::percpu_init(cpu_id);
 
-    let devices = walk_device_nodes(bootinfo.dtb_addr);
-    for device in &devices {
+    let device_tree = DeviceTree::parse(bootinfo.dtb_addr);
+    for device in device_tree.devices() {
         println!("device: {} ({})", device.compatible, device.name);
     }
+
+    arch::init(&device_tree);
+    process::init();
+    cpuvar::percpu_init(cpu_id);
 
     let bootfs = Bootfs::load();
     for file in bootfs.files() {
@@ -56,9 +57,7 @@ pub fn boot(cpu_id: CpuId, bootinfo: BootInfo) -> ! {
     };
 
     let mut autopilot = Autopilot::new();
-    autopilot.boot(&bootfs, &boot_spec, &devices);
+    autopilot.boot(&bootfs, &boot_spec, &device_tree);
 
-    arch::yield_cpu();
-
-    panic!("halt");
+    arch::idle();
 }

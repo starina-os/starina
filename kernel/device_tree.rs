@@ -14,7 +14,26 @@ pub struct Device {
     pub interrupts: Option<InlinedVec<u32, 16>>,
 }
 
-pub fn walk_device_nodes(dtb_addr: *const u8) -> Vec<Device> {
+pub struct DeviceTree {
+    devices: Vec<Device>,
+}
+
+impl DeviceTree {
+    pub fn parse(dtb_addr: *const u8) -> DeviceTree {
+        let devices = walk_device_nodes(dtb_addr);
+        DeviceTree { devices }
+    }
+
+    pub fn devices(&self) -> &[Device] {
+        &self.devices
+    }
+
+    pub fn find_device_by_id(&self, compatible: &str) -> Option<&Device> {
+        self.devices.iter().find(|d| d.compatible == compatible)
+    }
+}
+
+fn walk_device_nodes(dtb_addr: *const u8) -> Vec<Device> {
     let devtree = unsafe {
         // Check  the magic number and read the size of the device tree.
         let dtb_magic = { slice::from_raw_parts(dtb_addr, size_of::<fdt_header>()) };

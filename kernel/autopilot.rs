@@ -20,6 +20,7 @@ use crate::bootfs::Bootfs;
 use crate::channel::Channel;
 use crate::cpuvar::current_thread;
 use crate::device_tree;
+use crate::device_tree::DeviceTree;
 use crate::handle::Handle;
 use crate::ref_counted::SharedRef;
 
@@ -66,7 +67,7 @@ impl Autopilot {
         &mut self,
         bootfs: &Bootfs,
         boot_spec: &BootSpec,
-        device_tree_devices: &[device_tree::Device],
+        device_tree: &DeviceTree,
     ) {
         let mut apps = Vec::new();
         for app_name in &boot_spec.autostart_apps {
@@ -93,7 +94,7 @@ impl Autopilot {
             apps.push((app_name.clone(), app_spec, elf_file.data));
         }
 
-        self.start_apps(apps, device_tree_devices)
+        self.start_apps(apps, device_tree.devices())
             .expect("failed to start apps");
     }
 

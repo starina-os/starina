@@ -60,6 +60,13 @@ impl Folio {
         }
     }
 
+    pub fn vaddr_for_kernel(&self) -> Result<VAddr, FtlError> {
+        match &self.pages {
+            Pages::Anonymous(pages) => Ok(pages.vaddr()),
+            Pages::Mmio { paddr } => arch::paddr2vaddr(*paddr).ok_or(FtlError::InvalidArg),
+        }
+    }
+
     pub fn paddr(&self) -> Result<PAddr, FtlError> {
         match &self.pages {
             Pages::Anonymous(pages) => vaddr2paddr(pages.vaddr()).ok_or(FtlError::InvalidArg),

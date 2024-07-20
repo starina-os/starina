@@ -11,5 +11,6 @@ pub mod idl;
 pub mod message;
 pub mod poll;
 pub mod signal;
+pub mod interrupt;
 pub mod spec;
 pub mod syscall;

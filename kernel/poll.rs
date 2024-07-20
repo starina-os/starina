@@ -7,6 +7,7 @@ use ftl_types::poll::PollEvent;
 use hashbrown::HashMap;
 
 use crate::handle::AnyHandle;
+use crate::interrupt;
 use crate::ref_counted::SharedRef;
 use crate::sleep::SleepCallbackResult;
 use crate::sleep::SleepPoint;
@@ -63,6 +64,9 @@ impl Poll {
         match object {
             AnyHandle::Channel(ch) => {
                 ch.add_poller(poller.clone());
+            }
+            AnyHandle::Interrupt(interrupt) => {
+                interrupt.add_poller(poller.clone());
             }
             _ => {
                 todo!(); // TODO: support other handle types
