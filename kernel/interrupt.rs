@@ -14,12 +14,8 @@ pub struct Interrupt {
 
 impl Interrupt {
     pub fn new(irq: Irq) -> Result<SharedRef<Interrupt>, FtlError> {
-
         let signal = Signal::new()?;
-        let interrupt = SharedRef::new(Interrupt {
-            irq,
-            signal
-        });
+        let interrupt = SharedRef::new(Interrupt { irq, signal });
 
         arch::create_interrupt(&interrupt)?;
         Ok(interrupt)

@@ -1,6 +1,7 @@
 use core::marker::PhantomData;
 
-use ftl_types::{address::VAddr, error::FtlError};
+use ftl_types::address::VAddr;
+use ftl_types::error::FtlError;
 
 use crate::folio::Folio;
 

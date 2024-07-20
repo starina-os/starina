@@ -92,7 +92,7 @@ fn probe(devices: &[Device], device_type: u32) -> Option<(VirtioMmio, Irq)> {
         match transport.probe() {
             Some(ty) if ty == device_type => {
                 info!("console: IRQs: {:?}", device.interrupts);
-                let irq = Irq::from_raw(device.interrupts.as_ref().unwrap()[1] as usize  + 32); // FIXME:
+                let irq = Irq::from_raw(device.interrupts.as_ref().unwrap()[1] as usize + 32); // FIXME:
                 return Some((transport, irq));
             }
             Some(ty) => {
@@ -196,9 +196,8 @@ pub fn main(mut env: Environ) {
                             .paddr_to_index(paddr)
                             .expect("invalid paddr");
                         let vaddr = receiveq_buffers.vaddr(buffer_index);
-                        let data = unsafe {
-                            core::slice::from_raw_parts(vaddr.as_ptr::<u8>(), read_len)
-                        };
+                        let data =
+                            unsafe { core::slice::from_raw_parts(vaddr.as_ptr::<u8>(), read_len) };
                         info!("received: {:?}", core::str::from_utf8(data).unwrap());
                         receiveq_buffers.push_free(buffer_index);
                     }

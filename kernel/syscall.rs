@@ -233,7 +233,6 @@ fn interrupt_ack(handle_id: HandleId) -> Result<(), FtlError> {
     interrupt.ack()
 }
 
-
 pub fn syscall_entry(
     n: isize,
     a0: isize,

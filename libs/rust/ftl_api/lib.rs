@@ -9,6 +9,7 @@ pub mod channel;
 pub mod folio;
 pub mod handle;
 pub mod init;
+pub mod interrupt;
 pub mod log;
 pub mod mainloop;
 pub mod panic;
@@ -17,7 +18,6 @@ pub mod prelude;
 pub mod print;
 pub mod signal;
 pub mod syscall;
-pub mod interrupt;
 
 pub use ftl_api_macros::main;
 pub use ftl_types as types;

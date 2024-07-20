@@ -1,6 +1,5 @@
 #![no_std]
 
-
 use core::mem::size_of;
 
 pub const R_RISCV_RELATIVE: u64 = 3;

@@ -48,9 +48,11 @@ pub fn boot(cpu_id: CpuId, bootinfo: BootInfo) -> ! {
         println!("bootfs: file: {}", file.name);
     }
 
-    let boot_spec_file = bootfs.find_by_name("cfg/boot.spec.json").expect("boot spec not found");
-    let spec_file: SpecFile = serde_json::from_slice(&boot_spec_file.data)
-        .expect("failed to parse boot spec");
+    let boot_spec_file = bootfs
+        .find_by_name("cfg/boot.spec.json")
+        .expect("boot spec not found");
+    let spec_file: SpecFile =
+        serde_json::from_slice(&boot_spec_file.data).expect("failed to parse boot spec");
     let boot_spec = match spec_file.spec {
         Spec::Boot(boot_spec) => boot_spec,
         _ => panic!("unexpected boot spec"),

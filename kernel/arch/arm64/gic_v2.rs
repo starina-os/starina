@@ -4,9 +4,22 @@
 // > 4.1.4 GIC register access
 
 use alloc::collections::BTreeMap;
-use ftl_types::{address::PAddr, error::FtlError, interrupt::Irq};
 
-use crate::{device_tree::DeviceTree, folio::Folio, interrupt::Interrupt, ref_counted::SharedRef, spinlock::SpinLock, utils::mmio::{LittleEndian, MmioFolio, MmioReg, ReadOnly, ReadWrite, WriteOnly}};
+use ftl_types::address::PAddr;
+use ftl_types::error::FtlError;
+use ftl_types::interrupt::Irq;
+
+use crate::device_tree::DeviceTree;
+use crate::folio::Folio;
+use crate::interrupt::Interrupt;
+use crate::ref_counted::SharedRef;
+use crate::spinlock::SpinLock;
+use crate::utils::mmio::LittleEndian;
+use crate::utils::mmio::MmioFolio;
+use crate::utils::mmio::MmioReg;
+use crate::utils::mmio::ReadOnly;
+use crate::utils::mmio::ReadWrite;
+use crate::utils::mmio::WriteOnly;
 
 /// Distributor Control Register.
 const GICD_CTLR: MmioReg<LittleEndian, ReadWrite, u32> = MmioReg::new(0x000);
@@ -120,7 +133,10 @@ pub fn handle_interrupt() {
 }
 
 pub fn init(device_tree: &DeviceTree) {
-    let gicd_paddr: usize = device_tree.find_device_by_id("arm,cortex-a15-gic").unwrap().reg as usize;
+    let gicd_paddr: usize = device_tree
+        .find_device_by_id("arm,cortex-a15-gic")
+        .unwrap()
+        .reg as usize;
     let gicd_folio = Folio::alloc_mmio(PAddr::new(gicd_paddr).unwrap(), 0x1000).unwrap();
     let gicc_folio = Folio::alloc_mmio(
         PAddr::new(gicd_paddr + 0x10000 /* FIXME: */).unwrap(),
@@ -130,6 +146,6 @@ pub fn init(device_tree: &DeviceTree) {
 
     GIC.lock().replace(Gic::init_device(
         MmioFolio::from_folio(gicd_folio).unwrap(),
-        MmioFolio::from_folio(gicc_folio).unwrap()
+        MmioFolio::from_folio(gicc_folio).unwrap(),
     ));
 }
