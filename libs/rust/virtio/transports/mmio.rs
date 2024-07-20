@@ -26,6 +26,7 @@ static QUEUE_NUM_REG: MmioReg<LittleEndian, WriteOnly, u32> = MmioReg::new(0x38)
 static QUEUE_READY_REG: MmioReg<LittleEndian, ReadWrite, u32> = MmioReg::new(0x44);
 static QUEUE_NOTIFY_REG: MmioReg<LittleEndian, WriteOnly, u32> = MmioReg::new(0x50);
 static INTERRUPT_STATUS_REG: MmioReg<LittleEndian, ReadOnly, u32> = MmioReg::new(0x60);
+static INTERRUPT_ACK_REG: MmioReg<LittleEndian, WriteOnly, u32> = MmioReg::new(0x64);
 static DEVICE_STATUS_REG: MmioReg<LittleEndian, ReadWrite, u32> = MmioReg::new(0x70);
 static QUEUE_DESC_LOW_REG: MmioReg<LittleEndian, WriteOnly, u32> = MmioReg::new(0x80);
 static QUEUE_DESC_HIGH_REG: MmioReg<LittleEndian, WriteOnly, u32> = MmioReg::new(0x84);
@@ -73,6 +74,10 @@ impl VirtioTransport for VirtioMmio {
 
     fn read_isr_status(&mut self) -> IsrStatus {
         IsrStatus(INTERRUPT_STATUS_REG.read(&mut self.mmio) as u8)
+    }
+
+    fn ack_interrupt(&mut self, status: IsrStatus) {
+        INTERRUPT_ACK_REG.write(&mut self.mmio, status.0 as u32);
     }
 
     fn read_device_status(&mut self) -> u8 {

@@ -34,6 +34,7 @@ pub trait VirtioTransport: Send + Sync {
     fn is_modern(&mut self) -> bool;
     fn read_device_config8(&mut self, offset: u16) -> u8;
     fn read_isr_status(&mut self) -> IsrStatus;
+    fn ack_interrupt(&mut self, status: IsrStatus);
     fn read_device_status(&mut self) -> u8;
     fn write_device_status(&mut self, value: u8);
     fn read_device_features(&mut self) -> u64;
