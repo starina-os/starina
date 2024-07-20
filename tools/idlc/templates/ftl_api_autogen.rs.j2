@@ -85,6 +85,16 @@ pub mod apps {
             {%- endfor %}
         }
 
+        impl<'a> ::core::fmt::Debug for Message<'a> {
+            fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+                match self {
+                    {%- for m in app.used_messages %}
+                    Self::{{ m.camel_name }}(_) => write!(f, "{{ m.camel_name }}"),
+                    {%- endfor %}
+                }
+            }
+        }
+
         use ftl_types::message::MessageSerialize;
         use ftl_types::message::MessageDeserialize;
         use ftl_types::message::MessageInfo;
