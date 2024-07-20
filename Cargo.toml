@@ -39,3 +39,4 @@ ftl_bump_allocator = { path = "libs/rust/bump_allocator" }
 ftl_elf = { path = "libs/rust/elf" }
 ftl_virtio = { path = "libs/rust/virtio" }
 ftl_idlc = { path = "tools/idlc" }
+ftl_driver_utils = { path = "libs/rust/ftl_driver_utils" }

@@ -1,8 +1,8 @@
-use ftl_api::driver::mmio::LittleEndian;
-use ftl_api::driver::mmio::MmioReg;
-use ftl_api::driver::mmio::ReadOnly;
-use ftl_api::driver::mmio::ReadWrite;
-use ftl_api::driver::mmio::WriteOnly;
+use ftl_driver_utils::mmio::LittleEndian;
+use ftl_driver_utils::mmio::MmioReg;
+use ftl_driver_utils::mmio::ReadOnly;
+use ftl_driver_utils::mmio::ReadWrite;
+use ftl_driver_utils::mmio::WriteOnly;
 use ftl_api::folio::MmioFolio;
 use ftl_api::prelude::*;
 use ftl_api::types::address::PAddr;

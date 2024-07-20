@@ -6,7 +6,6 @@ extern crate alloc;
 pub mod allocator;
 pub mod arch;
 pub mod channel;
-pub mod driver;
 pub mod folio;
 pub mod handle;
 pub mod init;

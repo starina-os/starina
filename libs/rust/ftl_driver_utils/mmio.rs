@@ -1,6 +1,6 @@
 use core::marker::PhantomData;
 
-use crate::folio::MmioFolio;
+use ftl_api::folio::MmioFolio;
 
 pub trait Endianess {
     fn into_host_u16(&self, n: u16) -> u16;
@@ -85,7 +85,7 @@ impl<E: Endianess, A: Access, T: Copy> MmioReg<E, A, T> {
 
     /// Reads a value from the MMIO region.
     ///
-    /// # Why is `&mut MmioFolio` required?
+    /// # Why is `&mut F` required?
     ///
     /// This is to ensure that the caller has exclusive access to the MMIO
     /// region. This is important because reads from MMIO may have side effects
@@ -98,13 +98,17 @@ impl<E: Endianess, A: Access, T: Copy> MmioReg<E, A, T> {
     }
 
     pub fn do_read_with_offset(&self, folio: &mut MmioFolio, offset: usize) -> T {
-        let vaddr = folio.vaddr().as_usize() + self.offset + offset;
+        let vaddr = folio.vaddr().as_usize() + self.offset + offset * size_of::<T>();
         unsafe { core::ptr::read_volatile(vaddr as *const T) }
     }
 
-    fn do_write(&self, folio: &mut MmioFolio, value: T) {
-        let vaddr = folio.vaddr().as_usize() + self.offset;
+    fn do_write_with_offset(&self, folio: &mut MmioFolio, offset: usize, value: T) {
+        let vaddr = folio.vaddr().as_usize() + self.offset + offset * size_of::<T>();
         unsafe { core::ptr::write_volatile(vaddr as *mut T, value) };
+    }
+
+    fn do_write(&self, folio: &mut MmioFolio, value: T) {
+        self.do_write_with_offset(folio, 0, value);
     }
 }
 
@@ -135,5 +139,9 @@ impl<E: Endianess, T: Copy> MmioReg<E, ReadWrite, T> {
 
     pub fn write(&self, folio: &mut MmioFolio, value: T) {
         self.do_write(folio, value)
+    }
+
+    pub fn write_with_offset(&self, folio: &mut MmioFolio, offset: usize, value: T) {
+        self.do_write_with_offset(folio, offset, value)
     }
 }
