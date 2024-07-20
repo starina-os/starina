@@ -34,13 +34,13 @@ QEMUFLAGS += -device virtio-blk-device,drive=drive0,bus=virtio-mmio-bus.0
 else ifeq ($(ARCH),arm64)
 QEMU      ?= qemu-system-aarch64
 QEMUFLAGS += -m 512
-QEMUFLAGS += -machine virt $(if $(KVM), -accel kvm -cpu host, -cpu neoverse-v1)
+QEMUFLAGS += -machine virt,gic-version=2 $(if $(KVM), -accel kvm -cpu host, -cpu neoverse-v1)
 QEMUFLAGS += -global virtio-mmio.force-legacy=false
 QEMUFLAGS += -drive id=drive0,file=disk.img,format=raw,if=none
 QEMUFLAGS += -device virtio-blk-device,drive=drive0,bus=virtio-mmio-bus.0
 QEMUFLAGS += -device virtio-serial-device,bus=virtio-mmio-bus.1
 QEMUFLAGS += -device virtconsole,chardev=console0
-QEMUFLAGS += -chardev file,path=serial.log,id=console0
+QEMUFLAGS += -chardev pipe,path=serial.pipe,id=console0
 else
 $(error "Unknown ARCH: $(ARCH)")
 endif
