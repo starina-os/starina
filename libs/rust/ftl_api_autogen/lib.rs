@@ -61,6 +61,17 @@ pub mod apps {
             PingReply(ftl_autogen::protocols::ping::PingReplyReader<'a>),
         }
 
+        impl<'a> ::core::fmt::Debug for Message<'a> {
+            fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+                match self {
+                    Self::NewclientRequest(_) => write!(f, "NewclientRequest"),
+                    Self::NewclientReply(_) => write!(f, "NewclientReply"),
+                    Self::PingRequest(_) => write!(f, "PingRequest"),
+                    Self::PingReply(_) => write!(f, "PingReply"),
+                }
+            }
+        }
+
         use ftl_types::message::MessageBuffer;
         use ftl_types::message::MessageDeserialize;
         use ftl_types::message::MessageInfo;
