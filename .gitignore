@@ -4,5 +4,6 @@
 *.tmp
 *.log
 *.elf
+*.pe
 *.map
 *.pcap

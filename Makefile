@@ -100,6 +100,10 @@ ftl.elf: $(sources) libs/rust/ftl_autogen/lib.rs Makefile build/bootfs.bin
 		--manifest-path boot/$(ARCH)/Cargo.toml
 	cp build/cargo/$(ARCH)-$(MACHINE)/$(BUILD)/boot_$(ARCH) $(@)
 
+ftl.pe: ftl.elf
+	$(PROGRESS) "OBJCOPY" $(@)
+	$(OBJCOPY) -O binary --strip-all $< $(@)
+
 build/startup.elf: build/$(STARTUP).elf
 	cp $< $@
 
