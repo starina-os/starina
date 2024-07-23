@@ -34,7 +34,8 @@ QEMUFLAGS += -device virtio-blk-device,drive=drive0,bus=virtio-mmio-bus.0
 else ifeq ($(ARCH),arm64)
 QEMU      ?= qemu-system-aarch64
 QEMUFLAGS += -m 512
-QEMUFLAGS += -machine virt,gic-version=2 $(if $(KVM), -accel kvm -cpu host, -cpu neoverse-v1)
+QEMUFLAGS += -machine virt,gic-version=2
+QEMUFLAGS += $(if $(KVM), -accel kvm -cpu host, $(if $(HVF), -accel hvf -cpu host, -cpu neoverse-v1))
 QEMUFLAGS += -global virtio-mmio.force-legacy=false
 QEMUFLAGS += -drive id=drive0,file=disk.img,format=raw,if=none
 QEMUFLAGS += -device virtio-blk-device,drive=drive0,bus=virtio-mmio-bus.0
