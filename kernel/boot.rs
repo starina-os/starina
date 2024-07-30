@@ -35,10 +35,6 @@ pub fn boot(cpu_id: CpuId, bootinfo: BootInfo) -> ! {
     memory::init(&bootinfo);
 
     let device_tree = DeviceTree::parse(bootinfo.dtb_addr);
-    for device in device_tree.devices() {
-        println!("device: {} ({})", device.compatible, device.name);
-    }
-
     arch::init(&device_tree);
     process::init();
     cpuvar::percpu_init(cpu_id);
