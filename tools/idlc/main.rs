@@ -55,6 +55,7 @@ struct App {
 
 fn resolve_builder_type_name(ty: &idl::Ty) -> String {
     match ty {
+        idl::Ty::UInt16 => "u16".to_string(),
         idl::Ty::Int32 => "i32".to_string(),
         idl::Ty::Handle => "ftl_types::handle::HandleId".to_string(),
         idl::Ty::Bytes { capacity } => format!("ftl_types::idl::BytesField<{capacity}>"),
@@ -64,6 +65,7 @@ fn resolve_builder_type_name(ty: &idl::Ty) -> String {
 
 fn resolve_raw_type_name(ty: &idl::Ty) -> String {
     match ty {
+        idl::Ty::UInt16 => "u16".to_string(),
         idl::Ty::Int32 => "i32".to_string(),
         idl::Ty::Handle => "ftl_types::handle::HandleId".to_string(),
         idl::Ty::Bytes { capacity } => format!("ftl_types::idl::BytesField<{capacity}>"),

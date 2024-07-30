@@ -22,6 +22,7 @@ pub struct Protocol {
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase", tag = "type")]
 pub enum Ty {
+    UInt16,
     Int32,
     Handle,
     Bytes { capacity: usize },
