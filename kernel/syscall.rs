@@ -23,10 +23,15 @@ use crate::ref_counted::SharedRef;
 use crate::signal::Signal;
 
 fn channel_create() -> Result<isize, FtlError> {
-    todo!();
+    let (ch1, ch2) = Channel::new()?;
 
-    // TODO:
-    // assert_eq!(handle0 + 1, handle1);
+    let current = current_thread();
+    let mut handles = current.process().handles().lock();
+    let handle0 = handles.add(Handle::new(ch1, HandleRights::NONE))?;
+    let handle1 = handles.add(Handle::new(ch2, HandleRights::NONE))?;
+
+    assert_eq!(handle0.as_isize() + 1, handle1.as_isize());
+    Ok(handle0.as_isize())
 }
 
 fn channel_send(
