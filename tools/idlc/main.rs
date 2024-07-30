@@ -145,31 +145,50 @@ fn main() -> Result<()> {
     let mut all_messages = Vec::new();
     for protocol in idl.protocols {
         let mut messages = Vec::new();
-        for rpc in &protocol.rpcs {
-            let req_fields = visit_fields(&rpc.request.fields);
-            let req_msg = Message {
-                protocol_name: protocol.name.clone(),
-                name: format!("{}Request", CamelCase(&rpc.name)),
-                msgid: next_msgid,
-                num_handles: req_fields.iter().filter(|f| f.is_handle).count(),
-                fields: req_fields,
-            };
-            next_msgid += 1;
+        if let Some(oneways) = &protocol.oneways {
+            for oneway in oneways {
+                let req_fields = visit_fields(&oneway.fields);
+                let msg = Message {
+                    protocol_name: protocol.name.clone(),
+                    name: format!("{}", CamelCase(&oneway.name)),
+                    msgid: next_msgid,
+                    num_handles: req_fields.iter().filter(|f| f.is_handle).count(),
+                    fields: req_fields,
+                };
+                next_msgid += 1;
 
-            let res_fields = visit_fields(&rpc.response.fields);
-            let res_msg = Message {
-                protocol_name: protocol.name.clone(),
-                name: format!("{}Reply", CamelCase(&rpc.name)),
-                msgid: next_msgid,
-                num_handles: res_fields.iter().filter(|f| f.is_handle).count(),
-                fields: res_fields,
-            };
-            next_msgid += 1;
+                all_messages.push(msg.clone());
+                messages.push(msg);
+            }
+        }
 
-            all_messages.push(req_msg.clone());
-            all_messages.push(res_msg.clone());
-            messages.push(req_msg);
-            messages.push(res_msg);
+        if let Some(rpcs) = &protocol.rpcs {
+            for rpc in rpcs {
+                let req_fields = visit_fields(&rpc.request.fields);
+                let req_msg = Message {
+                    protocol_name: protocol.name.clone(),
+                    name: format!("{}Request", CamelCase(&rpc.name)),
+                    msgid: next_msgid,
+                    num_handles: req_fields.iter().filter(|f| f.is_handle).count(),
+                    fields: req_fields,
+                };
+                next_msgid += 1;
+
+                let res_fields = visit_fields(&rpc.response.fields);
+                let res_msg = Message {
+                    protocol_name: protocol.name.clone(),
+                    name: format!("{}Reply", CamelCase(&rpc.name)),
+                    msgid: next_msgid,
+                    num_handles: res_fields.iter().filter(|f| f.is_handle).count(),
+                    fields: res_fields,
+                };
+                next_msgid += 1;
+
+                all_messages.push(req_msg.clone());
+                all_messages.push(res_msg.clone());
+                messages.push(req_msg);
+                messages.push(res_msg);
+            }
         }
 
         protocols.push(Protocol {

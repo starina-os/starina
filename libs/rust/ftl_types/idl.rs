@@ -15,7 +15,8 @@ pub struct IdlFile {
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Protocol {
     pub name: String,
-    pub rpcs: Vec<Rpc>,
+    pub oneways: Option<Vec<Oneway>>,
+    pub rpcs: Option<Vec<Rpc>>,
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -36,6 +37,12 @@ pub struct Field {
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Message {
+    pub fields: Vec<Field>,
+}
+
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Oneway {
+    pub name: String,
     pub fields: Vec<Field>,
 }
 

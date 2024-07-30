@@ -41,7 +41,6 @@ pub mod protocols {
             {%- endfor %}
         }
 
-        // TODO: static_assert for size
 
         impl MessageSerialize for {{ m.name }} {
             const MSGINFO: MessageInfo = MessageInfo::from_raw(
@@ -51,6 +50,9 @@ pub mod protocols {
             );
 
             fn serialize(self, buffer: &mut MessageBuffer) {
+                // TODO: Make this a compile-time assertion.
+                debug_assert!(::core::mem::size_of::<{{ m.name }}>() < 1 << 12);
+
                 // The actual serialization is done in this const fn. This is to
                 // ensure the serialization can be done with const operations.
                 const fn do_serialize(this: {{ m.name }}, buffer: &mut MessageBuffer) {

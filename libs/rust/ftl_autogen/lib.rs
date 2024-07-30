@@ -23,14 +23,15 @@ pub mod protocols {
         #[repr(C)]
         struct InlinedPartNewclientRequest {}
 
-        // TODO: static_assert for size
-
         impl MessageSerialize for NewclientRequest {
             const MSGINFO: MessageInfo = MessageInfo::from_raw(
                 (1 << 14) | (1 << 12) | ::core::mem::size_of::<NewclientRequest>() as isize,
             );
 
             fn serialize(self, buffer: &mut MessageBuffer) {
+                // TODO: Make this a compile-time assertion.
+                debug_assert!(::core::mem::size_of::<NewclientRequest>() < 1 << 12);
+
                 // The actual serialization is done in this const fn. This is to
                 // ensure the serialization can be done with const operations.
                 const fn do_serialize(this: NewclientRequest, buffer: &mut MessageBuffer) {
@@ -98,14 +99,15 @@ pub mod protocols {
         #[repr(C)]
         struct InlinedPartNewclientReply {}
 
-        // TODO: static_assert for size
-
         impl MessageSerialize for NewclientReply {
             const MSGINFO: MessageInfo = MessageInfo::from_raw(
                 (2 << 14) | (0 << 12) | ::core::mem::size_of::<NewclientReply>() as isize,
             );
 
             fn serialize(self, buffer: &mut MessageBuffer) {
+                // TODO: Make this a compile-time assertion.
+                debug_assert!(::core::mem::size_of::<NewclientReply>() < 1 << 12);
+
                 // The actual serialization is done in this const fn. This is to
                 // ensure the serialization can be done with const operations.
                 const fn do_serialize(this: NewclientReply, buffer: &mut MessageBuffer) {
@@ -176,14 +178,15 @@ pub mod protocols {
             pub bytes_value1: ftl_types::idl::BytesField<16>,
         }
 
-        // TODO: static_assert for size
-
         impl MessageSerialize for PingRequest {
             const MSGINFO: MessageInfo = MessageInfo::from_raw(
                 (3 << 14) | (0 << 12) | ::core::mem::size_of::<PingRequest>() as isize,
             );
 
             fn serialize(self, buffer: &mut MessageBuffer) {
+                // TODO: Make this a compile-time assertion.
+                debug_assert!(::core::mem::size_of::<PingRequest>() < 1 << 12);
+
                 // The actual serialization is done in this const fn. This is to
                 // ensure the serialization can be done with const operations.
                 const fn do_serialize(this: PingRequest, buffer: &mut MessageBuffer) {
@@ -264,14 +267,15 @@ pub mod protocols {
             pub str_value2: ftl_types::idl::StringField<32>,
         }
 
-        // TODO: static_assert for size
-
         impl MessageSerialize for PingReply {
             const MSGINFO: MessageInfo = MessageInfo::from_raw(
                 (4 << 14) | (0 << 12) | ::core::mem::size_of::<PingReply>() as isize,
             );
 
             fn serialize(self, buffer: &mut MessageBuffer) {
+                // TODO: Make this a compile-time assertion.
+                debug_assert!(::core::mem::size_of::<PingReply>() < 1 << 12);
+
                 // The actual serialization is done in this const fn. This is to
                 // ensure the serialization can be done with const operations.
                 const fn do_serialize(this: PingReply, buffer: &mut MessageBuffer) {
