@@ -174,7 +174,10 @@ pub fn main(mut env: Environ) {
 
     loop {
         match mainloop.next(&mut buffer) {
-            Event::Interrupt { ctx: _ctx, interrupt } => {
+            Event::Interrupt {
+                ctx: _ctx,
+                interrupt,
+            } => {
                 let status = transport.read_isr_status();
                 info!("got interrupt!: status={:?}", status.0);
                 transport.ack_interrupt(status);
