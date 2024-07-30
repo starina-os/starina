@@ -5,7 +5,201 @@ pub use ftl_autogen::*;
 
 pub mod apps {
 
-    pub mod virtio_console {
+    pub mod tcpip {
+        pub struct Environ {
+            pub autopilot_ch: Option<ftl_api::channel::Channel>,
+            pub depends: Depends,
+        }
+
+        impl Environ {
+            pub fn from_environ_ptr(environ_ptr: *const u8, environ_len: usize) -> Self {
+                let environ_bytes =
+                    unsafe { ::core::slice::from_raw_parts(environ_ptr, environ_len) };
+
+                #[allow(unused_variables)]
+                let environ_json: EnvironJson =
+                    serde_json::from_slice(environ_bytes).expect("failed to parse environ JSON");
+
+                let depends = Depends {
+                    ethernet_device: {
+                        use ftl_api::channel::Channel;
+                        use ftl_api::handle::OwnedHandle;
+                        use ftl_types::handle::HandleId;
+
+                        let handle_id = HandleId::from_raw(environ_json.depends.ethernet_device);
+                        let handle = OwnedHandle::from_raw(handle_id);
+                        Some(Channel::from_handle(handle))
+                    },
+                };
+
+                Self {
+                    autopilot_ch: {
+                        use ftl_api::channel::Channel;
+                        use ftl_api::handle::OwnedHandle;
+                        use ftl_types::handle::HandleId;
+
+                        let handle_id = HandleId::from_raw(environ_json.autopilot_ch);
+                        let handle = OwnedHandle::from_raw(handle_id);
+                        Some(Channel::from_handle(handle))
+                    },
+                    depends,
+                }
+            }
+        }
+
+        pub struct Depends {
+            pub ethernet_device: Option<ftl_api::channel::Channel>,
+        }
+
+        #[derive(serde::Serialize, serde::Deserialize)]
+        struct EnvironJson {
+            pub autopilot_ch: i32,
+            pub depends: DependsJson,
+        }
+
+        #[derive(serde::Serialize, serde::Deserialize)]
+        struct DependsJson {
+            pub ethernet_device: i32,
+        }
+
+        pub enum Message<'a> {
+            NewclientRequest(ftl_autogen::protocols::autopilot::NewclientRequestReader<'a>),
+            NewclientReply(ftl_autogen::protocols::autopilot::NewclientReplyReader<'a>),
+            PingRequest(ftl_autogen::protocols::ping::PingRequestReader<'a>),
+            PingReply(ftl_autogen::protocols::ping::PingReplyReader<'a>),
+            Tx(ftl_autogen::protocols::ethernet_device::TxReader<'a>),
+            Rx(ftl_autogen::protocols::ethernet_device::RxReader<'a>),
+            TcpAccepted(ftl_autogen::protocols::tcpip::TcpAcceptedReader<'a>),
+            TcpReceived(ftl_autogen::protocols::tcpip::TcpReceivedReader<'a>),
+            TcpListenRequest(ftl_autogen::protocols::tcpip::TcpListenRequestReader<'a>),
+            TcpListenReply(ftl_autogen::protocols::tcpip::TcpListenReplyReader<'a>),
+            TcpSendRequest(ftl_autogen::protocols::tcpip::TcpSendRequestReader<'a>),
+            TcpSendReply(ftl_autogen::protocols::tcpip::TcpSendReplyReader<'a>),
+        }
+
+        impl<'a> ::core::fmt::Debug for Message<'a> {
+            fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+                match self {
+                    Self::NewclientRequest(_) => write!(f, "NewclientRequest"),
+                    Self::NewclientReply(_) => write!(f, "NewclientReply"),
+                    Self::PingRequest(_) => write!(f, "PingRequest"),
+                    Self::PingReply(_) => write!(f, "PingReply"),
+                    Self::Tx(_) => write!(f, "Tx"),
+                    Self::Rx(_) => write!(f, "Rx"),
+                    Self::TcpAccepted(_) => write!(f, "TcpAccepted"),
+                    Self::TcpReceived(_) => write!(f, "TcpReceived"),
+                    Self::TcpListenRequest(_) => write!(f, "TcpListenRequest"),
+                    Self::TcpListenReply(_) => write!(f, "TcpListenReply"),
+                    Self::TcpSendRequest(_) => write!(f, "TcpSendRequest"),
+                    Self::TcpSendReply(_) => write!(f, "TcpSendReply"),
+                }
+            }
+        }
+
+        use ftl_types::message::MessageBuffer;
+        use ftl_types::message::MessageDeserialize;
+        use ftl_types::message::MessageInfo;
+        use ftl_types::message::MessageSerialize;
+
+        impl<'b> MessageDeserialize for Message<'b> {
+            type Reader<'a> = Message<'a>;
+
+            fn deserialize<'a>(
+                buffer: &'a MessageBuffer,
+                msginfo: MessageInfo,
+            ) -> Option<Self::Reader<'a>> {
+                match msginfo {
+                    ftl_autogen::protocols::autopilot::NewclientRequest::MSGINFO => {
+                        use ftl_autogen::protocols::autopilot::NewclientRequest as M;
+
+                        let reader = M::deserialize(buffer, msginfo)?;
+                        Some(Message::NewclientRequest(reader))
+                    }
+
+                    ftl_autogen::protocols::autopilot::NewclientReply::MSGINFO => {
+                        use ftl_autogen::protocols::autopilot::NewclientReply as M;
+
+                        let reader = M::deserialize(buffer, msginfo)?;
+                        Some(Message::NewclientReply(reader))
+                    }
+
+                    ftl_autogen::protocols::ping::PingRequest::MSGINFO => {
+                        use ftl_autogen::protocols::ping::PingRequest as M;
+
+                        let reader = M::deserialize(buffer, msginfo)?;
+                        Some(Message::PingRequest(reader))
+                    }
+
+                    ftl_autogen::protocols::ping::PingReply::MSGINFO => {
+                        use ftl_autogen::protocols::ping::PingReply as M;
+
+                        let reader = M::deserialize(buffer, msginfo)?;
+                        Some(Message::PingReply(reader))
+                    }
+
+                    ftl_autogen::protocols::ethernet_device::Tx::MSGINFO => {
+                        use ftl_autogen::protocols::ethernet_device::Tx as M;
+
+                        let reader = M::deserialize(buffer, msginfo)?;
+                        Some(Message::Tx(reader))
+                    }
+
+                    ftl_autogen::protocols::ethernet_device::Rx::MSGINFO => {
+                        use ftl_autogen::protocols::ethernet_device::Rx as M;
+
+                        let reader = M::deserialize(buffer, msginfo)?;
+                        Some(Message::Rx(reader))
+                    }
+
+                    ftl_autogen::protocols::tcpip::TcpAccepted::MSGINFO => {
+                        use ftl_autogen::protocols::tcpip::TcpAccepted as M;
+
+                        let reader = M::deserialize(buffer, msginfo)?;
+                        Some(Message::TcpAccepted(reader))
+                    }
+
+                    ftl_autogen::protocols::tcpip::TcpReceived::MSGINFO => {
+                        use ftl_autogen::protocols::tcpip::TcpReceived as M;
+
+                        let reader = M::deserialize(buffer, msginfo)?;
+                        Some(Message::TcpReceived(reader))
+                    }
+
+                    ftl_autogen::protocols::tcpip::TcpListenRequest::MSGINFO => {
+                        use ftl_autogen::protocols::tcpip::TcpListenRequest as M;
+
+                        let reader = M::deserialize(buffer, msginfo)?;
+                        Some(Message::TcpListenRequest(reader))
+                    }
+
+                    ftl_autogen::protocols::tcpip::TcpListenReply::MSGINFO => {
+                        use ftl_autogen::protocols::tcpip::TcpListenReply as M;
+
+                        let reader = M::deserialize(buffer, msginfo)?;
+                        Some(Message::TcpListenReply(reader))
+                    }
+
+                    ftl_autogen::protocols::tcpip::TcpSendRequest::MSGINFO => {
+                        use ftl_autogen::protocols::tcpip::TcpSendRequest as M;
+
+                        let reader = M::deserialize(buffer, msginfo)?;
+                        Some(Message::TcpSendRequest(reader))
+                    }
+
+                    ftl_autogen::protocols::tcpip::TcpSendReply::MSGINFO => {
+                        use ftl_autogen::protocols::tcpip::TcpSendReply as M;
+
+                        let reader = M::deserialize(buffer, msginfo)?;
+                        Some(Message::TcpSendReply(reader))
+                    }
+
+                    _ => None,
+                }
+            }
+        }
+    }
+
+    pub mod virtio_net {
         pub struct Environ {
             pub autopilot_ch: Option<ftl_api::channel::Channel>,
             pub depends: Depends,
@@ -59,6 +253,14 @@ pub mod apps {
             NewclientReply(ftl_autogen::protocols::autopilot::NewclientReplyReader<'a>),
             PingRequest(ftl_autogen::protocols::ping::PingRequestReader<'a>),
             PingReply(ftl_autogen::protocols::ping::PingReplyReader<'a>),
+            Tx(ftl_autogen::protocols::ethernet_device::TxReader<'a>),
+            Rx(ftl_autogen::protocols::ethernet_device::RxReader<'a>),
+            TcpAccepted(ftl_autogen::protocols::tcpip::TcpAcceptedReader<'a>),
+            TcpReceived(ftl_autogen::protocols::tcpip::TcpReceivedReader<'a>),
+            TcpListenRequest(ftl_autogen::protocols::tcpip::TcpListenRequestReader<'a>),
+            TcpListenReply(ftl_autogen::protocols::tcpip::TcpListenReplyReader<'a>),
+            TcpSendRequest(ftl_autogen::protocols::tcpip::TcpSendRequestReader<'a>),
+            TcpSendReply(ftl_autogen::protocols::tcpip::TcpSendReplyReader<'a>),
         }
 
         impl<'a> ::core::fmt::Debug for Message<'a> {
@@ -68,6 +270,14 @@ pub mod apps {
                     Self::NewclientReply(_) => write!(f, "NewclientReply"),
                     Self::PingRequest(_) => write!(f, "PingRequest"),
                     Self::PingReply(_) => write!(f, "PingReply"),
+                    Self::Tx(_) => write!(f, "Tx"),
+                    Self::Rx(_) => write!(f, "Rx"),
+                    Self::TcpAccepted(_) => write!(f, "TcpAccepted"),
+                    Self::TcpReceived(_) => write!(f, "TcpReceived"),
+                    Self::TcpListenRequest(_) => write!(f, "TcpListenRequest"),
+                    Self::TcpListenReply(_) => write!(f, "TcpListenReply"),
+                    Self::TcpSendRequest(_) => write!(f, "TcpSendRequest"),
+                    Self::TcpSendReply(_) => write!(f, "TcpSendReply"),
                 }
             }
         }
@@ -111,6 +321,256 @@ pub mod apps {
 
                         let reader = M::deserialize(buffer, msginfo)?;
                         Some(Message::PingReply(reader))
+                    }
+
+                    ftl_autogen::protocols::ethernet_device::Tx::MSGINFO => {
+                        use ftl_autogen::protocols::ethernet_device::Tx as M;
+
+                        let reader = M::deserialize(buffer, msginfo)?;
+                        Some(Message::Tx(reader))
+                    }
+
+                    ftl_autogen::protocols::ethernet_device::Rx::MSGINFO => {
+                        use ftl_autogen::protocols::ethernet_device::Rx as M;
+
+                        let reader = M::deserialize(buffer, msginfo)?;
+                        Some(Message::Rx(reader))
+                    }
+
+                    ftl_autogen::protocols::tcpip::TcpAccepted::MSGINFO => {
+                        use ftl_autogen::protocols::tcpip::TcpAccepted as M;
+
+                        let reader = M::deserialize(buffer, msginfo)?;
+                        Some(Message::TcpAccepted(reader))
+                    }
+
+                    ftl_autogen::protocols::tcpip::TcpReceived::MSGINFO => {
+                        use ftl_autogen::protocols::tcpip::TcpReceived as M;
+
+                        let reader = M::deserialize(buffer, msginfo)?;
+                        Some(Message::TcpReceived(reader))
+                    }
+
+                    ftl_autogen::protocols::tcpip::TcpListenRequest::MSGINFO => {
+                        use ftl_autogen::protocols::tcpip::TcpListenRequest as M;
+
+                        let reader = M::deserialize(buffer, msginfo)?;
+                        Some(Message::TcpListenRequest(reader))
+                    }
+
+                    ftl_autogen::protocols::tcpip::TcpListenReply::MSGINFO => {
+                        use ftl_autogen::protocols::tcpip::TcpListenReply as M;
+
+                        let reader = M::deserialize(buffer, msginfo)?;
+                        Some(Message::TcpListenReply(reader))
+                    }
+
+                    ftl_autogen::protocols::tcpip::TcpSendRequest::MSGINFO => {
+                        use ftl_autogen::protocols::tcpip::TcpSendRequest as M;
+
+                        let reader = M::deserialize(buffer, msginfo)?;
+                        Some(Message::TcpSendRequest(reader))
+                    }
+
+                    ftl_autogen::protocols::tcpip::TcpSendReply::MSGINFO => {
+                        use ftl_autogen::protocols::tcpip::TcpSendReply as M;
+
+                        let reader = M::deserialize(buffer, msginfo)?;
+                        Some(Message::TcpSendReply(reader))
+                    }
+
+                    _ => None,
+                }
+            }
+        }
+    }
+
+    pub mod http_server {
+        pub struct Environ {
+            pub autopilot_ch: Option<ftl_api::channel::Channel>,
+            pub depends: Depends,
+        }
+
+        impl Environ {
+            pub fn from_environ_ptr(environ_ptr: *const u8, environ_len: usize) -> Self {
+                let environ_bytes =
+                    unsafe { ::core::slice::from_raw_parts(environ_ptr, environ_len) };
+
+                #[allow(unused_variables)]
+                let environ_json: EnvironJson =
+                    serde_json::from_slice(environ_bytes).expect("failed to parse environ JSON");
+
+                let depends = Depends {
+                    tcpip: {
+                        use ftl_api::channel::Channel;
+                        use ftl_api::handle::OwnedHandle;
+                        use ftl_types::handle::HandleId;
+
+                        let handle_id = HandleId::from_raw(environ_json.depends.tcpip);
+                        let handle = OwnedHandle::from_raw(handle_id);
+                        Some(Channel::from_handle(handle))
+                    },
+                };
+
+                Self {
+                    autopilot_ch: {
+                        use ftl_api::channel::Channel;
+                        use ftl_api::handle::OwnedHandle;
+                        use ftl_types::handle::HandleId;
+
+                        let handle_id = HandleId::from_raw(environ_json.autopilot_ch);
+                        let handle = OwnedHandle::from_raw(handle_id);
+                        Some(Channel::from_handle(handle))
+                    },
+                    depends,
+                }
+            }
+        }
+
+        pub struct Depends {
+            pub tcpip: Option<ftl_api::channel::Channel>,
+        }
+
+        #[derive(serde::Serialize, serde::Deserialize)]
+        struct EnvironJson {
+            pub autopilot_ch: i32,
+            pub depends: DependsJson,
+        }
+
+        #[derive(serde::Serialize, serde::Deserialize)]
+        struct DependsJson {
+            pub tcpip: i32,
+        }
+
+        pub enum Message<'a> {
+            NewclientRequest(ftl_autogen::protocols::autopilot::NewclientRequestReader<'a>),
+            NewclientReply(ftl_autogen::protocols::autopilot::NewclientReplyReader<'a>),
+            PingRequest(ftl_autogen::protocols::ping::PingRequestReader<'a>),
+            PingReply(ftl_autogen::protocols::ping::PingReplyReader<'a>),
+            Tx(ftl_autogen::protocols::ethernet_device::TxReader<'a>),
+            Rx(ftl_autogen::protocols::ethernet_device::RxReader<'a>),
+            TcpAccepted(ftl_autogen::protocols::tcpip::TcpAcceptedReader<'a>),
+            TcpReceived(ftl_autogen::protocols::tcpip::TcpReceivedReader<'a>),
+            TcpListenRequest(ftl_autogen::protocols::tcpip::TcpListenRequestReader<'a>),
+            TcpListenReply(ftl_autogen::protocols::tcpip::TcpListenReplyReader<'a>),
+            TcpSendRequest(ftl_autogen::protocols::tcpip::TcpSendRequestReader<'a>),
+            TcpSendReply(ftl_autogen::protocols::tcpip::TcpSendReplyReader<'a>),
+        }
+
+        impl<'a> ::core::fmt::Debug for Message<'a> {
+            fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+                match self {
+                    Self::NewclientRequest(_) => write!(f, "NewclientRequest"),
+                    Self::NewclientReply(_) => write!(f, "NewclientReply"),
+                    Self::PingRequest(_) => write!(f, "PingRequest"),
+                    Self::PingReply(_) => write!(f, "PingReply"),
+                    Self::Tx(_) => write!(f, "Tx"),
+                    Self::Rx(_) => write!(f, "Rx"),
+                    Self::TcpAccepted(_) => write!(f, "TcpAccepted"),
+                    Self::TcpReceived(_) => write!(f, "TcpReceived"),
+                    Self::TcpListenRequest(_) => write!(f, "TcpListenRequest"),
+                    Self::TcpListenReply(_) => write!(f, "TcpListenReply"),
+                    Self::TcpSendRequest(_) => write!(f, "TcpSendRequest"),
+                    Self::TcpSendReply(_) => write!(f, "TcpSendReply"),
+                }
+            }
+        }
+
+        use ftl_types::message::MessageBuffer;
+        use ftl_types::message::MessageDeserialize;
+        use ftl_types::message::MessageInfo;
+        use ftl_types::message::MessageSerialize;
+
+        impl<'b> MessageDeserialize for Message<'b> {
+            type Reader<'a> = Message<'a>;
+
+            fn deserialize<'a>(
+                buffer: &'a MessageBuffer,
+                msginfo: MessageInfo,
+            ) -> Option<Self::Reader<'a>> {
+                match msginfo {
+                    ftl_autogen::protocols::autopilot::NewclientRequest::MSGINFO => {
+                        use ftl_autogen::protocols::autopilot::NewclientRequest as M;
+
+                        let reader = M::deserialize(buffer, msginfo)?;
+                        Some(Message::NewclientRequest(reader))
+                    }
+
+                    ftl_autogen::protocols::autopilot::NewclientReply::MSGINFO => {
+                        use ftl_autogen::protocols::autopilot::NewclientReply as M;
+
+                        let reader = M::deserialize(buffer, msginfo)?;
+                        Some(Message::NewclientReply(reader))
+                    }
+
+                    ftl_autogen::protocols::ping::PingRequest::MSGINFO => {
+                        use ftl_autogen::protocols::ping::PingRequest as M;
+
+                        let reader = M::deserialize(buffer, msginfo)?;
+                        Some(Message::PingRequest(reader))
+                    }
+
+                    ftl_autogen::protocols::ping::PingReply::MSGINFO => {
+                        use ftl_autogen::protocols::ping::PingReply as M;
+
+                        let reader = M::deserialize(buffer, msginfo)?;
+                        Some(Message::PingReply(reader))
+                    }
+
+                    ftl_autogen::protocols::ethernet_device::Tx::MSGINFO => {
+                        use ftl_autogen::protocols::ethernet_device::Tx as M;
+
+                        let reader = M::deserialize(buffer, msginfo)?;
+                        Some(Message::Tx(reader))
+                    }
+
+                    ftl_autogen::protocols::ethernet_device::Rx::MSGINFO => {
+                        use ftl_autogen::protocols::ethernet_device::Rx as M;
+
+                        let reader = M::deserialize(buffer, msginfo)?;
+                        Some(Message::Rx(reader))
+                    }
+
+                    ftl_autogen::protocols::tcpip::TcpAccepted::MSGINFO => {
+                        use ftl_autogen::protocols::tcpip::TcpAccepted as M;
+
+                        let reader = M::deserialize(buffer, msginfo)?;
+                        Some(Message::TcpAccepted(reader))
+                    }
+
+                    ftl_autogen::protocols::tcpip::TcpReceived::MSGINFO => {
+                        use ftl_autogen::protocols::tcpip::TcpReceived as M;
+
+                        let reader = M::deserialize(buffer, msginfo)?;
+                        Some(Message::TcpReceived(reader))
+                    }
+
+                    ftl_autogen::protocols::tcpip::TcpListenRequest::MSGINFO => {
+                        use ftl_autogen::protocols::tcpip::TcpListenRequest as M;
+
+                        let reader = M::deserialize(buffer, msginfo)?;
+                        Some(Message::TcpListenRequest(reader))
+                    }
+
+                    ftl_autogen::protocols::tcpip::TcpListenReply::MSGINFO => {
+                        use ftl_autogen::protocols::tcpip::TcpListenReply as M;
+
+                        let reader = M::deserialize(buffer, msginfo)?;
+                        Some(Message::TcpListenReply(reader))
+                    }
+
+                    ftl_autogen::protocols::tcpip::TcpSendRequest::MSGINFO => {
+                        use ftl_autogen::protocols::tcpip::TcpSendRequest as M;
+
+                        let reader = M::deserialize(buffer, msginfo)?;
+                        Some(Message::TcpSendRequest(reader))
+                    }
+
+                    ftl_autogen::protocols::tcpip::TcpSendReply::MSGINFO => {
+                        use ftl_autogen::protocols::tcpip::TcpSendReply as M;
+
+                        let reader = M::deserialize(buffer, msginfo)?;
+                        Some(Message::TcpSendReply(reader))
                     }
 
                     _ => None,

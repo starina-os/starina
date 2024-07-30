@@ -1,0 +1,14 @@
+{
+    "name": "tcpip",
+    "kind": "app/v0",
+    "spec": {
+        "depends": [
+            {
+                "name": "ethernet_device",
+                "type": "service",
+                "protocol": "ethernet_device"
+            }
+        ],
+        "provides": ["tcpip"]
+    }
+}

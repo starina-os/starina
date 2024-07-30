@@ -1,0 +1,14 @@
+[package]
+name = "http_server"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "http_server"
+path = "main.rs"
+
+[dependencies]
+ftl_api = { workspace = true }
+ftl_api_autogen = { workspace = true }
+httparse = { workspace = true }

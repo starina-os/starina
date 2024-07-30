@@ -12,4 +12,5 @@ pub enum FtlError {
     TooLarge,
     NotSupported,
     WouldBlock,
+    InvalidState,
 }

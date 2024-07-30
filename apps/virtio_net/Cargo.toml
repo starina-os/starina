@@ -1,0 +1,14 @@
+[package]
+name = "virtio_net"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "virtio_net"
+path = "main.rs"
+
+[dependencies]
+ftl_api = { workspace = true }
+ftl_virtio = { workspace = true }
+ftl_api_autogen = { workspace = true }

@@ -4,10 +4,9 @@ ARCH    ?= arm64
 MACHINE ?= qemu-virt
 RELEASE ?=            # "1" to build release version
 V       ?=            # "1" to enable verbose output
-STARTUP ?= apps/hello
 
 # Note: Don't forget to update boot.spec.json as well!
-APPS    ?= apps/virtio_console
+APPS    ?= apps/tcpip apps/virtio_net apps/http_server
 
 # Disable builtin implicit rules and variables.
 MAKEFLAGS += --no-builtin-rules --no-builtin-variables
@@ -40,6 +39,9 @@ QEMUFLAGS += -global virtio-mmio.force-legacy=false
 QEMUFLAGS += -drive id=drive0,file=disk.img,format=raw,if=none
 QEMUFLAGS += -device virtio-blk-device,drive=drive0,bus=virtio-mmio-bus.0
 QEMUFLAGS += -device virtio-serial-device,bus=virtio-mmio-bus.1
+QEMUFLAGS += -device virtio-net-device,netdev=net0,bus=virtio-mmio-bus.2
+QEMUFLAGS += -object filter-dump,id=fiter0,netdev=net0,file=virtio-net.pcap
+QEMUFLAGS += -netdev user,id=net0,hostfwd=tcp:127.0.0.1:1234-:80
 QEMUFLAGS += -device virtconsole,chardev=console0
 QEMUFLAGS += -chardev pipe,path=serial.pipe,id=console0
 else
@@ -104,9 +106,6 @@ ftl.elf: $(sources) libs/rust/ftl_autogen/lib.rs Makefile build/bootfs.bin
 ftl.pe: ftl.elf
 	$(PROGRESS) "OBJCOPY" $(@)
 	$(OBJCOPY) -O binary --strip-all $< $(@)
-
-build/startup.elf: build/$(STARTUP).elf
-	cp $< $@
 
 build/bootfs.bin: build/ftl_mkbootfs $(app_elfs) Makefile
 	rm -rf build/bootfs
