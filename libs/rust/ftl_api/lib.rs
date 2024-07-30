@@ -19,5 +19,19 @@ pub mod print;
 pub mod signal;
 pub mod syscall;
 
+pub mod sync {
+    pub use alloc::sync::Arc;
+    pub use alloc::sync::Weak;
+}
+
+pub mod collections {
+    pub use alloc::collections::*;
+
+    pub use hashbrown::hash_map;
+    pub use hashbrown::hash_set;
+    pub use hashbrown::HashMap;
+    pub use hashbrown::HashSet;
+}
+
 pub use ftl_api_macros::main;
 pub use ftl_types as types;
