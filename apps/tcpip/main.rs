@@ -170,8 +170,8 @@ impl<'a> Server<'a> {
         mainloop: &mut Mainloop<Context, Message>,
     ) {
         while self
-        .iface
-        .poll(now(), &mut self.device, &mut self.smol_sockets)
+            .iface
+            .poll(now(), &mut self.device, &mut self.smol_sockets)
         {
             let mut closed_sockets = Vec::new();
             let mut new_sockets = Vec::new();
