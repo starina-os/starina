@@ -164,7 +164,6 @@ impl VirtQueue {
                     num_freed += 1;
 
                     if (desc.flags & VIRTQ_DESC_F_NEXT) == 0 {
-                        debug_assert!(desc.next != 0);
                         desc.next = prev_head;
                         break;
                     }
