@@ -145,7 +145,6 @@ pub fn main(mut env: Environ) {
     let mut receiveq_buffers = BufferPool::new(dma_buf_len, receiveq.num_descs() as usize);
     let mut transmitq_buffers = BufferPool::new(dma_buf_len, transmitq.num_descs() as usize);
 
-    info!("receiveq.num_descs = {}", receiveq.num_descs());
     // Fill the receive queue with buffers.
     while let Some(buffer_index) = receiveq_buffers.pop_free() {
         let chain = &[VirtqDescBuffer::WritableFromDevice {
@@ -167,7 +166,6 @@ pub fn main(mut env: Environ) {
 
     let mut tcpip_ch = None;
     loop {
-        trace!("waiting for event...");
         match mainloop.next(&mut buffer) {
             Event::Message {
                 ctx: _ctx,
@@ -284,6 +282,16 @@ pub fn main(mut env: Environ) {
 
                             receiveq_buffers.push_free(buffer_index);
                         }
+                    }
+
+                    while let Some(VirtqUsedChain { descs, total_len }) = transmitq.pop_used() {
+                        let VirtqDescBuffer::ReadOnlyFromDevice { paddr, len } = descs[0] else {
+                            panic!("unexpected desc");
+                        };
+                        let buffer_index = transmitq_buffers
+                            .paddr_to_index(paddr)
+                            .expect("invalid paddr");
+                        transmitq_buffers.push_free(buffer_index);
                     }
 
                     while let Some(buffer_index) = receiveq_buffers.pop_free() {
