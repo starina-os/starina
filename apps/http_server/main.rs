@@ -67,6 +67,7 @@ pub fn main(mut env: Environ) {
     let mut buffer = MessageBuffer::new();
 
     info!("starting");
+    panic!("oh no!");
     let tcpip_ch = env.depends.tcpip.take().unwrap();
 
     tcpip_ch
@@ -80,7 +81,6 @@ pub fn main(mut env: Environ) {
     mainloop.add_channel(tcpip_ch, Context::Tcpip).unwrap();
 
     loop {
-        trace!("waiting for event...");
         match mainloop.next(&mut buffer) {
             Event::Message { ctx, ch, m } => {
                 match (ctx, m) {
