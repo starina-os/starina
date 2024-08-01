@@ -67,7 +67,6 @@ pub fn main(mut env: Environ) {
     let mut buffer = MessageBuffer::new();
 
     info!("starting");
-    panic!("oh no!");
     let tcpip_ch = env.depends.tcpip.take().unwrap();
 
     tcpip_ch
