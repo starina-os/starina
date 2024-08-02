@@ -120,6 +120,7 @@ fn probe(devices: &[Device], device_type: u32) -> Option<(VirtioMmio, Irq)> {
     None
 }
 
+#[derive(Debug)]
 enum Context {
     Autopilot,
     Interrupt,
@@ -164,74 +165,59 @@ pub fn main(mut env: Environ) {
     let mut tcpip_sender = None;
     loop {
         match mainloop.next() {
-            Event::Message {
-                ctx: _ctx,
-                sender: _ch,
-                m,
-            } => {
-                match m {
-                    Message::NewclientRequest(m) => {
-                        let tcpip_ch = Channel::from_handle(OwnedHandle::from_raw(m.handle()));
-                        let (sender, receiver) = tcpip_ch.split();
-                        tcpip_sender = Some(sender.clone());
+            Event::Message(Context::Autopilot, Message::NewclientRequest(m), _) => {
+                let tcpip_ch = Channel::from_handle(OwnedHandle::from_raw(m.handle()));
+                let (sender, receiver) = tcpip_ch.split();
+                tcpip_sender = Some(sender.clone());
 
-                        mainloop
-                            .add_channel_receiver(receiver, sender, Context::Tcpip)
-                            .unwrap();
-                    }
-                    Message::Tx(tx) => {
-                        trace!("sending {} bytes", tx.payload().len());
-                        let buffer_index =
-                            transmitq_buffers.pop_free().expect("no free tx buffers");
-                        let vaddr = transmitq_buffers.vaddr(buffer_index);
-                        let paddr = transmitq_buffers.paddr(buffer_index);
-
-                        unsafe {
-                            vaddr.as_mut_ptr::<VirtioNetModernHeader>().write(
-                                VirtioNetModernHeader {
-                                    flags: 0,
-                                    hdr_len: 0,
-                                    gso_type: 0,
-                                    gso_size: 0,
-                                    checksum_start: 0,
-                                    checksum_offset: 0,
-                                    // num_buffer: 0,
-                                },
-                            );
-                        }
-
-                        let header_len = size_of::<VirtioNetModernHeader>();
-                        unsafe {
-                            let buf = core::slice::from_raw_parts_mut(
-                                vaddr.add(header_len).as_mut_ptr(),
-                                dma_buf_len - header_len,
-                            );
-                            buf[..tx.payload().len()].copy_from_slice(tx.payload().as_slice());
-                        }
-
-                        let chain = &[
-                            VirtqDescBuffer::ReadOnlyFromDevice {
-                                paddr,
-                                len: header_len,
-                            },
-                            VirtqDescBuffer::ReadOnlyFromDevice {
-                                paddr: paddr.add(header_len),
-                                len: tx.payload().len(),
-                            },
-                        ];
-
-                        transmitq.enqueue(chain);
-                        transmitq.notify(&mut *transport);
-                    }
-                    _ => {
-                        warn!("unepxected message: {:?}", m);
-                    }
-                }
+                mainloop
+                    .add_channel_receiver(receiver, sender, Context::Tcpip)
+                    .unwrap();
             }
-            Event::Interrupt {
-                ctx: _ctx,
-                interrupt,
-            } => {
+            Event::Message(Context::Tcpip, Message::Tx(tx), _) => {
+                trace!("sending {} bytes", tx.payload().len());
+                let buffer_index = transmitq_buffers.pop_free().expect("no free tx buffers");
+                let vaddr = transmitq_buffers.vaddr(buffer_index);
+                let paddr = transmitq_buffers.paddr(buffer_index);
+
+                unsafe {
+                    vaddr
+                        .as_mut_ptr::<VirtioNetModernHeader>()
+                        .write(VirtioNetModernHeader {
+                            flags: 0,
+                            hdr_len: 0,
+                            gso_type: 0,
+                            gso_size: 0,
+                            checksum_start: 0,
+                            checksum_offset: 0,
+                            // num_buffer: 0,
+                        });
+                }
+
+                let header_len = size_of::<VirtioNetModernHeader>();
+                unsafe {
+                    let buf = core::slice::from_raw_parts_mut(
+                        vaddr.add(header_len).as_mut_ptr(),
+                        dma_buf_len - header_len,
+                    );
+                    buf[..tx.payload().len()].copy_from_slice(tx.payload().as_slice());
+                }
+
+                let chain = &[
+                    VirtqDescBuffer::ReadOnlyFromDevice {
+                        paddr,
+                        len: header_len,
+                    },
+                    VirtqDescBuffer::ReadOnlyFromDevice {
+                        paddr: paddr.add(header_len),
+                        len: tx.payload().len(),
+                    },
+                ];
+
+                transmitq.enqueue(chain);
+                transmitq.notify(&mut *transport);
+            }
+            Event::Interrupt(Context::Interrupt, interrupt) => {
                 loop {
                     let status = transport.read_isr_status();
                     if !status.queue_intr() {
@@ -305,8 +291,8 @@ pub fn main(mut env: Environ) {
                     interrupt.ack().unwrap();
                 }
             }
-            _ => {
-                warn!("unhandled event");
+            ev => {
+                warn!("unhandled event: {:?}", ev);
             }
         }
     }

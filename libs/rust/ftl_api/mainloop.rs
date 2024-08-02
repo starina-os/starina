@@ -26,16 +26,9 @@ pub enum Error {
 }
 
 #[derive(Debug)]
-pub enum Event<'a, St, M: MessageDeserialize> {
-    Message {
-        ctx: &'a mut St,
-        sender: &'a mut ChannelSender,
-        m: M::Reader<'a>,
-    },
-    Interrupt {
-        ctx: &'a mut St,
-        interrupt: &'a mut Interrupt,
-    },
+pub enum Event<'a, Ctx, M: MessageDeserialize> {
+    Message(&'a mut Ctx, M::Reader<'a>, &'a mut ChannelSender),
+    Interrupt(&'a mut Ctx, &'a mut Interrupt),
     Error(Error),
 }
 
@@ -47,14 +40,14 @@ enum Object {
     Interrupt(Interrupt),
 }
 
-struct Entry<St> {
-    ctx: St,
+struct Entry<Ctx> {
+    ctx: Ctx,
     object: Object,
 }
 
-pub struct Mainloop<St, AllM> {
+pub struct Mainloop<Ctx, AllM> {
     poll: Poll,
-    objects: HashMap<HandleId, Entry<St>>,
+    objects: HashMap<HandleId, Entry<Ctx>>,
     msgbuffer: MessageBuffer,
     _pd: PhantomData<AllM>,
 }
@@ -71,7 +64,7 @@ impl<Ctx, AllM: MessageDeserialize> Mainloop<Ctx, AllM> {
         })
     }
 
-    pub fn add_channel(&mut self, ch: Channel, state: Ctx) -> Result<(), Error> {
+    pub fn add_channel(&mut self, ch: Channel, ctx: Ctx) -> Result<(), Error> {
         let handle_id = ch.handle().id();
         if self.objects.contains_key(&handle_id) {
             return Err(Error::ChannelAlreadyAdded(ch));
@@ -79,7 +72,7 @@ impl<Ctx, AllM: MessageDeserialize> Mainloop<Ctx, AllM> {
 
         let (sender, receiver) = ch.split();
         let entry = Entry {
-            ctx: state,
+            ctx,
             object: Object::Channel { sender, receiver },
         };
 
@@ -155,17 +148,10 @@ impl<Ctx, AllM: MessageDeserialize> Mainloop<Ctx, AllM> {
                         Err(err) => return Event::Error(Error::ChannelRecv(err)),
                     };
 
-                    return Event::Message {
-                        sender,
-                        ctx: &mut entry.ctx,
-                        m,
-                    };
+                    return Event::Message(&mut entry.ctx, m, sender);
                 }
                 Object::Interrupt(interrupt) => {
-                    return Event::Interrupt {
-                        interrupt,
-                        ctx: &mut entry.ctx,
-                    };
+                    return Event::Interrupt(&mut entry.ctx, interrupt);
                 }
             }
         }

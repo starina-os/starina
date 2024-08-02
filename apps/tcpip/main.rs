@@ -30,11 +30,12 @@ use smoltcp::wire::IpAddress;
 use smoltcp::wire::IpCidr;
 use smoltcp::wire::IpListenEndpoint;
 
+#[derive(Debug)]
 enum Context {
     Autopilot,
     Driver,
     CtrlSocket,
-    DataSocket { handle: SocketHandle },
+    DataSocket(SocketHandle),
 }
 
 struct RxTokenImpl(Vec<u8>);
@@ -189,9 +190,7 @@ impl<'a> Server<'a> {
                             .add_channel_receiver(
                                 ch2_receiver,
                                 ch2_sender.clone(),
-                                Context::DataSocket {
-                                    handle: sock.smol_handle,
-                                },
+                                Context::DataSocket(sock.smol_handle),
                             )
                             .unwrap();
 
@@ -353,35 +352,27 @@ pub fn main(mut env: Environ) {
     loop {
         server.poll(&mut mainloop);
         match mainloop.next() {
-            Event::Message { sender, ctx, m } => {
-                match (ctx, m) {
-                    (Context::Autopilot, Message::NewclientRequest(m)) => {
-                        info!("got new client: {:?}", m.handle());
-                        let new_ch = Channel::from_handle(OwnedHandle::from_raw(m.handle()));
-                        mainloop.add_channel(new_ch, Context::CtrlSocket).unwrap();
-                    }
-                    (Context::CtrlSocket, Message::TcpListenRequest(m)) => {
-                        server.tcp_listen(sender.clone(), m.port());
-                    }
-                    (Context::DataSocket { handle }, Message::TcpSendRequest(m)) => {
-                        server.tcp_send(*handle, m.data().as_slice()).unwrap();
-                    }
-                    (Context::Driver, Message::Rx(m)) => {
-                        trace!(
-                            "received {} bytes: {:02x?}",
-                            m.payload().len(),
-                            &m.payload().as_slice()[0..14]
-                        );
-                        server.receive_pkt(m.payload().as_slice());
-                    }
-                    _ => {
-                        // TODO: dump message with fmt::Debug
-                        panic!("unknown message");
-                    }
-                }
+            Event::Message(Context::Autopilot, Message::NewclientRequest(m), _) => {
+                info!("got new client: {:?}", m.handle());
+                let new_ch = Channel::from_handle(OwnedHandle::from_raw(m.handle()));
+                mainloop.add_channel(new_ch, Context::CtrlSocket).unwrap();
             }
-            _ => {
-                panic!("unexpected event");
+            Event::Message(Context::CtrlSocket, Message::TcpListenRequest(m), sender) => {
+                server.tcp_listen(sender.clone(), m.port());
+            }
+            Event::Message(Context::DataSocket(handle), Message::TcpSendRequest(m), _) => {
+                server.tcp_send(*handle, m.data().as_slice()).unwrap();
+            }
+            Event::Message(Context::Driver, Message::Rx(m), _) => {
+                trace!(
+                    "received {} bytes: {:02x?}",
+                    m.payload().len(),
+                    &m.payload().as_slice()[0..14]
+                );
+                server.receive_pkt(m.payload().as_slice());
+            }
+            ev => {
+                warn!("unhandled event: {:?}", ev);
             }
         }
     }
