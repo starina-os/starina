@@ -8,6 +8,8 @@ use ftl_types::poll::PollEvent;
 use hashbrown::HashMap;
 
 use crate::channel::Channel;
+use crate::channel::ChannelReceiver;
+use crate::channel::ChannelSender;
 use crate::channel::RecvError;
 use crate::interrupt::Interrupt;
 use crate::poll::Poll;
@@ -19,6 +21,7 @@ pub enum Error {
     PollWait(FtlError),
     ChannelRecv(RecvError),
     ChannelAlreadyAdded(Channel),
+    ChannelReceiverAlreadyAdded((ChannelReceiver, ChannelSender)),
     InterruptAlreadyAdded(Interrupt),
 }
 
@@ -26,7 +29,7 @@ pub enum Error {
 pub enum Event<'a, 'b, St, M: MessageDeserialize> {
     Message {
         ctx: &'a mut St,
-        ch: &'a mut Channel,
+        sender: &'a mut ChannelSender,
         m: M::Reader<'b>,
     },
     Interrupt {
@@ -37,7 +40,10 @@ pub enum Event<'a, 'b, St, M: MessageDeserialize> {
 }
 
 enum Object {
-    Channel(Channel),
+    Channel {
+        receiver: ChannelReceiver,
+        sender: ChannelSender,
+    },
     Interrupt(Interrupt),
 }
 
@@ -69,9 +75,32 @@ impl<Ctx, AllM: MessageDeserialize> Mainloop<Ctx, AllM> {
             return Err(Error::ChannelAlreadyAdded(ch));
         }
 
+        let (sender, receiver) = ch.split();
         let entry = Entry {
             ctx: state,
-            object: Object::Channel(ch),
+            object: Object::Channel {
+                sender,
+                 receiver,
+            },
+        };
+
+        self.objects.insert(handle_id, entry);
+        self.poll
+            .add(handle_id, PollEvent::READABLE)
+            .map_err(Error::PollAdd)?;
+
+        Ok(())
+    }
+
+    pub fn add_channel_receiver(&mut self, receiver: ChannelReceiver, sender: ChannelSender, state: Ctx) -> Result<(), Error> {
+        let handle_id = receiver.handle().id();
+        if self.objects.contains_key(&handle_id) {
+            return Err(Error::ChannelReceiverAlreadyAdded((receiver, sender)));
+        }
+
+        let entry = Entry {
+            ctx: state,
+            object: Object::Channel { receiver, sender },
         };
 
         self.objects.insert(handle_id, entry);
@@ -113,14 +142,14 @@ impl<Ctx, AllM: MessageDeserialize> Mainloop<Ctx, AllM> {
         let entry = self.objects.get_mut(&handle_id).unwrap();
         if poll_ev.contains(PollEvent::READABLE) {
             match &mut entry.object {
-                Object::Channel(ch) => {
-                    let m = match ch.recv_with_buffer::<AllM>(msgbuffer) {
+                Object::Channel { sender, receiver } => {
+                    let m = match receiver.recv_with_buffer::<AllM>(msgbuffer) {
                         Ok(m) => m,
                         Err(err) => return Event::Error(Error::ChannelRecv(err)),
                     };
 
                     return Event::Message {
-                        ch,
+                        sender,
                         ctx: &mut entry.ctx,
                         m,
                     };

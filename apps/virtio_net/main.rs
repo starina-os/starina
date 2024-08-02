@@ -169,7 +169,7 @@ pub fn main(mut env: Environ) {
         match mainloop.next(&mut buffer) {
             Event::Message {
                 ctx: _ctx,
-                ch: _ch,
+                sender: _ch,
                 m,
             } => {
                 match m {

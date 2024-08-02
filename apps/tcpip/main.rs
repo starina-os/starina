@@ -2,6 +2,7 @@
 #![no_main]
 
 use ftl_api::channel::Channel;
+use ftl_api::channel::ChannelSender;
 use ftl_api::collections::HashMap;
 use ftl_api::collections::VecDeque;
 use ftl_api::handle::OwnedHandle;
@@ -180,13 +181,13 @@ impl<'a> Server<'a> {
                 let mut close = false;
                 match (&mut sock.state, smol_sock.state()) {
                     (State::Listening { .. }, tcp::State::Listen | tcp::State::SynReceived) => {}
-                    (State::Listening { ctrl_ch, listen_endpoint }, tcp::State::Established) => {
+                    (State::Listening { ctrl_sender, listen_endpoint }, tcp::State::Established) => {
                         let (ch1, ch2) = Channel::create().unwrap();
 
                         // FIXME:
                         let ch1_handle = ch1.handle().id();
                         core::mem::forget(ch1);
-                        ctrl_ch
+                        ctrl_sender
                             .send_with_buffer(
                                 msgbuffer,
                                 TcpAccepted {
@@ -196,12 +197,13 @@ impl<'a> Server<'a> {
                             .unwrap();
 
                         // FIXME:
-                        let ch2_cloned =
-                            Channel::from_handle(OwnedHandle::from_raw(ch2.handle().id()));
+                        let (ch2_sender, ch2_receiver) =
+                            Channel::from_handle(OwnedHandle::from_raw(ch2.handle().id())).split();
 
                         mainloop
-                            .add_channel(
-                                ch2_cloned,
+                            .add_channel_receiver(
+                                ch2_receiver,
+                                ch2_sender.clone(),
                                 Context::DataSocket {
                                     handle: sock.smol_handle,
                                 },
@@ -222,19 +224,17 @@ impl<'a> Server<'a> {
                             smol_handle: new_listen_sock_handle,
                             state: State::Listening {
                                 listen_endpoint: *listen_endpoint,
-                                ctrl_ch: Channel::from_handle(OwnedHandle::from_raw(
-                                    ctrl_ch.handle().id(),
-                                )),
+                                ctrl_sender: ctrl_sender.clone(),
                             },
                         });
 
-                        sock.state = State::Established { ch: ch2 };
+                        sock.state = State::Established { sender: ch2_sender };
                     }
                     (State::Listening { .. }, _) => {
                         // Inactive, closed, or unknown state. Close the socket.
                         close = true;
                     }
-                    (State::Established { ch }, _) if smol_sock.can_recv() => {
+                    (State::Established { sender: ch }, _) if smol_sock.can_recv() => {
                         loop {
                             let mut buf = [0; 2048];
                             let len = smol_sock.recv_slice(&mut buf).unwrap();
@@ -273,7 +273,7 @@ impl<'a> Server<'a> {
         }
     }
 
-    pub fn tcp_listen(&mut self, ctrl_ch: Channel, port: u16) {
+    pub fn tcp_listen(&mut self, ctrl_sender: ChannelSender, port: u16) {
         let listen_endpoint = IpListenEndpoint {
             addr: None,
             port,
@@ -290,7 +290,7 @@ impl<'a> Server<'a> {
             handle,
             Socket {
                 smol_handle: handle,
-                state: State::Listening { ctrl_ch, listen_endpoint },
+                state: State::Listening { ctrl_sender, listen_endpoint },
             },
         );
     }
@@ -317,8 +317,8 @@ impl<'a> Server<'a> {
 }
 
 enum State {
-    Listening { ctrl_ch: Channel, listen_endpoint: IpListenEndpoint },
-    Established { ch: Channel },
+    Listening { ctrl_sender: ChannelSender, listen_endpoint: IpListenEndpoint },
+    Established { sender: ChannelSender },
 }
 
 struct Socket {
@@ -355,7 +355,7 @@ pub fn main(mut env: Environ) {
     loop {
         server.poll(&mut buffer, &mut mainloop);
         match mainloop.next(&mut buffer) {
-            Event::Message { ch, ctx, m } => {
+            Event::Message { sender, ctx, m } => {
                 match (ctx, m) {
                     (Context::Autopilot, Message::NewclientRequest(m)) => {
                         info!("got new client: {:?}", m.handle());
@@ -363,9 +363,7 @@ pub fn main(mut env: Environ) {
                         mainloop.add_channel(new_ch, Context::CtrlSocket).unwrap();
                     }
                     (Context::CtrlSocket, Message::TcpListenRequest(m)) => {
-                        // FIXME:
-                        let ctrl_ch = Channel::from_handle(OwnedHandle::from_raw(ch.handle().id()));
-                        server.tcp_listen(ctrl_ch, m.port());
+                        server.tcp_listen(sender.clone(), m.port());
                     }
                     (Context::DataSocket { handle }, Message::TcpSendRequest(m)) => {
                         server.tcp_send(*handle, m.data().as_slice()).unwrap();

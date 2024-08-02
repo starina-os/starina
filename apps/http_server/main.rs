@@ -81,7 +81,7 @@ pub fn main(mut env: Environ) {
 
     loop {
         match mainloop.next(&mut buffer) {
-            Event::Message { ctx, ch, m } => {
+            Event::Message { ctx, sender, m } => {
                 match (ctx, m) {
                     (Context::Tcpip, Message::TcpAccepted(m)) => {
                         let ch = Channel::from_handle(OwnedHandle::from_raw(m.sock()));
@@ -100,7 +100,7 @@ pub fn main(mut env: Environ) {
                             data[..resp.len()].copy_from_slice(resp);
                             let data = BytesField::new(data, resp.len() as u16);
 
-                            ch.send_with_buffer(&mut buffer, TcpSendRequest { data })
+                            sender.send_with_buffer(&mut buffer, TcpSendRequest { data })
                                 .unwrap();
                         });
                     }

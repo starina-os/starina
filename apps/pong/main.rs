@@ -29,7 +29,7 @@ pub fn main(mut env: Environ) {
     let mut buffer = MessageBuffer::new();
     loop {
         match mainloop.next(&mut buffer) {
-            Event::Message { ch, ctx, m } => {
+            Event::Message { sender, ctx, m } => {
                 match (ctx, m) {
                     (Context::Autopilot, Message::NewclientRequest(m)) => {
                         info!("got new client: {:?}", m.handle());

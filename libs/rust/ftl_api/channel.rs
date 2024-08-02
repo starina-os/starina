@@ -1,5 +1,6 @@
 use core::fmt;
 
+use alloc::sync::Arc;
 use ftl_types::error::FtlError;
 use ftl_types::message::MessageBuffer;
 use ftl_types::message::MessageDeserialize;
@@ -38,6 +39,13 @@ impl Channel {
 
     pub fn handle(&self) -> &OwnedHandle {
         &self.handle
+    }
+
+    pub fn split(self) -> (ChannelSender, ChannelReceiver) {
+        let ch = Arc::new(self);
+        let sender = ChannelSender { ch: ch.clone() };
+        let receiver = ChannelReceiver { ch };
+        (sender, receiver)
     }
 
     pub fn send_with_buffer<M: MessageSerialize>(
@@ -84,5 +92,42 @@ impl Channel {
 impl fmt::Debug for Channel {
     fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
         todo!()
+    }
+}
+
+#[derive(Debug)]
+pub struct ChannelReceiver {
+    ch: Arc<Channel>,
+}
+
+impl ChannelReceiver {
+    pub fn handle(&self) -> &OwnedHandle {
+        self.ch.handle()
+    }
+
+    pub fn recv_with_buffer<'a, M: MessageDeserialize>(
+        &self,
+        buffer: &'a mut MessageBuffer,
+    ) -> Result<M::Reader<'a>, RecvError> {
+        self.ch.recv_with_buffer::<M>(buffer)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ChannelSender {
+    ch: Arc<Channel>,
+}
+
+impl ChannelSender {
+    pub fn handle(&self) -> &OwnedHandle {
+        self.ch.handle()
+    }
+
+    pub fn send_with_buffer<M: MessageSerialize>(
+        &self,
+        buffer: &mut MessageBuffer,
+        msg: M,
+    ) -> Result<(), FtlError> {
+        self.ch.send_with_buffer(buffer, msg)
     }
 }
