@@ -3,11 +3,11 @@
 #![feature(const_mut_refs)]
 #![feature(const_intrinsic_copy)]
 
-use ftl_types::message::HandleOwnership;
 use ftl_types::message::MessageBuffer;
 use ftl_types::message::MessageDeserialize;
 use ftl_types::message::MessageInfo;
 use ftl_types::message::MessageSerialize;
+use ftl_types::message::MovedHandle;
 
 pub mod protocols {
     use super::*;
@@ -17,7 +17,7 @@ pub mod protocols {
 
         #[repr(C)]
         pub struct NewclientRequest {
-            pub handle: HandleOwnership,
+            pub handle: MovedHandle,
         }
 
         #[repr(C)]
@@ -571,7 +571,7 @@ pub mod protocols {
 
         #[repr(C)]
         pub struct TcpAccepted {
-            pub sock: HandleOwnership,
+            pub sock: MovedHandle,
         }
 
         #[repr(C)]

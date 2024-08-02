@@ -3,11 +3,11 @@ use core::fmt;
 use core::mem;
 
 use ftl_types::error::FtlError;
-use ftl_types::message::HandleOwnership;
 use ftl_types::message::MessageBuffer;
 use ftl_types::message::MessageDeserialize;
 use ftl_types::message::MessageInfo;
 use ftl_types::message::MessageSerialize;
+use ftl_types::message::MovedHandle;
 
 use crate::handle::OwnedHandle;
 use crate::syscall;
@@ -97,11 +97,11 @@ impl fmt::Debug for Channel {
     }
 }
 
-impl From<Channel> for HandleOwnership {
-    fn from(channel: Channel) -> HandleOwnership {
+impl From<Channel> for MovedHandle {
+    fn from(channel: Channel) -> MovedHandle {
         let handle_id = channel.handle.id();
         mem::forget(channel);
-        HandleOwnership(handle_id)
+        MovedHandle(handle_id)
     }
 }
 

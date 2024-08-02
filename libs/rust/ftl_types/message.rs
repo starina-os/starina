@@ -60,4 +60,4 @@ pub trait MessageDeserialize: Sized {
 
 #[derive(Debug, PartialEq, Eq)]
 #[repr(transparent)]
-pub struct HandleOwnership(pub HandleId);
+pub struct MovedHandle(pub HandleId);
