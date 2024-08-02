@@ -87,26 +87,31 @@ pub fn main(mut env: Environ) {
 
     loop {
         match mainloop.next() {
-            Event::Message { ctx, sender, m } => {
-                match (ctx, m) {
-                    (Context::Ctrl, Message::TcpAccepted(m)) => {
-                        let ch = Channel::from_handle(OwnedHandle::from_raw(m.sock()));
-                        mainloop
-                            .add_channel(ch, Context::Data(Client::new()))
-                            .unwrap();
-                    }
-                    (Context::Data(client), Message::TcpReceived(m)) => {
-                        client.receive(sender, m.data().as_slice());
-                    }
-                    (Context::Data(_), Message::TcpClosed(_)) => {
-                        trace!("client connection closed");
-                        let sender_id = sender.handle().id();
-                        mainloop.remove(sender_id);
-                    }
-                    (_, m) => {
-                        warn!("unexpected message: {:?}", m);
-                    }
-                }
+            Event::Message {
+                sender,
+                ctx: Context::Ctrl,
+                m: Message::TcpAccepted(m),
+            } => {
+                let ch = Channel::from_handle(OwnedHandle::from_raw(m.sock()));
+                mainloop
+                    .add_channel(ch, Context::Data(Client::new()))
+                    .unwrap();
+            }
+            Event::Message {
+                sender,
+                ctx: Context::Data(client),
+                m: Message::TcpReceived(m),
+            } => {
+                client.receive(sender, m.data().as_slice());
+            }
+            Event::Message {
+                sender,
+                ctx: Context::Data(_),
+                m: Message::TcpClosed(_),
+            } => {
+                trace!("client connection closed");
+                let sender_id = sender.handle().id();
+                mainloop.remove(sender_id);
             }
             ev => {
                 warn!("unexpected event: {:?}", ev);
