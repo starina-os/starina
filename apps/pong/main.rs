@@ -26,7 +26,6 @@ pub fn main(mut env: Environ) {
         .add_channel(env.autopilot_ch.take().unwrap(), Context::Autopilot)
         .unwrap();
 
-    let mut buffer = MessageBuffer::new();
     loop {
         match mainloop.next() {
             Event::Message { sender, ctx, m } => {
@@ -50,7 +49,7 @@ pub fn main(mut env: Environ) {
                             int_value2: *counter,
                             str_value2: StringField::try_from("howdy!").unwrap(),
                         };
-                        if let Err(err) = ch.send_with_buffer(&mut buffer, reply) {
+                        if let Err(err) = ch.send(reply) {
                             info!("failed to reply: {:?}", err);
                         }
                     }

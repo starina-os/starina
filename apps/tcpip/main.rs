@@ -11,7 +11,6 @@ use ftl_api::mainloop::Mainloop;
 use ftl_api::prelude::*;
 use ftl_api::types::error::FtlError;
 use ftl_api::types::idl::BytesField;
-use ftl_api::types::message::MessageBuffer;
 use ftl_api_autogen::apps::tcpip::Environ;
 use ftl_api_autogen::apps::tcpip::Message;
 use ftl_api_autogen::protocols::ethernet_device;
@@ -63,11 +62,7 @@ impl<'a> smoltcp::phy::TxToken for TxTokenImpl<'a> {
         let tx = ethernet_device::Tx {
             payload: BytesField::new(buf, len.try_into().unwrap()),
         };
-        if let Err(err) = self
-            .0
-            .driver_sender
-            .send_with_buffer(&mut self.0.msgbuffer, tx)
-        {
+        if let Err(err) = self.0.driver_sender.send(tx) {
             warn!("failed to send: {:?}", err);
         }
 
@@ -78,7 +73,6 @@ impl<'a> smoltcp::phy::TxToken for TxTokenImpl<'a> {
 struct DeviceImpl {
     driver_sender: ChannelSender,
     rx_queue: VecDeque<Vec<u8>>,
-    msgbuffer: MessageBuffer,
 }
 
 impl DeviceImpl {
@@ -86,7 +80,6 @@ impl DeviceImpl {
         DeviceImpl {
             driver_sender,
             rx_queue: VecDeque::new(),
-            msgbuffer: MessageBuffer::new(),
         }
     }
 
@@ -169,11 +162,7 @@ impl<'a> Server<'a> {
         }
     }
 
-    pub fn poll(
-        &mut self,
-        msgbuffer: &mut MessageBuffer,
-        mainloop: &mut Mainloop<Context, Message>,
-    ) {
+    pub fn poll(&mut self, mainloop: &mut Mainloop<Context, Message>) {
         while self
             .iface
             .poll(now(), &mut self.device, &mut self.smol_sockets)
@@ -193,9 +182,7 @@ impl<'a> Server<'a> {
                         tcp::State::Established,
                     ) => {
                         let (ch1, ch2) = Channel::create().unwrap();
-                        ctrl_sender
-                            .send_with_buffer(msgbuffer, TcpAccepted { sock: ch1.into() })
-                            .unwrap();
+                        ctrl_sender.send(TcpAccepted { sock: ch1.into() }).unwrap();
 
                         let (ch2_sender, ch2_receiver) = ch2.split();
                         mainloop
@@ -240,8 +227,7 @@ impl<'a> Server<'a> {
 
                             let data = BytesField::new(buf, len.try_into().unwrap());
                             // FIXME: Backpressure
-                            ch.send_with_buffer(msgbuffer, TcpReceived { data })
-                                .unwrap();
+                            ch.send(TcpReceived { data }).unwrap();
                         }
                     }
                     (State::Established { .. }, tcp::State::Established) => {
@@ -268,7 +254,7 @@ impl<'a> Server<'a> {
                         ..
                     }
                     | State::Established { sender } => {
-                        sender.send_with_buffer(msgbuffer, TcpClosed {}).unwrap();
+                        sender.send(TcpClosed {}).unwrap();
                         mainloop.remove(sender.handle().id());
                     }
                 }
@@ -364,9 +350,8 @@ pub fn main(mut env: Environ) {
         .add_channel_receiver(driver_receiver, driver_sender, Context::Driver)
         .unwrap();
 
-    let mut buffer = MessageBuffer::new();
     loop {
-        server.poll(&mut buffer, &mut mainloop);
+        server.poll(&mut mainloop);
         match mainloop.next() {
             Event::Message { sender, ctx, m } => {
                 match (ctx, m) {
