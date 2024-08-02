@@ -180,7 +180,7 @@ impl<'a> Server<'a> {
                 let mut close = false;
                 match (&mut sock.state, smol_sock.state()) {
                     (State::Listening { .. }, tcp::State::Listen | tcp::State::SynReceived) => {}
-                    (State::Listening { ctrl_ch }, tcp::State::Established) => {
+                    (State::Listening { ctrl_ch, listen_endpoint }, tcp::State::Established) => {
                         let (ch1, ch2) = Channel::create().unwrap();
 
                         // FIXME:
@@ -216,15 +216,12 @@ impl<'a> Server<'a> {
                             .smol_sockets
                             .get_mut::<tcp::Socket>(new_listen_sock_handle);
                         new_listen_sock
-                            .listen(IpListenEndpoint {
-                                addr: None,
-                                port: 80, /* FIXME: */
-                            })
+                            .listen(*listen_endpoint)
                             .unwrap();
                         new_sockets.push(Socket {
                             smol_handle: new_listen_sock_handle,
-                            // FIXME:
                             state: State::Listening {
+                                listen_endpoint: *listen_endpoint,
                                 ctrl_ch: Channel::from_handle(OwnedHandle::from_raw(
                                     ctrl_ch.handle().id(),
                                 )),
@@ -277,10 +274,15 @@ impl<'a> Server<'a> {
     }
 
     pub fn tcp_listen(&mut self, ctrl_ch: Channel, port: u16) {
+        let listen_endpoint = IpListenEndpoint {
+            addr: None,
+            port,
+        };
+
         let rx_buf = tcp::SocketBuffer::new(vec![0; 8192]);
         let tx_buf = tcp::SocketBuffer::new(vec![0; 8192]);
         let mut sock = tcp::Socket::new(rx_buf, tx_buf);
-        sock.listen(IpListenEndpoint { addr: None, port }).unwrap();
+        sock.listen(listen_endpoint).unwrap();
 
         info!("listening on port {}", port);
         let handle = self.smol_sockets.add(sock);
@@ -288,7 +290,7 @@ impl<'a> Server<'a> {
             handle,
             Socket {
                 smol_handle: handle,
-                state: State::Listening { ctrl_ch },
+                state: State::Listening { ctrl_ch, listen_endpoint },
             },
         );
     }
@@ -315,7 +317,7 @@ impl<'a> Server<'a> {
 }
 
 enum State {
-    Listening { ctrl_ch: Channel },
+    Listening { ctrl_ch: Channel, listen_endpoint: IpListenEndpoint },
     Established { ch: Channel },
 }
 
