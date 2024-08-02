@@ -166,7 +166,7 @@ pub fn main(mut env: Environ) {
 
     let mut tcpip_sender = None;
     loop {
-        match mainloop.next(&mut buffer) {
+        match mainloop.next() {
             Event::Message {
                 ctx: _ctx,
                 sender: _ch,

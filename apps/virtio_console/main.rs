@@ -173,7 +173,7 @@ pub fn main(mut env: Environ) {
         .unwrap();
 
     loop {
-        match mainloop.next(&mut buffer) {
+        match mainloop.next() {
             Event::Interrupt {
                 ctx: _ctx,
                 interrupt,

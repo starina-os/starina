@@ -1,3 +1,4 @@
+use alloc::boxed::Box;
 use alloc::sync::Arc;
 use core::fmt;
 use core::mem;
@@ -48,6 +49,22 @@ impl Channel {
         let sender = ChannelSender { ch: ch.clone() };
         let receiver = ChannelReceiver { ch };
         (sender, receiver)
+    }
+
+    pub fn send<M: MessageSerialize>(&self, msg: M) -> Result<(), FtlError> {
+        static CACHED_BUFFER: spin::Mutex<Option<Box<MessageBuffer>>> = spin::Mutex::new(None);
+
+        // Try to reuse the buffer to avoid memory allocation.
+        let mut msgbuffer = CACHED_BUFFER
+            .lock()
+            .take()
+            .unwrap_or_else(|| Box::new(MessageBuffer::new()));
+
+        let ret = self.send_with_buffer(&mut *msgbuffer, msg);
+
+        // Save the allocated buffer for later reuse.
+        CACHED_BUFFER.lock().replace(msgbuffer);
+        ret
     }
 
     pub fn send_with_buffer<M: MessageSerialize>(
@@ -131,6 +148,10 @@ pub struct ChannelSender {
 impl ChannelSender {
     pub fn handle(&self) -> &OwnedHandle {
         self.ch.handle()
+    }
+
+    pub fn send<M: MessageSerialize>(&self, msg: M) -> Result<(), FtlError> {
+        self.ch.send(msg)
     }
 
     pub fn send_with_buffer<M: MessageSerialize>(

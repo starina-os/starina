@@ -26,11 +26,11 @@ pub enum Error {
 }
 
 #[derive(Debug)]
-pub enum Event<'a, 'b, St, M: MessageDeserialize> {
+pub enum Event<'a, St, M: MessageDeserialize> {
     Message {
         ctx: &'a mut St,
         sender: &'a mut ChannelSender,
-        m: M::Reader<'b>,
+        m: M::Reader<'a>,
     },
     Interrupt {
         ctx: &'a mut St,
@@ -55,6 +55,7 @@ struct Entry<St> {
 pub struct Mainloop<St, AllM> {
     poll: Poll,
     objects: HashMap<HandleId, Entry<St>>,
+    msgbuffer: MessageBuffer,
     _pd: PhantomData<AllM>,
 }
 
@@ -65,6 +66,7 @@ impl<Ctx, AllM: MessageDeserialize> Mainloop<Ctx, AllM> {
         Ok(Self {
             poll,
             objects: HashMap::new(),
+            msgbuffer: MessageBuffer::new(),
             _pd: PhantomData,
         })
     }
@@ -138,10 +140,7 @@ impl<Ctx, AllM: MessageDeserialize> Mainloop<Ctx, AllM> {
         Ok(())
     }
 
-    pub fn next<'a, 'b>(
-        &'a mut self,
-        msgbuffer: &'b mut MessageBuffer,
-    ) -> Event<'a, 'b, Ctx, AllM> {
+    pub fn next(&mut self) -> Event<'_, Ctx, AllM> {
         let (poll_ev, handle_id) = match self.poll.wait() {
             Ok(ev) => ev,
             Err(err) => return Event::Error(Error::PollWait(err)),
@@ -151,7 +150,7 @@ impl<Ctx, AllM: MessageDeserialize> Mainloop<Ctx, AllM> {
         if poll_ev.contains(PollEvent::READABLE) {
             match &mut entry.object {
                 Object::Channel { sender, receiver } => {
-                    let m = match receiver.recv_with_buffer::<AllM>(msgbuffer) {
+                    let m = match receiver.recv_with_buffer::<AllM>(&mut self.msgbuffer) {
                         Ok(m) => m,
                         Err(err) => return Event::Error(Error::ChannelRecv(err)),
                     };
