@@ -13,13 +13,13 @@ use ftl_api::types::address::VAddr;
 use ftl_api::types::environ::Device;
 use ftl_api::types::idl::BytesField;
 use ftl_api::types::interrupt::Irq;
+use ftl_utils::alignment::align_up;
 use ftl_api::types::message::MessageBuffer;
 use ftl_api_autogen::apps::virtio_net::Environ;
 use ftl_api_autogen::apps::virtio_net::Message;
 use ftl_api_autogen::protocols::ethernet_device;
 use ftl_virtio::transports::mmio::VirtioMmio;
 use ftl_virtio::transports::VirtioTransport;
-use ftl_virtio::virtqueue::align_up;
 use ftl_virtio::virtqueue::VirtqDescBuffer;
 use ftl_virtio::virtqueue::VirtqUsedChain;
 use ftl_virtio::VIRTIO_DEVICE_TYPE_NET;
@@ -164,7 +164,7 @@ pub fn main(mut env: Environ) {
         .add_interrupt(interrupt, Context::Interrupt)
         .unwrap();
 
-    let mut tcpip_ch = None;
+    let mut tcpip_sender = None;
     loop {
         match mainloop.next(&mut buffer) {
             Event::Message {
@@ -174,12 +174,12 @@ pub fn main(mut env: Environ) {
             } => {
                 match m {
                     Message::NewclientRequest(m) => {
-                        // FIXME:
-                        tcpip_ch = Some(Channel::from_handle(OwnedHandle::from_raw(m.handle())));
-                        let tcpip_ch2 =
-                            Some(Channel::from_handle(OwnedHandle::from_raw(m.handle())));
+                        let tcpip_ch = Channel::from_handle(OwnedHandle::from_raw(m.handle()));
+                        let (sender, receiver) = tcpip_ch.split();
+                        tcpip_sender = Some(sender.clone());
+
                         mainloop
-                            .add_channel(tcpip_ch2.unwrap(), Context::Tcpip)
+                            .add_channel_receiver(receiver, sender, Context::Tcpip)
                             .unwrap();
                     }
                     Message::Tx(tx) => {
@@ -265,7 +265,7 @@ pub fn main(mut env: Environ) {
                             };
 
                             trace!("received {} bytes", data.len());
-                            if let Some(tcpip_ch) = &tcpip_ch {
+                            if let Some(tcpip_sender) = &tcpip_sender {
                                 // FIXME:
                                 let mut tmpbuf = [0; 1514];
                                 tmpbuf[..data.len()].copy_from_slice(&data);
@@ -273,7 +273,7 @@ pub fn main(mut env: Environ) {
                                 let rx = ethernet_device::Rx {
                                     payload: BytesField::new(tmpbuf, data.len() as u16),
                                 };
-                                if let Err(err) = tcpip_ch.send_with_buffer(&mut buffer, rx) {
+                                if let Err(err) = tcpip_sender.send_with_buffer(&mut buffer, rx) {
                                     warn!("failed to send rx: {:?}", err);
                                 }
                             } else {

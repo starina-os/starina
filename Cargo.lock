@@ -378,6 +378,7 @@ version = "0.0.0"
 dependencies = [
  "ftl_api",
  "ftl_driver_utils",
+ "ftl_utils",
 ]
 
 [[package]]
@@ -846,6 +847,7 @@ version = "0.0.0"
 dependencies = [
  "ftl_api",
  "ftl_api_autogen",
+ "ftl_utils",
  "ftl_virtio",
 ]
 

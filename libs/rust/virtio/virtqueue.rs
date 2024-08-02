@@ -6,6 +6,7 @@ use ftl_api::folio::MmioFolio;
 use ftl_api::prelude::Vec;
 use ftl_api::types::address::PAddr;
 use ftl_api::types::address::VAddr;
+use ftl_utils::alignment::align_up;
 
 use super::transports::VirtioTransport;
 
@@ -81,15 +82,6 @@ pub struct VirtQueue {
 
 // FIXME:
 const PAGE_SIZE: usize = 4096;
-
-pub const fn align_down(value: usize, align: usize) -> usize {
-    (value) & !(align - 1)
-}
-
-// FIXME:
-pub const fn align_up(value: usize, align: usize) -> usize {
-    align_down(value + align - 1, align)
-}
 
 impl VirtQueue {
     pub fn new(index: u16, transport: &mut dyn VirtioTransport) -> VirtQueue {
