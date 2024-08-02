@@ -11,7 +11,6 @@ use ftl_api::mainloop::Mainloop;
 use ftl_api::prelude::*;
 use ftl_api::types::error::FtlError;
 use ftl_api::types::idl::BytesField;
-use ftl_api::types::message::HandleOwnership;
 use ftl_api::types::message::MessageBuffer;
 use ftl_api_autogen::apps::tcpip::Environ;
 use ftl_api_autogen::apps::tcpip::Message;
@@ -194,23 +193,11 @@ impl<'a> Server<'a> {
                         tcp::State::Established,
                     ) => {
                         let (ch1, ch2) = Channel::create().unwrap();
-
-                        // FIXME:
-                        let ch1_handle = ch1.handle().id();
-                        core::mem::forget(ch1);
                         ctrl_sender
-                            .send_with_buffer(
-                                msgbuffer,
-                                TcpAccepted {
-                                    sock: HandleOwnership(ch1_handle),
-                                },
-                            )
+                            .send_with_buffer(msgbuffer, TcpAccepted { sock: ch1.into() })
                             .unwrap();
 
-                        // FIXME:
-                        let (ch2_sender, ch2_receiver) =
-                            Channel::from_handle(OwnedHandle::from_raw(ch2.handle().id())).split();
-
+                        let (ch2_sender, ch2_receiver) = ch2.split();
                         mainloop
                             .add_channel_receiver(
                                 ch2_receiver,

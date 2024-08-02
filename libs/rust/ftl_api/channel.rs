@@ -1,7 +1,9 @@
 use alloc::sync::Arc;
 use core::fmt;
+use core::mem;
 
 use ftl_types::error::FtlError;
+use ftl_types::message::HandleOwnership;
 use ftl_types::message::MessageBuffer;
 use ftl_types::message::MessageDeserialize;
 use ftl_types::message::MessageInfo;
@@ -92,6 +94,14 @@ impl Channel {
 impl fmt::Debug for Channel {
     fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
         todo!()
+    }
+}
+
+impl From<Channel> for HandleOwnership {
+    fn from(channel: Channel) -> HandleOwnership {
+        let handle_id = channel.handle.id();
+        mem::forget(channel);
+        HandleOwnership(handle_id)
     }
 }
 
