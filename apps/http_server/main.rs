@@ -1,6 +1,5 @@
 #![no_std]
 #![no_main]
-#![feature(slice_split_once)]
 
 use ftl_api::channel::Channel;
 use ftl_api::channel::ChannelSender;
