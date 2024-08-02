@@ -13,7 +13,6 @@ use ftl_api::types::address::VAddr;
 use ftl_api::types::environ::Device;
 use ftl_api::types::idl::BytesField;
 use ftl_api::types::interrupt::Irq;
-use ftl_api::types::message::MessageBuffer;
 use ftl_api_autogen::apps::virtio_net::Environ;
 use ftl_api_autogen::apps::virtio_net::Message;
 use ftl_api_autogen::protocols::ethernet_device;
@@ -130,8 +129,6 @@ enum Context {
 #[ftl_api::main]
 pub fn main(mut env: Environ) {
     info!("starting");
-    let mut buffer = MessageBuffer::new();
-
     let (mut transport, irq) = probe(&env.depends.virtio, VIRTIO_DEVICE_TYPE_NET).unwrap();
     assert!(transport.is_modern());
 
@@ -273,7 +270,7 @@ pub fn main(mut env: Environ) {
                                 let rx = ethernet_device::Rx {
                                     payload: BytesField::new(tmpbuf, data.len() as u16),
                                 };
-                                if let Err(err) = tcpip_sender.send_with_buffer(&mut buffer, rx) {
+                                if let Err(err) = tcpip_sender.send(rx) {
                                     warn!("failed to send rx: {:?}", err);
                                 }
                             } else {
