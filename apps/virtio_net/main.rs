@@ -284,8 +284,8 @@ pub fn main(mut env: Environ) {
                         }
                     }
 
-                    while let Some(VirtqUsedChain { descs, total_len }) = transmitq.pop_used() {
-                        let VirtqDescBuffer::ReadOnlyFromDevice { paddr, len } = descs[0] else {
+                    while let Some(VirtqUsedChain { descs, .. }) = transmitq.pop_used() {
+                        let VirtqDescBuffer::ReadOnlyFromDevice { paddr, .. } = descs[0] else {
                             panic!("unexpected desc");
                         };
                         let buffer_index = transmitq_buffers

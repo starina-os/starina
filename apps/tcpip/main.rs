@@ -63,7 +63,7 @@ impl<'a> smoltcp::phy::TxToken for TxTokenImpl<'a> {
         let tx = ethernet_device::Tx {
             payload: BytesField::new(buf, len.try_into().unwrap()),
         };
-        if let Err(err) = self.0.driver_ch.send_with_buffer(&mut self.0.msgbuffer, tx) {
+        if let Err(err) = self.0.driver_sender.send_with_buffer(&mut self.0.msgbuffer, tx) {
             warn!("failed to send: {:?}", err);
         }
 
@@ -72,15 +72,15 @@ impl<'a> smoltcp::phy::TxToken for TxTokenImpl<'a> {
 }
 
 struct DeviceImpl {
-    driver_ch: Channel,
+    driver_sender: ChannelSender,
     rx_queue: VecDeque<Vec<u8>>,
     msgbuffer: MessageBuffer,
 }
 
 impl DeviceImpl {
-    pub fn new(driver_ch: Channel) -> DeviceImpl {
+    pub fn new(driver_sender: ChannelSender) -> DeviceImpl {
         DeviceImpl {
-            driver_ch,
+            driver_sender,
             rx_queue: VecDeque::new(),
             msgbuffer: MessageBuffer::new(),
         }
@@ -144,9 +144,9 @@ struct Server<'a> {
 }
 
 impl<'a> Server<'a> {
-    pub fn new(driver_ch: Channel, hwaddr: HardwareAddress) -> Server<'a> {
+    pub fn new(driver_sender: ChannelSender, hwaddr: HardwareAddress) -> Server<'a> {
         let config = Config::new(hwaddr.into());
-        let mut device = DeviceImpl::new(driver_ch);
+        let mut device = DeviceImpl::new(driver_sender);
         let mut iface = Interface::new(config, &mut device, now());
         let smol_sockets = SocketSet::new(Vec::with_capacity(16));
 
@@ -339,17 +339,16 @@ pub fn main(mut env: Environ) {
     });
 
     let driver_ch = env.depends.ethernet_device.take().unwrap();
-    // FIXME: Clone using syscall
-    let driver_ch_cloned = Channel::from_handle(OwnedHandle::from_raw(driver_ch.handle().id()));
+    let (driver_sender, driver_receiver) = driver_ch.split();
 
     let mac = HardwareAddress::Ethernet(EthernetAddress([0x52, 0x54, 0x00, 0x12, 0x34, 0x56])); // FIXME:
-    let mut server = Server::new(driver_ch_cloned, mac);
+    let mut server = Server::new(driver_sender.clone(), mac);
 
     let mut mainloop = Mainloop::<Context, Message>::new().unwrap();
     mainloop
         .add_channel(env.autopilot_ch.take().unwrap(), Context::Autopilot)
         .unwrap();
-    mainloop.add_channel(driver_ch, Context::Driver).unwrap();
+    mainloop.add_channel_receiver(driver_receiver, driver_sender, Context::Driver).unwrap();
 
     let mut buffer = MessageBuffer::new();
     loop {
