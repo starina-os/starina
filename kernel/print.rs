@@ -42,6 +42,64 @@ macro_rules! println {
     }};
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum LogLevel {
+    Error,
+    Warn,
+    Info,
+    Debug,
+    Trace,
+}
+
+#[macro_export]
+macro_rules! log {
+    ($level:expr, $($arg:tt)+) => {{
+        use $crate::print::LogLevel;
+
+        const RESET_COLOR: &str = "\x1b[0m";
+        let (color, level_str) = match $level {
+            LogLevel::Error => ("\x1b[91m", "ERR"),
+            LogLevel::Warn =>  ("\x1b[33m", "WARN"),
+            LogLevel::Info =>  ("\x1b[96m", "INFO"),
+            LogLevel::Debug => ("\x1b[0m", "DEBUG"),
+            LogLevel::Trace => ("\x1b[0m", "TRACE"),
+        };
+
+        $crate::println!(
+            "[kernel      ] {}{:6}{} {}",
+            color,
+            level_str,
+            RESET_COLOR,
+            format_args!($($arg)+)
+        );
+    }};
+}
+
+#[macro_export]
+macro_rules! error {
+    ($($arg:tt)+) => { $crate::log!($crate::print::LogLevel::Error, $($arg)+) }
+}
+
+#[macro_export]
+macro_rules! warn {
+    ($($arg:tt)+) => { $crate::log!($crate::print::LogLevel::Warn, $($arg)+) }
+}
+
+#[macro_export]
+macro_rules! info {
+    ($($arg:tt)+) => { $crate::log!($crate::print::LogLevel::Info, $($arg)+) }
+}
+
+#[macro_export]
+macro_rules! debug {
+    ($($arg:tt)+) => { $crate::log!($crate::print::LogLevel::Debug, $($arg)+) }
+}
+
+#[macro_export]
+macro_rules! trace {
+    ($($arg:tt)+) => { $crate::log!($crate::print::LogLevel::Trace, $($arg)+) }
+}
+
 /// Print kernel message with backtraces.
 #[macro_export]
 macro_rules! oops {

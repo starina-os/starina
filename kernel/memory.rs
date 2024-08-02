@@ -135,7 +135,7 @@ impl Drop for AllocatedPages {
 /// becomes available.
 pub fn init(bootinfo: &BootInfo) {
     for FreeMem { start, size } in bootinfo.free_mems.iter() {
-        println!(
+        debug!(
             "free memory: 0x{:016x} - 0x{:016x} ({})",
             start,
             start + size.in_bytes(),

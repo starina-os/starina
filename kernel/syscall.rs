@@ -260,7 +260,6 @@ pub fn syscall_entry(
             let msgbuffer = unsafe { &*(a2 as usize as *const MessageBuffer) };
             let err = channel_send(handle, msginfo, msgbuffer);
             if let Err(e) = err {
-                println!("channel_send failed: {:?}", e);
                 return Err(e);
             }
 
@@ -301,7 +300,6 @@ pub fn syscall_entry(
             let target_handle_id = HandleId::from_raw_isize_truncated(a1);
             let interests = PollEvent::from_raw(a2 as u8);
             if let Err(e) = poll_add(poll_handle_id, target_handle_id, interests) {
-                println!("poll_add failed: {:?}", e);
                 return Err(e);
             }
             Ok(0)
@@ -340,7 +338,7 @@ pub fn syscall_entry(
             Ok(0)
         }
         _ => {
-            println!(
+            warn!(
                 "unknown syscall: n={}, a0={}, a1={}, a2={}, a3={}, a4={}, a5={}",
                 n, a0, a1, a2, a3, a4, a5
             );

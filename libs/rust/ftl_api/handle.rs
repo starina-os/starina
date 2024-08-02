@@ -1,7 +1,7 @@
 use ftl_types::handle::HandleId;
 
-use crate::println;
 use crate::syscall;
+use crate::warn;
 
 /// An owned handle, which will be closed when dropped.
 ///
@@ -30,7 +30,7 @@ impl Drop for OwnedHandle {
             // Closing a handle may fail, but Drop::drop doesn't allow
             // returning an error. Log the fact here to notice the potential
             // bug.
-            println!("failed to close handle: {:?}", err);
+            warn!("failed to close handle: {:?}", err);
         }
     }
 }

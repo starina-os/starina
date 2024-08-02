@@ -22,7 +22,7 @@ macro_rules! log {
         };
 
         $crate::println!(
-            "[{}] {}{:<4}{} {}",
+            "[{:12}] {}{:6}{} {}",
             ::core::module_path!(),
             color,
             level_str,

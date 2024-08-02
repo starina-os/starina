@@ -30,7 +30,7 @@ pub struct BootInfo {
 
 /// The entry point of the kernel.
 pub fn boot(cpu_id: CpuId, bootinfo: BootInfo) -> ! {
-    println!("\nFTL - Faster Than \"L\"\n");
+    info!("FTL - Faster Than \"L\"");
 
     memory::init(&bootinfo);
 
@@ -41,7 +41,7 @@ pub fn boot(cpu_id: CpuId, bootinfo: BootInfo) -> ! {
 
     let bootfs = Bootfs::load();
     for file in bootfs.files() {
-        println!("bootfs: file: {}", file.name);
+        debug!("bootfs: file: {}", file.name);
     }
 
     let boot_spec_file = bootfs
