@@ -503,6 +503,73 @@ pub mod protocols {
         use super::*;
 
         #[repr(C)]
+        pub struct TcpClosed {}
+
+        #[repr(C)]
+        struct InlinedPartTcpClosed {}
+
+        impl MessageSerialize for TcpClosed {
+            const MSGINFO: MessageInfo = MessageInfo::from_raw(
+                (7 << 14) | (0 << 12) | ::core::mem::size_of::<TcpClosed>() as isize,
+            );
+
+            fn serialize(self, buffer: &mut MessageBuffer) {
+                // TODO: Make this a compile-time assertion.
+                debug_assert!(::core::mem::size_of::<TcpClosed>() < 1 << 12);
+
+                // The actual serialization is done in this const fn. This is to
+                // ensure the serialization can be done with const operations.
+                const fn do_serialize(this: TcpClosed, buffer: &mut MessageBuffer) {
+                    let object = InlinedPartTcpClosed {};
+
+                    let dst = buffer as *mut _ as *mut InlinedPartTcpClosed;
+                    let src = &object as *const _ as *const InlinedPartTcpClosed;
+
+                    unsafe {
+                        core::ptr::copy_nonoverlapping::<InlinedPartTcpClosed>(src, dst, 1);
+                    }
+
+                    // FIXME: Support multiple handles.
+                    debug_assert!(
+                        MessageInfo::from_raw(TcpClosed::MSGINFO.as_raw()).num_handles() <= 1
+                    );
+
+                    // Don't call destructors on handles transferred to this buffer.
+                    core::mem::forget(this);
+                }
+
+                do_serialize(self, buffer)
+            }
+        }
+
+        impl MessageDeserialize for TcpClosed {
+            type Reader<'a> = TcpClosedReader<'a>;
+
+            fn deserialize<'a>(
+                buffer: &'a MessageBuffer,
+                msginfo: MessageInfo,
+            ) -> Option<TcpClosedReader<'a>> {
+                if msginfo == Self::MSGINFO {
+                    Some(TcpClosedReader { buffer })
+                } else {
+                    None
+                }
+            }
+        }
+
+        pub struct TcpClosedReader<'a> {
+            #[allow(dead_code)]
+            buffer: &'a MessageBuffer,
+        }
+
+        impl<'a> TcpClosedReader<'a> {
+            #[allow(dead_code)]
+            fn as_ref(&self, buffer: &'a MessageBuffer) -> &'a InlinedPartTcpClosed {
+                unsafe { &*(buffer as *const _ as *const InlinedPartTcpClosed) }
+            }
+        }
+
+        #[repr(C)]
         pub struct TcpAccepted {
             pub sock: HandleOwnership,
         }
@@ -512,7 +579,7 @@ pub mod protocols {
 
         impl MessageSerialize for TcpAccepted {
             const MSGINFO: MessageInfo = MessageInfo::from_raw(
-                (7 << 14) | (1 << 12) | ::core::mem::size_of::<TcpAccepted>() as isize,
+                (8 << 14) | (1 << 12) | ::core::mem::size_of::<TcpAccepted>() as isize,
             );
 
             fn serialize(self, buffer: &mut MessageBuffer) {
@@ -591,7 +658,7 @@ pub mod protocols {
 
         impl MessageSerialize for TcpReceived {
             const MSGINFO: MessageInfo = MessageInfo::from_raw(
-                (8 << 14) | (0 << 12) | ::core::mem::size_of::<TcpReceived>() as isize,
+                (9 << 14) | (0 << 12) | ::core::mem::size_of::<TcpReceived>() as isize,
             );
 
             fn serialize(self, buffer: &mut MessageBuffer) {
@@ -667,7 +734,7 @@ pub mod protocols {
 
         impl MessageSerialize for TcpListenRequest {
             const MSGINFO: MessageInfo = MessageInfo::from_raw(
-                (9 << 14) | (0 << 12) | ::core::mem::size_of::<TcpListenRequest>() as isize,
+                (10 << 14) | (0 << 12) | ::core::mem::size_of::<TcpListenRequest>() as isize,
             );
 
             fn serialize(self, buffer: &mut MessageBuffer) {
@@ -740,7 +807,7 @@ pub mod protocols {
 
         impl MessageSerialize for TcpListenReply {
             const MSGINFO: MessageInfo = MessageInfo::from_raw(
-                (10 << 14) | (0 << 12) | ::core::mem::size_of::<TcpListenReply>() as isize,
+                (11 << 14) | (0 << 12) | ::core::mem::size_of::<TcpListenReply>() as isize,
             );
 
             fn serialize(self, buffer: &mut MessageBuffer) {
@@ -811,7 +878,7 @@ pub mod protocols {
 
         impl MessageSerialize for TcpSendRequest {
             const MSGINFO: MessageInfo = MessageInfo::from_raw(
-                (11 << 14) | (0 << 12) | ::core::mem::size_of::<TcpSendRequest>() as isize,
+                (12 << 14) | (0 << 12) | ::core::mem::size_of::<TcpSendRequest>() as isize,
             );
 
             fn serialize(self, buffer: &mut MessageBuffer) {
@@ -883,7 +950,7 @@ pub mod protocols {
 
         impl MessageSerialize for TcpSendReply {
             const MSGINFO: MessageInfo = MessageInfo::from_raw(
-                (12 << 14) | (0 << 12) | ::core::mem::size_of::<TcpSendReply>() as isize,
+                (13 << 14) | (0 << 12) | ::core::mem::size_of::<TcpSendReply>() as isize,
             );
 
             fn serialize(self, buffer: &mut MessageBuffer) {

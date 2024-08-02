@@ -105,6 +105,11 @@ pub fn main(mut env: Environ) {
                                 .unwrap();
                         });
                     }
+                    (Context::TcpSock(client), Message::TcpClosed(_)) => {
+                        trace!("client connection closed");
+                        let sender_id = sender.handle().id();
+                        mainloop.remove(sender_id);
+                    }
                     (_, m) => {
                         warn!("unexpected message: {:?}", m);
                     }

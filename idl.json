@@ -114,6 +114,10 @@
             ],
             "oneways": [
                 {
+                    "name": "tcp_closed",
+                    "fields": []
+                },
+                {
                     "name": "tcp_accepted",
                     "fields": [
                         {

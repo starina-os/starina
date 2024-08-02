@@ -89,6 +89,12 @@ impl<Ctx, AllM: MessageDeserialize> Mainloop<Ctx, AllM> {
         Ok(())
     }
 
+    pub fn remove(&mut self, handle_id: HandleId) {
+        self.objects.remove(&handle_id);
+        // TODO:
+        // self.poll.remove()
+    }
+
     pub fn add_channel_receiver(
         &mut self,
         receiver: ChannelReceiver,

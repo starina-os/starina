@@ -69,6 +69,7 @@ pub mod apps {
             PingReply(ftl_autogen::protocols::ping::PingReplyReader<'a>),
             Tx(ftl_autogen::protocols::ethernet_device::TxReader<'a>),
             Rx(ftl_autogen::protocols::ethernet_device::RxReader<'a>),
+            TcpClosed(ftl_autogen::protocols::tcpip::TcpClosedReader<'a>),
             TcpAccepted(ftl_autogen::protocols::tcpip::TcpAcceptedReader<'a>),
             TcpReceived(ftl_autogen::protocols::tcpip::TcpReceivedReader<'a>),
             TcpListenRequest(ftl_autogen::protocols::tcpip::TcpListenRequestReader<'a>),
@@ -86,6 +87,7 @@ pub mod apps {
                     Self::PingReply(_) => write!(f, "PingReply"),
                     Self::Tx(_) => write!(f, "Tx"),
                     Self::Rx(_) => write!(f, "Rx"),
+                    Self::TcpClosed(_) => write!(f, "TcpClosed"),
                     Self::TcpAccepted(_) => write!(f, "TcpAccepted"),
                     Self::TcpReceived(_) => write!(f, "TcpReceived"),
                     Self::TcpListenRequest(_) => write!(f, "TcpListenRequest"),
@@ -149,6 +151,13 @@ pub mod apps {
 
                         let reader = M::deserialize(buffer, msginfo)?;
                         Some(Message::Rx(reader))
+                    }
+
+                    ftl_autogen::protocols::tcpip::TcpClosed::MSGINFO => {
+                        use ftl_autogen::protocols::tcpip::TcpClosed as M;
+
+                        let reader = M::deserialize(buffer, msginfo)?;
+                        Some(Message::TcpClosed(reader))
                     }
 
                     ftl_autogen::protocols::tcpip::TcpAccepted::MSGINFO => {
@@ -255,6 +264,7 @@ pub mod apps {
             PingReply(ftl_autogen::protocols::ping::PingReplyReader<'a>),
             Tx(ftl_autogen::protocols::ethernet_device::TxReader<'a>),
             Rx(ftl_autogen::protocols::ethernet_device::RxReader<'a>),
+            TcpClosed(ftl_autogen::protocols::tcpip::TcpClosedReader<'a>),
             TcpAccepted(ftl_autogen::protocols::tcpip::TcpAcceptedReader<'a>),
             TcpReceived(ftl_autogen::protocols::tcpip::TcpReceivedReader<'a>),
             TcpListenRequest(ftl_autogen::protocols::tcpip::TcpListenRequestReader<'a>),
@@ -272,6 +282,7 @@ pub mod apps {
                     Self::PingReply(_) => write!(f, "PingReply"),
                     Self::Tx(_) => write!(f, "Tx"),
                     Self::Rx(_) => write!(f, "Rx"),
+                    Self::TcpClosed(_) => write!(f, "TcpClosed"),
                     Self::TcpAccepted(_) => write!(f, "TcpAccepted"),
                     Self::TcpReceived(_) => write!(f, "TcpReceived"),
                     Self::TcpListenRequest(_) => write!(f, "TcpListenRequest"),
@@ -335,6 +346,13 @@ pub mod apps {
 
                         let reader = M::deserialize(buffer, msginfo)?;
                         Some(Message::Rx(reader))
+                    }
+
+                    ftl_autogen::protocols::tcpip::TcpClosed::MSGINFO => {
+                        use ftl_autogen::protocols::tcpip::TcpClosed as M;
+
+                        let reader = M::deserialize(buffer, msginfo)?;
+                        Some(Message::TcpClosed(reader))
                     }
 
                     ftl_autogen::protocols::tcpip::TcpAccepted::MSGINFO => {
@@ -449,6 +467,7 @@ pub mod apps {
             PingReply(ftl_autogen::protocols::ping::PingReplyReader<'a>),
             Tx(ftl_autogen::protocols::ethernet_device::TxReader<'a>),
             Rx(ftl_autogen::protocols::ethernet_device::RxReader<'a>),
+            TcpClosed(ftl_autogen::protocols::tcpip::TcpClosedReader<'a>),
             TcpAccepted(ftl_autogen::protocols::tcpip::TcpAcceptedReader<'a>),
             TcpReceived(ftl_autogen::protocols::tcpip::TcpReceivedReader<'a>),
             TcpListenRequest(ftl_autogen::protocols::tcpip::TcpListenRequestReader<'a>),
@@ -466,6 +485,7 @@ pub mod apps {
                     Self::PingReply(_) => write!(f, "PingReply"),
                     Self::Tx(_) => write!(f, "Tx"),
                     Self::Rx(_) => write!(f, "Rx"),
+                    Self::TcpClosed(_) => write!(f, "TcpClosed"),
                     Self::TcpAccepted(_) => write!(f, "TcpAccepted"),
                     Self::TcpReceived(_) => write!(f, "TcpReceived"),
                     Self::TcpListenRequest(_) => write!(f, "TcpListenRequest"),
@@ -529,6 +549,13 @@ pub mod apps {
 
                         let reader = M::deserialize(buffer, msginfo)?;
                         Some(Message::Rx(reader))
+                    }
+
+                    ftl_autogen::protocols::tcpip::TcpClosed::MSGINFO => {
+                        use ftl_autogen::protocols::tcpip::TcpClosed as M;
+
+                        let reader = M::deserialize(buffer, msginfo)?;
+                        Some(Message::TcpClosed(reader))
                     }
 
                     ftl_autogen::protocols::tcpip::TcpAccepted::MSGINFO => {

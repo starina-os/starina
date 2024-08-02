@@ -17,6 +17,7 @@ use ftl_api_autogen::apps::tcpip::Environ;
 use ftl_api_autogen::apps::tcpip::Message;
 use ftl_api_autogen::protocols::ethernet_device;
 use ftl_api_autogen::protocols::tcpip::TcpAccepted;
+use ftl_api_autogen::protocols::tcpip::TcpClosed;
 use ftl_api_autogen::protocols::tcpip::TcpReceived;
 use smoltcp::iface::Config;
 use smoltcp::iface::Interface;
@@ -267,12 +268,23 @@ impl<'a> Server<'a> {
                 if close {
                     warn!("closing socket");
                     closed_sockets.push(*handle);
-                    self.smol_sockets.remove(sock.smol_handle);
                 }
             }
 
             for handle in closed_sockets {
-                self.sockets.remove(&handle);
+                let sock = self.sockets.remove(&handle).unwrap();
+                self.smol_sockets.remove(sock.smol_handle);
+
+                match sock.state {
+                    State::Listening {
+                        ctrl_sender: sender,
+                        ..
+                    }
+                    | State::Established { sender } => {
+                        sender.send_with_buffer(msgbuffer, TcpClosed {}).unwrap();
+                        mainloop.remove(sender.handle().id());
+                    }
+                }
             }
 
             for socket in new_sockets {
