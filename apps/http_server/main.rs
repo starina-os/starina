@@ -100,7 +100,8 @@ pub fn main(mut env: Environ) {
                             data[..resp.len()].copy_from_slice(resp);
                             let data = BytesField::new(data, resp.len() as u16);
 
-                            sender.send_with_buffer(&mut buffer, TcpSendRequest { data })
+                            sender
+                                .send_with_buffer(&mut buffer, TcpSendRequest { data })
                                 .unwrap();
                         });
                     }

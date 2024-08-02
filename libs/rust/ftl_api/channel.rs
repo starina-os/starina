@@ -1,6 +1,6 @@
+use alloc::sync::Arc;
 use core::fmt;
 
-use alloc::sync::Arc;
 use ftl_types::error::FtlError;
 use ftl_types::message::MessageBuffer;
 use ftl_types::message::MessageDeserialize;

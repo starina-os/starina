@@ -78,10 +78,7 @@ impl<Ctx, AllM: MessageDeserialize> Mainloop<Ctx, AllM> {
         let (sender, receiver) = ch.split();
         let entry = Entry {
             ctx: state,
-            object: Object::Channel {
-                sender,
-                 receiver,
-            },
+            object: Object::Channel { sender, receiver },
         };
 
         self.objects.insert(handle_id, entry);
@@ -92,7 +89,12 @@ impl<Ctx, AllM: MessageDeserialize> Mainloop<Ctx, AllM> {
         Ok(())
     }
 
-    pub fn add_channel_receiver(&mut self, receiver: ChannelReceiver, sender: ChannelSender, state: Ctx) -> Result<(), Error> {
+    pub fn add_channel_receiver(
+        &mut self,
+        receiver: ChannelReceiver,
+        sender: ChannelSender,
+        state: Ctx,
+    ) -> Result<(), Error> {
         let handle_id = receiver.handle().id();
         if self.objects.contains_key(&handle_id) {
             return Err(Error::ChannelReceiverAlreadyAdded((receiver, sender)));

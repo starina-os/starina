@@ -63,7 +63,11 @@ impl<'a> smoltcp::phy::TxToken for TxTokenImpl<'a> {
         let tx = ethernet_device::Tx {
             payload: BytesField::new(buf, len.try_into().unwrap()),
         };
-        if let Err(err) = self.0.driver_sender.send_with_buffer(&mut self.0.msgbuffer, tx) {
+        if let Err(err) = self
+            .0
+            .driver_sender
+            .send_with_buffer(&mut self.0.msgbuffer, tx)
+        {
             warn!("failed to send: {:?}", err);
         }
 
@@ -181,7 +185,13 @@ impl<'a> Server<'a> {
                 let mut close = false;
                 match (&mut sock.state, smol_sock.state()) {
                     (State::Listening { .. }, tcp::State::Listen | tcp::State::SynReceived) => {}
-                    (State::Listening { ctrl_sender, listen_endpoint }, tcp::State::Established) => {
+                    (
+                        State::Listening {
+                            ctrl_sender,
+                            listen_endpoint,
+                        },
+                        tcp::State::Established,
+                    ) => {
                         let (ch1, ch2) = Channel::create().unwrap();
 
                         // FIXME:
@@ -217,9 +227,7 @@ impl<'a> Server<'a> {
                         let new_listen_sock = self
                             .smol_sockets
                             .get_mut::<tcp::Socket>(new_listen_sock_handle);
-                        new_listen_sock
-                            .listen(*listen_endpoint)
-                            .unwrap();
+                        new_listen_sock.listen(*listen_endpoint).unwrap();
                         new_sockets.push(Socket {
                             smol_handle: new_listen_sock_handle,
                             state: State::Listening {
@@ -274,10 +282,7 @@ impl<'a> Server<'a> {
     }
 
     pub fn tcp_listen(&mut self, ctrl_sender: ChannelSender, port: u16) {
-        let listen_endpoint = IpListenEndpoint {
-            addr: None,
-            port,
-        };
+        let listen_endpoint = IpListenEndpoint { addr: None, port };
 
         let rx_buf = tcp::SocketBuffer::new(vec![0; 8192]);
         let tx_buf = tcp::SocketBuffer::new(vec![0; 8192]);
@@ -290,7 +295,10 @@ impl<'a> Server<'a> {
             handle,
             Socket {
                 smol_handle: handle,
-                state: State::Listening { ctrl_sender, listen_endpoint },
+                state: State::Listening {
+                    ctrl_sender,
+                    listen_endpoint,
+                },
             },
         );
     }
@@ -317,8 +325,13 @@ impl<'a> Server<'a> {
 }
 
 enum State {
-    Listening { ctrl_sender: ChannelSender, listen_endpoint: IpListenEndpoint },
-    Established { sender: ChannelSender },
+    Listening {
+        ctrl_sender: ChannelSender,
+        listen_endpoint: IpListenEndpoint,
+    },
+    Established {
+        sender: ChannelSender,
+    },
 }
 
 struct Socket {
@@ -348,7 +361,9 @@ pub fn main(mut env: Environ) {
     mainloop
         .add_channel(env.autopilot_ch.take().unwrap(), Context::Autopilot)
         .unwrap();
-    mainloop.add_channel_receiver(driver_receiver, driver_sender, Context::Driver).unwrap();
+    mainloop
+        .add_channel_receiver(driver_receiver, driver_sender, Context::Driver)
+        .unwrap();
 
     let mut buffer = MessageBuffer::new();
     loop {
