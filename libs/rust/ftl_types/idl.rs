@@ -69,8 +69,25 @@ impl<const CAP: usize> BytesField<CAP> {
         Self { len, data }
     }
 
+    pub const fn zeroed() -> Self {
+        Self {
+            len: 0,
+            data: [0; CAP],
+        }
+    }
+
     pub fn as_slice(&self) -> &[u8] {
         &self.data[..self.len as usize]
+    }
+
+    pub const fn copy_from_slice(&mut self, bytes: &[u8]) {
+        assert!(bytes.len() <= CAP);
+        self.len = bytes.len() as u16;
+
+        // SAFETY: The assertion above guarantees bytes.len() is not too long.
+        unsafe {
+            core::ptr::copy_nonoverlapping(bytes.as_ptr(), self.data.as_mut_ptr(), bytes.len());
+        }
     }
 
     pub fn len(&self) -> usize {

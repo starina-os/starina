@@ -10,7 +10,6 @@ use ftl_api::mainloop::Event;
 use ftl_api::mainloop::Mainloop;
 use ftl_api::prelude::*;
 use ftl_api::types::error::FtlError;
-use ftl_api::types::idl::BytesField;
 use ftl_api_autogen::apps::tcpip::Environ;
 use ftl_api_autogen::apps::tcpip::Message;
 use ftl_api_autogen::protocols::ethernet_device;
@@ -61,7 +60,7 @@ impl<'a> smoltcp::phy::TxToken for TxTokenImpl<'a> {
         let ret = f(&mut buf[..len]);
 
         let tx = ethernet_device::Tx {
-            payload: BytesField::new(buf, len.try_into().unwrap()),
+            payload: &buf[..len],
         };
         if let Err(err) = self.0.driver_sender.send(tx) {
             warn!("failed to send: {:?}", err);
@@ -224,9 +223,8 @@ impl<'a> Server<'a> {
                                 break;
                             }
 
-                            let data = BytesField::new(buf, len.try_into().unwrap());
                             // FIXME: Backpressure
-                            ch.send(TcpReceived { data }).unwrap();
+                            ch.send(TcpReceived { data: &buf[..len] }).unwrap();
                         }
                     }
                     (State::Established { .. }, tcp::State::Established) => {

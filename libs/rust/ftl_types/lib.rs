@@ -1,4 +1,7 @@
 #![no_std]
+#![feature(const_intrinsic_copy)]
+#![feature(const_ptr_write)]
+#![feature(const_mut_refs)]
 
 extern crate alloc;
 

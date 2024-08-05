@@ -2,7 +2,6 @@
 #![no_main]
 
 use ftl_api::prelude::*;
-use ftl_api::types::idl::BytesField;
 use ftl_api::types::message::MessageBuffer;
 use ftl_api_autogen::apps::ping::Environ;
 use ftl_api_autogen::protocols::ping::PingReply;
@@ -16,7 +15,7 @@ pub fn main(mut env: Environ) {
         info!("{}: sending message", i);
         ch.send(PingRequest {
             int_value1: 42,
-            bytes_value1: BytesField::try_from([0xab, 0xcd, 0xef].as_slice()).unwrap(),
+            bytes_value1: &[0xab, 0xcd, 0xef],
         })
         .unwrap();
 

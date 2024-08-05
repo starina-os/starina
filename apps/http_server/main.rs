@@ -7,7 +7,6 @@ use ftl_api::handle::OwnedHandle;
 use ftl_api::mainloop::Event;
 use ftl_api::mainloop::Mainloop;
 use ftl_api::prelude::*;
-use ftl_api::types::idl::BytesField;
 use ftl_api_autogen::apps::http_server::Environ;
 use ftl_api_autogen::apps::http_server::Message;
 use ftl_api_autogen::protocols::tcpip::TcpListenRequest;
@@ -28,12 +27,7 @@ impl Client {
     fn handle_request(&self, tcp_sender: &ChannelSender, req: httparse::Request<'_, '_>) {
         trace!("request: {:?}", req);
 
-        // FIXME:
-        let resp = &b"HTTP/1.1 200 OK\r\nContent-Length: 12\r\n\r\nHello, world!"[..];
-        let mut data = [0; 2048];
-        data[..resp.len()].copy_from_slice(resp);
-        let data = BytesField::new(data, resp.len() as u16);
-
+        let data = &b"HTTP/1.1 200 OK\r\nContent-Length: 12\r\n\r\nHello, world!"[..];
         tcp_sender.send(TcpSendRequest { data }).unwrap();
     }
 

@@ -2,6 +2,7 @@
 #![no_std]
 #![feature(const_mut_refs)]
 #![feature(const_intrinsic_copy)]
+#![feature(const_ptr_write)]
 
 use ftl_types::message::MessageBuffer;
 use ftl_types::message::MessageDeserialize;
@@ -16,16 +17,18 @@ pub mod protocols {
         use super::*;
 
         #[repr(C)]
+
         pub struct NewclientRequest {
+            // TODO: Don't copy whole bytes fields.
             pub handle: MovedHandle,
         }
 
         #[repr(C)]
-        struct InlinedPartNewclientRequest {}
+        struct RawNewclientRequest {}
 
         impl MessageSerialize for NewclientRequest {
             const MSGINFO: MessageInfo = MessageInfo::from_raw(
-                (1 << 14) | (1 << 12) | ::core::mem::size_of::<NewclientRequest>() as isize,
+                (1 << 14) | (1 << 12) | ::core::mem::size_of::<RawNewclientRequest>() as isize,
             );
 
             fn serialize(self, buffer: &mut MessageBuffer) {
@@ -35,14 +38,8 @@ pub mod protocols {
                 // The actual serialization is done in this const fn. This is to
                 // ensure the serialization can be done with const operations.
                 const fn do_serialize(this: NewclientRequest, buffer: &mut MessageBuffer) {
-                    let object = InlinedPartNewclientRequest {};
-
-                    let dst = buffer as *mut _ as *mut InlinedPartNewclientRequest;
-                    let src = &object as *const _ as *const InlinedPartNewclientRequest;
-
-                    unsafe {
-                        core::ptr::copy_nonoverlapping::<InlinedPartNewclientRequest>(src, dst, 1);
-                    }
+                    #[allow(unused)]
+                    let dst = buffer as *mut _ as *mut RawNewclientRequest;
 
                     // FIXME: Support multiple handles.
                     debug_assert!(
@@ -82,8 +79,8 @@ pub mod protocols {
 
         impl<'a> NewclientRequestReader<'a> {
             #[allow(dead_code)]
-            fn as_ref(&self, buffer: &'a MessageBuffer) -> &'a InlinedPartNewclientRequest {
-                unsafe { &*(buffer as *const _ as *const InlinedPartNewclientRequest) }
+            fn as_raw(&self, buffer: &'a MessageBuffer) -> &'a RawNewclientRequest {
+                unsafe { &*(buffer as *const _ as *const RawNewclientRequest) }
             }
 
             pub fn handle(&self) -> ftl_types::handle::HandleId {
@@ -94,14 +91,17 @@ pub mod protocols {
         }
 
         #[repr(C)]
-        pub struct NewclientReply {}
+
+        pub struct NewclientReply {
+            // TODO: Don't copy whole bytes fields.
+        }
 
         #[repr(C)]
-        struct InlinedPartNewclientReply {}
+        struct RawNewclientReply {}
 
         impl MessageSerialize for NewclientReply {
             const MSGINFO: MessageInfo = MessageInfo::from_raw(
-                (2 << 14) | (0 << 12) | ::core::mem::size_of::<NewclientReply>() as isize,
+                (2 << 14) | (0 << 12) | ::core::mem::size_of::<RawNewclientReply>() as isize,
             );
 
             fn serialize(self, buffer: &mut MessageBuffer) {
@@ -111,14 +111,8 @@ pub mod protocols {
                 // The actual serialization is done in this const fn. This is to
                 // ensure the serialization can be done with const operations.
                 const fn do_serialize(this: NewclientReply, buffer: &mut MessageBuffer) {
-                    let object = InlinedPartNewclientReply {};
-
-                    let dst = buffer as *mut _ as *mut InlinedPartNewclientReply;
-                    let src = &object as *const _ as *const InlinedPartNewclientReply;
-
-                    unsafe {
-                        core::ptr::copy_nonoverlapping::<InlinedPartNewclientReply>(src, dst, 1);
-                    }
+                    #[allow(unused)]
+                    let dst = buffer as *mut _ as *mut RawNewclientReply;
 
                     // FIXME: Support multiple handles.
                     debug_assert!(
@@ -155,8 +149,8 @@ pub mod protocols {
 
         impl<'a> NewclientReplyReader<'a> {
             #[allow(dead_code)]
-            fn as_ref(&self, buffer: &'a MessageBuffer) -> &'a InlinedPartNewclientReply {
-                unsafe { &*(buffer as *const _ as *const InlinedPartNewclientReply) }
+            fn as_raw(&self, buffer: &'a MessageBuffer) -> &'a RawNewclientReply {
+                unsafe { &*(buffer as *const _ as *const RawNewclientReply) }
             }
         }
     }
@@ -165,22 +159,24 @@ pub mod protocols {
         use super::*;
 
         #[repr(C)]
-        pub struct PingRequest {
+
+        pub struct PingRequest<'a> {
+            // TODO: Don't copy whole bytes fields.
             pub int_value1: i32,
 
-            pub bytes_value1: ftl_types::idl::BytesField<16>,
+            pub bytes_value1: &'a [u8],
         }
 
         #[repr(C)]
-        struct InlinedPartPingRequest {
+        struct RawPingRequest {
             pub int_value1: i32,
 
             pub bytes_value1: ftl_types::idl::BytesField<16>,
         }
 
-        impl MessageSerialize for PingRequest {
+        impl<'a> MessageSerialize for PingRequest<'a> {
             const MSGINFO: MessageInfo = MessageInfo::from_raw(
-                (3 << 14) | (0 << 12) | ::core::mem::size_of::<PingRequest>() as isize,
+                (3 << 14) | (0 << 12) | ::core::mem::size_of::<RawPingRequest>() as isize,
             );
 
             fn serialize(self, buffer: &mut MessageBuffer) {
@@ -190,17 +186,15 @@ pub mod protocols {
                 // The actual serialization is done in this const fn. This is to
                 // ensure the serialization can be done with const operations.
                 const fn do_serialize(this: PingRequest, buffer: &mut MessageBuffer) {
-                    let object = InlinedPartPingRequest {
-                        int_value1: this.int_value1,
-
-                        bytes_value1: this.bytes_value1,
-                    };
-
-                    let dst = buffer as *mut _ as *mut InlinedPartPingRequest;
-                    let src = &object as *const _ as *const InlinedPartPingRequest;
+                    #[allow(unused)]
+                    let dst = buffer as *mut _ as *mut RawPingRequest;
 
                     unsafe {
-                        core::ptr::copy_nonoverlapping::<InlinedPartPingRequest>(src, dst, 1);
+                        core::ptr::write(&mut (*dst).int_value1, this.int_value1);
+                    }
+
+                    unsafe {
+                        (*dst).bytes_value1.copy_from_slice(&this.bytes_value1);
                     }
 
                     // FIXME: Support multiple handles.
@@ -216,7 +210,7 @@ pub mod protocols {
             }
         }
 
-        impl MessageDeserialize for PingRequest {
+        impl<'m> MessageDeserialize for PingRequest<'m> {
             type Reader<'a> = PingRequestReader<'a>;
 
             fn deserialize<'a>(
@@ -238,30 +232,32 @@ pub mod protocols {
 
         impl<'a> PingRequestReader<'a> {
             #[allow(dead_code)]
-            fn as_ref(&self, buffer: &'a MessageBuffer) -> &'a InlinedPartPingRequest {
-                unsafe { &*(buffer as *const _ as *const InlinedPartPingRequest) }
+            fn as_raw(&self, buffer: &'a MessageBuffer) -> &'a RawPingRequest {
+                unsafe { &*(buffer as *const _ as *const RawPingRequest) }
             }
 
             pub fn int_value1(&self) -> i32 {
-                let m = self.as_ref(self.buffer);
+                let m = self.as_raw(self.buffer);
                 m.int_value1
             }
 
             pub fn bytes_value1(&self) -> ftl_types::idl::BytesField<16> {
-                let m = self.as_ref(self.buffer);
+                let m = self.as_raw(self.buffer);
                 m.bytes_value1
             }
         }
 
         #[repr(C)]
+
         pub struct PingReply {
+            // TODO: Don't copy whole bytes fields.
             pub int_value2: i32,
 
             pub str_value2: ftl_types::idl::StringField<32>,
         }
 
         #[repr(C)]
-        struct InlinedPartPingReply {
+        struct RawPingReply {
             pub int_value2: i32,
 
             pub str_value2: ftl_types::idl::StringField<32>,
@@ -269,7 +265,7 @@ pub mod protocols {
 
         impl MessageSerialize for PingReply {
             const MSGINFO: MessageInfo = MessageInfo::from_raw(
-                (4 << 14) | (0 << 12) | ::core::mem::size_of::<PingReply>() as isize,
+                (4 << 14) | (0 << 12) | ::core::mem::size_of::<RawPingReply>() as isize,
             );
 
             fn serialize(self, buffer: &mut MessageBuffer) {
@@ -279,17 +275,15 @@ pub mod protocols {
                 // The actual serialization is done in this const fn. This is to
                 // ensure the serialization can be done with const operations.
                 const fn do_serialize(this: PingReply, buffer: &mut MessageBuffer) {
-                    let object = InlinedPartPingReply {
-                        int_value2: this.int_value2,
-
-                        str_value2: this.str_value2,
-                    };
-
-                    let dst = buffer as *mut _ as *mut InlinedPartPingReply;
-                    let src = &object as *const _ as *const InlinedPartPingReply;
+                    #[allow(unused)]
+                    let dst = buffer as *mut _ as *mut RawPingReply;
 
                     unsafe {
-                        core::ptr::copy_nonoverlapping::<InlinedPartPingReply>(src, dst, 1);
+                        core::ptr::write(&mut (*dst).int_value2, this.int_value2);
+                    }
+
+                    unsafe {
+                        core::ptr::write(&mut (*dst).str_value2, this.str_value2);
                     }
 
                     // FIXME: Support multiple handles.
@@ -327,17 +321,17 @@ pub mod protocols {
 
         impl<'a> PingReplyReader<'a> {
             #[allow(dead_code)]
-            fn as_ref(&self, buffer: &'a MessageBuffer) -> &'a InlinedPartPingReply {
-                unsafe { &*(buffer as *const _ as *const InlinedPartPingReply) }
+            fn as_raw(&self, buffer: &'a MessageBuffer) -> &'a RawPingReply {
+                unsafe { &*(buffer as *const _ as *const RawPingReply) }
             }
 
             pub fn int_value2(&self) -> i32 {
-                let m = self.as_ref(self.buffer);
+                let m = self.as_raw(self.buffer);
                 m.int_value2
             }
 
             pub fn str_value2(&self) -> ftl_types::idl::StringField<32> {
-                let m = self.as_ref(self.buffer);
+                let m = self.as_raw(self.buffer);
                 m.str_value2
             }
         }
@@ -347,18 +341,20 @@ pub mod protocols {
         use super::*;
 
         #[repr(C)]
-        pub struct Tx {
-            pub payload: ftl_types::idl::BytesField<1514>,
+
+        pub struct Tx<'a> {
+            // TODO: Don't copy whole bytes fields.
+            pub payload: &'a [u8],
         }
 
         #[repr(C)]
-        struct InlinedPartTx {
+        struct RawTx {
             pub payload: ftl_types::idl::BytesField<1514>,
         }
 
-        impl MessageSerialize for Tx {
+        impl<'a> MessageSerialize for Tx<'a> {
             const MSGINFO: MessageInfo = MessageInfo::from_raw(
-                (5 << 14) | (0 << 12) | ::core::mem::size_of::<Tx>() as isize,
+                (5 << 14) | (0 << 12) | ::core::mem::size_of::<RawTx>() as isize,
             );
 
             fn serialize(self, buffer: &mut MessageBuffer) {
@@ -368,15 +364,11 @@ pub mod protocols {
                 // The actual serialization is done in this const fn. This is to
                 // ensure the serialization can be done with const operations.
                 const fn do_serialize(this: Tx, buffer: &mut MessageBuffer) {
-                    let object = InlinedPartTx {
-                        payload: this.payload,
-                    };
-
-                    let dst = buffer as *mut _ as *mut InlinedPartTx;
-                    let src = &object as *const _ as *const InlinedPartTx;
+                    #[allow(unused)]
+                    let dst = buffer as *mut _ as *mut RawTx;
 
                     unsafe {
-                        core::ptr::copy_nonoverlapping::<InlinedPartTx>(src, dst, 1);
+                        (*dst).payload.copy_from_slice(&this.payload);
                     }
 
                     // FIXME: Support multiple handles.
@@ -390,7 +382,7 @@ pub mod protocols {
             }
         }
 
-        impl MessageDeserialize for Tx {
+        impl<'m> MessageDeserialize for Tx<'m> {
             type Reader<'a> = TxReader<'a>;
 
             fn deserialize<'a>(
@@ -412,29 +404,31 @@ pub mod protocols {
 
         impl<'a> TxReader<'a> {
             #[allow(dead_code)]
-            fn as_ref(&self, buffer: &'a MessageBuffer) -> &'a InlinedPartTx {
-                unsafe { &*(buffer as *const _ as *const InlinedPartTx) }
+            fn as_raw(&self, buffer: &'a MessageBuffer) -> &'a RawTx {
+                unsafe { &*(buffer as *const _ as *const RawTx) }
             }
 
             pub fn payload(&self) -> ftl_types::idl::BytesField<1514> {
-                let m = self.as_ref(self.buffer);
+                let m = self.as_raw(self.buffer);
                 m.payload
             }
         }
 
         #[repr(C)]
-        pub struct Rx {
-            pub payload: ftl_types::idl::BytesField<1514>,
+
+        pub struct Rx<'a> {
+            // TODO: Don't copy whole bytes fields.
+            pub payload: &'a [u8],
         }
 
         #[repr(C)]
-        struct InlinedPartRx {
+        struct RawRx {
             pub payload: ftl_types::idl::BytesField<1514>,
         }
 
-        impl MessageSerialize for Rx {
+        impl<'a> MessageSerialize for Rx<'a> {
             const MSGINFO: MessageInfo = MessageInfo::from_raw(
-                (6 << 14) | (0 << 12) | ::core::mem::size_of::<Rx>() as isize,
+                (6 << 14) | (0 << 12) | ::core::mem::size_of::<RawRx>() as isize,
             );
 
             fn serialize(self, buffer: &mut MessageBuffer) {
@@ -444,15 +438,11 @@ pub mod protocols {
                 // The actual serialization is done in this const fn. This is to
                 // ensure the serialization can be done with const operations.
                 const fn do_serialize(this: Rx, buffer: &mut MessageBuffer) {
-                    let object = InlinedPartRx {
-                        payload: this.payload,
-                    };
-
-                    let dst = buffer as *mut _ as *mut InlinedPartRx;
-                    let src = &object as *const _ as *const InlinedPartRx;
+                    #[allow(unused)]
+                    let dst = buffer as *mut _ as *mut RawRx;
 
                     unsafe {
-                        core::ptr::copy_nonoverlapping::<InlinedPartRx>(src, dst, 1);
+                        (*dst).payload.copy_from_slice(&this.payload);
                     }
 
                     // FIXME: Support multiple handles.
@@ -466,7 +456,7 @@ pub mod protocols {
             }
         }
 
-        impl MessageDeserialize for Rx {
+        impl<'m> MessageDeserialize for Rx<'m> {
             type Reader<'a> = RxReader<'a>;
 
             fn deserialize<'a>(
@@ -488,12 +478,12 @@ pub mod protocols {
 
         impl<'a> RxReader<'a> {
             #[allow(dead_code)]
-            fn as_ref(&self, buffer: &'a MessageBuffer) -> &'a InlinedPartRx {
-                unsafe { &*(buffer as *const _ as *const InlinedPartRx) }
+            fn as_raw(&self, buffer: &'a MessageBuffer) -> &'a RawRx {
+                unsafe { &*(buffer as *const _ as *const RawRx) }
             }
 
             pub fn payload(&self) -> ftl_types::idl::BytesField<1514> {
-                let m = self.as_ref(self.buffer);
+                let m = self.as_raw(self.buffer);
                 m.payload
             }
         }
@@ -503,14 +493,17 @@ pub mod protocols {
         use super::*;
 
         #[repr(C)]
-        pub struct TcpClosed {}
+
+        pub struct TcpClosed {
+            // TODO: Don't copy whole bytes fields.
+        }
 
         #[repr(C)]
-        struct InlinedPartTcpClosed {}
+        struct RawTcpClosed {}
 
         impl MessageSerialize for TcpClosed {
             const MSGINFO: MessageInfo = MessageInfo::from_raw(
-                (7 << 14) | (0 << 12) | ::core::mem::size_of::<TcpClosed>() as isize,
+                (7 << 14) | (0 << 12) | ::core::mem::size_of::<RawTcpClosed>() as isize,
             );
 
             fn serialize(self, buffer: &mut MessageBuffer) {
@@ -520,14 +513,8 @@ pub mod protocols {
                 // The actual serialization is done in this const fn. This is to
                 // ensure the serialization can be done with const operations.
                 const fn do_serialize(this: TcpClosed, buffer: &mut MessageBuffer) {
-                    let object = InlinedPartTcpClosed {};
-
-                    let dst = buffer as *mut _ as *mut InlinedPartTcpClosed;
-                    let src = &object as *const _ as *const InlinedPartTcpClosed;
-
-                    unsafe {
-                        core::ptr::copy_nonoverlapping::<InlinedPartTcpClosed>(src, dst, 1);
-                    }
+                    #[allow(unused)]
+                    let dst = buffer as *mut _ as *mut RawTcpClosed;
 
                     // FIXME: Support multiple handles.
                     debug_assert!(
@@ -564,22 +551,24 @@ pub mod protocols {
 
         impl<'a> TcpClosedReader<'a> {
             #[allow(dead_code)]
-            fn as_ref(&self, buffer: &'a MessageBuffer) -> &'a InlinedPartTcpClosed {
-                unsafe { &*(buffer as *const _ as *const InlinedPartTcpClosed) }
+            fn as_raw(&self, buffer: &'a MessageBuffer) -> &'a RawTcpClosed {
+                unsafe { &*(buffer as *const _ as *const RawTcpClosed) }
             }
         }
 
         #[repr(C)]
+
         pub struct TcpAccepted {
+            // TODO: Don't copy whole bytes fields.
             pub sock: MovedHandle,
         }
 
         #[repr(C)]
-        struct InlinedPartTcpAccepted {}
+        struct RawTcpAccepted {}
 
         impl MessageSerialize for TcpAccepted {
             const MSGINFO: MessageInfo = MessageInfo::from_raw(
-                (8 << 14) | (1 << 12) | ::core::mem::size_of::<TcpAccepted>() as isize,
+                (8 << 14) | (1 << 12) | ::core::mem::size_of::<RawTcpAccepted>() as isize,
             );
 
             fn serialize(self, buffer: &mut MessageBuffer) {
@@ -589,14 +578,8 @@ pub mod protocols {
                 // The actual serialization is done in this const fn. This is to
                 // ensure the serialization can be done with const operations.
                 const fn do_serialize(this: TcpAccepted, buffer: &mut MessageBuffer) {
-                    let object = InlinedPartTcpAccepted {};
-
-                    let dst = buffer as *mut _ as *mut InlinedPartTcpAccepted;
-                    let src = &object as *const _ as *const InlinedPartTcpAccepted;
-
-                    unsafe {
-                        core::ptr::copy_nonoverlapping::<InlinedPartTcpAccepted>(src, dst, 1);
-                    }
+                    #[allow(unused)]
+                    let dst = buffer as *mut _ as *mut RawTcpAccepted;
 
                     // FIXME: Support multiple handles.
                     debug_assert!(
@@ -635,8 +618,8 @@ pub mod protocols {
 
         impl<'a> TcpAcceptedReader<'a> {
             #[allow(dead_code)]
-            fn as_ref(&self, buffer: &'a MessageBuffer) -> &'a InlinedPartTcpAccepted {
-                unsafe { &*(buffer as *const _ as *const InlinedPartTcpAccepted) }
+            fn as_raw(&self, buffer: &'a MessageBuffer) -> &'a RawTcpAccepted {
+                unsafe { &*(buffer as *const _ as *const RawTcpAccepted) }
             }
 
             pub fn sock(&self) -> ftl_types::handle::HandleId {
@@ -647,18 +630,20 @@ pub mod protocols {
         }
 
         #[repr(C)]
-        pub struct TcpReceived {
-            pub data: ftl_types::idl::BytesField<2048>,
+
+        pub struct TcpReceived<'a> {
+            // TODO: Don't copy whole bytes fields.
+            pub data: &'a [u8],
         }
 
         #[repr(C)]
-        struct InlinedPartTcpReceived {
+        struct RawTcpReceived {
             pub data: ftl_types::idl::BytesField<2048>,
         }
 
-        impl MessageSerialize for TcpReceived {
+        impl<'a> MessageSerialize for TcpReceived<'a> {
             const MSGINFO: MessageInfo = MessageInfo::from_raw(
-                (9 << 14) | (0 << 12) | ::core::mem::size_of::<TcpReceived>() as isize,
+                (9 << 14) | (0 << 12) | ::core::mem::size_of::<RawTcpReceived>() as isize,
             );
 
             fn serialize(self, buffer: &mut MessageBuffer) {
@@ -668,13 +653,11 @@ pub mod protocols {
                 // The actual serialization is done in this const fn. This is to
                 // ensure the serialization can be done with const operations.
                 const fn do_serialize(this: TcpReceived, buffer: &mut MessageBuffer) {
-                    let object = InlinedPartTcpReceived { data: this.data };
-
-                    let dst = buffer as *mut _ as *mut InlinedPartTcpReceived;
-                    let src = &object as *const _ as *const InlinedPartTcpReceived;
+                    #[allow(unused)]
+                    let dst = buffer as *mut _ as *mut RawTcpReceived;
 
                     unsafe {
-                        core::ptr::copy_nonoverlapping::<InlinedPartTcpReceived>(src, dst, 1);
+                        (*dst).data.copy_from_slice(&this.data);
                     }
 
                     // FIXME: Support multiple handles.
@@ -690,7 +673,7 @@ pub mod protocols {
             }
         }
 
-        impl MessageDeserialize for TcpReceived {
+        impl<'m> MessageDeserialize for TcpReceived<'m> {
             type Reader<'a> = TcpReceivedReader<'a>;
 
             fn deserialize<'a>(
@@ -712,29 +695,31 @@ pub mod protocols {
 
         impl<'a> TcpReceivedReader<'a> {
             #[allow(dead_code)]
-            fn as_ref(&self, buffer: &'a MessageBuffer) -> &'a InlinedPartTcpReceived {
-                unsafe { &*(buffer as *const _ as *const InlinedPartTcpReceived) }
+            fn as_raw(&self, buffer: &'a MessageBuffer) -> &'a RawTcpReceived {
+                unsafe { &*(buffer as *const _ as *const RawTcpReceived) }
             }
 
             pub fn data(&self) -> ftl_types::idl::BytesField<2048> {
-                let m = self.as_ref(self.buffer);
+                let m = self.as_raw(self.buffer);
                 m.data
             }
         }
 
         #[repr(C)]
+
         pub struct TcpListenRequest {
+            // TODO: Don't copy whole bytes fields.
             pub port: u16,
         }
 
         #[repr(C)]
-        struct InlinedPartTcpListenRequest {
+        struct RawTcpListenRequest {
             pub port: u16,
         }
 
         impl MessageSerialize for TcpListenRequest {
             const MSGINFO: MessageInfo = MessageInfo::from_raw(
-                (10 << 14) | (0 << 12) | ::core::mem::size_of::<TcpListenRequest>() as isize,
+                (10 << 14) | (0 << 12) | ::core::mem::size_of::<RawTcpListenRequest>() as isize,
             );
 
             fn serialize(self, buffer: &mut MessageBuffer) {
@@ -744,13 +729,11 @@ pub mod protocols {
                 // The actual serialization is done in this const fn. This is to
                 // ensure the serialization can be done with const operations.
                 const fn do_serialize(this: TcpListenRequest, buffer: &mut MessageBuffer) {
-                    let object = InlinedPartTcpListenRequest { port: this.port };
-
-                    let dst = buffer as *mut _ as *mut InlinedPartTcpListenRequest;
-                    let src = &object as *const _ as *const InlinedPartTcpListenRequest;
+                    #[allow(unused)]
+                    let dst = buffer as *mut _ as *mut RawTcpListenRequest;
 
                     unsafe {
-                        core::ptr::copy_nonoverlapping::<InlinedPartTcpListenRequest>(src, dst, 1);
+                        core::ptr::write(&mut (*dst).port, this.port);
                     }
 
                     // FIXME: Support multiple handles.
@@ -789,25 +772,28 @@ pub mod protocols {
 
         impl<'a> TcpListenRequestReader<'a> {
             #[allow(dead_code)]
-            fn as_ref(&self, buffer: &'a MessageBuffer) -> &'a InlinedPartTcpListenRequest {
-                unsafe { &*(buffer as *const _ as *const InlinedPartTcpListenRequest) }
+            fn as_raw(&self, buffer: &'a MessageBuffer) -> &'a RawTcpListenRequest {
+                unsafe { &*(buffer as *const _ as *const RawTcpListenRequest) }
             }
 
             pub fn port(&self) -> u16 {
-                let m = self.as_ref(self.buffer);
+                let m = self.as_raw(self.buffer);
                 m.port
             }
         }
 
         #[repr(C)]
-        pub struct TcpListenReply {}
+
+        pub struct TcpListenReply {
+            // TODO: Don't copy whole bytes fields.
+        }
 
         #[repr(C)]
-        struct InlinedPartTcpListenReply {}
+        struct RawTcpListenReply {}
 
         impl MessageSerialize for TcpListenReply {
             const MSGINFO: MessageInfo = MessageInfo::from_raw(
-                (11 << 14) | (0 << 12) | ::core::mem::size_of::<TcpListenReply>() as isize,
+                (11 << 14) | (0 << 12) | ::core::mem::size_of::<RawTcpListenReply>() as isize,
             );
 
             fn serialize(self, buffer: &mut MessageBuffer) {
@@ -817,14 +803,8 @@ pub mod protocols {
                 // The actual serialization is done in this const fn. This is to
                 // ensure the serialization can be done with const operations.
                 const fn do_serialize(this: TcpListenReply, buffer: &mut MessageBuffer) {
-                    let object = InlinedPartTcpListenReply {};
-
-                    let dst = buffer as *mut _ as *mut InlinedPartTcpListenReply;
-                    let src = &object as *const _ as *const InlinedPartTcpListenReply;
-
-                    unsafe {
-                        core::ptr::copy_nonoverlapping::<InlinedPartTcpListenReply>(src, dst, 1);
-                    }
+                    #[allow(unused)]
+                    let dst = buffer as *mut _ as *mut RawTcpListenReply;
 
                     // FIXME: Support multiple handles.
                     debug_assert!(
@@ -861,24 +841,26 @@ pub mod protocols {
 
         impl<'a> TcpListenReplyReader<'a> {
             #[allow(dead_code)]
-            fn as_ref(&self, buffer: &'a MessageBuffer) -> &'a InlinedPartTcpListenReply {
-                unsafe { &*(buffer as *const _ as *const InlinedPartTcpListenReply) }
+            fn as_raw(&self, buffer: &'a MessageBuffer) -> &'a RawTcpListenReply {
+                unsafe { &*(buffer as *const _ as *const RawTcpListenReply) }
             }
         }
 
         #[repr(C)]
-        pub struct TcpSendRequest {
-            pub data: ftl_types::idl::BytesField<2048>,
+
+        pub struct TcpSendRequest<'a> {
+            // TODO: Don't copy whole bytes fields.
+            pub data: &'a [u8],
         }
 
         #[repr(C)]
-        struct InlinedPartTcpSendRequest {
+        struct RawTcpSendRequest {
             pub data: ftl_types::idl::BytesField<2048>,
         }
 
-        impl MessageSerialize for TcpSendRequest {
+        impl<'a> MessageSerialize for TcpSendRequest<'a> {
             const MSGINFO: MessageInfo = MessageInfo::from_raw(
-                (12 << 14) | (0 << 12) | ::core::mem::size_of::<TcpSendRequest>() as isize,
+                (12 << 14) | (0 << 12) | ::core::mem::size_of::<RawTcpSendRequest>() as isize,
             );
 
             fn serialize(self, buffer: &mut MessageBuffer) {
@@ -888,13 +870,11 @@ pub mod protocols {
                 // The actual serialization is done in this const fn. This is to
                 // ensure the serialization can be done with const operations.
                 const fn do_serialize(this: TcpSendRequest, buffer: &mut MessageBuffer) {
-                    let object = InlinedPartTcpSendRequest { data: this.data };
-
-                    let dst = buffer as *mut _ as *mut InlinedPartTcpSendRequest;
-                    let src = &object as *const _ as *const InlinedPartTcpSendRequest;
+                    #[allow(unused)]
+                    let dst = buffer as *mut _ as *mut RawTcpSendRequest;
 
                     unsafe {
-                        core::ptr::copy_nonoverlapping::<InlinedPartTcpSendRequest>(src, dst, 1);
+                        (*dst).data.copy_from_slice(&this.data);
                     }
 
                     // FIXME: Support multiple handles.
@@ -910,7 +890,7 @@ pub mod protocols {
             }
         }
 
-        impl MessageDeserialize for TcpSendRequest {
+        impl<'m> MessageDeserialize for TcpSendRequest<'m> {
             type Reader<'a> = TcpSendRequestReader<'a>;
 
             fn deserialize<'a>(
@@ -932,25 +912,28 @@ pub mod protocols {
 
         impl<'a> TcpSendRequestReader<'a> {
             #[allow(dead_code)]
-            fn as_ref(&self, buffer: &'a MessageBuffer) -> &'a InlinedPartTcpSendRequest {
-                unsafe { &*(buffer as *const _ as *const InlinedPartTcpSendRequest) }
+            fn as_raw(&self, buffer: &'a MessageBuffer) -> &'a RawTcpSendRequest {
+                unsafe { &*(buffer as *const _ as *const RawTcpSendRequest) }
             }
 
             pub fn data(&self) -> ftl_types::idl::BytesField<2048> {
-                let m = self.as_ref(self.buffer);
+                let m = self.as_raw(self.buffer);
                 m.data
             }
         }
 
         #[repr(C)]
-        pub struct TcpSendReply {}
+
+        pub struct TcpSendReply {
+            // TODO: Don't copy whole bytes fields.
+        }
 
         #[repr(C)]
-        struct InlinedPartTcpSendReply {}
+        struct RawTcpSendReply {}
 
         impl MessageSerialize for TcpSendReply {
             const MSGINFO: MessageInfo = MessageInfo::from_raw(
-                (13 << 14) | (0 << 12) | ::core::mem::size_of::<TcpSendReply>() as isize,
+                (13 << 14) | (0 << 12) | ::core::mem::size_of::<RawTcpSendReply>() as isize,
             );
 
             fn serialize(self, buffer: &mut MessageBuffer) {
@@ -960,14 +943,8 @@ pub mod protocols {
                 // The actual serialization is done in this const fn. This is to
                 // ensure the serialization can be done with const operations.
                 const fn do_serialize(this: TcpSendReply, buffer: &mut MessageBuffer) {
-                    let object = InlinedPartTcpSendReply {};
-
-                    let dst = buffer as *mut _ as *mut InlinedPartTcpSendReply;
-                    let src = &object as *const _ as *const InlinedPartTcpSendReply;
-
-                    unsafe {
-                        core::ptr::copy_nonoverlapping::<InlinedPartTcpSendReply>(src, dst, 1);
-                    }
+                    #[allow(unused)]
+                    let dst = buffer as *mut _ as *mut RawTcpSendReply;
 
                     // FIXME: Support multiple handles.
                     debug_assert!(
@@ -1004,8 +981,8 @@ pub mod protocols {
 
         impl<'a> TcpSendReplyReader<'a> {
             #[allow(dead_code)]
-            fn as_ref(&self, buffer: &'a MessageBuffer) -> &'a InlinedPartTcpSendReply {
-                unsafe { &*(buffer as *const _ as *const InlinedPartTcpSendReply) }
+            fn as_raw(&self, buffer: &'a MessageBuffer) -> &'a RawTcpSendReply {
+                unsafe { &*(buffer as *const _ as *const RawTcpSendReply) }
             }
         }
     }

@@ -2,6 +2,7 @@
 #![no_std]
 #![feature(const_mut_refs)]
 #![feature(const_intrinsic_copy)]
+#![feature(const_ptr_write)]
 
 use ftl_types::message::MessageSerialize;
 use ftl_types::message::MessageDeserialize;
@@ -18,7 +19,12 @@ pub mod protocols {
 
         {% for m in protocol.messages %}
         #[repr(C)]
+        {% if m.has_bytes_fields %}
+        pub struct {{ m.name }}<'a> {
+        {% else %}
         pub struct {{ m.name }} {
+        {% endif %}
+            // TODO: Don't copy whole bytes fields.
             {%- for f in m.fields %}
                 {% if not f.is_handle %}
                     pub {{ f.name }}: {{ f.builder_ty }},
@@ -33,7 +39,7 @@ pub mod protocols {
         }
 
         #[repr(C)]
-        struct InlinedPart{{ m.name }} {
+        struct Raw{{ m.name }} {
             {%- for f in m.fields %}
                 {% if not f.is_handle %}
                     pub {{ f.name }}: {{ f.raw_ty }},
@@ -41,12 +47,15 @@ pub mod protocols {
             {%- endfor %}
         }
 
-
+        {% if m.has_bytes_fields %}
+        impl<'a> MessageSerialize for {{ m.name }}<'a> {
+        {% else %}
         impl MessageSerialize for {{ m.name }} {
+        {% endif %}
             const MSGINFO: MessageInfo = MessageInfo::from_raw(
                 ({{ m.msgid }} << 14)
                 | ({{ m.num_handles }} << 12)
-                | ::core::mem::size_of::<{{ m.name }}>() as isize,
+                | ::core::mem::size_of::<Raw{{ m.name }}>() as isize,
             );
 
             fn serialize(self, buffer: &mut MessageBuffer) {
@@ -56,20 +65,20 @@ pub mod protocols {
                 // The actual serialization is done in this const fn. This is to
                 // ensure the serialization can be done with const operations.
                 const fn do_serialize(this: {{ m.name }}, buffer: &mut MessageBuffer) {
-                    let object = InlinedPart{{ m.name }} {
-                        {%- for f in m.fields %}
-                            {% if not f.is_handle %}
-                                {{ f.name }}: this.{{ f.name }},
-                            {%- endif %}
-                        {%- endfor %}
-                    };
+                    #[allow(unused)]
+                    let dst = buffer as *mut _ as *mut Raw{{ m.name }};
 
-                    let dst = buffer as *mut _ as *mut InlinedPart{{ m.name }};
-                    let src = &object as *const _ as *const InlinedPart{{ m.name }};
-
-                    unsafe {
-                        core::ptr::copy_nonoverlapping::<InlinedPart{{ m.name }}>(src, dst, 1);
-                    }
+                    {% for f in m.fields %}
+                        {% if f.is_bytes %}
+                            unsafe {
+                                (*dst).{{ f.name }}.copy_from_slice(&this.{{ f.name }});
+                            }
+                        {%- elif not f.is_handle %}
+                            unsafe {
+                                core::ptr::write(&mut (*dst).{{ f.name }}, this.{{ f.name }});
+                            }
+                        {%- endif %}
+                    {%- endfor %}
 
                     // FIXME: Support multiple handles.
                     debug_assert!(MessageInfo::from_raw({{ m.name }}::MSGINFO.as_raw()).num_handles() <= 1);
@@ -88,7 +97,11 @@ pub mod protocols {
             }
         }
 
+        {% if m.has_bytes_fields %}
+        impl<'m> MessageDeserialize for {{ m.name }}<'m> {
+        {% else %}
         impl MessageDeserialize for {{ m.name }} {
+        {% endif %}
             type Reader<'a> = {{ m.name }}Reader<'a>;
 
             fn deserialize<'a>(
@@ -110,8 +123,8 @@ pub mod protocols {
 
         impl<'a> {{ m.name }}Reader<'a> {
             #[allow(dead_code)]
-            fn as_ref(&self, buffer: &'a MessageBuffer) -> &'a InlinedPart{{ m.name }} {
-                unsafe { &*(buffer as *const _ as *const InlinedPart{{ m.name }}) }
+            fn as_raw(&self, buffer: &'a MessageBuffer) -> &'a Raw{{ m.name }} {
+                unsafe { &*(buffer as *const _ as *const Raw{{ m.name }}) }
             }
 
             {% for f in m.fields %}
@@ -121,8 +134,8 @@ pub mod protocols {
                         self.buffer.handles[0]
                     }
                 {% else %}
-                    pub fn {{ f.name }}(&self) -> {{ f.builder_ty }} {
-                        let m = self.as_ref(self.buffer);
+                    pub fn {{ f.name }}(&self) -> {{ f.raw_ty }} {
+                        let m = self.as_raw(self.buffer);
                         m.{{ f.name }}
                     }
                 {% endif %}

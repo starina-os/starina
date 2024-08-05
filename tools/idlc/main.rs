@@ -19,6 +19,7 @@ use serde::Serialize;
 struct Field {
     name: String,
     is_handle: bool,
+    is_bytes: bool,
     builder_ty: String,
     raw_ty: String,
 }
@@ -29,6 +30,7 @@ struct Message {
     name: String,
     msgid: isize,
     num_handles: usize,
+    has_bytes_fields: bool,
     fields: Vec<Field>,
 }
 
@@ -58,7 +60,7 @@ fn resolve_builder_type_name(ty: &idl::Ty) -> String {
         idl::Ty::UInt16 => "u16".to_string(),
         idl::Ty::Int32 => "i32".to_string(),
         idl::Ty::Handle => "ftl_types::handle::HandleId".to_string(),
-        idl::Ty::Bytes { capacity } => format!("ftl_types::idl::BytesField<{capacity}>"),
+        idl::Ty::Bytes { .. } => format!("&'a [u8]"),
         idl::Ty::String { capacity } => format!("ftl_types::idl::StringField<{capacity}>"),
     }
 }
@@ -98,6 +100,7 @@ fn visit_fields(idl_fields: &[idl::Field]) -> Vec<Field> {
         fields.push(Field {
             name: f.name.clone(),
             is_handle: f.ty == idl::Ty::Handle,
+            is_bytes: matches!(f.ty, idl::Ty::Bytes { .. }),
             builder_ty: resolve_builder_type_name(&f.ty),
             raw_ty: resolve_raw_type_name(&f.ty),
         });
@@ -155,6 +158,7 @@ fn main() -> Result<()> {
                     name: format!("{}", CamelCase(&oneway.name)),
                     msgid: next_msgid,
                     num_handles: req_fields.iter().filter(|f| f.is_handle).count(),
+                    has_bytes_fields: req_fields.iter().any(|f| f.is_bytes),
                     fields: req_fields,
                 };
                 next_msgid += 1;
@@ -172,6 +176,7 @@ fn main() -> Result<()> {
                     name: format!("{}Request", CamelCase(&rpc.name)),
                     msgid: next_msgid,
                     num_handles: req_fields.iter().filter(|f| f.is_handle).count(),
+                    has_bytes_fields: req_fields.iter().any(|f| f.is_bytes),
                     fields: req_fields,
                 };
                 next_msgid += 1;
@@ -182,6 +187,7 @@ fn main() -> Result<()> {
                     name: format!("{}Reply", CamelCase(&rpc.name)),
                     msgid: next_msgid,
                     num_handles: res_fields.iter().filter(|f| f.is_handle).count(),
+                    has_bytes_fields: res_fields.iter().any(|f| f.is_bytes),
                     fields: res_fields,
                 };
                 next_msgid += 1;

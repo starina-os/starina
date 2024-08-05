@@ -11,7 +11,6 @@ use ftl_api::prelude::*;
 use ftl_api::types::address::PAddr;
 use ftl_api::types::address::VAddr;
 use ftl_api::types::environ::Device;
-use ftl_api::types::idl::BytesField;
 use ftl_api::types::interrupt::Irq;
 use ftl_api_autogen::apps::virtio_net::Environ;
 use ftl_api_autogen::apps::virtio_net::Message;
@@ -249,13 +248,7 @@ pub fn main(mut env: Environ) {
 
                             trace!("received {} bytes", data.len());
                             if let Some(tcpip_sender) = &tcpip_sender {
-                                // FIXME:
-                                let mut tmpbuf = [0; 1514];
-                                tmpbuf[..data.len()].copy_from_slice(&data);
-
-                                let rx = ethernet_device::Rx {
-                                    payload: BytesField::new(tmpbuf, data.len() as u16),
-                                };
+                                let rx = ethernet_device::Rx { payload: data };
                                 if let Err(err) = tcpip_sender.send(rx) {
                                     warn!("failed to send rx: {:?}", err);
                                 }
