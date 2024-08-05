@@ -1,9 +1,7 @@
 #![no_std]
 #![no_main]
 
-use ftl_api::channel::Channel;
 use ftl_api::channel::ChannelSender;
-use ftl_api::handle::OwnedHandle;
 use ftl_api::mainloop::Event;
 use ftl_api::mainloop::Mainloop;
 use ftl_api::prelude::*;
@@ -80,10 +78,10 @@ pub fn main(mut env: Environ) {
 
     loop {
         match mainloop.next() {
-            Event::Message(Context::Ctrl, Message::TcpAccepted(m), _) => {
-                let ch = Channel::from_handle(OwnedHandle::from_raw(m.sock()));
+            Event::Message(Context::Ctrl, Message::TcpAccepted(mut m), _) => {
+                let sock_ch = m.sock().unwrap();
                 mainloop
-                    .add_channel(ch, Context::Data(Client::new()))
+                    .add_channel(sock_ch, Context::Data(Client::new()))
                     .unwrap();
             }
             Event::Message(Context::Data(client), Message::TcpReceived(m), sender) => {

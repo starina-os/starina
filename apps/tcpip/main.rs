@@ -5,7 +5,6 @@ use ftl_api::channel::Channel;
 use ftl_api::channel::ChannelSender;
 use ftl_api::collections::HashMap;
 use ftl_api::collections::VecDeque;
-use ftl_api::handle::OwnedHandle;
 use ftl_api::mainloop::Event;
 use ftl_api::mainloop::Mainloop;
 use ftl_api::prelude::*;
@@ -350,9 +349,10 @@ pub fn main(mut env: Environ) {
     loop {
         server.poll(&mut mainloop);
         match mainloop.next() {
-            Event::Message(Context::Autopilot, Message::NewclientRequest(m), _) => {
-                info!("got new client: {:?}", m.handle());
-                let new_ch = Channel::from_handle(OwnedHandle::from_raw(m.handle()));
+            Event::Message(Context::Autopilot, Message::NewclientRequest(mut m), _) => {
+                info!("new autopilot msg...");
+                let new_ch = m.handle().unwrap();
+                info!("got new client: {:?}", new_ch);
                 mainloop.add_channel(new_ch, Context::CtrlSocket).unwrap();
             }
             Event::Message(Context::CtrlSocket, Message::TcpListenRequest(m), sender) => {

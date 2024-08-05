@@ -19,7 +19,6 @@ pub mod protocols {
         #[repr(C)]
 
         pub struct NewclientRequest {
-            // TODO: Don't copy whole bytes fields.
             pub handle: MovedHandle,
         }
 
@@ -65,7 +64,10 @@ pub mod protocols {
                 msginfo: MessageInfo,
             ) -> Option<NewclientRequestReader<'a>> {
                 if msginfo == Self::MSGINFO {
-                    Some(NewclientRequestReader { buffer })
+                    Some(NewclientRequestReader {
+                        buffer,
+                        handles_taken: [false; 1],
+                    })
                 } else {
                     None
                 }
@@ -75,6 +77,8 @@ pub mod protocols {
         pub struct NewclientRequestReader<'a> {
             #[allow(dead_code)]
             buffer: &'a MessageBuffer,
+            #[allow(dead_code)]
+            handles_taken: [bool; 1],
         }
 
         impl<'a> NewclientRequestReader<'a> {
@@ -83,8 +87,23 @@ pub mod protocols {
                 unsafe { &*(buffer as *const _ as *const RawNewclientRequest) }
             }
 
-            pub fn handle(&self) -> ftl_types::handle::HandleId {
-                // TODO: return OwnedHandle
+            #[cfg(feature = "api")]
+            pub fn handle(&mut self) -> Option<::ftl_api::channel::Channel> {
+                let handle_index = 0; // FIXME: Support multiple handles.
+                let handle_id = self.buffer.handles[handle_index];
+
+                if self.handles_taken[handle_index] {
+                    return None;
+                }
+
+                self.handles_taken[handle_index] = true;
+
+                let owned = ::ftl_api::handle::OwnedHandle::from_raw(handle_id);
+                let ch = ::ftl_api::channel::Channel::from_handle(owned);
+                Some(ch)
+            }
+
+            pub fn handle_raw(&self) -> ftl_types::handle::HandleId {
                 // FIXME: Support multiple handles.
                 self.buffer.handles[0]
             }
@@ -92,9 +111,7 @@ pub mod protocols {
 
         #[repr(C)]
 
-        pub struct NewclientReply {
-            // TODO: Don't copy whole bytes fields.
-        }
+        pub struct NewclientReply {}
 
         #[repr(C)]
         struct RawNewclientReply {}
@@ -135,7 +152,10 @@ pub mod protocols {
                 msginfo: MessageInfo,
             ) -> Option<NewclientReplyReader<'a>> {
                 if msginfo == Self::MSGINFO {
-                    Some(NewclientReplyReader { buffer })
+                    Some(NewclientReplyReader {
+                        buffer,
+                        handles_taken: [false; 0],
+                    })
                 } else {
                     None
                 }
@@ -145,6 +165,8 @@ pub mod protocols {
         pub struct NewclientReplyReader<'a> {
             #[allow(dead_code)]
             buffer: &'a MessageBuffer,
+            #[allow(dead_code)]
+            handles_taken: [bool; 0],
         }
 
         impl<'a> NewclientReplyReader<'a> {
@@ -161,7 +183,6 @@ pub mod protocols {
         #[repr(C)]
 
         pub struct PingRequest<'a> {
-            // TODO: Don't copy whole bytes fields.
             pub int_value1: i32,
 
             pub bytes_value1: &'a [u8],
@@ -218,7 +239,10 @@ pub mod protocols {
                 msginfo: MessageInfo,
             ) -> Option<PingRequestReader<'a>> {
                 if msginfo == Self::MSGINFO {
-                    Some(PingRequestReader { buffer })
+                    Some(PingRequestReader {
+                        buffer,
+                        handles_taken: [false; 0],
+                    })
                 } else {
                     None
                 }
@@ -228,6 +252,8 @@ pub mod protocols {
         pub struct PingRequestReader<'a> {
             #[allow(dead_code)]
             buffer: &'a MessageBuffer,
+            #[allow(dead_code)]
+            handles_taken: [bool; 0],
         }
 
         impl<'a> PingRequestReader<'a> {
@@ -250,7 +276,6 @@ pub mod protocols {
         #[repr(C)]
 
         pub struct PingReply {
-            // TODO: Don't copy whole bytes fields.
             pub int_value2: i32,
 
             pub str_value2: ftl_types::idl::StringField<32>,
@@ -307,7 +332,10 @@ pub mod protocols {
                 msginfo: MessageInfo,
             ) -> Option<PingReplyReader<'a>> {
                 if msginfo == Self::MSGINFO {
-                    Some(PingReplyReader { buffer })
+                    Some(PingReplyReader {
+                        buffer,
+                        handles_taken: [false; 0],
+                    })
                 } else {
                     None
                 }
@@ -317,6 +345,8 @@ pub mod protocols {
         pub struct PingReplyReader<'a> {
             #[allow(dead_code)]
             buffer: &'a MessageBuffer,
+            #[allow(dead_code)]
+            handles_taken: [bool; 0],
         }
 
         impl<'a> PingReplyReader<'a> {
@@ -343,7 +373,6 @@ pub mod protocols {
         #[repr(C)]
 
         pub struct Tx<'a> {
-            // TODO: Don't copy whole bytes fields.
             pub payload: &'a [u8],
         }
 
@@ -390,7 +419,10 @@ pub mod protocols {
                 msginfo: MessageInfo,
             ) -> Option<TxReader<'a>> {
                 if msginfo == Self::MSGINFO {
-                    Some(TxReader { buffer })
+                    Some(TxReader {
+                        buffer,
+                        handles_taken: [false; 0],
+                    })
                 } else {
                     None
                 }
@@ -400,6 +432,8 @@ pub mod protocols {
         pub struct TxReader<'a> {
             #[allow(dead_code)]
             buffer: &'a MessageBuffer,
+            #[allow(dead_code)]
+            handles_taken: [bool; 0],
         }
 
         impl<'a> TxReader<'a> {
@@ -417,7 +451,6 @@ pub mod protocols {
         #[repr(C)]
 
         pub struct Rx<'a> {
-            // TODO: Don't copy whole bytes fields.
             pub payload: &'a [u8],
         }
 
@@ -464,7 +497,10 @@ pub mod protocols {
                 msginfo: MessageInfo,
             ) -> Option<RxReader<'a>> {
                 if msginfo == Self::MSGINFO {
-                    Some(RxReader { buffer })
+                    Some(RxReader {
+                        buffer,
+                        handles_taken: [false; 0],
+                    })
                 } else {
                     None
                 }
@@ -474,6 +510,8 @@ pub mod protocols {
         pub struct RxReader<'a> {
             #[allow(dead_code)]
             buffer: &'a MessageBuffer,
+            #[allow(dead_code)]
+            handles_taken: [bool; 0],
         }
 
         impl<'a> RxReader<'a> {
@@ -494,9 +532,7 @@ pub mod protocols {
 
         #[repr(C)]
 
-        pub struct TcpClosed {
-            // TODO: Don't copy whole bytes fields.
-        }
+        pub struct TcpClosed {}
 
         #[repr(C)]
         struct RawTcpClosed {}
@@ -537,7 +573,10 @@ pub mod protocols {
                 msginfo: MessageInfo,
             ) -> Option<TcpClosedReader<'a>> {
                 if msginfo == Self::MSGINFO {
-                    Some(TcpClosedReader { buffer })
+                    Some(TcpClosedReader {
+                        buffer,
+                        handles_taken: [false; 0],
+                    })
                 } else {
                     None
                 }
@@ -547,6 +586,8 @@ pub mod protocols {
         pub struct TcpClosedReader<'a> {
             #[allow(dead_code)]
             buffer: &'a MessageBuffer,
+            #[allow(dead_code)]
+            handles_taken: [bool; 0],
         }
 
         impl<'a> TcpClosedReader<'a> {
@@ -559,7 +600,6 @@ pub mod protocols {
         #[repr(C)]
 
         pub struct TcpAccepted {
-            // TODO: Don't copy whole bytes fields.
             pub sock: MovedHandle,
         }
 
@@ -604,7 +644,10 @@ pub mod protocols {
                 msginfo: MessageInfo,
             ) -> Option<TcpAcceptedReader<'a>> {
                 if msginfo == Self::MSGINFO {
-                    Some(TcpAcceptedReader { buffer })
+                    Some(TcpAcceptedReader {
+                        buffer,
+                        handles_taken: [false; 1],
+                    })
                 } else {
                     None
                 }
@@ -614,6 +657,8 @@ pub mod protocols {
         pub struct TcpAcceptedReader<'a> {
             #[allow(dead_code)]
             buffer: &'a MessageBuffer,
+            #[allow(dead_code)]
+            handles_taken: [bool; 1],
         }
 
         impl<'a> TcpAcceptedReader<'a> {
@@ -622,8 +667,23 @@ pub mod protocols {
                 unsafe { &*(buffer as *const _ as *const RawTcpAccepted) }
             }
 
-            pub fn sock(&self) -> ftl_types::handle::HandleId {
-                // TODO: return OwnedHandle
+            #[cfg(feature = "api")]
+            pub fn sock(&mut self) -> Option<::ftl_api::channel::Channel> {
+                let handle_index = 0; // FIXME: Support multiple handles.
+                let handle_id = self.buffer.handles[handle_index];
+
+                if self.handles_taken[handle_index] {
+                    return None;
+                }
+
+                self.handles_taken[handle_index] = true;
+
+                let owned = ::ftl_api::handle::OwnedHandle::from_raw(handle_id);
+                let ch = ::ftl_api::channel::Channel::from_handle(owned);
+                Some(ch)
+            }
+
+            pub fn sock_raw(&self) -> ftl_types::handle::HandleId {
                 // FIXME: Support multiple handles.
                 self.buffer.handles[0]
             }
@@ -632,7 +692,6 @@ pub mod protocols {
         #[repr(C)]
 
         pub struct TcpReceived<'a> {
-            // TODO: Don't copy whole bytes fields.
             pub data: &'a [u8],
         }
 
@@ -681,7 +740,10 @@ pub mod protocols {
                 msginfo: MessageInfo,
             ) -> Option<TcpReceivedReader<'a>> {
                 if msginfo == Self::MSGINFO {
-                    Some(TcpReceivedReader { buffer })
+                    Some(TcpReceivedReader {
+                        buffer,
+                        handles_taken: [false; 0],
+                    })
                 } else {
                     None
                 }
@@ -691,6 +753,8 @@ pub mod protocols {
         pub struct TcpReceivedReader<'a> {
             #[allow(dead_code)]
             buffer: &'a MessageBuffer,
+            #[allow(dead_code)]
+            handles_taken: [bool; 0],
         }
 
         impl<'a> TcpReceivedReader<'a> {
@@ -708,7 +772,6 @@ pub mod protocols {
         #[repr(C)]
 
         pub struct TcpListenRequest {
-            // TODO: Don't copy whole bytes fields.
             pub port: u16,
         }
 
@@ -758,7 +821,10 @@ pub mod protocols {
                 msginfo: MessageInfo,
             ) -> Option<TcpListenRequestReader<'a>> {
                 if msginfo == Self::MSGINFO {
-                    Some(TcpListenRequestReader { buffer })
+                    Some(TcpListenRequestReader {
+                        buffer,
+                        handles_taken: [false; 0],
+                    })
                 } else {
                     None
                 }
@@ -768,6 +834,8 @@ pub mod protocols {
         pub struct TcpListenRequestReader<'a> {
             #[allow(dead_code)]
             buffer: &'a MessageBuffer,
+            #[allow(dead_code)]
+            handles_taken: [bool; 0],
         }
 
         impl<'a> TcpListenRequestReader<'a> {
@@ -784,9 +852,7 @@ pub mod protocols {
 
         #[repr(C)]
 
-        pub struct TcpListenReply {
-            // TODO: Don't copy whole bytes fields.
-        }
+        pub struct TcpListenReply {}
 
         #[repr(C)]
         struct RawTcpListenReply {}
@@ -827,7 +893,10 @@ pub mod protocols {
                 msginfo: MessageInfo,
             ) -> Option<TcpListenReplyReader<'a>> {
                 if msginfo == Self::MSGINFO {
-                    Some(TcpListenReplyReader { buffer })
+                    Some(TcpListenReplyReader {
+                        buffer,
+                        handles_taken: [false; 0],
+                    })
                 } else {
                     None
                 }
@@ -837,6 +906,8 @@ pub mod protocols {
         pub struct TcpListenReplyReader<'a> {
             #[allow(dead_code)]
             buffer: &'a MessageBuffer,
+            #[allow(dead_code)]
+            handles_taken: [bool; 0],
         }
 
         impl<'a> TcpListenReplyReader<'a> {
@@ -849,7 +920,6 @@ pub mod protocols {
         #[repr(C)]
 
         pub struct TcpSendRequest<'a> {
-            // TODO: Don't copy whole bytes fields.
             pub data: &'a [u8],
         }
 
@@ -898,7 +968,10 @@ pub mod protocols {
                 msginfo: MessageInfo,
             ) -> Option<TcpSendRequestReader<'a>> {
                 if msginfo == Self::MSGINFO {
-                    Some(TcpSendRequestReader { buffer })
+                    Some(TcpSendRequestReader {
+                        buffer,
+                        handles_taken: [false; 0],
+                    })
                 } else {
                     None
                 }
@@ -908,6 +981,8 @@ pub mod protocols {
         pub struct TcpSendRequestReader<'a> {
             #[allow(dead_code)]
             buffer: &'a MessageBuffer,
+            #[allow(dead_code)]
+            handles_taken: [bool; 0],
         }
 
         impl<'a> TcpSendRequestReader<'a> {
@@ -924,9 +999,7 @@ pub mod protocols {
 
         #[repr(C)]
 
-        pub struct TcpSendReply {
-            // TODO: Don't copy whole bytes fields.
-        }
+        pub struct TcpSendReply {}
 
         #[repr(C)]
         struct RawTcpSendReply {}
@@ -967,7 +1040,10 @@ pub mod protocols {
                 msginfo: MessageInfo,
             ) -> Option<TcpSendReplyReader<'a>> {
                 if msginfo == Self::MSGINFO {
-                    Some(TcpSendReplyReader { buffer })
+                    Some(TcpSendReplyReader {
+                        buffer,
+                        handles_taken: [false; 0],
+                    })
                 } else {
                     None
                 }
@@ -977,6 +1053,8 @@ pub mod protocols {
         pub struct TcpSendReplyReader<'a> {
             #[allow(dead_code)]
             buffer: &'a MessageBuffer,
+            #[allow(dead_code)]
+            handles_taken: [bool; 0],
         }
 
         impl<'a> TcpSendReplyReader<'a> {

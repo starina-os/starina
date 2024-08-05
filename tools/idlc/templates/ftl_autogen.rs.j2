@@ -24,7 +24,6 @@ pub mod protocols {
         {% else %}
         pub struct {{ m.name }} {
         {% endif %}
-            // TODO: Don't copy whole bytes fields.
             {%- for f in m.fields %}
                 {% if not f.is_handle %}
                     pub {{ f.name }}: {{ f.builder_ty }},
@@ -109,7 +108,10 @@ pub mod protocols {
                 msginfo: MessageInfo
             ) -> Option<{{ m.name }}Reader<'a>> {
                 if msginfo == Self::MSGINFO {
-                    Some({{ m.name }}Reader { buffer })
+                    Some({{ m.name }}Reader {
+                        buffer,
+                        handles_taken: [false; {{ m.num_handles }}],
+                    })
                 } else {
                     None
                 }
@@ -119,6 +121,8 @@ pub mod protocols {
         pub struct {{ m.name }}Reader<'a> {
             #[allow(dead_code)]
             buffer: &'a MessageBuffer,
+            #[allow(dead_code)]
+            handles_taken: [bool; {{ m.num_handles }}],
         }
 
         impl<'a> {{ m.name }}Reader<'a> {
@@ -129,7 +133,25 @@ pub mod protocols {
 
             {% for f in m.fields %}
                 {% if f.is_handle %}
-                    pub fn {{ f.name }}(&self) -> ftl_types::handle::HandleId { // TODO: return OwnedHandle
+                    {% if f.ty == "channel" %}
+                        #[cfg(feature = "api")]
+                        pub fn {{ f.name }}(&mut self) -> Option<::ftl_api::channel::Channel> {
+                            let handle_index = 0; // FIXME: Support multiple handles.
+                            let handle_id = self.buffer.handles[handle_index];
+
+                            if self.handles_taken[handle_index] {
+                                return None;
+                            }
+
+                            self.handles_taken[handle_index] = true;
+
+                            let owned = ::ftl_api::handle::OwnedHandle::from_raw(handle_id);
+                            let ch = ::ftl_api::channel::Channel::from_handle(owned);
+                            Some(ch)
+                        }
+                    {% endif %}
+
+                    pub fn {{ f.name }}_raw(&self) -> ftl_types::handle::HandleId {
                         // FIXME: Support multiple handles.
                         self.buffer.handles[0]
                     }

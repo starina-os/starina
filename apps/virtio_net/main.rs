@@ -1,9 +1,7 @@
 #![no_std]
 #![no_main]
 
-use ftl_api::channel::Channel;
 use ftl_api::folio::MmioFolio;
-use ftl_api::handle::OwnedHandle;
 use ftl_api::interrupt::Interrupt;
 use ftl_api::mainloop::Event;
 use ftl_api::mainloop::Mainloop;
@@ -164,8 +162,8 @@ pub fn main(mut env: Environ) {
     let mut tcpip_sender = None;
     loop {
         match mainloop.next() {
-            Event::Message(Context::Autopilot, Message::NewclientRequest(m), _) => {
-                let tcpip_ch = Channel::from_handle(OwnedHandle::from_raw(m.handle()));
+            Event::Message(Context::Autopilot, Message::NewclientRequest(mut m), _) => {
+                let tcpip_ch = m.handle().unwrap();
                 let (sender, receiver) = tcpip_ch.split();
                 tcpip_sender = Some(sender.clone());
 

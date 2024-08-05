@@ -294,6 +294,7 @@ dependencies = [
 name = "ftl_autogen"
 version = "0.0.0"
 dependencies = [
+ "ftl_api",
  "ftl_types",
 ]
 

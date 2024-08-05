@@ -25,8 +25,22 @@ pub enum Ty {
     UInt16,
     Int32,
     Handle,
+    Channel,
     Bytes { capacity: usize },
     String { capacity: usize },
+}
+
+impl fmt::Display for Ty {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Ty::UInt16 => write!(f, "u16"),
+            Ty::Int32 => write!(f, "i32"),
+            Ty::Handle => write!(f, "handle"),
+            Ty::Channel => write!(f, "channel"),
+            Ty::Bytes { capacity } => write!(f, "bytes<{}>", capacity),
+            Ty::String { capacity } => write!(f, "string<{}>", capacity),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
