@@ -62,7 +62,7 @@ fn resolve_builder_type_name(ty: &idl::Ty) -> String {
         idl::Ty::Int32 => "i32".to_string(),
         idl::Ty::Bytes { .. } => "&'a [u8]".to_string(),
         idl::Ty::String { capacity } => format!("ftl_types::idl::StringField<{capacity}>"),
-        idl::Ty::Handle |idl::Ty::Channel => "unreachable!()".to_string(),
+        idl::Ty::Handle | idl::Ty::Channel => "unreachable!()".to_string(),
     }
 }
 

@@ -1,6 +1,7 @@
 #![no_std]
 #![no_main]
 
+use ftl_api::environ::Environ;
 use ftl_api::folio::MmioFolio;
 use ftl_api::interrupt::Interrupt;
 use ftl_api::mainloop::Event;
@@ -10,7 +11,6 @@ use ftl_api::types::address::PAddr;
 use ftl_api::types::address::VAddr;
 use ftl_api::types::environ::Device;
 use ftl_api::types::interrupt::Irq;
-use ftl_api_autogen::apps::virtio_net::Environ;
 use ftl_api_autogen::apps::virtio_net::Message;
 use ftl_api_autogen::protocols::ethernet_device;
 use ftl_utils::alignment::align_up;
@@ -127,7 +127,8 @@ enum Context {
 #[ftl_api::main]
 pub fn main(mut env: Environ) {
     info!("starting");
-    let (mut transport, irq) = probe(&env.depends.virtio, VIRTIO_DEVICE_TYPE_NET).unwrap();
+    let (mut transport, irq) =
+        probe(env.devices("virtio,mmio").unwrap(), VIRTIO_DEVICE_TYPE_NET).unwrap();
     assert!(transport.is_modern());
 
     let interrupt = Interrupt::create(irq).unwrap();
@@ -153,7 +154,10 @@ pub fn main(mut env: Environ) {
 
     let mut mainloop = Mainloop::<Context, Message>::new().unwrap();
     mainloop
-        .add_channel(env.autopilot_ch.take().unwrap(), Context::Autopilot)
+        .add_channel(
+            env.take_channel("dep:startup").unwrap(),
+            Context::Autopilot,
+        )
         .unwrap();
     mainloop
         .add_interrupt(interrupt, Context::Interrupt)

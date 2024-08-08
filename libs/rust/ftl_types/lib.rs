@@ -6,7 +6,6 @@
 extern crate alloc;
 
 pub mod address;
-pub mod bootfs;
 pub mod environ;
 pub mod error;
 pub mod handle;

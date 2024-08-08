@@ -1,16 +1,15 @@
 use ftl_inlinedvec::InlinedVec;
-use ftl_types::spec::Spec;
-use ftl_types::spec::SpecFile;
 use ftl_utils::byte_size::ByteSize;
 
 use crate::arch;
-use crate::autopilot::Autopilot;
-use crate::bootfs::Bootfs;
 use crate::cpuvar;
 use crate::cpuvar::CpuId;
 use crate::device_tree::DeviceTree;
 use crate::memory;
 use crate::process;
+use crate::startup;
+
+include!(concat!(env!("OUT_DIR"), "/autogen.rs"));
 
 /// A free region of memory available for software.
 #[derive(Debug)]
@@ -39,23 +38,6 @@ pub fn boot(cpu_id: CpuId, bootinfo: BootInfo) -> ! {
     process::init();
     cpuvar::percpu_init(cpu_id);
 
-    let bootfs = Bootfs::load();
-    for file in bootfs.files() {
-        debug!("bootfs: file: {}", file.name);
-    }
-
-    let boot_spec_file = bootfs
-        .find_by_name("cfg/boot.spec.json")
-        .expect("boot spec not found");
-    let spec_file: SpecFile =
-        serde_json::from_slice(&boot_spec_file.data).expect("failed to parse boot spec");
-    let boot_spec = match spec_file.spec {
-        Spec::Boot(boot_spec) => boot_spec,
-        _ => panic!("unexpected boot spec"),
-    };
-
-    let mut autopilot = Autopilot::new();
-    autopilot.boot(&bootfs, &boot_spec, &device_tree);
-
+    startup::load_startup_apps(&STARTUP_APPS, &device_tree);
     arch::idle();
 }

@@ -5,8 +5,10 @@ MACHINE ?= qemu-virt
 RELEASE ?=            # "1" to build release version
 V       ?=            # "1" to enable verbose output
 
-# Note: Don't forget to update boot.spec.json as well!
-APPS    ?= apps/tcpip apps/virtio_net apps/http_server
+APPS         ?= apps/tcpip apps/virtio_net apps/http_server
+STARTUP_APPS ?= $(APPS)
+
+BUILD_DIR ?= build
 
 # Disable builtin implicit rules and variables.
 MAKEFLAGS += --no-builtin-rules --no-builtin-variables
@@ -61,7 +63,7 @@ QEMUFLAGS += -nographic -serial mon:stdio --no-reboot
 QEMUFLAGS += -d cpu_reset,unimp,guest_errors,int -D qemu.log
 QEMUFLAGS += $(if $(GDB),-gdb tcp::7789 -S)
 
-app_elfs := $(foreach app,$(APPS),build/$(app).elf)
+app_elfs := $(foreach app,$(APPS),$(BUILD_DIR)/$(app).elf)
 sources += \
 	$(shell find \
 		boot/$(ARCH) kernel libs apps \
@@ -78,7 +80,7 @@ run: ftl.elf disk.img
 
 .PHONY: clean
 clean:
-	rm -rf build
+	rm -rf $(BUILD_DIR)
 
 .PHONY: clippy
 clippy:
@@ -96,70 +98,50 @@ disk.img:
 	$(PROGRESS) "GEN" "$(@)"
 	dd if=/dev/zero of=$(@) bs=1M count=8
 
-ftl.elf: $(sources) libs/rust/ftl_autogen/lib.rs Makefile build/bootfs.bin
+ftl.elf: $(sources) $(app_elfs) Makefile libs/rust/ftl_autogen/lib.rs Makefile
 	$(PROGRESS) "CARGO" "boot/$(ARCH)"
-	RUSTFLAGS="$(RUSTFLAGS)" CARGO_TARGET_DIR="build/cargo" $(CARGO) build $(CARGOFLAGS) \
+	RUSTFLAGS="$(RUSTFLAGS)" \
+	CARGO_TARGET_DIR="$(BUILD_DIR)/cargo" \
+	BUILD_DIR="$(realpath $(BUILD_DIR))" \
+	STARTUP_APP_DIRS="$(foreach app_dir,$(STARTUP_APPS),$(realpath $(app_dir)))" \
+		$(CARGO) build $(CARGOFLAGS) \
 		--target boot/$(ARCH)/$(ARCH)-$(MACHINE).json \
 		--manifest-path boot/$(ARCH)/Cargo.toml
-	cp build/cargo/$(ARCH)-$(MACHINE)/$(BUILD)/boot_$(ARCH) $(@)
+	cp $(BUILD_DIR)/cargo/$(ARCH)-$(MACHINE)/$(BUILD)/boot_$(ARCH) $(@)
 
 ftl.pe: ftl.elf
 	$(PROGRESS) "OBJCOPY" $(@)
 	$(OBJCOPY) -O binary --strip-all $< $(@)
 
-build/bootfs.bin: build/ftl_mkbootfs $(app_elfs) Makefile
-	rm -rf build/bootfs
-	mkdir -p build/bootfs
-	mkdir -p build/bootfs/cfg
-	cp boot.spec.json build/bootfs/cfg/boot.spec.json
-	for app_elf in $(app_elfs); do \
-		app_name=$$(basename $${app_elf%.elf}); \
-		mkdir -p build/bootfs/apps/$${app_name}; \
-		cp $${app_elf}.stripped build/bootfs/apps/$${app_name}/app.elf; \
-		cp apps/$${app_name}/app.spec.json build/bootfs/apps/$${app_name}/app.spec.json; \
-	done
-	$(PROGRESS) "MKBOOTFS" "$(@)"
-	./build/ftl_mkbootfs -o $(@) build/bootfs
-
 # TODO: Can't add "-C link-args=-Map=$(@:.elf=.map)" to RUSTFLAGS because rustc considers it as
 #       a change in compiler flags. Indeed it is, but it doesn't affect the output binary.
 #
 #       I'll file an issue on rust-lang/rust to hear  community's opinion.
-build/%.elf: $(sources) libs/rust/ftl_autogen/lib.rs Makefile
+$(BUILD_DIR)/%.elf: $(sources) libs/rust/ftl_autogen/lib.rs Makefile
 	$(PROGRESS) "CARGO" "$(@)"
 	mkdir -p $(@D)
 	RUSTFLAGS="$(RUSTFLAGS)" \
-	CARGO_TARGET_DIR="build/cargo" \
+	CARGO_TARGET_DIR="$(BUILD_DIR)/cargo" \
 		$(CARGO) build $(CARGOFLAGS) \
 		--target libs/rust/ftl_api/arch/$(ARCH)/$(ARCH)-user.json \
-		--manifest-path $(patsubst build/%.elf,%,$(@))/Cargo.toml
-	cp build/cargo/$(ARCH)-user/$(BUILD)/$(patsubst build/apps/%.elf,%,$(@)) $(@)
+		--manifest-path $(patsubst $(BUILD_DIR)/%.elf,%,$(@))/Cargo.toml
+	cp $(BUILD_DIR)/cargo/$(ARCH)-user/$(BUILD)/$(patsubst $(BUILD_DIR)/apps/%.elf,%,$(@)) $(@)
 	$(OBJCOPY) --strip-all --strip-debug $(@) $(@).stripped
 
-build/ftl_idlc: $(shell find tools/idlc libs/rust/ftl_types -name '*.rs') $(shell find tools/idlc -name '*.j2')
+$(BUILD_DIR)/ftl_idlc: $(shell find tools/idlc libs/rust/ftl_types -name '*.rs') $(shell find tools/idlc -name '*.j2')
 	mkdir -p $(@D)
 	$(PROGRESS) "CARGO" "tools/idlc"
 	RUSTFLAGS="$(RUSTFLAGS)" \
-	CARGO_TARGET_DIR="build/cargo" \
+	CARGO_TARGET_DIR="$(BUILD_DIR)/cargo" \
 		$(CARGO) build \
 			$(if $(RELEASE),--release,) \
 			--manifest-path tools/idlc/Cargo.toml
-	mv build/cargo/$(BUILD)/ftl_idlc $(@)
+	mv $(BUILD_DIR)/cargo/$(BUILD)/ftl_idlc $(@)
 
-build/ftl_mkbootfs: $(shell find tools/mkbootfs -name '*.rs')
-	mkdir -p $(@D)
-	$(PROGRESS) "CARGO" "tools/mkbootfs"
-	RUSTFLAGS="$(RUSTFLAGS)" \
-	CARGO_TARGET_DIR="build/cargo" \
-		$(CARGO) build \
-			$(if $(RELEASE),--release,) \
-			--manifest-path tools/mkbootfs/Cargo.toml
-	mv build/cargo/$(BUILD)/ftl_mkbootfs $(@)
-
-libs/rust/ftl_autogen/lib.rs: idl.json build/ftl_idlc $(shell find $(APPS) -name '*.spec.json') Makefile
+libs/rust/ftl_autogen/lib.rs: idl.json $(BUILD_DIR)/ftl_idlc $(shell find $(APPS) -name '*.spec.json') Makefile
 	mkdir -p build
 	$(PROGRESS) "ILDC" "$(@)"
-	./build/ftl_idlc \
+	./$(BUILD_DIR)/ftl_idlc \
 		--autogen-outfile $(@) \
 		--api-autogen-outfile libs/rust/ftl_api_autogen/lib.rs \
 		--idl-file idl.json \

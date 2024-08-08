@@ -2,10 +2,10 @@
 #![no_main]
 
 use ftl_api::channel::ChannelSender;
+use ftl_api::environ::Environ;
 use ftl_api::mainloop::Event;
 use ftl_api::mainloop::Mainloop;
 use ftl_api::prelude::*;
-use ftl_api_autogen::apps::http_server::Environ;
 use ftl_api_autogen::apps::http_server::Message;
 use ftl_api_autogen::protocols::tcpip::TcpListenRequest;
 use ftl_api_autogen::protocols::tcpip::TcpSendRequest;
@@ -57,7 +57,7 @@ impl Client {
 
 #[derive(Debug)]
 enum Context {
-    Autopilot,
+    Startup,
     // TCP/IP control channel.
     Ctrl,
     // TCP/IP data channel. Represents each TCP connection.
@@ -67,12 +67,15 @@ enum Context {
 #[ftl_api::main]
 pub fn main(mut env: Environ) {
     info!("starting");
-    let tcpip_ch = env.depends.tcpip.take().unwrap();
+    let tcpip_ch = env.take_channel("dep:tcpip").unwrap();
     tcpip_ch.send(TcpListenRequest { port: 80 }).unwrap();
 
     let mut mainloop = Mainloop::<Context, Message>::new().unwrap();
     mainloop
-        .add_channel(env.autopilot_ch.take().unwrap(), Context::Autopilot)
+        .add_channel(
+            env.take_channel("dep:startup").unwrap(),
+            Context::Startup,
+        )
         .unwrap();
     mainloop.add_channel(tcpip_ch, Context::Ctrl).unwrap();
 

@@ -4,7 +4,6 @@ use proc_macro_error::proc_macro_error;
 use quote::quote;
 use syn::parse_macro_input;
 use syn::spanned::Spanned;
-use syn::FnArg;
 
 #[proc_macro_error]
 #[proc_macro_attribute]
@@ -32,21 +31,12 @@ pub fn main(_args: TokenStream, item: TokenStream) -> TokenStream {
         );
     }
 
-    let environ_type = match func.sig.inputs.first() {
-        Some(FnArg::Typed(arg)) => &*arg.ty,
-        Some(x) => {
-            abort!(
-                x.span(),
-                "unexpected parameter type in main function (ftl_api_macros::main)"
-            );
-        }
-        _ => {
-            abort!(
-                func.sig.inputs.span(),
-                "main function should have one parameter, i.e. fn main(env: ftl_api_autogen::apps::<APP NAME>::Environ) (ftl_api_macros::main)"
-            );
-        }
-    };
+    if func.sig.inputs.first().is_none() {
+        abort!(
+            func.sig.inputs.span(),
+           "main function should have one parameter, i.e. fn main(env: ftl_api::environ::Environ) (ftl_api_macros::main)"
+        );
+    }
 
     let output: proc_macro2::TokenStream = quote! {
         #func
@@ -60,10 +50,12 @@ pub fn main(_args: TokenStream, item: TokenStream) -> TokenStream {
                 ::ftl_api::init::init_internal(vsyscall);
             }
 
-            let env = #environ_type::from_environ_ptr(
-                unsafe { (*vsyscall).environ_ptr },
-                unsafe { (*vsyscall).environ_len }
-            );
+            let env_bytes = unsafe {
+                ::core::slice::from_raw_parts((*vsyscall).environ_ptr, (*vsyscall).environ_len)
+            };
+            let env_str = ::core::str::from_utf8(env_bytes).unwrap();
+            let env = ::ftl_api::environ::Environ::parse(env_str);
+
             main(env);
         }
     };

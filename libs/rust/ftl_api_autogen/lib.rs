@@ -6,62 +6,6 @@ pub use ftl_autogen::*;
 pub mod apps {
 
     pub mod tcpip {
-        pub struct Environ {
-            pub autopilot_ch: Option<ftl_api::channel::Channel>,
-            pub depends: Depends,
-        }
-
-        impl Environ {
-            pub fn from_environ_ptr(environ_ptr: *const u8, environ_len: usize) -> Self {
-                let environ_bytes =
-                    unsafe { ::core::slice::from_raw_parts(environ_ptr, environ_len) };
-
-                #[allow(unused_variables)]
-                let environ_json: EnvironJson =
-                    serde_json::from_slice(environ_bytes).expect("failed to parse environ JSON");
-
-                let depends = Depends {
-                    ethernet_device: {
-                        use ftl_api::channel::Channel;
-                        use ftl_api::handle::OwnedHandle;
-                        use ftl_types::handle::HandleId;
-
-                        let handle_id = HandleId::from_raw(environ_json.depends.ethernet_device);
-                        let handle = OwnedHandle::from_raw(handle_id);
-                        Some(Channel::from_handle(handle))
-                    },
-                };
-
-                Self {
-                    autopilot_ch: {
-                        use ftl_api::channel::Channel;
-                        use ftl_api::handle::OwnedHandle;
-                        use ftl_types::handle::HandleId;
-
-                        let handle_id = HandleId::from_raw(environ_json.autopilot_ch);
-                        let handle = OwnedHandle::from_raw(handle_id);
-                        Some(Channel::from_handle(handle))
-                    },
-                    depends,
-                }
-            }
-        }
-
-        pub struct Depends {
-            pub ethernet_device: Option<ftl_api::channel::Channel>,
-        }
-
-        #[derive(serde::Serialize, serde::Deserialize)]
-        struct EnvironJson {
-            pub autopilot_ch: i32,
-            pub depends: DependsJson,
-        }
-
-        #[derive(serde::Serialize, serde::Deserialize)]
-        struct DependsJson {
-            pub ethernet_device: i32,
-        }
-
         pub enum Message<'a> {
             NewclientRequest(ftl_autogen::protocols::autopilot::NewclientRequestReader<'a>),
             NewclientReply(ftl_autogen::protocols::autopilot::NewclientReplyReader<'a>),
@@ -209,54 +153,6 @@ pub mod apps {
     }
 
     pub mod virtio_net {
-        pub struct Environ {
-            pub autopilot_ch: Option<ftl_api::channel::Channel>,
-            pub depends: Depends,
-        }
-
-        impl Environ {
-            pub fn from_environ_ptr(environ_ptr: *const u8, environ_len: usize) -> Self {
-                let environ_bytes =
-                    unsafe { ::core::slice::from_raw_parts(environ_ptr, environ_len) };
-
-                #[allow(unused_variables)]
-                let environ_json: EnvironJson =
-                    serde_json::from_slice(environ_bytes).expect("failed to parse environ JSON");
-
-                let depends = Depends {
-                    virtio: { environ_json.depends.virtio },
-                };
-
-                Self {
-                    autopilot_ch: {
-                        use ftl_api::channel::Channel;
-                        use ftl_api::handle::OwnedHandle;
-                        use ftl_types::handle::HandleId;
-
-                        let handle_id = HandleId::from_raw(environ_json.autopilot_ch);
-                        let handle = OwnedHandle::from_raw(handle_id);
-                        Some(Channel::from_handle(handle))
-                    },
-                    depends,
-                }
-            }
-        }
-
-        pub struct Depends {
-            pub virtio: ftl_api::prelude::Vec<ftl_types::environ::Device>,
-        }
-
-        #[derive(serde::Serialize, serde::Deserialize)]
-        struct EnvironJson {
-            pub autopilot_ch: i32,
-            pub depends: DependsJson,
-        }
-
-        #[derive(serde::Serialize, serde::Deserialize)]
-        struct DependsJson {
-            pub virtio: ftl_api::prelude::Vec<ftl_types::environ::Device>,
-        }
-
         pub enum Message<'a> {
             NewclientRequest(ftl_autogen::protocols::autopilot::NewclientRequestReader<'a>),
             NewclientReply(ftl_autogen::protocols::autopilot::NewclientReplyReader<'a>),
@@ -404,62 +300,6 @@ pub mod apps {
     }
 
     pub mod http_server {
-        pub struct Environ {
-            pub autopilot_ch: Option<ftl_api::channel::Channel>,
-            pub depends: Depends,
-        }
-
-        impl Environ {
-            pub fn from_environ_ptr(environ_ptr: *const u8, environ_len: usize) -> Self {
-                let environ_bytes =
-                    unsafe { ::core::slice::from_raw_parts(environ_ptr, environ_len) };
-
-                #[allow(unused_variables)]
-                let environ_json: EnvironJson =
-                    serde_json::from_slice(environ_bytes).expect("failed to parse environ JSON");
-
-                let depends = Depends {
-                    tcpip: {
-                        use ftl_api::channel::Channel;
-                        use ftl_api::handle::OwnedHandle;
-                        use ftl_types::handle::HandleId;
-
-                        let handle_id = HandleId::from_raw(environ_json.depends.tcpip);
-                        let handle = OwnedHandle::from_raw(handle_id);
-                        Some(Channel::from_handle(handle))
-                    },
-                };
-
-                Self {
-                    autopilot_ch: {
-                        use ftl_api::channel::Channel;
-                        use ftl_api::handle::OwnedHandle;
-                        use ftl_types::handle::HandleId;
-
-                        let handle_id = HandleId::from_raw(environ_json.autopilot_ch);
-                        let handle = OwnedHandle::from_raw(handle_id);
-                        Some(Channel::from_handle(handle))
-                    },
-                    depends,
-                }
-            }
-        }
-
-        pub struct Depends {
-            pub tcpip: Option<ftl_api::channel::Channel>,
-        }
-
-        #[derive(serde::Serialize, serde::Deserialize)]
-        struct EnvironJson {
-            pub autopilot_ch: i32,
-            pub depends: DependsJson,
-        }
-
-        #[derive(serde::Serialize, serde::Deserialize)]
-        struct DependsJson {
-            pub tcpip: i32,
-        }
-
         pub enum Message<'a> {
             NewclientRequest(ftl_autogen::protocols::autopilot::NewclientRequestReader<'a>),
             NewclientReply(ftl_autogen::protocols::autopilot::NewclientReplyReader<'a>),

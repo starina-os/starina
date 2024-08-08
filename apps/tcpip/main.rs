@@ -5,11 +5,11 @@ use ftl_api::channel::Channel;
 use ftl_api::channel::ChannelSender;
 use ftl_api::collections::HashMap;
 use ftl_api::collections::VecDeque;
+use ftl_api::environ::Environ;
 use ftl_api::mainloop::Event;
 use ftl_api::mainloop::Mainloop;
 use ftl_api::prelude::*;
 use ftl_api::types::error::FtlError;
-use ftl_api_autogen::apps::tcpip::Environ;
 use ftl_api_autogen::apps::tcpip::Message;
 use ftl_api_autogen::protocols::ethernet_device;
 use ftl_api_autogen::protocols::tcpip::TcpAccepted;
@@ -30,7 +30,7 @@ use smoltcp::wire::IpListenEndpoint;
 
 #[derive(Debug)]
 enum Context {
-    Autopilot,
+    Startup,
     Driver,
     CtrlSocket,
     DataSocket(SocketHandle),
@@ -332,7 +332,8 @@ pub fn main(mut env: Environ) {
         log::LevelFilter::Info
     });
 
-    let driver_ch = env.depends.ethernet_device.take().unwrap();
+    let driver_ch = env.take_channel("dep:ethernet_device").unwrap();
+    let startup_ch = env.take_channel("dep:startup").unwrap();
     let (driver_sender, driver_receiver) = driver_ch.split();
 
     let mac = HardwareAddress::Ethernet(EthernetAddress([0x52, 0x54, 0x00, 0x12, 0x34, 0x56])); // FIXME:
@@ -340,7 +341,7 @@ pub fn main(mut env: Environ) {
 
     let mut mainloop = Mainloop::<Context, Message>::new().unwrap();
     mainloop
-        .add_channel(env.autopilot_ch.take().unwrap(), Context::Autopilot)
+        .add_channel(startup_ch, Context::Startup)
         .unwrap();
     mainloop
         .add_channel_receiver(driver_receiver, driver_sender, Context::Driver)
@@ -349,7 +350,7 @@ pub fn main(mut env: Environ) {
     loop {
         server.poll(&mut mainloop);
         match mainloop.next() {
-            Event::Message(Context::Autopilot, Message::NewclientRequest(mut m), _) => {
+            Event::Message(Context::Startup, Message::NewclientRequest(mut m), _) => {
                 info!("new autopilot msg...");
                 let new_ch = m.handle().unwrap();
                 info!("got new client: {:?}", new_ch);
