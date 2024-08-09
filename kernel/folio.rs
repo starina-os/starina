@@ -1,40 +1,65 @@
+use core::alloc::GlobalAlloc;
+use core::alloc::Layout;
+
 use ftl_types::address::PAddr;
 use ftl_types::address::VAddr;
 use ftl_types::error::FtlError;
+use ftl_utils::alignment::is_aligned;
 
+use crate::arch::paddr2vaddr;
 use crate::arch::vaddr2paddr;
-use crate::memory::AllocPagesError;
-use crate::memory::AllocatedPages;
+use crate::arch::PAGE_SIZE;
+use crate::memory::GLOBAL_ALLOCATOR;
+
+#[derive(Debug)]
+enum PageType {
+    Allocated { layout: Layout },
+    Fixed,
+}
 
 pub struct Folio {
+    page_type: PageType,
     paddr: PAddr,
     len: usize,
-    _pages: Option<AllocatedPages>,
 }
 
 impl Folio {
-    pub fn alloc(len: usize) -> Result<Folio, AllocPagesError> {
-        let pages = AllocatedPages::alloc(len)?;
-        Ok(Self {
-            paddr: vaddr2paddr(VAddr::new(pages.as_ptr() as usize).unwrap()).unwrap(),
-            len,
-            _pages: Some(pages),
-        })
-    }
+    pub fn alloc(len: usize) -> Result<Folio, FtlError> {
+        if len == 0 || !is_aligned(len, PAGE_SIZE) {
+            return Err(FtlError::InvalidArg);
+        }
 
-    pub fn from_allocated_pages(pages: AllocatedPages) -> Result<Folio, FtlError> {
+        let layout = match Layout::from_size_align(len, PAGE_SIZE) {
+            Ok(layout) => layout,
+            Err(_) => {
+                return Err(FtlError::InvalidArg);
+            }
+        };
+
+        // SAFETY: `len` is not zero as checked above.
+        let ptr = unsafe { GLOBAL_ALLOCATOR.alloc(layout) };
+
         Ok(Self {
-            paddr: vaddr2paddr(VAddr::new(pages.as_ptr() as usize).unwrap()).unwrap(),
-            len: pages.len(),
-            _pages: Some(pages),
+            page_type: PageType::Allocated { layout },
+            paddr: vaddr2paddr(VAddr::new(ptr as usize).unwrap()).unwrap(),
+            len,
         })
     }
 
     pub fn alloc_fixed(paddr: PAddr, len: usize) -> Result<Folio, FtlError> {
+        if len == 0 || !is_aligned(len, PAGE_SIZE) {
+            return Err(FtlError::InvalidArg);
+        }
+
+        // FIXME:
+        // if !is_aligned(paddr.as_usize(), PAGE_SIZE) {
+        //     return Err(FtlError::InvalidArg);
+        // }
+
         Ok(Self {
+            page_type: PageType::Fixed,
             paddr,
             len,
-            _pages: None,
         })
     }
 
@@ -43,5 +68,25 @@ impl Folio {
     }
     pub fn paddr(&self) -> PAddr {
         self.paddr
+    }
+}
+
+impl Drop for Folio {
+    fn drop(&mut self) {
+        match self.page_type {
+            PageType::Allocated { layout } => {
+                // SAFETY: `layout` is the same as the one used in `alloc` method.
+                let vaddr = match paddr2vaddr(self.paddr) {
+                    Ok(vaddr) => vaddr,
+                    Err(err) => {
+                        warn!("failed to paddr2vaddr while dropping a folio: {:?}", err);
+                        return;
+                    }
+                };
+
+                unsafe { GLOBAL_ALLOCATOR.dealloc(vaddr.as_mut_ptr(), layout) };
+            }
+            PageType::Fixed => {}
+        }
     }
 }

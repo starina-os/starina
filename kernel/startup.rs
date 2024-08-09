@@ -6,7 +6,9 @@ use ftl_autogen::protocols::autopilot::NewclientRequest;
 use ftl_elf::Elf;
 use ftl_elf::PhdrType;
 use ftl_elf::ET_DYN;
+use ftl_types::address::VAddr;
 use ftl_types::environ::EnvironSerializer;
+use ftl_types::error::FtlError;
 use ftl_types::handle::HandleId;
 use ftl_types::handle::HandleRights;
 use ftl_types::message::MessageBuffer;
@@ -16,14 +18,13 @@ use ftl_types::syscall::VsyscallPage;
 use ftl_utils::alignment::align_up;
 use hashbrown::HashMap;
 
+use crate::arch::paddr2vaddr;
 use crate::arch::PAGE_SIZE;
 use crate::channel::Channel;
 use crate::device_tree::DeviceTree;
 use crate::folio::Folio;
 use crate::handle::AnyHandle;
 use crate::handle::Handle;
-use crate::memory::AllocPagesError;
-use crate::memory::AllocatedPages;
 use crate::process::kernel_process;
 use crate::process::Process;
 use crate::ref_counted::SharedRef;
@@ -35,8 +36,8 @@ use crate::vmspace::KERNEL_VMSPACE;
 #[allow(dead_code)]
 pub enum Error {
     ParseElf(ftl_elf::ParseError),
+    AllocFolio(FtlError),
     NoPhdrs,
-    AllocBuffer(AllocPagesError),
     NotPIE,
     NoRelaDyn,
 }
@@ -143,7 +144,7 @@ impl<'a> StartupAppLoader<'a> {
         &mut self,
         name: &AppName,
         entry_addr: usize,
-        memory: AllocatedPages,
+        memory: Folio,
         mut env: EnvironSerializer,
         handles: Vec<AnyHandle>,
     ) {
@@ -170,45 +171,42 @@ impl<'a> StartupAppLoader<'a> {
         env.push_vmspace("vmspace", vmspace_id);
 
         let env_str = env.finish();
-        let mut environ_pages = AllocatedPages::alloc(align_up(env_str.len(), PAGE_SIZE))
-            .expect("failed to allocate folio");
-        environ_pages.as_slice_mut()[..env_str.len()].copy_from_slice(env_str.as_bytes());
+        let environ_pages =
+            Folio::alloc(align_up(env_str.len(), PAGE_SIZE)).expect("failed to allocate folio");
+        let environ_pages_vaddr = paddr2vaddr(environ_pages.paddr()).unwrap();
+        let environ_pages_slice: &mut [u8] = unsafe {
+            core::slice::from_raw_parts_mut(environ_pages_vaddr.as_mut_ptr(), environ_pages.len())
+        };
+        environ_pages_slice[..env_str.len()].copy_from_slice(env_str.as_bytes());
 
-        let vsyscall_buffer = AllocatedPages::alloc(PAGE_SIZE).unwrap();
-        let vsyscall_ptr = vsyscall_buffer.as_ptr() as *mut VsyscallPage;
+        let vsyscall_buffer = Folio::alloc(PAGE_SIZE).unwrap();
+        let vsyscall_buffer_ptr = paddr2vaddr(vsyscall_buffer.paddr()).unwrap();
         unsafe {
-            vsyscall_ptr.write(VsyscallPage {
-                entry: syscall_entry,
-                environ_ptr: environ_pages.as_ptr(),
-                environ_len: env_str.len(),
-            });
+            vsyscall_buffer_ptr
+                .as_mut_ptr::<VsyscallPage>()
+                .write(VsyscallPage {
+                    entry: syscall_entry,
+                    environ_ptr: environ_pages_vaddr.as_mut_ptr(),
+                    environ_len: env_str.len(),
+                });
         }
 
-        let thread = Thread::spawn_kernel(proc.clone(), entry, vsyscall_ptr as usize);
-
-        // Copy into a folio.
-        let mut environ_pages = AllocatedPages::alloc(align_up(env_str.len(), PAGE_SIZE))
-            .expect("failed to allocate folio");
-        environ_pages.as_slice_mut()[..env_str.len()].copy_from_slice(env_str.as_bytes());
-
+        let thread = Thread::spawn_kernel(proc.clone(), entry, vsyscall_buffer_ptr.as_usize());
         handle_table
             .add(Handle::new(thread, HandleRights::NONE))
             .unwrap();
         handle_table
+            .add(Handle::new(SharedRef::new(memory), HandleRights::NONE))
+            .unwrap();
+        handle_table
             .add(Handle::new(
-                SharedRef::new(Folio::from_allocated_pages(memory).unwrap()),
+                SharedRef::new(vsyscall_buffer),
                 HandleRights::NONE,
             ))
             .unwrap();
         handle_table
             .add(Handle::new(
-                SharedRef::new(Folio::from_allocated_pages(vsyscall_buffer).unwrap()),
-                HandleRights::NONE,
-            ))
-            .unwrap();
-        handle_table
-            .add(Handle::new(
-                SharedRef::new(Folio::from_allocated_pages(environ_pages).unwrap()),
+                SharedRef::new(environ_pages),
                 HandleRights::NONE,
             ))
             .unwrap();
@@ -265,7 +263,8 @@ pub fn load_startup_apps(templates: &[AppTemplate], device_tree: &DeviceTree) {
 struct ElfLoader<'a> {
     elf_file: &'a [u8],
     elf: Elf<'a>,
-    memory: AllocatedPages,
+    memory: Folio,
+    memory_vaddr: VAddr,
 }
 
 impl<'a> ElfLoader<'a> {
@@ -294,17 +293,19 @@ impl<'a> ElfLoader<'a> {
             .ok_or(Error::NoPhdrs)?;
 
         let elf_len = align_up(highest_addr - lowest_addr, PAGE_SIZE);
-        let memory = AllocatedPages::alloc(elf_len).map_err(Error::AllocBuffer)?;
+        let memory = Folio::alloc(elf_len).map_err(Error::AllocFolio)?;
+        let memory_vaddr = paddr2vaddr(memory.paddr()).unwrap();
 
         Ok(ElfLoader {
             elf_file,
             elf,
             memory,
+            memory_vaddr,
         })
     }
 
     fn base_addr(&self) -> usize {
-        self.memory.as_ptr() as usize
+        self.memory_vaddr.as_mut_ptr() as *mut u8 as usize
     }
 
     fn entry_addr(&self) -> usize {
@@ -312,7 +313,10 @@ impl<'a> ElfLoader<'a> {
     }
 
     fn load_segments(&mut self) {
-        let memory = self.memory.as_slice_mut();
+        let memory = unsafe {
+            core::slice::from_raw_parts_mut(self.memory_vaddr.as_mut_ptr(), self.memory.len())
+        };
+
         for phdr in self.elf.phdrs {
             if phdr.p_type != ftl_elf::PhdrType::Load {
                 continue;
@@ -395,7 +399,7 @@ impl<'a> ElfLoader<'a> {
         Ok(())
     }
 
-    pub fn load_into_memory(mut self) -> Result<(usize, AllocatedPages), Error> {
+    pub fn load_into_memory(mut self) -> Result<(usize, Folio), Error> {
         self.load_segments();
         self.relocate_rela_dyn()?;
         Ok((self.entry_addr(), self.memory))

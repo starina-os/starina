@@ -18,7 +18,6 @@ use crate::folio::Folio;
 use crate::handle::AnyHandle;
 use crate::handle::Handle;
 use crate::interrupt::Interrupt;
-use crate::memory::AllocPagesError;
 use crate::poll::Poll;
 use crate::ref_counted::SharedRef;
 use crate::signal::Signal;
@@ -68,13 +67,7 @@ fn channel_recv(handle: HandleId, msgbuffer: &mut MessageBuffer) -> Result<Messa
 }
 
 fn folio_create(len: usize) -> Result<HandleId, FtlError> {
-    let folio = match Folio::alloc(len) {
-        Ok(folio) => folio,
-        Err(AllocPagesError::InvalidLayout(_err)) => {
-            return Err(FtlError::InvalidArg);
-        }
-    };
-
+    let folio = Folio::alloc(len)?;
     let handle = Handle::new(SharedRef::new(folio), HandleRights::NONE);
     let handle_id = current_thread()
         .process()
