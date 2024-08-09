@@ -1,3 +1,5 @@
+use ftl_types::address::PAddr;
+use ftl_types::address::VAddr;
 use ftl_types::error::FtlError;
 use ftl_types::handle::HandleId;
 use ftl_types::interrupt::Irq;
@@ -8,6 +10,7 @@ use ftl_types::poll::PollSyscallResult;
 use ftl_types::signal::SignalBits;
 use ftl_types::syscall::SyscallNumber;
 use ftl_types::syscall::VsyscallPage;
+use ftl_types::vmspace::PageProtect;
 use spin::Mutex;
 
 static VSYSCALL_PAGE: Mutex<Option<&'static VsyscallPage>> = Mutex::new(None);
@@ -90,20 +93,36 @@ pub fn folio_create(len: usize) -> Result<HandleId, FtlError> {
     Ok(handle_id)
 }
 
-pub fn folio_create_mmio(paddr: usize, len: usize) -> Result<HandleId, FtlError> {
-    let ret = syscall2(SyscallNumber::FolioCreateMmio, paddr as isize, len as isize)?;
+pub fn folio_create_fixed(paddr: PAddr, len: usize) -> Result<HandleId, FtlError> {
+    let ret = syscall2(
+        SyscallNumber::FolioCreateFixed,
+        paddr.as_usize() as isize,
+        len as isize,
+    )?;
     let handle_id = HandleId::from_raw_isize_truncated(ret);
     Ok(handle_id)
-}
-
-pub fn folio_vaddr(handle: HandleId) -> Result<usize, FtlError> {
-    let ret = syscall1(SyscallNumber::FolioVAddr, handle.as_isize())?;
-    Ok(ret as usize)
 }
 
 pub fn folio_paddr(handle: HandleId) -> Result<usize, FtlError> {
     let ret = syscall1(SyscallNumber::FolioPAddr, handle.as_isize())?;
     Ok(ret as usize)
+}
+
+pub fn vmspace_map(
+    handle: HandleId,
+    len: usize,
+    folio: HandleId,
+    prot: PageProtect,
+) -> Result<VAddr, FtlError> {
+    let ret = syscall4(
+        SyscallNumber::VmSpaceMap,
+        handle.as_isize(),
+        len as isize,
+        folio.as_isize(),
+        prot.as_raw() as isize,
+    )?;
+
+    Ok(VAddr::new(ret as usize).unwrap())
 }
 
 pub fn poll_create() -> Result<HandleId, FtlError> {

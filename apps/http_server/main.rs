@@ -72,10 +72,7 @@ pub fn main(mut env: Environ) {
 
     let mut mainloop = Mainloop::<Context, Message>::new().unwrap();
     mainloop
-        .add_channel(
-            env.take_channel("dep:startup").unwrap(),
-            Context::Startup,
-        )
+        .add_channel(env.take_channel("dep:startup").unwrap(), Context::Startup)
         .unwrap();
     mainloop.add_channel(tcpip_ch, Context::Ctrl).unwrap();
 

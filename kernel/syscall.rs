@@ -10,6 +10,7 @@ use ftl_types::poll::PollEvent;
 use ftl_types::poll::PollSyscallResult;
 use ftl_types::signal::SignalBits;
 use ftl_types::syscall::SyscallNumber;
+use ftl_types::vmspace::PageProtect;
 
 use crate::channel::Channel;
 use crate::cpuvar::current_thread;
@@ -84,14 +85,8 @@ fn folio_create(len: usize) -> Result<HandleId, FtlError> {
     Ok(handle_id)
 }
 
-fn folio_create_mmio(paddr: PAddr, len: usize) -> Result<HandleId, FtlError> {
-    let folio = match Folio::alloc_mmio(paddr, len) {
-        Ok(folio) => folio,
-        Err(AllocPagesError::InvalidLayout(_err)) => {
-            return Err(FtlError::InvalidArg);
-        }
-    };
-
+fn folio_create_fixed(paddr: PAddr, len: usize) -> Result<HandleId, FtlError> {
+    let folio = Folio::alloc_fixed(paddr, len)?;
     let handle = Handle::new(SharedRef::new(folio), HandleRights::NONE);
     let handle_id = current_thread()
         .process()
@@ -100,20 +95,6 @@ fn folio_create_mmio(paddr: PAddr, len: usize) -> Result<HandleId, FtlError> {
         .add(AnyHandle::Folio(handle))?;
 
     Ok(handle_id)
-}
-
-fn folio_vaddr(handle: HandleId) -> Result<VAddr, FtlError> {
-    let folio: Handle<Folio> = {
-        current_thread()
-            .process()
-            .handles()
-            .lock()
-            .get_owned(handle)?
-            .as_folio()?
-            .clone()
-    };
-
-    folio.vaddr()
 }
 
 fn folio_paddr(handle: HandleId) -> Result<PAddr, FtlError> {
@@ -127,7 +108,7 @@ fn folio_paddr(handle: HandleId) -> Result<PAddr, FtlError> {
             .clone()
     };
 
-    folio.paddr()
+    Ok(folio.paddr())
 }
 
 fn poll_create() -> Result<HandleId, FtlError> {
@@ -247,6 +228,23 @@ fn handle_close(handle_id: HandleId) -> Result<(), FtlError> {
     Ok(())
 }
 
+fn vmspace_map(
+    handle_id: HandleId,
+    len: usize,
+    folio: HandleId,
+    prot: PageProtect,
+) -> Result<VAddr, FtlError> {
+    let (vmspace, folio) = {
+        let current = current_thread();
+        let handles = current.process().handles().lock();
+        let vmspace = handles.get_owned(handle_id)?.as_vmspace()?.clone();
+        let folio = handles.get_owned(folio)?.as_folio()?.clone();
+        (vmspace, folio)
+    };
+
+    vmspace.map(len, folio, prot)
+}
+
 pub fn syscall_entry(
     n: isize,
     a0: isize,
@@ -285,16 +283,11 @@ pub fn syscall_entry(
             let handle_id = folio_create(a0 as usize)?;
             Ok(handle_id.as_isize())
         }
-        _ if n == SyscallNumber::FolioCreateMmio as isize => {
+        _ if n == SyscallNumber::FolioCreateFixed as isize => {
             let paddr = PAddr::new(a0 as usize).ok_or(FtlError::InvalidArg)?;
             let len = a1 as usize;
-            let handle_id = folio_create_mmio(paddr, len)?;
+            let handle_id = folio_create_fixed(paddr, len)?;
             Ok(handle_id.as_isize())
-        }
-        _ if n == SyscallNumber::FolioVAddr as isize => {
-            let handle = HandleId::from_raw_isize_truncated(a0);
-            let vaddr = folio_vaddr(handle)?;
-            Ok(vaddr.as_usize() as isize) // FIXME: guarantee casting to isize is OK
         }
         _ if n == SyscallNumber::FolioPAddr as isize => {
             let handle = HandleId::from_raw_isize_truncated(a0);
@@ -351,6 +344,14 @@ pub fn syscall_entry(
             let handle_id = HandleId::from_raw_isize_truncated(a0);
             handle_close(handle_id)?;
             Ok(0)
+        }
+        _ if n == SyscallNumber::VmSpaceMap as isize => {
+            let handle_id = HandleId::from_raw_isize_truncated(a0);
+            let len = a1 as usize;
+            let folio = HandleId::from_raw_isize_truncated(a2);
+            let prot = PageProtect::from_raw(a3 as u8);
+            let vaddr = vmspace_map(handle_id, len, folio, prot)?;
+            Ok(vaddr.as_usize() as isize)
         }
         _ => {
             warn!(

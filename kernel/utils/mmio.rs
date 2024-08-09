@@ -3,6 +3,7 @@ use core::marker::PhantomData;
 use ftl_types::address::VAddr;
 use ftl_types::error::FtlError;
 
+use crate::arch::paddr2vaddr;
 use crate::folio::Folio;
 
 #[allow(unused)]
@@ -158,7 +159,7 @@ pub struct MmioFolio {
 
 impl MmioFolio {
     pub fn from_folio(folio: Folio) -> Result<MmioFolio, FtlError> {
-        let vaddr = folio.vaddr_for_kernel()?;
+        let vaddr = paddr2vaddr(folio.paddr())?;
         Ok(MmioFolio { folio, vaddr })
     }
 }

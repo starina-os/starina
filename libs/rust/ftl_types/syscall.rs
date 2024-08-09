@@ -13,14 +13,14 @@ pub enum SyscallNumber {
     PollWait = 8,
     PollAdd = 9,
     FolioCreate = 10,
-    FolioCreateMmio = 11,
+    FolioCreateFixed = 11,
     FolioPAddr = 12,
-    FolioVAddr = 13,
     SignalCreate = 14,
     SignalUpdate = 15,
     SignalClear = 16,
     InterruptCreate = 17,
     InterruptAck = 18,
+    VmSpaceMap = 19,
 }
 
 #[repr(C)]

@@ -32,6 +32,7 @@ impl fmt::Debug for Device {
 pub enum EnvType {
     Channel,
     Devices,
+    VmSpace,
 }
 
 pub struct EnvironSerializer(String);
@@ -59,6 +60,7 @@ impl EnvironSerializer {
         self.0.push_str(match env_type {
             EnvType::Channel => "=ch:",
             EnvType::Devices => "=devices:",
+            EnvType::VmSpace => "=vmspace:",
         });
 
         write!(&mut self.0, "{}\n", value).unwrap();
@@ -66,6 +68,10 @@ impl EnvironSerializer {
 
     pub fn push_channel(&mut self, key: &str, ch: HandleId) {
         self.push(key, EnvType::Channel, ch.as_i32());
+    }
+
+    pub fn push_vmspace(&mut self, key: &str, vmspace: HandleId) {
+        self.push(key, EnvType::VmSpace, vmspace.as_i32());
     }
 
     pub fn push_devices(&mut self, key: &str, devices: &[Device]) {
@@ -95,6 +101,7 @@ impl<'a> EnvironDeserializer<'a> {
         let env_type = match prefix {
             "ch" => EnvType::Channel,
             "devices" => EnvType::Devices,
+            "vmspace" => EnvType::VmSpace,
             _ => {
                 panic!("invalid environ entry: {}", line);
             }

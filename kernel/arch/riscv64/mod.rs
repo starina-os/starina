@@ -21,14 +21,14 @@ pub use thread::Thread;
 pub const PAGE_SIZE: usize = 4096;
 pub const NUM_CPUS_MAX: usize = 8;
 
-pub fn paddr2vaddr(paddr: PAddr) -> Option<VAddr> {
+pub fn paddr2vaddr(paddr: PAddr) -> Result<VAddr, FtlError> {
     // Identical mapping.
-    Some(VAddr::from_nonzero(paddr.as_nonzero()))
+    Ok(VAddr::from_nonzero(paddr.as_nonzero()))
 }
 
-pub fn vaddr2paddr(vaddr: VAddr) -> Option<PAddr> {
+pub fn vaddr2paddr(vaddr: VAddr) -> Result<VAddr, FtlError> {
     // Identical mapping.
-    Some(PAddr::from_nonzero(vaddr.as_nonzero()))
+    Ok(PAddr::from_nonzero(vaddr.as_nonzero()))
 }
 
 pub fn halt() -> ! {

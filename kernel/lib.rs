@@ -31,3 +31,4 @@ mod startup;
 mod syscall;
 mod thread;
 mod utils;
+mod vmspace;

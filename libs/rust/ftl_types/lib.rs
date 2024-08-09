@@ -16,3 +16,4 @@ pub mod poll;
 pub mod signal;
 pub mod spec;
 pub mod syscall;
+pub mod vmspace;

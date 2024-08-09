@@ -29,6 +29,7 @@ use crate::process::Process;
 use crate::ref_counted::SharedRef;
 use crate::syscall::syscall_entry;
 use crate::thread::Thread;
+use crate::vmspace::KERNEL_VMSPACE;
 
 #[derive(Debug)]
 #[allow(dead_code)]
@@ -161,7 +162,12 @@ impl<'a> StartupAppLoader<'a> {
         let startup_ch_handle = Handle::new(startup_ch, HandleRights::NONE);
         let startup_ch_id = handle_table.add(startup_ch_handle).unwrap();
 
+        let vmspace = KERNEL_VMSPACE.shared_ref();
+        let vmspace_handle = Handle::new(vmspace, HandleRights::NONE);
+        let vmspace_id = handle_table.add(vmspace_handle).unwrap();
+
         env.push_channel("dep:startup", startup_ch_id);
+        env.push_vmspace("vmspace", vmspace_id);
 
         let env_str = env.finish();
         let mut environ_pages = AllocatedPages::alloc(align_up(env_str.len(), PAGE_SIZE))
@@ -190,19 +196,19 @@ impl<'a> StartupAppLoader<'a> {
             .unwrap();
         handle_table
             .add(Handle::new(
-                SharedRef::new(Folio::from_allocated_pages(memory)),
+                SharedRef::new(Folio::from_allocated_pages(memory).unwrap()),
                 HandleRights::NONE,
             ))
             .unwrap();
         handle_table
             .add(Handle::new(
-                SharedRef::new(Folio::from_allocated_pages(vsyscall_buffer)),
+                SharedRef::new(Folio::from_allocated_pages(vsyscall_buffer).unwrap()),
                 HandleRights::NONE,
             ))
             .unwrap();
         handle_table
             .add(Handle::new(
-                SharedRef::new(Folio::from_allocated_pages(environ_pages)),
+                SharedRef::new(Folio::from_allocated_pages(environ_pages).unwrap()),
                 HandleRights::NONE,
             ))
             .unwrap();

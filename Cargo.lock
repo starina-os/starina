@@ -250,7 +250,6 @@ dependencies = [
  "ftl_autogen",
  "ftl_types",
  "serde",
- "serde_json",
 ]
 
 [[package]]

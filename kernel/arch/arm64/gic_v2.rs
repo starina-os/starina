@@ -141,8 +141,8 @@ pub fn init(device_tree: &DeviceTree) {
         .find_device_by_id("arm,cortex-a15-gic")
         .unwrap()
         .reg as usize;
-    let gicd_folio = Folio::alloc_mmio(PAddr::new(gicd_paddr).unwrap(), 0x1000).unwrap();
-    let gicc_folio = Folio::alloc_mmio(
+    let gicd_folio = Folio::alloc_fixed(PAddr::new(gicd_paddr).unwrap(), 0x1000).unwrap();
+    let gicc_folio = Folio::alloc_fixed(
         PAddr::new(gicd_paddr + 0x10000 /* FIXME: */).unwrap(),
         0x1000,
     )

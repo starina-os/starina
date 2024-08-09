@@ -154,10 +154,7 @@ pub fn main(mut env: Environ) {
 
     let mut mainloop = Mainloop::<Context, Message>::new().unwrap();
     mainloop
-        .add_channel(
-            env.take_channel("dep:startup").unwrap(),
-            Context::Autopilot,
-        )
+        .add_channel(env.take_channel("dep:startup").unwrap(), Context::Autopilot)
         .unwrap();
     mainloop
         .add_interrupt(interrupt, Context::Interrupt)

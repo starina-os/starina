@@ -15,6 +15,7 @@ pub use backtrace::backtrace;
 pub use cpuvar::cpuvar;
 pub use cpuvar::set_cpuvar;
 pub use cpuvar::CpuVar;
+use ftl_types::error::FtlError;
 pub use gic_v2::ack_interrupt;
 pub use gic_v2::create_interrupt;
 pub use thread::yield_cpu;
@@ -25,14 +26,14 @@ use crate::device_tree::DeviceTree;
 pub const PAGE_SIZE: usize = 4096;
 pub const NUM_CPUS_MAX: usize = 8;
 
-pub fn paddr2vaddr(paddr: PAddr) -> Option<VAddr> {
+pub fn paddr2vaddr(paddr: PAddr) -> Result<VAddr, FtlError> {
     // Identical mapping.
-    Some(VAddr::from_nonzero(paddr.as_nonzero()))
+    Ok(VAddr::from_nonzero(paddr.as_nonzero()))
 }
 
-pub fn vaddr2paddr(vaddr: VAddr) -> Option<PAddr> {
+pub fn vaddr2paddr(vaddr: VAddr) -> Result<PAddr, FtlError> {
     // Identical mapping.
-    Some(PAddr::from_nonzero(vaddr.as_nonzero()))
+    Ok(PAddr::from_nonzero(vaddr.as_nonzero()))
 }
 
 pub fn halt() -> ! {

@@ -19,6 +19,7 @@ pub mod prelude;
 pub mod print;
 pub mod signal;
 pub mod syscall;
+pub mod vmspace;
 
 pub mod sync {
     pub use alloc::sync::Arc;

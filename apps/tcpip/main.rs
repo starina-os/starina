@@ -340,9 +340,7 @@ pub fn main(mut env: Environ) {
     let mut server = Server::new(driver_sender.clone(), mac);
 
     let mut mainloop = Mainloop::<Context, Message>::new().unwrap();
-    mainloop
-        .add_channel(startup_ch, Context::Startup)
-        .unwrap();
+    mainloop.add_channel(startup_ch, Context::Startup).unwrap();
     mainloop
         .add_channel_receiver(driver_receiver, driver_sender, Context::Driver)
         .unwrap();

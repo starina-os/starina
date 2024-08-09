@@ -1,9 +1,15 @@
 use core::arch::asm;
 use core::mem::offset_of;
 
+use ftl_types::handle::HandleRights;
+use ftl_types::vmspace::PageProtect;
+
 use super::cpuvar::CpuVar;
 use crate::folio::Folio;
+use crate::handle::Handle;
+use crate::ref_counted::SharedRef;
 use crate::scheduler::GLOBAL_SCHEDULER;
+use crate::vmspace::KERNEL_VMSPACE;
 
 /// The entry point of kernel threads.
 #[no_mangle]
@@ -125,7 +131,7 @@ pub struct Context {
 pub struct Thread {
     pub(super) context: Context,
     #[allow(dead_code)]
-    stack_folio: Option<Folio>,
+    stack_folio: Option<Handle<Folio>>,
 }
 
 impl Thread {
@@ -138,9 +144,19 @@ impl Thread {
 
     pub fn new_kernel(pc: usize, arg: usize) -> Thread {
         let stack_size = 64 * 1024;
-        let stack_folio = Folio::alloc(stack_size).unwrap();
+        let stack_folio = Handle::new(
+            SharedRef::new(Folio::alloc(stack_size).unwrap()),
+            HandleRights::NONE,
+        );
+        let stack_vaddr = KERNEL_VMSPACE
+            .map(
+                stack_size,
+                stack_folio.clone(),
+                PageProtect::READABLE | PageProtect::WRITABLE,
+            )
+            .unwrap();
 
-        let sp = stack_folio.vaddr().unwrap().as_usize() + stack_size;
+        let sp = stack_vaddr.as_usize() + stack_size;
         Thread {
             context: Context {
                 lr: kernel_entry as usize,

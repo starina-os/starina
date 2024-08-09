@@ -1,76 +1,47 @@
-use core::borrow::Borrow;
-
 use ftl_types::address::PAddr;
 use ftl_types::address::VAddr;
 use ftl_types::error::FtlError;
 
-use crate::arch;
 use crate::arch::vaddr2paddr;
-use crate::cpuvar::current_thread;
 use crate::memory::AllocPagesError;
 use crate::memory::AllocatedPages;
 
-enum Pages {
-    Anonymous(AllocatedPages),
-    Mmio { paddr: PAddr },
-}
-
 pub struct Folio {
-    #[allow(dead_code)]
-    pages: Pages,
+    paddr: PAddr,
     len: usize,
+    _pages: Option<AllocatedPages>,
 }
 
 impl Folio {
     pub fn alloc(len: usize) -> Result<Folio, AllocPagesError> {
         let pages = AllocatedPages::alloc(len)?;
-        Ok(Self::from_allocated_pages(pages))
-    }
-
-    pub fn alloc_mmio(paddr: PAddr, len: usize) -> Result<Folio, AllocPagesError> {
-        Ok(Folio {
-            pages: Pages::Mmio { paddr },
+        Ok(Self {
+            paddr: vaddr2paddr(VAddr::new(pages.as_ptr() as usize).unwrap()).unwrap(),
             len,
+            _pages: Some(pages),
         })
     }
 
-    pub fn from_allocated_pages(pages: AllocatedPages) -> Folio {
-        let len = pages.len();
-        Folio {
-            pages: Pages::Anonymous(pages),
+    pub fn from_allocated_pages(pages: AllocatedPages) -> Result<Folio, FtlError> {
+        Ok(Self {
+            paddr: vaddr2paddr(VAddr::new(pages.as_ptr() as usize).unwrap()).unwrap(),
+            len: pages.len(),
+            _pages: Some(pages),
+        })
+    }
+
+    pub fn alloc_fixed(paddr: PAddr, len: usize) -> Result<Folio, FtlError> {
+        Ok(Self {
+            paddr,
             len,
-        }
+            _pages: None,
+        })
     }
 
     pub fn len(&self) -> usize {
         self.len
     }
-
-    pub fn vaddr(&self) -> Result<VAddr, FtlError> {
-        if current_thread().borrow().process().in_kernel_space() {
-            let vaddr = match &self.pages {
-                Pages::Anonymous(pages) => pages.vaddr(),
-                Pages::Mmio { paddr } => arch::paddr2vaddr(*paddr).ok_or(FtlError::InvalidArg)?,
-            };
-
-            Ok(vaddr)
-        } else {
-            // TODO: Map this folio into the current process' address space.
-            Err(FtlError::NotSupported)
-        }
-    }
-
-    pub fn vaddr_for_kernel(&self) -> Result<VAddr, FtlError> {
-        match &self.pages {
-            Pages::Anonymous(pages) => Ok(pages.vaddr()),
-            Pages::Mmio { paddr } => arch::paddr2vaddr(*paddr).ok_or(FtlError::InvalidArg),
-        }
-    }
-
-    pub fn paddr(&self) -> Result<PAddr, FtlError> {
-        match &self.pages {
-            Pages::Anonymous(pages) => vaddr2paddr(pages.vaddr()).ok_or(FtlError::InvalidArg),
-            Pages::Mmio { paddr, .. } => Ok(*paddr),
-        }
+    pub fn paddr(&self) -> PAddr {
+        self.paddr
     }
 }

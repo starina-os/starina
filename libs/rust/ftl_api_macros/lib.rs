@@ -46,15 +46,9 @@ pub fn main(_args: TokenStream, item: TokenStream) -> TokenStream {
             vsyscall: *const ::ftl_api::types::syscall::VsyscallPage,
         ) {
             // SAFETY: We won't call this function twice.
-            unsafe {
-                ::ftl_api::init::init_internal(vsyscall);
-            }
-
-            let env_bytes = unsafe {
-                ::core::slice::from_raw_parts((*vsyscall).environ_ptr, (*vsyscall).environ_len)
+            let env = unsafe {
+                ::ftl_api::init::init_internal(vsyscall)
             };
-            let env_str = ::core::str::from_utf8(env_bytes).unwrap();
-            let env = ::ftl_api::environ::Environ::parse(env_str);
 
             main(env);
         }
