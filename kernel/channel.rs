@@ -70,9 +70,6 @@ impl Channel {
     }
 
     pub fn send(&self, msginfo: MessageInfo, msgbuffer: &MessageBuffer) -> Result<(), FtlError> {
-        let mutable = self.mutable.lock();
-        let peer_ch = mutable.peer.as_ref().ok_or(FtlError::NoPeer)?;
-
         // Move handles.
         //
         // In this phase, since we don't know the receiver process, we don't
@@ -116,6 +113,8 @@ impl Channel {
             handles: moved_handles,
         };
 
+        let mutable = self.mutable.lock();
+        let peer_ch = mutable.peer.as_ref().ok_or(FtlError::NoPeer)?;
         let mut peer_mutable = peer_ch.mutable.lock();
         peer_mutable.queue.push_back(entry);
         peer_ch.sleep_point.wake_all();
