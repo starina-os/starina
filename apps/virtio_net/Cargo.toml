@@ -13,3 +13,4 @@ ftl_api = { workspace = true }
 ftl_virtio = { workspace = true }
 ftl_api_autogen = { workspace = true }
 ftl_utils = { workspace = true }
+ftl_driver_utils = { workspace = true }

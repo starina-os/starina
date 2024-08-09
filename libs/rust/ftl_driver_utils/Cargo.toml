@@ -9,3 +9,4 @@ path = "./lib.rs"
 
 [dependencies]
 ftl_api = { workspace = true }
+ftl_utils = { workspace = true }
