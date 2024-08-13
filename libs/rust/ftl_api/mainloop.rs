@@ -64,38 +64,18 @@ impl<Ctx, AllM: MessageDeserialize> Mainloop<Ctx, AllM> {
         })
     }
 
-    pub fn add_channel(&mut self, ch: Channel, ctx: Ctx) -> Result<(), Error> {
-        let handle_id = ch.handle().id();
-        if self.objects.contains_key(&handle_id) {
-            return Err(Error::ChannelAlreadyAdded(ch));
-        }
-
-        let (sender, receiver) = ch.split();
-        let entry = Entry {
-            ctx,
-            object: Object::Channel { sender, receiver },
-        };
-
-        self.objects.insert(handle_id, entry);
-        self.poll
-            .add(handle_id, PollEvent::READABLE)
-            .map_err(Error::PollAdd)?;
-
-        Ok(())
-    }
-
     pub fn remove(&mut self, handle_id: HandleId) {
         self.objects.remove(&handle_id);
         // TODO:
         // self.poll.remove()
     }
 
-    pub fn add_channel_receiver(
+    pub fn add_channel<T: Into<(ChannelSender, ChannelReceiver)>>(
         &mut self,
-        receiver: ChannelReceiver,
-        sender: ChannelSender,
+        channel: T,
         state: Ctx,
     ) -> Result<(), Error> {
+        let (sender, receiver) = channel.into();
         let handle_id = receiver.handle().id();
         if self.objects.contains_key(&handle_id) {
             return Err(Error::ChannelReceiverAlreadyAdded((receiver, sender)));

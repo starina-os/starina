@@ -107,7 +107,7 @@ pub fn main(mut env: Environ) {
                 tcpip_sender = Some(sender.clone());
 
                 mainloop
-                    .add_channel_receiver(receiver, sender, Context::Tcpip)
+                    .add_channel((sender, receiver), Context::Tcpip)
                     .unwrap();
             }
             Event::Message(Context::Tcpip, Message::Tx(tx), _) => {

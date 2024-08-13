@@ -185,9 +185,8 @@ impl<'a> Server<'a> {
 
                         let (ch2_sender, ch2_receiver) = ch2.split();
                         mainloop
-                            .add_channel_receiver(
-                                ch2_receiver,
-                                ch2_sender.clone(),
+                            .add_channel(
+                                (ch2_sender.clone(), ch2_receiver),
                                 Context::DataSocket(sock.smol_handle),
                             )
                             .unwrap();
@@ -342,7 +341,7 @@ pub fn main(mut env: Environ) {
     let mut mainloop = Mainloop::<Context, Message>::new().unwrap();
     mainloop.add_channel(startup_ch, Context::Startup).unwrap();
     mainloop
-        .add_channel_receiver(driver_receiver, driver_sender, Context::Driver)
+        .add_channel((driver_sender, driver_receiver), Context::Driver)
         .unwrap();
 
     loop {

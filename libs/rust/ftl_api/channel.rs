@@ -108,6 +108,12 @@ impl Channel {
     }
 }
 
+impl From<Channel> for (ChannelSender, ChannelReceiver) {
+    fn from(channel: Channel) -> (ChannelSender, ChannelReceiver) {
+        channel.split()
+    }
+}
+
 impl fmt::Debug for Channel {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Channel({:?})", self.handle)
