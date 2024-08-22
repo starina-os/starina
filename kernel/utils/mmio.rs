@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use core::marker::PhantomData;
 
 use ftl_types::address::VAddr;
@@ -152,7 +154,6 @@ impl<E: Endianess, T: Copy> MmioReg<E, ReadWrite, T> {
 }
 
 pub struct MmioFolio {
-    #[allow(unused)]
     folio: Folio,
     vaddr: VAddr,
 }

@@ -1,25 +1,49 @@
 use core::arch::asm;
+use core::arch::global_asm;
 
-// The interrupt/exception/system call handler entry point. `stvec` is set to
-// this address.
-//
-// This function address must be aligned to 4 bytes not to accidentally set
-// MODE field in stvec.
-#[naked]
-#[repr(align(4))] // handle address in stvec must be aligned
-pub unsafe extern "C" fn switch_to_kernel() -> ! {
-    asm!(
-        // tp points to the current thread's context
-        r#"
-        call {interrupt_handler}
-        "#
-        ,
-        interrupt_handler = sym interrupt_handler,
-        options(noreturn),
-    )
+use crate::arch::__wfi_point;
+use crate::arch::riscv64::plic;
+
+global_asm!(include_str!("interrupt.S"));
+
+#[repr(C, packed)]
+struct Frame {
+    sepc:u64,
+    sstatus:u64,
+    ra:u64,
+    gp:u64,
+    tp:u64,
+    t0:u64,
+    t1:u64,
+    t2:u64,
+    t3:u64,
+    t4:u64,
+    t5:u64,
+    t6:u64,
+    a0:u64,
+    a1:u64,
+    a2:u64,
+    a3:u64,
+    a4:u64,
+    a5:u64,
+    a6:u64,
+    a7:u64,
+    s0:u64,
+    s1:u64,
+    s2:u64,
+    s3:u64,
+    s4:u64,
+    s5:u64,
+    s6:u64,
+    s7:u64,
+    s8:u64,
+    s9:u64,
+    s10:u64,
+    s11:u64,
 }
 
-extern "C" fn interrupt_handler() -> ! {
+#[no_mangle]
+extern "C" fn interrupt_handler(frame: *mut Frame) {
     let scause: u64;
     let sepc: u64;
     let stval: u64;
@@ -61,6 +85,18 @@ extern "C" fn interrupt_handler() -> ! {
         (false, 15) => "store/AMO page fault",
         _ => "unknown",
     };
+
+    unsafe {
+        if sepc == &__wfi_point as *const _ as u64 {
+            // Skip WFI instruction.
+            (*frame).sepc += 4;
+        }
+    }
+
+    if (is_intr, code) == (true, 9) {
+        plic::handle_interrupt();
+        return;
+    }
 
     panic!(
         "interrupt_handler: {} (scause={:#x}), sepc: {:#x}, stval: {:#x}",

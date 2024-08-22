@@ -5,17 +5,6 @@ use core::sync::atomic::AtomicBool;
 use core::sync::atomic::Ordering;
 
 /// A simple spinlock.
-///
-/// # Interrupts must be disabled!
-///
-/// *Before* acquiring the lock, interrupts must be disabled. This is because
-/// the lock may be used in interrupt context, which easily leads to deadlocks.
-///
-/// Typically, in-kernel spinlock provides a way to disable and re-enable
-/// interrupts (e.g. Linux's `spin_lock_irqsave`), but our kernel assumes
-/// that kernel is not preemptive (i.e. interrupts are disabled). Therefore,
-/// it is the caller's responsibility to disable interrupts before acquiring
-/// the lock.
 pub struct SpinLock<T: ?Sized> {
     lock: AtomicBool,
     value: UnsafeCell<T>,
@@ -37,6 +26,8 @@ impl<T> SpinLock<T> {
             );
         }
 
+        // let was_enabled = arch::disable_interrupts();
+
         while self
             .lock
             .compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed)
@@ -45,12 +36,16 @@ impl<T> SpinLock<T> {
             core::hint::spin_loop();
         }
 
-        SpinLockGuard { this: self }
+        SpinLockGuard {
+            this: self,
+            // was_enabled,
+        }
     }
 }
 
 pub struct SpinLockGuard<'a, T: ?Sized + 'a> {
     this: &'a SpinLock<T>,
+    // was_enabled: bool,
 }
 
 impl<T> SpinLockGuard<'_, T> {

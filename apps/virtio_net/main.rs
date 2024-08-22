@@ -40,7 +40,8 @@ fn probe(devices: &[Device], device_type: u32) -> Option<(VirtioMmio, Irq)> {
         match transport.probe() {
             Some(ty) if ty == device_type => {
                 info!("console: IRQs: {:?}", device.interrupts);
-                let irq = Irq::from_raw(device.interrupts.as_ref().unwrap()[1] as usize + 32); // FIXME:
+                // let irq = Irq::from_raw(device.interrupts.as_ref().unwrap()[1] as usize + 32); // FIXME:
+                let irq = Irq::from_raw(device.interrupts.as_ref().unwrap()[0] as usize); // FIXME:
                 return Some((transport, irq));
             }
             Some(ty) => {

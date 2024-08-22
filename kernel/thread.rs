@@ -106,6 +106,7 @@ impl Thread {
     }
 
     pub fn set_blocked(self: &SharedRef<Thread>) {
+        // oops!("{}: set_blocked", self.id.0);
         let mut mutable = self.mutable.lock();
         debug_assert!(matches!(mutable.state, State::Runnable));
 
