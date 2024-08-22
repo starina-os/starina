@@ -42,6 +42,7 @@ global_asm!(r#"
 .text
 .global do_idle, __wfi_point
 do_idle:
+    fence
     csrsi sstatus, 1 << 1
 __wfi_point:
     wfi
