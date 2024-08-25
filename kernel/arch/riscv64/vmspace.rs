@@ -98,7 +98,7 @@ impl PageTable {
         Ok(())
     }
 
-    pub fn  map_range(&mut self, vaddr: VAddr, paddr: PAddr, len: usize) -> Result<(), FtlError> {
+    pub fn map_range(&mut self, vaddr: VAddr, paddr: PAddr, len: usize) -> Result<(), FtlError> {
         assert!(is_aligned(len, PAGE_SIZE));
 
         for offset in (0..len).step_by(PAGE_SIZE) {

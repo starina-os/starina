@@ -40,6 +40,7 @@ pub unsafe fn init_internal(vsyscall_page: *const VsyscallPage) -> Environ {
 
     set_vsyscall(vsyscall);
     allocator::init();
+
     let mut env = parse_environ(vsyscall);
 
     let vmspace = env.take_vmspace("vmspace").unwrap();

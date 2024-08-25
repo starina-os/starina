@@ -23,10 +23,7 @@ impl VmSpace {
     pub fn kernel_space() -> Result<VmSpace, FtlError> {
         let arch = arch::VmSpace::new()?;
         let mutable = SpinLock::new(Mutable { folios: Vec::new() });
-        Ok(VmSpace {
-            arch,
-            mutable,
-        })
+        Ok(VmSpace { arch, mutable })
     }
 
     pub fn arch(&self) -> &arch::VmSpace {

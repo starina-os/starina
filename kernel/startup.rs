@@ -333,7 +333,7 @@ impl<'a> ElfLoader<'a> {
             while offset < mem_size {
                 let vaddr = VAddr::new(self.base_vaddr + mem_offset + offset).unwrap();
 
-                let file_part_len =  core::cmp::min(file_size.saturating_sub(offset), PAGE_SIZE);
+                let file_part_len = core::cmp::min(file_size.saturating_sub(offset), PAGE_SIZE);
                 let zero_part_len = PAGE_SIZE - file_part_len;
 
                 let paddr = if file_part_len > 0 {
@@ -347,17 +347,20 @@ impl<'a> ElfLoader<'a> {
                 //       because we map the same physical page, even in writable
                 //       pages like .data section.
                 vmspace
-                .map_fixed(
-                    vaddr,
-                    paddr,
-                    PAGE_SIZE,
-                    PageProtect::READABLE | PageProtect::WRITABLE | PageProtect::EXECUTABLE,
-                )
-                .unwrap();
+                    .map_fixed(
+                        vaddr,
+                        paddr,
+                        PAGE_SIZE,
+                        PageProtect::READABLE | PageProtect::WRITABLE | PageProtect::EXECUTABLE,
+                    )
+                    .unwrap();
 
                 if zero_part_len > 0 {
                     let slice: &mut [u8] = unsafe {
-                        core::slice::from_raw_parts_mut(vaddr.add(file_part_len).as_mut_ptr(), zero_part_len)
+                        core::slice::from_raw_parts_mut(
+                            vaddr.add(file_part_len).as_mut_ptr(),
+                            zero_part_len,
+                        )
                     };
 
                     slice.fill(0);

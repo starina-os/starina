@@ -40,7 +40,8 @@ pub fn vaddr2paddr(vaddr: VAddr) -> Result<PAddr, FtlError> {
     Ok(PAddr::from_nonzero(vaddr.as_nonzero()))
 }
 
-global_asm!(r#"
+global_asm!(
+    r#"
 .text
 .global do_idle, __wfi_point
 do_idle:
@@ -50,7 +51,8 @@ __wfi_point:
     wfi
     csrci sstatus, 1 << 1
     ret
-"#);
+"#
+);
 
 extern "C" {
     fn do_idle();
