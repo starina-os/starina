@@ -8,6 +8,7 @@ V       ?=            # "1" to enable verbose output
 APPS         ?= apps/tcpip apps/virtio_net apps/http_server
 STARTUP_APPS ?= $(APPS)
 
+FTL_IDL_FILE ?= $(abspath idl.json)
 BUILD_DIR ?= build
 
 # Disable builtin implicit rules and variables.
@@ -121,6 +122,7 @@ $(BUILD_DIR)/%.elf: $(sources) libs/rust/ftl_autogen/lib.rs Makefile
 	$(PROGRESS) "CARGO" "$(@)"
 	mkdir -p $(@D)
 	RUSTFLAGS="$(RUSTFLAGS)" \
+	FTL_IDL_FILE="$(FTL_IDL_FILE)" \
 	CARGO_TARGET_DIR="$(BUILD_DIR)/cargo" \
 		$(CARGO) build $(CARGOFLAGS) \
 		--target libs/rust/ftl_api/arch/$(ARCH)/$(ARCH)-user.json \

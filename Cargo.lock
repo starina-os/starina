@@ -271,6 +271,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ftl_autogen2"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "ftl_types",
+ "minijinja",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "ftl_bump_allocator"
 version = "0.0.0"
 
@@ -693,6 +704,7 @@ version = "0.0.0"
 dependencies = [
  "ftl_api",
  "ftl_api_autogen",
+ "ftl_autogen2",
  "log",
  "smoltcp",
 ]

@@ -1,3 +1,4 @@
+use std::env;
 use std::fmt;
 use std::fs::File;
 use std::path::Path;
@@ -5,7 +6,6 @@ use std::path::PathBuf;
 
 use anyhow::Context;
 use anyhow::Result;
-use clap::Parser;
 use ftl_types::idl;
 use ftl_types::idl::IdlFile;
 use ftl_types::spec::DependWithName;
@@ -129,22 +129,13 @@ fn run_rustfmt(file: &Path) -> Result<()> {
     Ok(())
 }
 
-#[derive(Parser, Debug)]
-#[command(version, about, long_about = None)]
-struct Args {
-    #[arg(long)]
-    autogen_outfile: PathBuf,
-    #[arg(long)]
-    api_autogen_outfile: PathBuf,
-    #[arg(long)]
-    idl_file: PathBuf,
-    #[arg(long)]
-    app_specs: Vec<PathBuf>,
-}
+pub fn generate_for_app() -> Result<()> {
+    let out_dir = env::var_os("OUT_DIR").unwrap();
+    let dest_path = Path::new(&out_dir).join("autogen.rs");
+    let app_dir = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").unwrap());
+    let idl_path = env::var_os("FTL_IDL_FILE").unwrap();
 
-fn main() -> Result<()> {
-    let args = Args::parse();
-    let idl_file = File::open(args.idl_file)?;
+    let idl_file = File::open(idl_path)?;
     let idl: IdlFile = serde_json::from_reader(&idl_file)?;
 
     let mut next_msgid = 1;
@@ -207,63 +198,48 @@ fn main() -> Result<()> {
         });
     }
 
-    let mut apps = Vec::new();
-    for spec_path in args.app_specs {
-        let spec_file = File::open(&spec_path)
-            .with_context(|| format!("failed to open {}", spec_path.display()))?;
-        let spec: SpecFile = serde_json::from_reader(&spec_file)
-            .with_context(|| format!("failed to parse {}", spec_path.display()))?;
+    let spec_path = app_dir.join("app.spec.json");
+    let spec_file = File::open(&spec_path)
+        .with_context(|| format!("failed to open {}", spec_path.display()))?;
+    let spec: SpecFile = serde_json::from_reader(&spec_file)
+        .with_context(|| format!("failed to parse {}", spec_path.display()))?;
 
-        let mut used_messages = Vec::new();
-        for m in &all_messages {
-            used_messages.push(UsedMessage {
-                camel_name: format!("{}", CamelCase(&m.name)),
-                ty: format!(
-                    "ftl_autogen::protocols::{}::{}",
-                    &m.protocol_name,
-                    CamelCase(&m.name)
-                ),
-            });
-        }
-
-        match spec.spec {
-            Spec::App(app) => {
-                apps.push(App {
-                    name: spec.name,
-                    depends: app.depends,
-                    used_messages,
-                });
-            }
-            // _ => {
-            //     anyhow::bail!("unexpected spec type for {}", spec_path.display());
-            // }
-        }
+    let mut used_messages = Vec::new();
+    for m in &all_messages {
+        used_messages.push(UsedMessage {
+            camel_name: format!("{}", CamelCase(&m.name)),
+            ty: format!(
+                "crate::ftl_autogen2_generated::protocols::{}::{}",
+                &m.protocol_name,
+                CamelCase(&m.name)
+            ),
+        });
     }
+
+    let app = match spec.spec {
+        Spec::App(app) => {
+            App {
+                name: spec.name,
+                depends: app.depends,
+                used_messages,
+            }
+        } // _ => {
+          //     anyhow::bail!("unexpected spec type for {}", spec_path.display());
+          // }
+    };
 
     let mut j2env = Environment::new();
     j2env
-        .add_template("ftl_autogen", include_str!("templates/ftl_autogen.rs.j2"))
+        .add_template("app_autogen", include_str!("templates/app_autogen.rs.j2"))
         .unwrap();
-    j2env
-        .add_template(
-            "ftl_api_autogen",
-            include_str!("templates/ftl_api_autogen.rs.j2"),
-        )
-        .unwrap();
-
-    let template = j2env.get_template("ftl_autogen")?;
+    let template = j2env.get_template("app_autogen")?;
     let lib_rs = template.render(context! {
+        app => app,
         protocols => protocols,
+        generate_for_app => true,
     })?;
-    std::fs::write(&args.autogen_outfile, lib_rs)?;
-    run_rustfmt(&args.autogen_outfile)?;
-
-    let template = j2env.get_template("ftl_api_autogen")?;
-    let api_lib_rs = template.render(context! {
-        apps => apps,
-    })?;
-    std::fs::write(&args.api_autogen_outfile, api_lib_rs)?;
-    run_rustfmt(&args.api_autogen_outfile)?;
+    std::fs::write(&dest_path, lib_rs)?;
+    run_rustfmt(&dest_path)?;
 
     Ok(())
 }
