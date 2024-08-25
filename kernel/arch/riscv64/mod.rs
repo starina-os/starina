@@ -8,6 +8,7 @@ mod interrupt;
 mod plic;
 mod sbi;
 mod thread;
+mod vmspace;
 
 pub use backtrace::backtrace;
 pub use cpuvar::cpuvar;
@@ -22,6 +23,7 @@ pub use plic::ack_interrupt;
 pub use plic::create_interrupt;
 pub use thread::yield_cpu;
 pub use thread::Thread;
+pub use vmspace::VmSpace;
 
 use crate::cpuvar::CpuId;
 

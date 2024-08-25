@@ -1,13 +1,16 @@
-use alloc::vec;
-use alloc::vec::Vec;
 use core::arch::asm;
 use core::mem::offset_of;
-use core::mem::size_of;
 
+use ftl_types::handle::HandleRights;
+use ftl_types::vmspace::PageProtect;
 use ftl_utils::byte_size::ByteSize;
 
 use super::cpuvar::CpuVar;
+use crate::folio::Folio;
+use crate::handle::Handle;
+use crate::ref_counted::SharedRef;
 use crate::scheduler::GLOBAL_SCHEDULER;
+use crate::vmspace::VmSpace;
 
 const KERNEL_STACK_SIZE: ByteSize = ByteSize::from_kib(64);
 
@@ -151,33 +154,39 @@ pub struct Context {
 
 pub struct Thread {
     pub(super) context: Context,
-    /// The ownership of the stack area. To be freeed when the thread is destroyed.
+    vmspace: Option<SharedRef<VmSpace>>,
     #[allow(dead_code)]
-    stack: Option<Vec<u128>>,
+    stack_folio: Option<Handle<Folio>>,
 }
 
 impl Thread {
     pub fn new_idle() -> Thread {
         Thread {
-            stack: None,
+            stack_folio: None,
+            vmspace: None,
             context: Default::default(),
         }
     }
 
-    pub fn new_kernel(pc: usize, arg: usize) -> Thread {
-        let stack_size = 64 * 1024;
+    pub fn new_kernel(vmspace: SharedRef<VmSpace>, pc: usize, arg: usize) -> Thread {
+        let stack_size = KERNEL_STACK_SIZE.in_bytes();
 
-        // Use Vec<u128> to ensure 16-byte alignment as specified in the RISC-V calling convention:
-        //
-        // > In the standard RISC-V calling convention, the stack grows downward and the stack pointer is
-        // > always kept 16-byte aligned.
-        //
-        // TODO: Avoid initializing the stack with zeros.
-        let stack: Vec<u128> = vec![0; KERNEL_STACK_SIZE.in_bytes() / size_of::<u128>()];
+        let stack_folio = Handle::new(
+            SharedRef::new(Folio::alloc(stack_size).unwrap()),
+            HandleRights::NONE,
+        );
+        let stack_vaddr = vmspace
+            .map_anywhere(
+                stack_size,
+                stack_folio.clone(),
+                PageProtect::READABLE | PageProtect::WRITABLE,
+            )
+            .unwrap();
 
-        let sp = (stack.as_ptr() as usize) + stack_size;
+        let sp = stack_vaddr.as_usize() + stack_size;
         Thread {
-            stack: Some(stack),
+            stack_folio: Some(stack_folio),
+            vmspace: Some(vmspace),
             context: Context {
                 ra: kernel_entry as usize,
                 sp,
@@ -191,6 +200,10 @@ impl Thread {
     }
 
     pub fn resume(&self) -> ! {
+        if let Some(vmspace) = self.vmspace.as_ref() {
+            vmspace.switch();
+        }
+
         resume(&self.context as *const _ as *mut _);
     }
 }

@@ -8,6 +8,7 @@ use crate::process::Process;
 use crate::ref_counted::SharedRef;
 use crate::scheduler::GLOBAL_SCHEDULER;
 use crate::spinlock::SpinLock;
+use crate::vmspace::VmSpace;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ThreadId(NonZeroIsize);
@@ -65,6 +66,7 @@ impl Thread {
 
     pub fn spawn_kernel(
         process: SharedRef<Process>,
+        vmspace: SharedRef<VmSpace>,
         pc: fn(usize),
         arg: usize,
     ) -> SharedRef<Thread> {
@@ -73,7 +75,7 @@ impl Thread {
             mutable: SpinLock::new(Mutable {
                 state: State::Runnable,
             }),
-            arch: arch::Thread::new_kernel(pc as usize, arg),
+            arch: arch::Thread::new_kernel(vmspace, pc as usize, arg),
             process,
         });
 

@@ -13,4 +13,5 @@ pub enum FtlError {
     NotSupported,
     WouldBlock,
     InvalidState,
+    AlreadyMapped,
 }

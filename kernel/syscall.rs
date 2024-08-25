@@ -235,7 +235,7 @@ fn vmspace_map(
         (vmspace, folio)
     };
 
-    vmspace.map(len, folio, prot)
+    vmspace.map_anywhere(len, folio, prot)
 }
 
 pub fn syscall_entry(
