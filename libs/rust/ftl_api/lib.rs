@@ -21,6 +21,13 @@ pub mod signal;
 pub mod syscall;
 pub mod vmspace;
 
+#[macro_export]
+macro_rules! autogen {
+    () => {
+        include!(concat!(env!("OUT_DIR"), "/autogen.rs"));
+    };
+}
+
 pub mod sync {
     pub use alloc::sync::Arc;
     pub use alloc::sync::Weak;

@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 
-include!(concat!(env!("OUT_DIR"), "/autogen.rs"));
+ftl_api::autogen!();
 
 use ftl_api::channel::Channel;
 use ftl_api::channel::ChannelSender;
