@@ -56,10 +56,9 @@ impl Folio {
             return Err(FtlError::InvalidArg);
         }
 
-        // FIXME:
-        // if !is_aligned(paddr.as_usize(), PAGE_SIZE) {
-        //     return Err(FtlError::InvalidArg);
-        // }
+        if !is_aligned(paddr.as_usize(), PAGE_SIZE) {
+            return Err(FtlError::InvalidArg);
+        }
 
         Ok(Self {
             page_type: PageType::Fixed,
