@@ -1,4 +1,4 @@
-# "riscv64" or "arm64"
+# "riscv64"
 ARCH    ?= riscv64
 
 MACHINE ?= qemu-virt
@@ -30,17 +30,6 @@ endif
 ifeq ($(ARCH),riscv64)
 QEMU      ?= qemu-system-riscv64
 QEMUFLAGS += -machine virt -m 256 -bios default
-QEMUFLAGS += -global virtio-mmio.force-legacy=false
-QEMUFLAGS += -drive id=drive0,file=disk.img,format=raw,if=none
-QEMUFLAGS += -device virtio-blk-device,drive=drive0,bus=virtio-mmio-bus.0
-QEMUFLAGS += -device virtio-net-device,netdev=net0,bus=virtio-mmio-bus.2
-QEMUFLAGS += -object filter-dump,id=fiter0,netdev=net0,file=virtio-net.pcap
-QEMUFLAGS += -netdev user,id=net0,hostfwd=tcp:127.0.0.1:1234-:80
-else ifeq ($(ARCH),arm64)
-QEMU      ?= qemu-system-aarch64
-QEMUFLAGS += -m 512
-QEMUFLAGS += -machine virt,gic-version=2
-QEMUFLAGS += $(if $(KVM), -accel kvm -cpu host, $(if $(HVF), -accel hvf -cpu host, -cpu neoverse-v1))
 QEMUFLAGS += -global virtio-mmio.force-legacy=false
 QEMUFLAGS += -drive id=drive0,file=disk.img,format=raw,if=none
 QEMUFLAGS += -device virtio-blk-device,drive=drive0,bus=virtio-mmio-bus.0
