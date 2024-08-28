@@ -22,6 +22,11 @@ const PTE_PPN_SHIFT: usize = 10;
 
 const SATP_MODE_SV48: u64 = 9 << 60;
 
+pub const USERSPACE_START: VAddr = VAddr::new(0x0000_000a_0000_0000);
+pub const USERSPACE_END: VAddr = VAddr::new(0x0000_000a_ffff_ffff);
+const VALLOC_START: VAddr = VAddr::new(0x0000_000b_0000_0000);
+const VALLOC_END: VAddr = VAddr::new(0x0000_000b_ffff_ffff);
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(transparent)]
 struct Entry(u64);
@@ -69,28 +74,18 @@ impl PageTable {
     }
 
     pub fn map_kernel_space(&mut self) -> Result<(), FtlError> {
+        // Kernel memory
         self.map_range(
             VAddr::new(0x8020_0000),
             PAddr::new(0x8020_0000),
             0x8ff00000 - 0x8020_0000,
         )?;
-        self.map_range(
-            VAddr::new(0xc000000),
-            PAddr::new(0xc000000),
-            0x400000,
-        )?;
+        // PLIC
+        self.map_range(VAddr::new(0x0c00_0000), PAddr::new(0x0c00_0000), 0x400000)?;
         // UART
-        self.map_range(
-            VAddr::new(0x1000_0000),
-            PAddr::new(0x1000_0000),
-            0x1000,
-        )?;
+        self.map_range(VAddr::new(0x1000_0000), PAddr::new(0x1000_0000), 0x1000)?;
         // Virtio
-        self.map_range(
-            VAddr::new(0x10001000),
-            PAddr::new(0x10001000),
-            0x1000,
-        )?;
+        self.map_range(VAddr::new(0x10001000), PAddr::new(0x10001000), 0x1000)?;
         Ok(())
     }
 
@@ -162,9 +157,31 @@ impl PageTable {
     }
 }
 
+struct VAlloc {
+    next_vaddr: VAddr,
+}
+
+impl VAlloc {
+    pub const fn new() -> VAlloc {
+        VAlloc {
+            next_vaddr: VALLOC_START,
+        }
+    }
+
+    pub fn alloc(&mut self, len: usize) -> Result<VAddr, FtlError> {
+        let vaddr = self.next_vaddr;
+        if vaddr.add(len) > VALLOC_END {
+            return Err(FtlError::TooLarge);
+        }
+
+        self.next_vaddr = vaddr.add(len);
+        Ok(vaddr)
+    }
+}
+
 struct Mutable {
     table: PageTable,
-    next_free_vaddr: VAddr,
+    valloc: VAlloc,
 }
 
 pub struct VmSpace {
@@ -183,7 +200,7 @@ impl VmSpace {
             satp,
             mutable: SpinLock::new(Mutable {
                 table,
-                next_free_vaddr: VAddr::new(0x4000_0000), // FIXME:
+                valloc: VAlloc::new(),
             }),
         })
     }
@@ -196,9 +213,7 @@ impl VmSpace {
         assert!(is_aligned(len, PAGE_SIZE));
 
         let mut mutable = self.mutable.lock();
-        let vaddr = mutable.next_free_vaddr;
-        mutable.next_free_vaddr = mutable.next_free_vaddr.add(len);
-
+        let vaddr = mutable.valloc.alloc(len)?;
         mutable.table.map(vaddr, paddr, len)?;
         Ok(vaddr)
     }

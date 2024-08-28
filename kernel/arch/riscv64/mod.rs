@@ -24,6 +24,8 @@ pub use plic::create_interrupt;
 pub use thread::yield_cpu;
 pub use thread::Thread;
 pub use vmspace::VmSpace;
+pub use vmspace::USERSPACE_END;
+pub use vmspace::USERSPACE_START;
 
 use crate::cpuvar::CpuId;
 

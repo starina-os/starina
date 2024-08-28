@@ -233,10 +233,9 @@ fn main() -> Result<()> {
                     depends: app.depends,
                     used_messages,
                 });
-            }
-            // _ => {
-            //     anyhow::bail!("unexpected spec type for {}", spec_path.display());
-            // }
+            } // _ => {
+              //     anyhow::bail!("unexpected spec type for {}", spec_path.display());
+              // }
         }
     }
 

@@ -23,6 +23,8 @@ use hashbrown::HashMap;
 use crate::arch::paddr2vaddr;
 use crate::arch::vaddr2paddr;
 use crate::arch::PAGE_SIZE;
+use crate::arch::USERSPACE_END;
+use crate::arch::USERSPACE_START;
 use crate::channel::Channel;
 use crate::device_tree::DeviceTree;
 use crate::folio::Folio;
@@ -76,7 +78,7 @@ struct StartupAppLoader<'a> {
     our_chs: HashMap<AppName, SharedRef<Channel>>,
     their_chs: HashMap<AppName, SharedRef<Channel>>,
     vmspace: SharedRef<VmSpace>,
-    next_base_vaddr: usize,
+    next_base_vaddr: VAddr,
 }
 
 impl<'a> StartupAppLoader<'a> {
@@ -88,7 +90,7 @@ impl<'a> StartupAppLoader<'a> {
             our_chs: HashMap::new(),
             their_chs: HashMap::new(),
             vmspace,
-            next_base_vaddr: 0x100000, // FIXME:
+            next_base_vaddr: USERSPACE_START,
         }
     }
 
@@ -223,7 +225,11 @@ impl<'a> StartupAppLoader<'a> {
     fn load_app(&mut self, template: &AppTemplate) -> Result<(), Error> {
         let base_vaddr = self.next_base_vaddr;
         let elf_loader = ElfLoader::parse(template.elf_file, base_vaddr)?;
-        self.next_base_vaddr += elf_loader.vmspace_len;
+        self.next_base_vaddr = self.next_base_vaddr.add(elf_loader.vmspace_len);
+        if self.next_base_vaddr > USERSPACE_END {
+            panic!("ran out of virtual address space");
+        }
+
         let entry_addr = elf_loader.load_into_memory(&self.vmspace)?;
 
         let mut env = EnvironSerializer::new();
@@ -273,13 +279,13 @@ pub fn load_startup_apps(templates: &[AppTemplate], device_tree: &DeviceTree) {
 struct ElfLoader<'a> {
     elf_file: &'a [u8],
     elf: Elf<'a>,
-    base_vaddr: usize,
+    base_vaddr: VAddr,
     elf_paddr: PAddr,
     vmspace_len: usize,
 }
 
 impl<'a> ElfLoader<'a> {
-    pub fn parse(elf_file: &'static [u8], base_vaddr: usize) -> Result<ElfLoader, Error> {
+    pub fn parse(elf_file: &'static [u8], base_vaddr: VAddr) -> Result<ElfLoader, Error> {
         let elf = Elf::parse(elf_file).map_err(Error::ParseElf)?;
 
         // TODO: Check DF_1_PIE flag to make sure it's a PIE, not a shared
@@ -315,7 +321,7 @@ impl<'a> ElfLoader<'a> {
     }
 
     fn entry_addr(&self) -> usize {
-        self.base_vaddr + (self.elf.ehdr.e_entry as usize)
+        self.base_vaddr.as_usize() + (self.elf.ehdr.e_entry as usize)
     }
 
     fn map_segments(&mut self, vmspace: &VmSpace) {
@@ -331,7 +337,7 @@ impl<'a> ElfLoader<'a> {
 
             let mut offset = 0;
             while offset < mem_size {
-                let vaddr = VAddr::new(self.base_vaddr + mem_offset + offset);
+                let vaddr = VAddr::new(self.base_vaddr.as_usize() + mem_offset + offset);
                 let file_part_len = core::cmp::min(file_size.saturating_sub(offset), PAGE_SIZE);
                 let zero_part_len = PAGE_SIZE - file_part_len;
 
@@ -420,16 +426,12 @@ impl<'a> ElfLoader<'a> {
         };
 
         for rela in rela_entries {
+            let base = self.base_vaddr.as_usize();
             match rela.r_info {
                 #[cfg(target_arch = "riscv64")]
                 ftl_elf::R_RISCV_RELATIVE => unsafe {
-                    let ptr = (self.base_vaddr + rela.r_offset as usize) as *mut i64;
-                    *ptr += (self.base_vaddr as i64) + rela.r_addend;
-                },
-                #[cfg(target_arch = "aarch64")]
-                ftl_elf::R_AARCH64_RELATIVE => unsafe {
-                    let ptr = (self.base_vaddr + rela.r_offset as usize) as *mut i64;
-                    *ptr += (self.base_vaddr as i64) + rela.r_addend;
+                    let ptr = (base + rela.r_offset as usize) as *mut i64;
+                    *ptr += (base as i64) + rela.r_addend;
                 },
                 _ => panic!("unsupported relocation type: {}", rela.r_info),
             }

@@ -285,7 +285,16 @@ pub fn syscall_entry(
         _ if n == SyscallNumber::FolioPAddr as isize => {
             let handle = HandleId::from_raw_isize_truncated(a0);
             let paddr = folio_paddr(handle)?;
-            Ok(paddr.as_usize() as isize) // FIXME: guarantee casting to isize is OK
+
+            // Try to convert PAddr to isize. We can't cast PAddr to isize directly
+            // because negative values are considered as error codes. This hack should
+            // be fine until your computer has more than 2^63 bytes of memory.
+            let paddr_isize: isize = match paddr.as_usize().try_into() {
+                Ok(value) => value,
+                Err(_) => return Err(FtlError::TooLargePAddr),
+            };
+
+            Ok(paddr_isize)
         }
         _ if n == SyscallNumber::PollCreate as isize => {
             let handle_id = poll_create()?;

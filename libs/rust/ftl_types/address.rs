@@ -16,7 +16,6 @@ impl PAddr {
         self.0
     }
 
-
     // TODO: deprecate and use checked_add
     #[must_use]
     pub fn add(&self, offset: usize) -> PAddr {
@@ -69,7 +68,6 @@ impl VAddr {
     pub unsafe fn write_volatile<T: Copy>(self, value: T) {
         ptr::write_volatile(self.as_mut_ptr(), value);
     }
-
 
     // TODO: deprecate and use checked_add
     #[must_use]
