@@ -11,30 +11,12 @@ use ftl_api_autogen::protocols::ping::PingRequest;
 
 #[ftl_api::main]
 pub fn main(mut env: Environ) {
-    info!("starting ping");
     let ch = env.take_channel("dep:ping_server").unwrap();
     let mut msgbuffer = MessageBuffer::new();
-    for i in 0.. {
-        info!("{}: sending message", i);
-        ch.send(PingRequest {
-            int_value1: 42,
-            bytes_value1: &[0xab, 0xcd, 0xef],
-        })
-        .unwrap();
+    loop {
+        ch.send(PingRequest { value: 42 }).unwrap();
 
-        info!("{}: receiving message", i);
-        let r = ch.recv_with_buffer::<PingReply>(&mut msgbuffer).unwrap();
-        info!(
-            "{}: received message: {} {}",
-            i,
-            r.int_value2(),
-            r.str_value2().to_str().unwrap()
-        );
-
-        for _ in 0..2000000 {
-            unsafe {
-                ::core::arch::asm!("nop");
-            }
-        }
+        let reply = ch.recv_with_buffer::<PingReply>(&mut msgbuffer).unwrap();
+        info!("received {}", reply.value());
     }
 }

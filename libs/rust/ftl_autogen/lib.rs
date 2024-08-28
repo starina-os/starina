@@ -182,20 +182,16 @@ pub mod protocols {
 
         #[repr(C)]
 
-        pub struct PingRequest<'a> {
-            pub int_value1: i32,
-
-            pub bytes_value1: &'a [u8],
+        pub struct PingRequest {
+            pub value: i32,
         }
 
         #[repr(C)]
         struct RawPingRequest {
-            pub int_value1: i32,
-
-            pub bytes_value1: ftl_types::idl::BytesField<16>,
+            pub value: i32,
         }
 
-        impl<'a> MessageSerialize for PingRequest<'a> {
+        impl MessageSerialize for PingRequest {
             const MSGINFO: MessageInfo = MessageInfo::from_raw(
                 (3 << 14) | (0 << 12) | ::core::mem::size_of::<RawPingRequest>() as isize,
             );
@@ -211,11 +207,7 @@ pub mod protocols {
                     let dst = buffer as *mut _ as *mut RawPingRequest;
 
                     unsafe {
-                        core::ptr::write(&mut (*dst).int_value1, this.int_value1);
-                    }
-
-                    unsafe {
-                        (*dst).bytes_value1.copy_from_slice(&this.bytes_value1);
+                        core::ptr::write(&mut (*dst).value, this.value);
                     }
 
                     // FIXME: Support multiple handles.
@@ -231,7 +223,7 @@ pub mod protocols {
             }
         }
 
-        impl<'m> MessageDeserialize for PingRequest<'m> {
+        impl MessageDeserialize for PingRequest {
             type Reader<'a> = PingRequestReader<'a>;
 
             fn deserialize<'a>(
@@ -262,30 +254,21 @@ pub mod protocols {
                 unsafe { &*(buffer as *const _ as *const RawPingRequest) }
             }
 
-            pub fn int_value1(&self) -> i32 {
+            pub fn value(&self) -> i32 {
                 let m = self.as_raw(self.buffer);
-                m.int_value1
-            }
-
-            pub fn bytes_value1(&self) -> ftl_types::idl::BytesField<16> {
-                let m = self.as_raw(self.buffer);
-                m.bytes_value1
+                m.value
             }
         }
 
         #[repr(C)]
 
         pub struct PingReply {
-            pub int_value2: i32,
-
-            pub str_value2: ftl_types::idl::StringField<32>,
+            pub value: i32,
         }
 
         #[repr(C)]
         struct RawPingReply {
-            pub int_value2: i32,
-
-            pub str_value2: ftl_types::idl::StringField<32>,
+            pub value: i32,
         }
 
         impl MessageSerialize for PingReply {
@@ -304,11 +287,7 @@ pub mod protocols {
                     let dst = buffer as *mut _ as *mut RawPingReply;
 
                     unsafe {
-                        core::ptr::write(&mut (*dst).int_value2, this.int_value2);
-                    }
-
-                    unsafe {
-                        core::ptr::write(&mut (*dst).str_value2, this.str_value2);
+                        core::ptr::write(&mut (*dst).value, this.value);
                     }
 
                     // FIXME: Support multiple handles.
@@ -355,14 +334,9 @@ pub mod protocols {
                 unsafe { &*(buffer as *const _ as *const RawPingReply) }
             }
 
-            pub fn int_value2(&self) -> i32 {
+            pub fn value(&self) -> i32 {
                 let m = self.as_raw(self.buffer);
-                m.int_value2
-            }
-
-            pub fn str_value2(&self) -> ftl_types::idl::StringField<32> {
-                let m = self.as_raw(self.buffer);
-                m.str_value2
+                m.value
             }
         }
     }

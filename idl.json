@@ -28,26 +28,16 @@
                     "request": {
                         "fields": [
                             {
-                                "name": "int_value1",
+                                "name": "value",
                                 "type": "int32"
-                            },
-                            {
-                                "name": "bytes_value1",
-                                "type": "bytes",
-                                "capacity": 16
                             }
                         ]
                     },
                     "response": {
                         "fields": [
                             {
-                                "name": "int_value2",
+                                "name": "value",
                                 "type": "int32"
-                            },
-                            {
-                                "name": "str_value2",
-                                "type": "string",
-                                "capacity": 32
                             }
                         ]
                     }
