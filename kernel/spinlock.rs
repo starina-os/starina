@@ -26,8 +26,6 @@ impl<T> SpinLock<T> {
             );
         }
 
-        // let was_enabled = arch::disable_interrupts();
-
         while self
             .lock
             .compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed)
@@ -38,14 +36,12 @@ impl<T> SpinLock<T> {
 
         SpinLockGuard {
             this: self,
-            // was_enabled,
         }
     }
 }
 
 pub struct SpinLockGuard<'a, T: ?Sized + 'a> {
     this: &'a SpinLock<T>,
-    // was_enabled: bool,
 }
 
 impl<T> SpinLockGuard<'_, T> {
