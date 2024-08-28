@@ -1,13 +1,16 @@
 [package]
-name = "ping"
+name = "ping_server"
 version.workspace = true
 authors.workspace = true
 edition.workspace = true
 
 [[bin]]
-name = "ping"
+name = "ping_server"
 path = "main.rs"
 
 [dependencies]
 ftl_api = { workspace = true }
 ftl_api_autogen = { workspace = true }
+
+[build-dependencies]
+ftl_autogen2 = { workspace = true }

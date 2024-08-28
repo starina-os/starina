@@ -1,10 +1,10 @@
 {
-    "name": "ping",
+    "name": "ping_client",
     "kind": "app/v0",
     "spec": {
         "depends": [
             {
-                "name": "ping",
+                "name": "ping_server",
                 "type": "service",
                 "protocol": "ping_server"
             }

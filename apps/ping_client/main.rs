@@ -1,16 +1,19 @@
 #![no_std]
 #![no_main]
 
+ftl_api::autogen!();
+
+use ftl_api::environ::Environ;
 use ftl_api::prelude::*;
 use ftl_api::types::message::MessageBuffer;
-use ftl_api_autogen::apps::ping::Environ;
 use ftl_api_autogen::protocols::ping::PingReply;
 use ftl_api_autogen::protocols::ping::PingRequest;
 
 #[ftl_api::main]
 pub fn main(mut env: Environ) {
     info!("starting ping");
-    let ch = env.depends.ping.take().unwrap();
+    let ch = env.take_channel("dep:ping_server").unwrap();
+    let mut msgbuffer = MessageBuffer::new();
     for i in 0.. {
         info!("{}: sending message", i);
         ch.send(PingRequest {
@@ -20,7 +23,7 @@ pub fn main(mut env: Environ) {
         .unwrap();
 
         info!("{}: receiving message", i);
-        let r = ch.recv_with_buffer::<PingReply>(&mut buffer).unwrap();
+        let r = ch.recv_with_buffer::<PingReply>(&mut msgbuffer).unwrap();
         info!(
             "{}: received message: {} {}",
             i,

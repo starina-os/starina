@@ -34,9 +34,7 @@ impl<T> SpinLock<T> {
             core::hint::spin_loop();
         }
 
-        SpinLockGuard {
-            this: self,
-        }
+        SpinLockGuard { this: self }
     }
 }
 
