@@ -30,7 +30,7 @@ pub fn main(mut env: Environ) {
                     .add_channel(new_ch, Context::Client { counter: 0 })
                     .unwrap();
             }
-            Event::Message(Context::Client { counter }, Message::PingRequest(m), sender) => {
+            Event::Message(Context::Client { counter }, Message::PingRequest(_m), sender) => {
                 let reply = PingReply { value: *counter };
                 *counter += 1;
 

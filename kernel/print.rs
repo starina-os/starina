@@ -17,7 +17,7 @@ macro_rules! print {
     ($($arg:tt)*) => {{
         #![allow(unused_imports)]
         use core::fmt::Write;
-        write!($crate::print::Printer, "{}", format_args!($($arg)*)).ok();
+        write!($crate::print::Printer, $($arg)*).ok();
     }};
 }
 

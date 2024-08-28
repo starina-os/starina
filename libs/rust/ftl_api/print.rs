@@ -37,7 +37,7 @@ macro_rules! print {
         use core::fmt::Write;
 
         let mut printer = $crate::print::GLOBAL_PRINTER.lock();
-        write!(printer, "{}", format_args!($($arg)*)).ok();
+        write!(printer, $($arg)*).ok();
     }};
 }
 
