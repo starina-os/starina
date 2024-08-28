@@ -1,8 +1,8 @@
 [package]
 name = "boot_riscv64"
-version.workspace = true
-authors.workspace = true
-edition.workspace = true
+version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
 
 [[bin]]
 name = "boot_riscv64"

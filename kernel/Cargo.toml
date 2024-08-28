@@ -1,8 +1,8 @@
 [package]
 name = "ftl_kernel"
-version.workspace = true
-authors.workspace = true
-edition.workspace = true
+version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
 
 [lib]
 path = "lib.rs"

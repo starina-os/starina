@@ -1,8 +1,8 @@
 [package]
 name = "virtio_blk"
-version.workspace = true
-authors.workspace = true
-edition.workspace = true
+version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
 
 [[bin]]
 name = "virtio_blk"
