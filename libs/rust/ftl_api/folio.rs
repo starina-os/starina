@@ -25,7 +25,7 @@ impl Folio {
 
     pub fn paddr(&self) -> Result<PAddr, FtlError> {
         let paddr = syscall::folio_paddr(self.handle.id())?;
-        let paddr = PAddr::new(paddr).ok_or(FtlError::InvalidSyscallReturnValue)?;
+        let paddr = PAddr::new(paddr);
         Ok(paddr)
     }
 }
@@ -50,7 +50,7 @@ impl MmioFolio {
             _folio: Folio {
                 handle: OwnedHandle::from_raw(handle),
             },
-            paddr: PAddr::new(paddr).ok_or(FtlError::InvalidSyscallReturnValue)?,
+            paddr: PAddr::new(paddr),
             vaddr,
         })
     }

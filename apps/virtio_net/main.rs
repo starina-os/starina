@@ -33,7 +33,7 @@ struct VirtioNetModernHeader {
 
 fn probe(devices: &[Device], device_type: u32) -> Option<(VirtioMmio, Irq)> {
     for device in devices {
-        let base_paddr = PAddr::new(device.reg as usize).unwrap();
+        let base_paddr = PAddr::new(device.reg as usize);
         let mmio = MmioFolio::create_pinned(base_paddr, 0x1000).unwrap();
 
         let mut transport = VirtioMmio::new(mmio);

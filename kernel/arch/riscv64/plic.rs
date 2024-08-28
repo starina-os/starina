@@ -113,7 +113,7 @@ pub fn init(cpu_id: CpuId, device_tree: &DeviceTree) {
         .reg as usize;
 
     trace!("PLIC: paddr={:#x}", plic_paddr);
-    let folio = Folio::alloc_fixed(PAddr::new(plic_paddr).unwrap(), PLIC_SIZE).unwrap();
+    let folio = Folio::alloc_fixed(PAddr::new(plic_paddr), PLIC_SIZE).unwrap();
     let mut plic = Plic::new(MmioFolio::from_folio(folio).unwrap());
     plic.init_per_cpu(cpu_id);
 

@@ -46,7 +46,7 @@ impl Folio {
 
         Ok(Self {
             page_type: PageType::Allocated { layout },
-            paddr: vaddr2paddr(VAddr::new(ptr as usize).unwrap()).unwrap(),
+            paddr: vaddr2paddr(VAddr::new(ptr as usize)).unwrap(),
             len,
         })
     }

@@ -277,7 +277,7 @@ pub fn syscall_entry(
             Ok(handle_id.as_isize())
         }
         _ if n == SyscallNumber::FolioCreateFixed as isize => {
-            let paddr = PAddr::new(a0 as usize).ok_or(FtlError::InvalidArg)?;
+            let paddr = PAddr::new(a0 as usize);
             let len = a1 as usize;
             let handle_id = folio_create_fixed(paddr, len)?;
             Ok(handle_id.as_isize())

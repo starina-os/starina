@@ -228,12 +228,12 @@ impl VirtQueue {
             let desc = self.desc_mut(next_desc_index);
             used_descs.push(if desc.is_writable() {
                 VirtqDescBuffer::WritableFromDevice {
-                    paddr: PAddr::new(desc.addr as usize).unwrap(),
+                    paddr: PAddr::new(desc.addr as usize),
                     len: desc.len as usize,
                 }
             } else {
                 VirtqDescBuffer::ReadOnlyFromDevice {
-                    paddr: PAddr::new(desc.addr as usize).unwrap(),
+                    paddr: PAddr::new(desc.addr as usize),
                     len: desc.len as usize,
                 }
             });

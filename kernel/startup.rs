@@ -307,7 +307,7 @@ impl<'a> ElfLoader<'a> {
 
         Ok(ElfLoader {
             elf_file,
-            elf_paddr: vaddr2paddr(VAddr::new(elf_file.as_ptr() as usize).unwrap()).unwrap(),
+            elf_paddr: vaddr2paddr(VAddr::new(elf_file.as_ptr() as usize)).unwrap(),
             elf,
             base_vaddr,
             vmspace_len,
@@ -331,8 +331,7 @@ impl<'a> ElfLoader<'a> {
 
             let mut offset = 0;
             while offset < mem_size {
-                let vaddr = VAddr::new(self.base_vaddr + mem_offset + offset).unwrap();
-
+                let vaddr = VAddr::new(self.base_vaddr + mem_offset + offset);
                 let file_part_len = core::cmp::min(file_size.saturating_sub(offset), PAGE_SIZE);
                 let zero_part_len = PAGE_SIZE - file_part_len;
 

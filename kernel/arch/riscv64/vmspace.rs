@@ -1,6 +1,5 @@
 use core::arch::asm;
 use core::mem;
-use core::num::NonZeroUsize;
 
 use ftl_types::address::PAddr;
 use ftl_types::address::VAddr;
@@ -45,10 +44,7 @@ impl Entry {
 
     pub fn paddr(&self) -> PAddr {
         let raw = self.ppn() << PPN_SHIFT;
-        // FIXME: this is actually unsafe
-        let nonzero = unsafe { NonZeroUsize::new_unchecked(raw as usize) };
-
-        PAddr::from_nonzero(nonzero)
+        PAddr::new(raw as usize)
     }
 }
 
@@ -74,25 +70,25 @@ impl PageTable {
 
     pub fn map_kernel_space(&mut self) -> Result<(), FtlError> {
         self.map_range(
-            VAddr::new(0x8020_0000).unwrap(),
-            PAddr::new(0x8020_0000).unwrap(),
+            VAddr::new(0x8020_0000),
+            PAddr::new(0x8020_0000),
             0x8ff00000 - 0x8020_0000,
         )?;
         self.map_range(
-            VAddr::new(0xc000000).unwrap(),
-            PAddr::new(0xc000000).unwrap(),
+            VAddr::new(0xc000000),
+            PAddr::new(0xc000000),
             0x400000,
         )?;
         // UART
         self.map_range(
-            VAddr::new(0x1000_0000).unwrap(),
-            PAddr::new(0x1000_0000).unwrap(),
+            VAddr::new(0x1000_0000),
+            PAddr::new(0x1000_0000),
             0x1000,
         )?;
         // Virtio
         self.map_range(
-            VAddr::new(0x10001000).unwrap(),
-            PAddr::new(0x10001000).unwrap(),
+            VAddr::new(0x10001000),
+            PAddr::new(0x10001000),
             0x1000,
         )?;
         Ok(())
@@ -187,7 +183,7 @@ impl VmSpace {
             satp,
             mutable: SpinLock::new(Mutable {
                 table,
-                next_free_vaddr: VAddr::new(0x4000_0000).unwrap(), // FIXME:
+                next_free_vaddr: VAddr::new(0x4000_0000), // FIXME:
             }),
         })
     }

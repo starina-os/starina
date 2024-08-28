@@ -1,38 +1,26 @@
 use core::fmt;
-use core::num::NonZeroUsize;
 use core::ptr;
 
 /// Represents a physical memory address.
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[repr(transparent)]
-pub struct PAddr(NonZeroUsize);
+pub struct PAddr(usize);
 
 impl PAddr {
-    pub const fn new(addr: usize) -> Option<PAddr> {
-        // We can't use `Option::map` here because it's not a const fn.
-        match NonZeroUsize::new(addr) {
-            Some(addr) => Some(PAddr(addr)),
-            None => None,
-        }
-    }
-
-    pub const fn from_nonzero(addr: NonZeroUsize) -> PAddr {
+    pub const fn new(addr: usize) -> PAddr {
         PAddr(addr)
     }
 
     #[inline(always)]
     pub const fn as_usize(self) -> usize {
-        self.0.get()
-    }
-
-    #[inline(always)]
-    pub const fn as_nonzero(self) -> NonZeroUsize {
         self.0
     }
 
+
+    // TODO: deprecate and use checked_add
     #[must_use]
     pub fn add(&self, offset: usize) -> PAddr {
-        PAddr::new(self.0.get() + offset).unwrap()
+        PAddr::new(self.0 + offset)
     }
 }
 
@@ -49,28 +37,15 @@ impl fmt::Display for PAddr {
 /// Represents a *kernel* virtual memory address.
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[repr(transparent)]
-pub struct VAddr(NonZeroUsize);
+pub struct VAddr(usize);
 
 impl VAddr {
-    pub const fn new(addr: usize) -> Option<VAddr> {
-        // We can't use `Option::map` here because it's not a const fn.
-        match NonZeroUsize::new(addr) {
-            Some(addr) => Some(VAddr(addr)),
-            None => None,
-        }
-    }
-
-    pub const fn from_nonzero(addr: NonZeroUsize) -> VAddr {
+    pub const fn new(addr: usize) -> VAddr {
         VAddr(addr)
     }
 
     #[inline(always)]
     pub const fn as_usize(self) -> usize {
-        self.0.get()
-    }
-
-    #[inline(always)]
-    pub const fn as_nonzero(self) -> NonZeroUsize {
         self.0
     }
 
@@ -95,9 +70,11 @@ impl VAddr {
         ptr::write_volatile(self.as_mut_ptr(), value);
     }
 
+
+    // TODO: deprecate and use checked_add
     #[must_use]
     pub fn add(&self, offset: usize) -> VAddr {
-        VAddr::from_nonzero(self.0.checked_add(offset).unwrap())
+        VAddr(self.0.checked_add(offset).unwrap())
     }
 }
 

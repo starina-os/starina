@@ -32,12 +32,12 @@ pub const NUM_CPUS_MAX: usize = 8;
 
 pub fn paddr2vaddr(paddr: PAddr) -> Result<VAddr, FtlError> {
     // Identical mapping.
-    Ok(VAddr::from_nonzero(paddr.as_nonzero()))
+    Ok(VAddr::new(paddr.as_usize()))
 }
 
 pub fn vaddr2paddr(vaddr: VAddr) -> Result<PAddr, FtlError> {
     // Identical mapping.
-    Ok(PAddr::from_nonzero(vaddr.as_nonzero()))
+    Ok(PAddr::new(vaddr.as_usize()))
 }
 
 global_asm!(

@@ -122,7 +122,7 @@ pub fn vmspace_map(
         prot.as_raw() as isize,
     )?;
 
-    Ok(VAddr::new(ret as usize).unwrap())
+    Ok(VAddr::new(ret as usize))
 }
 
 pub fn poll_create() -> Result<HandleId, FtlError> {
