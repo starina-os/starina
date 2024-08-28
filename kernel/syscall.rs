@@ -66,6 +66,27 @@ fn channel_recv(handle: HandleId, msgbuffer: &mut MessageBuffer) -> Result<Messa
     ch.recv(msgbuffer)
 }
 
+fn channel_try_recv(
+    handle: HandleId,
+    msgbuffer: &mut MessageBuffer,
+) -> Result<MessageInfo, FtlError> {
+    let ch: Handle<Channel> = {
+        current_thread()
+            .process()
+            .handles()
+            .lock()
+            .get_owned(handle)?
+            .as_channel()?
+            .clone()
+    };
+
+    match ch.try_recv(msgbuffer) {
+        Ok(Some(msginfo)) => Ok(msginfo),
+        Ok(None) => Err(FtlError::WouldBlock),
+        Err(e) => Err(e),
+    }
+}
+
 fn folio_create(len: usize) -> Result<HandleId, FtlError> {
     let folio = Folio::alloc(len)?;
     let handle = Handle::new(SharedRef::new(folio), HandleRights::NONE);
@@ -270,6 +291,12 @@ pub fn syscall_entry(
             let handle = HandleId::from_raw_isize_truncated(a0);
             let msgbuffer = unsafe { &mut *(a1 as usize as *mut MessageBuffer) };
             let msginfo = channel_recv(handle, msgbuffer)?;
+            Ok(msginfo.as_raw())
+        }
+        _ if n == SyscallNumber::ChannelTryRecv as isize => {
+            let handle = HandleId::from_raw_isize_truncated(a0);
+            let msgbuffer = unsafe { &mut *(a1 as usize as *mut MessageBuffer) };
+            let msginfo = channel_try_recv(handle, msgbuffer)?;
             Ok(msginfo.as_raw())
         }
         _ if n == SyscallNumber::FolioCreate as isize => {

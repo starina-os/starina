@@ -21,6 +21,7 @@ pub enum SyscallNumber {
     InterruptCreate = 17,
     InterruptAck = 18,
     VmSpaceMap = 19,
+    ChannelTryRecv = 20,
 }
 
 #[repr(C)]

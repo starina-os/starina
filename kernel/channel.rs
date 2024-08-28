@@ -33,6 +33,25 @@ pub struct Channel {
     sleep_point: SleepPoint,
 }
 
+fn do_recv(
+    msgbuffer: &mut MessageBuffer,
+    mut entry: MessageEntry,
+) -> Result<MessageInfo, FtlError> {
+    // Install handles into the current (receiver) process.
+    let current_thread = current_thread();
+    let mut handle_table = current_thread.process().handles().lock();
+    for (i, any_handle) in entry.handles.drain(..).enumerate() {
+        // TODO: Define the expected behavior when it fails to add a handle.
+        msgbuffer.handles[i] = handle_table.add(any_handle)?;
+    }
+
+    // Copy message data into the buffer.
+    let data_len = entry.msginfo.data_len();
+    msgbuffer.data[0..data_len].copy_from_slice(&entry.data[0..data_len]);
+
+    Ok(entry.msginfo)
+}
+
 impl Channel {
     pub fn new() -> Result<(SharedRef<Channel>, SharedRef<Channel>), FtlError> {
         let ch0 = SharedRef::new(Channel {
@@ -126,11 +145,27 @@ impl Channel {
         Ok(())
     }
 
+    pub fn try_recv(&self, msgbuffer: &mut MessageBuffer) -> Result<Option<MessageInfo>, FtlError> {
+        let entry = {
+            let mut mutable = self.mutable.lock();
+            let entry = mutable.queue.pop_front().ok_or(FtlError::WouldBlock)?;
+            if !mutable.queue.is_empty() {
+                for poller in &mutable.pollers {
+                    poller.set_ready(PollEvent::READABLE);
+                }
+            }
+
+            entry
+        };
+
+        let msginfo = do_recv(msgbuffer, entry)?;
+        Ok(Some(msginfo))
+    }
+
     pub fn recv(&self, msgbuffer: &mut MessageBuffer) -> Result<MessageInfo, FtlError> {
-        let mut entry = self.sleep_point.sleep_loop(&self.mutable, |mutable| {
+        let entry = self.sleep_point.sleep_loop(&self.mutable, |mutable| {
             if let Some(entry) = mutable.queue.pop_front() {
                 if !mutable.queue.is_empty() {
-                    // FIXME: use try_recv in mainloop
                     for poller in &mutable.pollers {
                         poller.set_ready(PollEvent::READABLE);
                     }
@@ -142,16 +177,7 @@ impl Channel {
             SleepCallbackResult::Sleep
         });
 
-        // Install handles into the current (receiver) process.
-        let current_thread = current_thread();
-        let mut handle_table = current_thread.process().handles().lock();
-        for (i, any_handle) in entry.handles.drain(..).enumerate() {
-            // TODO: Define the expected behavior when it fails to add a handle.
-            msgbuffer.handles[i] = handle_table.add(any_handle)?;
-        }
-
-        let data_len = entry.msginfo.data_len();
-        msgbuffer.data[0..data_len].copy_from_slice(&entry.data[0..data_len]);
-        Ok(entry.msginfo)
+        let msginfo = do_recv(msgbuffer, entry)?;
+        Ok(msginfo)
     }
 }

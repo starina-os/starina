@@ -23,6 +23,30 @@ pub struct Channel {
     handle: OwnedHandle,
 }
 
+fn do_recv<M: MessageDeserialize>(
+    buffer: &mut MessageBuffer,
+    msginfo: MessageInfo,
+) -> Result<M::Reader<'_>, RecvError> {
+    let msg = match M::deserialize(buffer, msginfo) {
+        Some(msg) => msg,
+        None => {
+            // Close transferred handles to prevent resource leaks.
+            //
+            // Also, if they're IPC-related handles like channels, this might
+            // let the sender know that we don't never use them. Otherwise, the
+            // sender might be waiting for a message from us.
+            for i in 0..msginfo.num_handles() {
+                let handle_id = buffer.handles[i];
+                syscall::handle_close(handle_id).expect("failed to close handle");
+            }
+
+            return Err(RecvError::Deserialize(msginfo));
+        }
+    };
+
+    Ok(msg)
+}
+
 impl Channel {
     pub fn from_handle(handle: OwnedHandle) -> Channel {
         Channel { handle }
@@ -79,6 +103,21 @@ impl Channel {
         syscall::channel_send(self.handle.id(), M::MSGINFO, buffer)
     }
 
+    pub fn try_recv_with_buffer<'a, M: MessageDeserialize>(
+        &self,
+        buffer: &'a mut MessageBuffer,
+    ) -> Result<Option<M::Reader<'a>>, RecvError> {
+        // TODO: Optimize parameter order to avoid unnecessary register swaps.
+        let msginfo = match syscall::channel_try_recv(self.handle.id(), buffer) {
+            Ok(msginfo) => msginfo,
+            Err(FtlError::WouldBlock) => return Ok(None),
+            Err(err) => return Err(RecvError::Syscall(err)),
+        };
+
+        let msg = do_recv::<M>(buffer, msginfo)?;
+        Ok(Some(msg))
+    }
+
     pub fn recv_with_buffer<'a, M: MessageDeserialize>(
         &self,
         buffer: &'a mut MessageBuffer,
@@ -87,24 +126,8 @@ impl Channel {
         let msginfo =
             syscall::channel_recv(self.handle.id(), buffer).map_err(RecvError::Syscall)?;
 
-        match M::deserialize(buffer, msginfo) {
-            Some(msg) => {
-                return Ok(msg);
-            }
-            None => {
-                // Close transferred handles to prevent resource leaks.
-                //
-                // Also, if they're IPC-related handles like channels, this might
-                // let the sender know that we don't never use them. Otherwise, the
-                // sender might be waiting for a message from us.
-                for i in 0..msginfo.num_handles() {
-                    let handle_id = buffer.handles[i];
-                    syscall::handle_close(handle_id).expect("failed to close handle");
-                }
-
-                return Err(RecvError::Deserialize(msginfo));
-            }
-        }
+        let msg = do_recv::<M>(buffer, msginfo)?;
+        Ok(msg)
     }
 }
 
@@ -143,6 +166,13 @@ impl ChannelReceiver {
         buffer: &'a mut MessageBuffer,
     ) -> Result<M::Reader<'a>, RecvError> {
         self.ch.recv_with_buffer::<M>(buffer)
+    }
+
+    pub fn try_recv_with_buffer<'a, M: MessageDeserialize>(
+        &self,
+        buffer: &'a mut MessageBuffer,
+    ) -> Result<Option<M::Reader<'a>>, RecvError> {
+        self.ch.try_recv_with_buffer::<M>(buffer)
     }
 }
 

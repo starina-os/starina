@@ -183,6 +183,18 @@ pub fn channel_recv(
     Ok(MessageInfo::from_raw(ret))
 }
 
+pub fn channel_try_recv(
+    handle: HandleId,
+    msgbuffer: *mut MessageBuffer,
+) -> Result<MessageInfo, FtlError> {
+    let ret = syscall2(
+        SyscallNumber::ChannelTryRecv,
+        handle.as_isize(),
+        msgbuffer as isize,
+    )?;
+    Ok(MessageInfo::from_raw(ret))
+}
+
 pub fn signal_create() -> Result<HandleId, FtlError> {
     let ret = syscall0(SyscallNumber::SignalCreate)?;
     let handle_id = HandleId::from_raw_isize_truncated(ret);

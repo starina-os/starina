@@ -20,6 +20,7 @@ pub enum Error {
     PollAdd(FtlError),
     PollWait(FtlError),
     ChannelRecv(RecvError),
+    ChannelRecvWouldBlock,
     ChannelAlreadyAdded(Channel),
     ChannelReceiverAlreadyAdded((ChannelReceiver, ChannelSender)),
     InterruptAlreadyAdded(Interrupt),
@@ -123,8 +124,9 @@ impl<Ctx, AllM: MessageDeserialize> Mainloop<Ctx, AllM> {
         if poll_ev.contains(PollEvent::READABLE) {
             match &mut entry.object {
                 Object::Channel { sender, receiver } => {
-                    let m = match receiver.recv_with_buffer::<AllM>(&mut self.msgbuffer) {
-                        Ok(m) => m,
+                    let m = match receiver.try_recv_with_buffer::<AllM>(&mut self.msgbuffer) {
+                        Ok(Some(m)) => m,
+                        Ok(None) => return Event::Error(Error::ChannelRecvWouldBlock),
                         Err(err) => return Event::Error(Error::ChannelRecv(err)),
                     };
 
