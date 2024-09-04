@@ -6,12 +6,14 @@ use crate::thread::Thread;
 
 pub struct CpuVar {
     pub(super) context: *mut Context,
+    pub(super) s0_scratch: u64,
 }
 
 impl CpuVar {
     pub fn new(idle_thread: &SharedRef<Thread>) -> Self {
         Self {
             context: &idle_thread.arch().context as *const _ as *mut _,
+            s0_scratch: 0,
         }
     }
 }

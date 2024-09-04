@@ -2,12 +2,19 @@ use core::num::NonZeroIsize;
 use core::sync::atomic::AtomicIsize;
 use core::sync::atomic::Ordering;
 
+use ftl_types::error::FtlError;
+use ftl_types::poll::PollSyscallResult;
+
 use crate::arch;
+use crate::channel::Channel;
+use crate::cpuvar::current_thread;
+use crate::poll::Poll;
 use crate::process::kernel_process;
 use crate::process::Process;
 use crate::ref_counted::SharedRef;
 use crate::scheduler::GLOBAL_SCHEDULER;
 use crate::spinlock::SpinLock;
+use crate::syscall::UAddr;
 use crate::vmspace::VmSpace;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -35,10 +42,26 @@ impl ThreadId {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Debug)]
+pub enum Continuation {
+    ChannelRecv {
+        channel: SharedRef<Channel>,
+        msgbuffer: UAddr,
+    },
+    PollWait {
+        poll: SharedRef<Poll>,
+    },
+}
+
+pub enum ContinuationResult {
+    ReturnToUser(Option<isize>),
+    StillBlocked,
+}
+
+#[derive(Debug)]
 enum State {
     Runnable,
-    Blocked,
+    Blocked(Continuation),
 }
 
 struct Mutable {
@@ -67,7 +90,7 @@ impl Thread {
     pub fn spawn_kernel(
         process: SharedRef<Process>,
         vmspace: SharedRef<VmSpace>,
-        pc: fn(usize),
+        pc: usize,
         arg: usize,
     ) -> SharedRef<Thread> {
         let thread = SharedRef::new(Thread {
@@ -103,23 +126,67 @@ impl Thread {
         &self.arch
     }
 
-    pub fn resume(&self) -> ! {
-        self.arch.resume();
-    }
-
-    pub fn set_blocked(self: &SharedRef<Thread>) {
-        // oops!("{}: set_blocked", self.id.0);
+    pub fn set_runnable(&self) {
         let mut mutable = self.mutable.lock();
-        debug_assert!(matches!(mutable.state, State::Runnable));
-
-        mutable.state = State::Blocked;
-    }
-
-    pub fn set_runnable(self: &SharedRef<Thread>) {
-        let mut mutable = self.mutable.lock();
-        debug_assert!(matches!(mutable.state, State::Blocked));
-
         mutable.state = State::Runnable;
-        GLOBAL_SCHEDULER.push(self.clone());
+    }
+
+    pub fn run_continuation(&self) -> ContinuationResult {
+        let mut mutable = self.mutable.lock();
+        let continuation = match &mut mutable.state {
+            State::Blocked(continuation) => continuation,
+            State::Runnable => {
+                return ContinuationResult::ReturnToUser(None);
+            }
+        };
+
+        match continuation {
+            Continuation::ChannelRecv { channel, msgbuffer } => {
+                match channel.recv(*msgbuffer, false) {
+                    Err(FtlError::WouldBlock) => ContinuationResult::StillBlocked,
+                    Ok(msginfo) => {
+                        mutable.state = State::Runnable;
+                        ContinuationResult::ReturnToUser(Some(msginfo.as_raw()))
+                    }
+                    Err(e) => {
+                        mutable.state = State::Runnable;
+                        ContinuationResult::ReturnToUser(Some(e as isize))
+                    }
+                }
+            }
+            Continuation::PollWait { poll } => {
+                match poll.wait(false) {
+                    Err(FtlError::WouldBlock) => ContinuationResult::StillBlocked,
+                    Ok((event, handle_id)) => {
+                        let ret = PollSyscallResult::new(event, handle_id);
+                        mutable.state = State::Runnable;
+                        ContinuationResult::ReturnToUser(Some(ret.as_raw()))
+                    }
+                    Err(e) => {
+                        mutable.state = State::Runnable;
+                        ContinuationResult::ReturnToUser(Some(e as isize))
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn block_current(continuation: Continuation) -> ! {
+        let thread = current_thread();
+        let mut mutable = thread.mutable.lock();
+        mutable.state = State::Blocked(continuation);
+
+        drop(mutable);
+        drop(thread);
+
+        arch::return_to_user();
+    }
+
+    pub fn switch() -> ! {
+        arch::return_to_user();
+    }
+
+    pub fn push_to_runqueue(this: SharedRef<Thread>) {
+        GLOBAL_SCHEDULER.push(this);
     }
 }

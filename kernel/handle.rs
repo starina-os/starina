@@ -27,6 +27,10 @@ impl<T> Handle<T> {
     pub const fn new(object: SharedRef<T>, rights: HandleRights) -> Handle<T> {
         Handle { object, rights }
     }
+
+    pub fn into_shared_ref(this: Handle<T>) -> SharedRef<T> {
+        this.object
+    }
 }
 
 impl<T> Clone for Handle<T> {

@@ -22,6 +22,23 @@ use crate::poll::Poll;
 use crate::ref_counted::SharedRef;
 use crate::signal::Signal;
 
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[repr(transparent)]
+
+pub struct UAddr(usize);
+
+impl UAddr {
+    pub const fn new(addr: usize) -> UAddr {
+        UAddr(addr)
+    }
+
+    // Don't use this.
+    // FIXME:
+    pub unsafe fn as_mut_super_unsafe<T>(&self) -> &'static mut T {
+        &mut *(self.0 as *mut T)
+    }
+}
+
 fn channel_create() -> Result<isize, FtlError> {
     let (ch1, ch2) = Channel::new()?;
 
@@ -52,7 +69,7 @@ fn channel_send(
     ch.send(msginfo, msgbuffer)
 }
 
-fn channel_recv(handle: HandleId, msgbuffer: &mut MessageBuffer) -> Result<MessageInfo, FtlError> {
+fn channel_recv(handle: HandleId, msgbuffer: UAddr) -> Result<MessageInfo, FtlError> {
     let ch: Handle<Channel> = {
         current_thread()
             .process()
@@ -63,13 +80,10 @@ fn channel_recv(handle: HandleId, msgbuffer: &mut MessageBuffer) -> Result<Messa
             .clone()
     };
 
-    ch.recv(msgbuffer)
+    Handle::into_shared_ref(ch).recv(msgbuffer, true)
 }
 
-fn channel_try_recv(
-    handle: HandleId,
-    msgbuffer: &mut MessageBuffer,
-) -> Result<MessageInfo, FtlError> {
+fn channel_try_recv(handle: HandleId, msgbuffer: UAddr) -> Result<MessageInfo, FtlError> {
     let ch: Handle<Channel> = {
         current_thread()
             .process()
@@ -80,11 +94,7 @@ fn channel_try_recv(
             .clone()
     };
 
-    match ch.try_recv(msgbuffer) {
-        Ok(Some(msginfo)) => Ok(msginfo),
-        Ok(None) => Err(FtlError::WouldBlock),
-        Err(e) => Err(e),
-    }
+    Handle::into_shared_ref(ch).recv(msgbuffer, false)
 }
 
 fn folio_create(len: usize) -> Result<HandleId, FtlError> {
@@ -162,7 +172,7 @@ fn poll_wait(handle_id: HandleId) -> Result<PollSyscallResult, FtlError> {
             .clone()
     };
 
-    let (ev, ready_handle_id) = poll.wait()?;
+    let (ev, ready_handle_id) = Handle::into_shared_ref(poll).wait(true)?;
     Ok(PollSyscallResult::new(ev, ready_handle_id))
 }
 
@@ -259,14 +269,14 @@ fn vmspace_map(
     vmspace.map_anywhere(len, folio, prot)
 }
 
-pub fn syscall_entry(
-    n: isize,
+fn handle_syscall(
     a0: isize,
     a1: isize,
     a2: isize,
     a3: isize,
     a4: isize,
     a5: isize,
+    n: isize,
 ) -> Result<isize, FtlError> {
     match n {
         _ if n == SyscallNumber::Print as isize => {
@@ -289,13 +299,13 @@ pub fn syscall_entry(
         }
         _ if n == SyscallNumber::ChannelRecv as isize => {
             let handle = HandleId::from_raw_isize_truncated(a0);
-            let msgbuffer = unsafe { &mut *(a1 as usize as *mut MessageBuffer) };
+            let msgbuffer = UAddr::new(a1 as usize);
             let msginfo = channel_recv(handle, msgbuffer)?;
             Ok(msginfo.as_raw())
         }
         _ if n == SyscallNumber::ChannelTryRecv as isize => {
             let handle = HandleId::from_raw_isize_truncated(a0);
-            let msgbuffer = unsafe { &mut *(a1 as usize as *mut MessageBuffer) };
+            let msgbuffer = UAddr::new(a1 as usize);
             let msginfo = channel_try_recv(handle, msgbuffer)?;
             Ok(msginfo.as_raw())
         }
@@ -390,5 +400,20 @@ pub fn syscall_entry(
 
             Err(FtlError::UnknownSyscall)
         }
+    }
+}
+
+pub fn syscall_handler(
+    a0: isize,
+    a1: isize,
+    a2: isize,
+    a3: isize,
+    a4: isize,
+    a5: isize,
+    n: isize,
+) -> isize {
+    match handle_syscall(a0, a1, a2, a3, a4, a5, n) {
+        Ok(isize) => isize,
+        Err(err) => err as isize,
     }
 }

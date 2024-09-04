@@ -9,23 +9,41 @@ use ftl_types::poll::PollEvent;
 use ftl_types::poll::PollSyscallResult;
 use ftl_types::signal::SignalBits;
 use ftl_types::syscall::SyscallNumber;
+use ftl_types::syscall::VsyscallEntry;
 use ftl_types::syscall::VsyscallPage;
 use ftl_types::vmspace::PageProtect;
-use spin::Mutex;
 
-static VSYSCALL_PAGE: Mutex<Option<&'static VsyscallPage>> = Mutex::new(None);
-
+#[cfg(target_arch = "riscv64")]
 pub fn syscall(
     n: SyscallNumber,
-    a0: isize,
+    mut a0: isize,
     a1: isize,
     a2: isize,
     a3: isize,
     a4: isize,
     a5: isize,
 ) -> Result<isize, FtlError> {
-    let vsyscall = VSYSCALL_PAGE.lock().expect("vsyscall not set");
-    (vsyscall.entry)(n as isize, a0, a1, a2, a3, a4, a5)
+    use core::arch::asm;
+
+    unsafe {
+        asm!(
+            "jalr a7",
+            inout("a0") a0,
+            in("a1") a1,
+            in("a2") a2,
+            in("a3") a3,
+            in("a4") a4,
+            in("a5") a5,
+            in("a6") n as isize,
+            in("a7") VSYSCALL_ENTRY
+        );
+    }
+
+    if a0 < 0 {
+        unsafe { Err(core::mem::transmute::<isize, FtlError>(a0)) }
+    } else {
+        Ok(a0)
+    }
 }
 
 pub fn syscall0(n: SyscallNumber) -> Result<isize, FtlError> {
@@ -226,6 +244,10 @@ pub fn interrupt_ack(handle: HandleId) -> Result<(), FtlError> {
     Ok(())
 }
 
-pub(crate) fn set_vsyscall(vsyscall: &'static VsyscallPage) {
-    *VSYSCALL_PAGE.lock() = Some(vsyscall);
+static mut VSYSCALL_ENTRY: *const VsyscallEntry = core::ptr::null();
+
+pub fn set_vsyscall(vsyscall: &VsyscallPage) {
+    unsafe {
+        VSYSCALL_ENTRY = vsyscall.entry;
+    }
 }

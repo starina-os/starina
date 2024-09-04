@@ -20,6 +20,7 @@ use ftl_types::vmspace::PageProtect;
 use ftl_utils::alignment::align_up;
 use hashbrown::HashMap;
 
+use crate::arch;
 use crate::arch::paddr2vaddr;
 use crate::arch::vaddr2paddr;
 use crate::arch::PAGE_SIZE;
@@ -33,7 +34,6 @@ use crate::handle::Handle;
 use crate::process::kernel_process;
 use crate::process::Process;
 use crate::ref_counted::SharedRef;
-use crate::syscall::syscall_entry;
 use crate::thread::Thread;
 use crate::vmspace::VmSpace;
 
@@ -157,7 +157,6 @@ impl<'a> StartupAppLoader<'a> {
         mut env: EnvironSerializer,
         handles: Vec<AnyHandle>,
     ) {
-        let entry = unsafe { core::mem::transmute(entry_addr) };
         let proc = SharedRef::new(Process::create());
 
         let mut handle_table = proc.handles().lock();
@@ -193,7 +192,7 @@ impl<'a> StartupAppLoader<'a> {
             vsyscall_buffer_ptr
                 .as_mut_ptr::<VsyscallPage>()
                 .write(VsyscallPage {
-                    entry: syscall_entry,
+                    entry: arch::kernel_syscall_entry as *const _,
                     environ_ptr: environ_pages_vaddr.as_mut_ptr(),
                     environ_len: env_str.len(),
                 });
@@ -202,7 +201,7 @@ impl<'a> StartupAppLoader<'a> {
         let thread = Thread::spawn_kernel(
             proc.clone(),
             self.vmspace.clone(),
-            entry,
+            entry_addr,
             vsyscall_buffer_ptr.as_usize(),
         );
         handle_table

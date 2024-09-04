@@ -34,11 +34,10 @@ pub fn boot(cpu_id: CpuId, bootinfo: BootInfo) -> ! {
     memory::init(&bootinfo);
 
     let device_tree = DeviceTree::parse(bootinfo.dtb_addr);
-    arch::init(cpu_id, &device_tree);
     process::init();
     cpuvar::percpu_init(cpu_id);
+    arch::init(cpu_id, &device_tree);
 
     startup::load_startup_apps(&STARTUP_APPS, &device_tree);
-
-    arch::idle();
+    arch::return_to_user();
 }

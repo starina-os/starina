@@ -2,6 +2,7 @@
 
 use alloc::boxed::Box;
 use core::any::Any;
+use core::fmt;
 use core::mem;
 use core::ops::Deref;
 use core::ptr::NonNull;
@@ -121,6 +122,17 @@ impl<T> Deref for SharedRef<T> {
 
     fn deref(&self) -> &Self::Target {
         &self.inner().value
+    }
+}
+
+impl<T> fmt::Debug for SharedRef<T>
+where
+    T: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("SharedRef")
+            .field(&self.inner().value)
+            .finish()
     }
 }
 
