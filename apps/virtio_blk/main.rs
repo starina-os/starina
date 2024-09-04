@@ -36,7 +36,7 @@ fn probe(devices: &[Device], device_type: u32) -> Option<VirtioMmio> {
     None
 }
 
-#[ftl_api::main]
+#[no_mangle]
 pub fn main(env: Environ) {
     info!("starting virtio_blk: {:?}", env.depends.virtio);
     let transport = probe(&env.depends.virtio, VIRTIO_DEVICE_TYPE_BLK).unwrap();

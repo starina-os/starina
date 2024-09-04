@@ -61,7 +61,7 @@ enum Context {
     Tcpip,
 }
 
-#[ftl_api::main]
+#[no_mangle]
 pub fn main(mut env: Environ) {
     info!("starting");
     let (mut transport, irq) =

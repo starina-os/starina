@@ -224,7 +224,6 @@ dependencies = [
 name = "ftl_api"
 version = "0.0.0"
 dependencies = [
- "ftl_api_macros",
  "ftl_types",
  "ftl_utils",
  "hashbrown",
@@ -241,16 +240,6 @@ dependencies = [
  "ftl_autogen",
  "ftl_types",
  "serde",
-]
-
-[[package]]
-name = "ftl_api_macros"
-version = "0.0.0"
-dependencies = [
- "proc-macro-error",
- "proc-macro2",
- "quote",
- "syn 2.0.68",
 ]
 
 [[package]]

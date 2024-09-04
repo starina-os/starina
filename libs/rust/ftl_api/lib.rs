@@ -42,5 +42,4 @@ pub mod collections {
     pub use hashbrown::HashSet;
 }
 
-pub use ftl_api_macros::main;
 pub use ftl_types as types;

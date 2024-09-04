@@ -21,19 +21,12 @@ fn parse_environ(vsyscall: &VsyscallPage) -> Environ {
     Environ::parse(env_str)
 }
 
-/// Initializes the FTL API.
-///
-/// # Warning
-///
-/// Do not use this function. This is intended to be called by `ftl_api_macros`
-/// only.
-///
-/// # Safety
-///
-/// Make sure you call this function only once. If you call this function
-/// may accidentally overwrite in-use memory objects by reinitializing the
-/// allocator!
-pub unsafe fn init_internal(vsyscall_page: *const VsyscallPage) -> Environ {
+extern "Rust" {
+    fn main(env: Environ);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn start_rust(vsyscall_page: *const VsyscallPage) {
     // SAFETY: Vsyscall page will be always available at the same
     //         address.
     let vsyscall = unsafe { &*vsyscall_page };
@@ -46,5 +39,5 @@ pub unsafe fn init_internal(vsyscall_page: *const VsyscallPage) -> Environ {
     let vmspace = env.take_vmspace("vmspace").unwrap();
     APP_VMSPACE.lock().replace(vmspace);
 
-    env
+    main(env);
 }

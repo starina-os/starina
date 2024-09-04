@@ -64,7 +64,7 @@ enum Context {
     Data(Client),
 }
 
-#[ftl_api::main]
+#[no_mangle]
 pub fn main(mut env: Environ) {
     info!("starting");
     let tcpip_ch = env.take_channel("dep:tcpip").unwrap();

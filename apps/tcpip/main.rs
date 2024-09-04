@@ -321,7 +321,7 @@ struct Socket {
     state: State,
 }
 
-#[ftl_api::main]
+#[no_mangle]
 pub fn main(mut env: Environ) {
     info!("starting...");
 

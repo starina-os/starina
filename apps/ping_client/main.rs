@@ -9,7 +9,7 @@ use ftl_api::types::message::MessageBuffer;
 use ftl_api_autogen::protocols::ping::PingReply;
 use ftl_api_autogen::protocols::ping::PingRequest;
 
-#[ftl_api::main]
+#[no_mangle]
 pub fn main(mut env: Environ) {
     let ch = env.take_channel("dep:ping_server").unwrap();
     let mut msgbuffer = MessageBuffer::new();

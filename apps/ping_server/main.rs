@@ -16,7 +16,7 @@ enum Context {
     Client { counter: i32 },
 }
 
-#[ftl_api::main]
+#[no_mangle]
 pub fn main(mut env: Environ) {
     let mut mainloop = Mainloop::<Context, Message>::new().unwrap();
     let startup_ch = env.take_channel("dep:startup").unwrap();
