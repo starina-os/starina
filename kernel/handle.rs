@@ -50,6 +50,7 @@ impl<T> Deref for Handle<T> {
     }
 }
 
+#[derive(Clone)]
 pub enum AnyHandle {
     Channel(Handle<Channel>),
     Thread(Handle<Thread>),

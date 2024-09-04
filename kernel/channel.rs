@@ -72,6 +72,11 @@ impl Channel {
         mutable.pollers.push(poller);
     }
 
+    pub fn remove_poller(&self, poller: &SharedRef<Poller>) {
+        let mut mutable = self.mutable.lock();
+        mutable.pollers.retain(|p| !SharedRef::ptr_eq(p, poller));
+    }
+
     pub fn send(&self, msginfo: MessageInfo, msgbuffer: &MessageBuffer) -> Result<(), FtlError> {
         // Move handles.
         //

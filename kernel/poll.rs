@@ -16,6 +16,7 @@ use crate::wait_queue::WaitQueue;
 
 pub struct Poller {
     mutable: SharedRef<SpinLock<Mutable>>,
+    object: AnyHandle,
     handle_id: HandleId,
     interests: PollEvent,
     ready: AtomicU8,
@@ -32,6 +33,36 @@ impl Poller {
 
         let mut mutable = self.mutable.lock();
         mutable.wait_queue.wake_all();
+    }
+
+    pub fn attach(self: &SharedRef<Poller>) -> Result<(), FtlError> {
+        match &self.object {
+            AnyHandle::Channel(ch) => {
+                ch.add_poller(self.clone());
+            }
+            AnyHandle::Interrupt(interrupt) => {
+                interrupt.add_poller(self.clone());
+            }
+            _ => {
+                return Err(FtlError::NotSupported);
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn detach(self: &SharedRef<Poller>) {
+        match &self.object {
+            AnyHandle::Channel(ch) => {
+                ch.remove_poller(self);
+            }
+            AnyHandle::Interrupt(interrupt) => {
+                interrupt.remove_poller(self);
+            }
+            _ => {
+                unreachable!();
+            }
+        }
     }
 }
 
@@ -62,41 +93,39 @@ impl Poll {
         SharedRef::new(poll)
     }
 
-    pub fn add(&self, object: &AnyHandle, object_id: HandleId, interests: PollEvent) {
+    pub fn add(
+        &self,
+        object: &AnyHandle,
+        object_id: HandleId,
+        interests: PollEvent,
+    ) -> Result<(), FtlError> {
         let poller = SharedRef::new(Poller {
             mutable: self.mutable.clone(),
+            object: object.clone(),
             handle_id: object_id,
             interests,
             ready: AtomicU8::new(0),
         });
 
-        match object {
-            AnyHandle::Channel(ch) => {
-                ch.add_poller(poller.clone());
-            }
-            AnyHandle::Interrupt(interrupt) => {
-                interrupt.add_poller(poller.clone());
-            }
-            _ => {
-                todo!(); // TODO: support other handle types
-            }
-        }
+        poller.attach()?;
 
         let mut mutable = self.mutable.lock();
         mutable.entries.insert(object_id, poller);
+        Ok(())
     }
 
     pub fn wait(self: &SharedRef<Poll>, blocking: bool) -> Result<(PollEvent, HandleId), FtlError> {
         let mut mutable = self.mutable.lock();
-        for entry in mutable.entries.values() {
-            let raw_ready = entry.ready.swap(0, Ordering::SeqCst); // TODO: correct ordering
+        for poller in mutable.entries.values() {
+            let raw_ready = poller.ready.swap(0, Ordering::SeqCst); // TODO: correct ordering
             let ready = PollEvent::from_raw(raw_ready);
             if ready.is_empty() {
                 continue;
             }
 
-            let handle_id = entry.handle_id;
+            let handle_id = poller.handle_id;
             if ready.contains(PollEvent::CLOSED) {
+                poller.detach();
                 mutable.entries.remove(&handle_id);
             }
 
@@ -116,5 +145,14 @@ impl Poll {
 impl fmt::Debug for Poll {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Poll")
+    }
+}
+
+impl Drop for Poll {
+    fn drop(&mut self) {
+        let mut mutable = self.mutable.lock();
+        for (_, poller) in mutable.entries.drain() {
+            poller.detach();
+        }
     }
 }

@@ -157,7 +157,7 @@ fn poll_add(
     let handles = current_thread.process().handles().lock();
     let poll = handles.get_owned(poll_handle_id)?.as_poll()?;
     let object = handles.get_owned(target_handle_id)?;
-    poll.add(object, target_handle_id, interests);
+    poll.add(object, target_handle_id, interests)?;
     Ok(())
 }
 

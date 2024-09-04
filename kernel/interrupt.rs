@@ -29,6 +29,10 @@ impl Interrupt {
         self.signal.add_poller(poller);
     }
 
+    pub fn remove_poller(&self, poller: &SharedRef<Poller>) {
+        self.signal.remove_poller(poller);
+    }
+
     pub fn trigger(&self) -> Result<(), FtlError> {
         self.signal.update(SignalBits::from_raw(1))
     }

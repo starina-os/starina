@@ -39,6 +39,11 @@ impl Signal {
         mutable.pollers.push(poller);
     }
 
+    pub fn remove_poller(&self, poller: &SharedRef<Poller>) {
+        let mut mutable = self.mutable.lock();
+        mutable.pollers.retain(|p| !SharedRef::ptr_eq(p, poller));
+    }
+
     pub fn update(&self, value: SignalBits) -> Result<(), FtlError> {
         let mut mutable = self.mutable.lock();
         mutable.pending |= value;
