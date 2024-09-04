@@ -14,4 +14,5 @@ pub enum FtlError {
     InvalidState,
     TooLargePAddr,
     AlreadyMapped,
+    HandleRightsNotSufficient,
 }

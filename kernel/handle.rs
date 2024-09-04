@@ -62,6 +62,18 @@ pub enum AnyHandle {
 }
 
 impl AnyHandle {
+    pub fn rights(&self) -> HandleRights {
+        match self {
+            AnyHandle::Channel(handle) => handle.rights,
+            AnyHandle::Thread(handle) => handle.rights,
+            AnyHandle::Folio(handle) => handle.rights,
+            AnyHandle::Poll(handle) => handle.rights,
+            AnyHandle::Signal(handle) => handle.rights,
+            AnyHandle::Interrupt(handle) => handle.rights,
+            AnyHandle::VmSpace(handle) => handle.rights,
+        }
+    }
+
     pub fn as_channel(&self) -> Result<&Handle<Channel>, FtlError> {
         match self {
             AnyHandle::Channel(ref channel) => Ok(channel),
@@ -198,8 +210,18 @@ impl HandleTable {
     }
 
     /// Get a handle by ID.
-    pub fn get_owned(&self, id: HandleId) -> Result<&AnyHandle, FtlError> {
+    pub fn get_owned(&self, id: HandleId, rights: HandleRights) -> Result<&AnyHandle, FtlError> {
         let handle = self.handles.get(&id).ok_or(FtlError::HandleNotFound)?;
+
+        if !handle.rights().contains(rights) {
+            warn!(
+                "Handle rights not sufficient: {:?} is not in {:?}",
+                rights,
+                handle.rights()
+            );
+            return Err(FtlError::HandleRightsNotSufficient);
+        }
+
         Ok(handle)
     }
 

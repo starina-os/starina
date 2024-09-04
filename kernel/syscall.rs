@@ -44,8 +44,8 @@ fn channel_create() -> Result<isize, FtlError> {
 
     let current = current_thread();
     let mut handles = current.process().handles().lock();
-    let handle0 = handles.add(Handle::new(ch1, HandleRights::NONE))?;
-    let handle1 = handles.add(Handle::new(ch2, HandleRights::NONE))?;
+    let handle0 = handles.add(Handle::new(ch1, HandleRights::ALL))?;
+    let handle1 = handles.add(Handle::new(ch2, HandleRights::ALL))?;
 
     assert_eq!(handle0.as_isize() + 1, handle1.as_isize());
     Ok(handle0.as_isize())
@@ -61,7 +61,7 @@ fn channel_send(
             .process()
             .handles()
             .lock()
-            .get_owned(handle)?
+            .get_owned(handle, HandleRights::WRITE)?
             .as_channel()?
             .clone()
     };
@@ -75,7 +75,7 @@ fn channel_recv(handle: HandleId, msgbuffer: UAddr) -> Result<MessageInfo, FtlEr
             .process()
             .handles()
             .lock()
-            .get_owned(handle)?
+            .get_owned(handle, HandleRights::READ)?
             .as_channel()?
             .clone()
     };
@@ -89,7 +89,7 @@ fn channel_try_recv(handle: HandleId, msgbuffer: UAddr) -> Result<MessageInfo, F
             .process()
             .handles()
             .lock()
-            .get_owned(handle)?
+            .get_owned(handle, HandleRights::READ)?
             .as_channel()?
             .clone()
     };
@@ -99,7 +99,7 @@ fn channel_try_recv(handle: HandleId, msgbuffer: UAddr) -> Result<MessageInfo, F
 
 fn folio_create(len: usize) -> Result<HandleId, FtlError> {
     let folio = Folio::alloc(len)?;
-    let handle = Handle::new(SharedRef::new(folio), HandleRights::NONE);
+    let handle = Handle::new(SharedRef::new(folio), HandleRights::ALL);
     let handle_id = current_thread()
         .process()
         .handles()
@@ -111,7 +111,7 @@ fn folio_create(len: usize) -> Result<HandleId, FtlError> {
 
 fn folio_create_fixed(paddr: PAddr, len: usize) -> Result<HandleId, FtlError> {
     let folio = Folio::alloc_fixed(paddr, len)?;
-    let handle = Handle::new(SharedRef::new(folio), HandleRights::NONE);
+    let handle = Handle::new(SharedRef::new(folio), HandleRights::ALL);
     let handle_id = current_thread()
         .process()
         .handles()
@@ -127,7 +127,7 @@ fn folio_paddr(handle: HandleId) -> Result<PAddr, FtlError> {
             .process()
             .handles()
             .lock()
-            .get_owned(handle)?
+            .get_owned(handle, HandleRights::DRIVER)?
             .as_folio()?
             .clone()
     };
@@ -137,7 +137,7 @@ fn folio_paddr(handle: HandleId) -> Result<PAddr, FtlError> {
 
 fn poll_create() -> Result<HandleId, FtlError> {
     let poll = Poll::new();
-    let handle = Handle::new(poll, HandleRights::NONE);
+    let handle = Handle::new(poll, HandleRights::ALL);
 
     let handle_id = current_thread()
         .process()
@@ -155,8 +155,10 @@ fn poll_add(
 ) -> Result<(), FtlError> {
     let current_thread = current_thread();
     let handles = current_thread.process().handles().lock();
-    let poll = handles.get_owned(poll_handle_id)?.as_poll()?;
-    let object = handles.get_owned(target_handle_id)?;
+    let poll = handles
+        .get_owned(poll_handle_id, HandleRights::WRITE)?
+        .as_poll()?;
+    let object = handles.get_owned(target_handle_id, HandleRights::POLL)?;
     poll.add(object, target_handle_id, interests)?;
     Ok(())
 }
@@ -167,7 +169,7 @@ fn poll_wait(handle_id: HandleId) -> Result<PollSyscallResult, FtlError> {
             .process()
             .handles()
             .lock()
-            .get_owned(handle_id)?
+            .get_owned(handle_id, HandleRights::READ | HandleRights::READ)?
             .as_poll()?
             .clone()
     };
@@ -178,7 +180,7 @@ fn poll_wait(handle_id: HandleId) -> Result<PollSyscallResult, FtlError> {
 
 fn signal_create() -> Result<HandleId, FtlError> {
     let signal = Signal::new()?;
-    let handle = Handle::new(signal, HandleRights::NONE);
+    let handle = Handle::new(signal, HandleRights::ALL);
     let handle_id = current_thread()
         .process()
         .handles()
@@ -194,7 +196,7 @@ fn signal_update(handle_id: HandleId, value: SignalBits) -> Result<(), FtlError>
             .process()
             .handles()
             .lock()
-            .get_owned(handle_id)?
+            .get_owned(handle_id, HandleRights::WRITE)?
             .as_signal()?
             .clone()
     };
@@ -208,7 +210,7 @@ fn signal_clear(handle_id: HandleId) -> Result<SignalBits, FtlError> {
             .process()
             .handles()
             .lock()
-            .get_owned(handle_id)?
+            .get_owned(handle_id, HandleRights::WRITE)?
             .as_signal()?
             .clone()
     };
@@ -218,7 +220,7 @@ fn signal_clear(handle_id: HandleId) -> Result<SignalBits, FtlError> {
 
 fn interrupt_create(irq: Irq) -> Result<HandleId, FtlError> {
     let interrupt = Interrupt::new(irq)?;
-    let handle = Handle::new(interrupt, HandleRights::NONE);
+    let handle = Handle::new(interrupt, HandleRights::ALL);
     let handle_id = current_thread()
         .process()
         .handles()
@@ -234,7 +236,7 @@ fn interrupt_ack(handle_id: HandleId) -> Result<(), FtlError> {
             .process()
             .handles()
             .lock()
-            .get_owned(handle_id)?
+            .get_owned(handle_id, HandleRights::WRITE)?
             .as_interrupt()?
             .clone()
     };
@@ -261,8 +263,14 @@ fn vmspace_map(
     let (vmspace, folio) = {
         let current = current_thread();
         let handles = current.process().handles().lock();
-        let vmspace = handles.get_owned(handle_id)?.as_vmspace()?.clone();
-        let folio = handles.get_owned(folio)?.as_folio()?.clone();
+        let vmspace = handles
+            .get_owned(handle_id, HandleRights::MAP)?
+            .as_vmspace()?
+            .clone();
+        let folio = handles
+            .get_owned(folio, HandleRights::MAP)?
+            .as_folio()?
+            .clone();
         (vmspace, folio)
     };
 

@@ -99,7 +99,7 @@ impl<'a> StartupAppLoader<'a> {
         let handle_id = kernel_process()
             .handles()
             .lock()
-            .add(Handle::new(ch1.into(), HandleRights::NONE))
+            .add(Handle::new(ch1.into(), HandleRights::ALL))
             .unwrap();
 
         let mut msgbuffer = MessageBuffer::new();
@@ -116,7 +116,7 @@ impl<'a> StartupAppLoader<'a> {
             .send(NewclientRequest::MSGINFO, &msgbuffer)
             .unwrap();
 
-        Handle::new(ch2.into(), HandleRights::NONE).into()
+        Handle::new(ch2.into(), HandleRights::ALL).into()
     }
 
     fn get_devices(&mut self, compat: &str) -> Vec<ftl_types::environ::Device> {
@@ -168,10 +168,10 @@ impl<'a> StartupAppLoader<'a> {
         }
 
         let startup_ch = self.their_chs.remove(name).unwrap();
-        let startup_ch_handle = Handle::new(startup_ch, HandleRights::NONE);
+        let startup_ch_handle = Handle::new(startup_ch, HandleRights::ALL);
         let startup_ch_id = handle_table.add(startup_ch_handle).unwrap();
 
-        let vmspace_handle = Handle::new(self.vmspace.clone(), HandleRights::NONE);
+        let vmspace_handle = Handle::new(self.vmspace.clone(), HandleRights::ALL);
         let vmspace_id = handle_table.add(vmspace_handle).unwrap();
 
         env.push_channel("dep:startup", startup_ch_id);
@@ -202,7 +202,7 @@ impl<'a> StartupAppLoader<'a> {
         const KERNEL_STACK_SIZE: usize = 128 * 1024; // FIXME:
         let stack_folio = Handle::new(
             SharedRef::new(Folio::alloc(KERNEL_STACK_SIZE).unwrap()),
-            HandleRights::NONE,
+            HandleRights::ALL,
         );
         let stack_vaddr = self
             .vmspace
@@ -223,18 +223,18 @@ impl<'a> StartupAppLoader<'a> {
             vsyscall_buffer_ptr.as_usize(),
         );
         handle_table
-            .add(Handle::new(thread, HandleRights::NONE))
+            .add(Handle::new(thread, HandleRights::ALL))
             .unwrap();
         handle_table
             .add(Handle::new(
                 SharedRef::new(vsyscall_buffer),
-                HandleRights::NONE,
+                HandleRights::ALL,
             ))
             .unwrap();
         handle_table
             .add(Handle::new(
                 SharedRef::new(environ_pages),
-                HandleRights::NONE,
+                HandleRights::ALL,
             ))
             .unwrap();
     }
