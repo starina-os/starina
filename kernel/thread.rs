@@ -8,7 +8,6 @@ use ftl_types::poll::PollSyscallResult;
 use crate::arch;
 use crate::channel::Channel;
 use crate::cpuvar::current_thread;
-use crate::handle::HandleTable;
 use crate::poll::Poll;
 use crate::process::kernel_process;
 use crate::process::Process;

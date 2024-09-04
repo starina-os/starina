@@ -1,13 +1,5 @@
-use ftl_types::handle::HandleRights;
-use ftl_types::vmspace::PageProtect;
-use ftl_utils::byte_size::ByteSize;
-
-use crate::folio::Folio;
-use crate::handle::Handle;
 use crate::ref_counted::SharedRef;
 use crate::vmspace::VmSpace;
-
-const KERNEL_STACK_SIZE: ByteSize = ByteSize::from_kib(64);
 
 // TODO: static assert to ensure usize == u64
 

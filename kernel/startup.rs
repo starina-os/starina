@@ -213,7 +213,7 @@ impl<'a> StartupAppLoader<'a> {
             )
             .unwrap();
         let sp = stack_vaddr.add(KERNEL_STACK_SIZE).as_usize();
-        handle_table.add(stack_folio);
+        handle_table.add(stack_folio).unwrap();
 
         let thread = Thread::spawn_kernel(
             proc.clone(),
