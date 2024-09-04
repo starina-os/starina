@@ -8,6 +8,7 @@ use ftl_types::poll::PollSyscallResult;
 use crate::arch;
 use crate::channel::Channel;
 use crate::cpuvar::current_thread;
+use crate::handle::HandleTable;
 use crate::poll::Poll;
 use crate::process::kernel_process;
 use crate::process::Process;
@@ -91,6 +92,7 @@ impl Thread {
         process: SharedRef<Process>,
         vmspace: SharedRef<VmSpace>,
         pc: usize,
+        sp: usize,
         arg: usize,
     ) -> SharedRef<Thread> {
         let thread = SharedRef::new(Thread {
@@ -98,7 +100,7 @@ impl Thread {
             mutable: SpinLock::new(Mutable {
                 state: State::Runnable,
             }),
-            arch: arch::Thread::new_kernel(vmspace, pc as usize, arg),
+            arch: arch::Thread::new_kernel(vmspace, pc as usize, sp, arg),
             process,
         });
 

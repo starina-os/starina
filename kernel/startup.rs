@@ -198,10 +198,28 @@ impl<'a> StartupAppLoader<'a> {
                 });
         }
 
+        // Allocate stack.
+        const KERNEL_STACK_SIZE: usize = 128 * 1024; // FIXME:
+        let stack_folio = Handle::new(
+            SharedRef::new(Folio::alloc(KERNEL_STACK_SIZE).unwrap()),
+            HandleRights::NONE,
+        );
+        let stack_vaddr = self
+            .vmspace
+            .map_anywhere(
+                KERNEL_STACK_SIZE,
+                stack_folio.clone(),
+                PageProtect::READABLE | PageProtect::WRITABLE,
+            )
+            .unwrap();
+        let sp = stack_vaddr.add(KERNEL_STACK_SIZE).as_usize();
+        handle_table.add(stack_folio);
+
         let thread = Thread::spawn_kernel(
             proc.clone(),
             self.vmspace.clone(),
             entry_addr,
+            sp,
             vsyscall_buffer_ptr.as_usize(),
         );
         handle_table

@@ -53,42 +53,23 @@ pub struct Context {
 pub struct Thread {
     pub(super) context: Context,
     pub(super) vmspace: Option<SharedRef<VmSpace>>,
-    #[allow(dead_code)]
-    stack_folio: Option<Handle<Folio>>,
 }
 
 impl Thread {
     pub fn new_idle() -> Thread {
         Thread {
-            stack_folio: None,
             vmspace: None,
             context: Default::default(),
         }
     }
 
-    pub fn new_kernel(vmspace: SharedRef<VmSpace>, pc: usize, arg: usize) -> Thread {
-        let stack_size = KERNEL_STACK_SIZE.in_bytes();
-
-        let stack_folio = Handle::new(
-            SharedRef::new(Folio::alloc(stack_size).unwrap()),
-            HandleRights::NONE,
-        );
-        let stack_vaddr = vmspace
-            .map_anywhere(
-                stack_size,
-                stack_folio.clone(),
-                PageProtect::READABLE | PageProtect::WRITABLE,
-            )
-            .unwrap();
-
+    pub fn new_kernel(vmspace: SharedRef<VmSpace>, pc: usize, sp: usize, arg: usize) -> Thread {
         let mut sstatus: usize;
         unsafe {
             core::arch::asm!("csrr {}, sstatus", out(reg) sstatus);
         }
 
-        let sp = stack_vaddr.as_usize() + stack_size;
         Thread {
-            stack_folio: Some(stack_folio),
             vmspace: Some(vmspace),
             context: Context {
                 sepc: pc as usize,
