@@ -14,7 +14,7 @@ use crate::process::Process;
 use crate::ref_counted::SharedRef;
 use crate::scheduler::GLOBAL_SCHEDULER;
 use crate::spinlock::SpinLock;
-use crate::syscall::UAddr;
+use crate::uaddr::UAddr;
 use crate::vmspace::VmSpace;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

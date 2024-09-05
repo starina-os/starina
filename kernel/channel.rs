@@ -1,9 +1,11 @@
 use alloc::collections::VecDeque;
 use alloc::vec::Vec;
 use core::fmt;
+use core::mem::offset_of;
 
 use ftl_inlinedvec::InlinedVec;
 use ftl_types::error::FtlError;
+use ftl_types::handle::HandleId;
 use ftl_types::message::MessageBuffer;
 use ftl_types::message::MessageInfo;
 use ftl_types::message::MESSAGE_HANDLES_MAX_COUNT;
@@ -14,9 +16,9 @@ use crate::handle::AnyHandle;
 use crate::poll::Poller;
 use crate::ref_counted::SharedRef;
 use crate::spinlock::SpinLock;
-use crate::syscall::UAddr;
 use crate::thread::Continuation;
 use crate::thread::Thread;
+use crate::uaddr::UAddr;
 use crate::wait_queue::WaitQueue;
 
 struct MessageEntry {
@@ -77,7 +79,7 @@ impl Channel {
         mutable.pollers.retain(|p| !SharedRef::ptr_eq(p, poller));
     }
 
-    pub fn send(&self, msginfo: MessageInfo, msgbuffer: &MessageBuffer) -> Result<(), FtlError> {
+    pub fn send(&self, msginfo: MessageInfo, msgbuffer: UAddr) -> Result<(), FtlError> {
         // Move handles.
         //
         // In this phase, since we don't know the receiver process, we don't
@@ -92,18 +94,31 @@ impl Channel {
             //       to guarantee that the second loop never fails.
             let mut our_handles = current_thread.process().handles().lock();
 
-            // First loop: make sure moving handles won't fail.
+            // First loop: make sure moving handles won't fail and there are
+            //             not too many ones.
+            let mut handle_ids: InlinedVec<HandleId, MESSAGE_HANDLES_MAX_COUNT> = InlinedVec::new();
             for i in 0..num_handles {
-                if !our_handles.is_movable(msgbuffer.handles[i]) {
+                let handle_id = msgbuffer.read_from_user_at(
+                    offset_of!(MessageBuffer, handles) + i * size_of::<HandleId>(),
+                );
+                handle_ids
+                    .try_push(handle_id)
+                    .map_err(|_| FtlError::TooManyHandles)?;
+
+                if !our_handles.is_movable(handle_id) {
                     return Err(FtlError::HandleNotMovable);
                 }
             }
 
             // Second loop: Remove handles from the current process.
             for i in 0..num_handles {
+                // Note: Don't read the handle from the buffer again - user
+                //       might have changed it (intentinally or not).
+                let handle_id = handle_ids[i];
+
                 // SAFETY: unwrap() won't panic because we've checked the handle
                 //         is movable in the previous loop.
-                let handle = our_handles.remove(msgbuffer.handles[i]).unwrap();
+                let handle = our_handles.remove(handle_id).unwrap();
 
                 // SAFETY: unwrap() won't panic because `handles` should have
                 //         enough capacity up to MESSAGE_HANDLES_MAX_COUNT.
@@ -113,7 +128,7 @@ impl Channel {
 
         // Copy message data into the kernel memory.
         let data_len = msginfo.data_len();
-        let data = msgbuffer.data[0..data_len].to_vec();
+        let data = msgbuffer.read_from_user_to_vec::<u8>(offset_of!(MessageBuffer, data), data_len);
 
         let entry = MessageEntry {
             msginfo,
@@ -165,19 +180,21 @@ impl Channel {
             entry
         };
 
-        let msgbuffer: &mut MessageBuffer = unsafe { msgbuffer.as_mut_super_unsafe() };
-
         // Install handles into the current (receiver) process.
         let current_thread = current_thread();
         let mut handle_table = current_thread.process().handles().lock();
         for (i, any_handle) in entry.handles.drain(..).enumerate() {
             // TODO: Define the expected behavior when it fails to add a handle.
-            msgbuffer.handles[i] = handle_table.add(any_handle)?;
+            let handle_id = handle_table.add(any_handle)?;
+            msgbuffer.write_to_user_at(
+                offset_of!(MessageBuffer, handles) + i * size_of::<HandleId>(),
+                handle_id,
+            );
         }
 
         // Copy message data into the buffer.
         let data_len = entry.msginfo.data_len();
-        msgbuffer.data[0..data_len].copy_from_slice(&entry.data[0..data_len]);
+        msgbuffer.write_to_user_at_slice(offset_of!(MessageBuffer, data), &entry.data[0..data_len]);
 
         Ok(entry.msginfo)
     }

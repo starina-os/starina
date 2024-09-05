@@ -29,6 +29,7 @@ mod spinlock;
 mod startup;
 mod syscall;
 mod thread;
+mod uaddr;
 mod utils;
 mod vmspace;
 mod wait_queue;

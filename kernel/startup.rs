@@ -35,6 +35,7 @@ use crate::process::kernel_process;
 use crate::process::Process;
 use crate::ref_counted::SharedRef;
 use crate::thread::Thread;
+use crate::uaddr::UAddr;
 use crate::vmspace::VmSpace;
 
 #[derive(Debug)]
@@ -113,7 +114,10 @@ impl<'a> StartupAppLoader<'a> {
         self.our_chs
             .get(app_name)
             .unwrap()
-            .send(NewclientRequest::MSGINFO, &msgbuffer)
+            .send(
+                NewclientRequest::MSGINFO,
+                UAddr::from_kernel_ptr(&msgbuffer),
+            )
             .unwrap();
 
         Handle::new(ch2.into(), HandleRights::ALL).into()

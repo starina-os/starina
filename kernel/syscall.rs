@@ -4,7 +4,6 @@ use ftl_types::error::FtlError;
 use ftl_types::handle::HandleId;
 use ftl_types::handle::HandleRights;
 use ftl_types::interrupt::Irq;
-use ftl_types::message::MessageBuffer;
 use ftl_types::message::MessageInfo;
 use ftl_types::poll::PollEvent;
 use ftl_types::poll::PollSyscallResult;
@@ -21,22 +20,13 @@ use crate::interrupt::Interrupt;
 use crate::poll::Poll;
 use crate::ref_counted::SharedRef;
 use crate::signal::Signal;
+use crate::uaddr::UAddr;
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
-#[repr(transparent)]
-
-pub struct UAddr(usize);
-
-impl UAddr {
-    pub const fn new(addr: usize) -> UAddr {
-        UAddr(addr)
-    }
-
-    // Don't use this.
-    // FIXME:
-    pub unsafe fn as_mut_super_unsafe<T>(&self) -> &'static mut T {
-        &mut *(self.0 as *mut T)
-    }
+fn print(uaddr: UAddr, len: usize) {
+    // TODO: Avoid copying the entire string into kernel.
+    let bytes = uaddr.read_from_user_to_vec(0, len);
+    let s = core::str::from_utf8(&bytes).unwrap().trim_end();
+    println!("{}", s);
 }
 
 fn channel_create() -> Result<isize, FtlError> {
@@ -51,11 +41,7 @@ fn channel_create() -> Result<isize, FtlError> {
     Ok(handle0.as_isize())
 }
 
-fn channel_send(
-    handle: HandleId,
-    msginfo: MessageInfo,
-    msgbuffer: &MessageBuffer,
-) -> Result<(), FtlError> {
+fn channel_send(handle: HandleId, msginfo: MessageInfo, msgbuffer: UAddr) -> Result<(), FtlError> {
     let ch: Handle<Channel> = {
         current_thread()
             .process()
@@ -288,16 +274,14 @@ fn handle_syscall(
 ) -> Result<isize, FtlError> {
     match n {
         _ if n == SyscallNumber::Print as isize => {
-            let bytes = unsafe { core::slice::from_raw_parts(a0 as *const u8, a1 as usize) };
-            let s = core::str::from_utf8(bytes).unwrap().trim_end();
-            println!("{}", s);
+            print(UAddr::new(a0 as usize), a1 as usize);
             Ok(0)
         }
         _ if n == SyscallNumber::ChannelCreate as isize => channel_create(),
         _ if n == SyscallNumber::ChannelSend as isize => {
             let handle = HandleId::from_raw_isize_truncated(a0);
             let msginfo = MessageInfo::from_raw(a1);
-            let msgbuffer = unsafe { &*(a2 as usize as *const MessageBuffer) };
+            let msgbuffer = UAddr::new(a2 as usize);
             let err = channel_send(handle, msginfo, msgbuffer);
             if let Err(e) = err {
                 return Err(e);
