@@ -4,7 +4,7 @@ use ftl_types::error::FtlError;
 use ftl_types::vmspace::PageProtect;
 
 use crate::handle::OwnedHandle;
-use crate::init::app_vmspace_handle;
+use crate::start::app_vmspace_handle;
 use crate::syscall;
 
 pub struct Folio {
