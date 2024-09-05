@@ -41,12 +41,14 @@ impl HandleId {
 pub struct HandleRights(pub u8);
 
 impl HandleRights {
-    // pub const NONE: HandleRights = HandleRights(0);
     pub const WRITE: HandleRights = HandleRights(1 << 0);
     pub const READ: HandleRights = HandleRights(1 << 1);
     pub const MAP: HandleRights = HandleRights(1 << 2);
     pub const DRIVER: HandleRights = HandleRights(1 << 3);
     pub const POLL: HandleRights = HandleRights(1 << 4);
+    pub const CLOSE: HandleRights = HandleRights(1 << 5);
+
+    pub const NONE: HandleRights = HandleRights(0);
     pub const ALL: HandleRights = HandleRights(0xff);
 
     pub fn contains(&self, other: HandleRights) -> bool {

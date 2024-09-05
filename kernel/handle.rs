@@ -228,6 +228,12 @@ impl HandleTable {
     /// Removes a handle out of the table.
     pub fn remove(&mut self, id: HandleId) -> Result<AnyHandle, FtlError> {
         let handle = self.handles.remove(&id).ok_or(FtlError::HandleNotFound)?;
+
+        if !handle.rights().contains(HandleRights::CLOSE) {
+            self.handles.insert(id, handle);
+            return Err(FtlError::HandleRightsNotSufficient);
+        }
+
         Ok(handle)
     }
 }
