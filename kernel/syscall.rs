@@ -289,11 +289,7 @@ fn handle_syscall(
             let handle = HandleId::from_raw_isize_truncated(a0);
             let msginfo = MessageInfo::from_raw(a1);
             let msgbuffer = UAddr::new(a2 as usize);
-            let err = channel_send(handle, msginfo, msgbuffer);
-            if let Err(e) = err {
-                return Err(e);
-            }
-
+            channel_send(handle, msginfo, msgbuffer)?;
             Ok(0)
         }
         _ if n == SyscallNumber::ChannelRecv as isize => {
@@ -340,9 +336,7 @@ fn handle_syscall(
             let poll_handle_id = HandleId::from_raw_isize_truncated(a0);
             let target_handle_id = HandleId::from_raw_isize_truncated(a1);
             let interests = PollEvent::from_raw(a2 as u8);
-            if let Err(e) = poll_add(poll_handle_id, target_handle_id, interests) {
-                return Err(e);
-            }
+            poll_add(poll_handle_id, target_handle_id, interests)?;
             Ok(0)
         }
         _ if n == SyscallNumber::PollWait as isize => {

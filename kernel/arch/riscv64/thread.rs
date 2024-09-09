@@ -64,7 +64,7 @@ impl Thread {
         Thread {
             vmspace: Some(vmspace),
             context: Context {
-                sepc: pc as usize,
+                sepc: pc,
                 sstatus,
                 sp,
                 a0: arg,

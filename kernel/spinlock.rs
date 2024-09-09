@@ -44,7 +44,7 @@ pub struct SpinLockGuard<'a, T: ?Sized + 'a> {
 
 impl<T> SpinLockGuard<'_, T> {
     pub fn lock(&self) -> &SpinLock<T> {
-        &self.this
+        self.this
     }
 }
 

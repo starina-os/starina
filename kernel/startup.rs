@@ -105,7 +105,7 @@ impl<'a> StartupAppLoader<'a> {
         let handle_id = kernel_process()
             .handles()
             .lock()
-            .add(Handle::new(ch1.into(), HandleRights::ALL))
+            .add(Handle::new(ch1, HandleRights::ALL))
             .unwrap();
 
         let mut msgbuffer = MessageBuffer::new();
@@ -125,7 +125,7 @@ impl<'a> StartupAppLoader<'a> {
             .send(NewClient::MSGINFO, UAddr::from_kernel_ptr(&msgbuffer))
             .unwrap();
 
-        Handle::new(ch2.into(), HandleRights::ALL).into()
+        Handle::new(ch2, HandleRights::ALL).into()
     }
 
     fn get_devices(&mut self, compat: &str) -> Vec<ftl_types::environ::Device> {
@@ -265,7 +265,7 @@ impl<'a> StartupAppLoader<'a> {
             let handle = match wanted_handle {
                 WantedHandle::Service(service_name) => {
                     env.push_channel(&format!("dep:{}", service_name.0), handle_id);
-                    self.get_server_ch(&service_name)
+                    self.get_server_ch(service_name)
                 }
             };
 
@@ -274,7 +274,7 @@ impl<'a> StartupAppLoader<'a> {
 
         for wanted_device in template.devices {
             let WantedDevice::DeviceTreeCompatible(compat) = wanted_device;
-            env.push_devices(&compat, &self.get_devices(compat));
+            env.push_devices(compat, &self.get_devices(compat));
         }
 
         self.create_process(&template.name, entry_addr, env, handles);
@@ -293,7 +293,7 @@ impl<'a> StartupAppLoader<'a> {
         }
 
         for t in templates {
-            self.load_app(&t).unwrap();
+            self.load_app(t).unwrap();
         }
     }
 }

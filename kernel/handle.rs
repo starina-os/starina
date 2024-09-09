@@ -132,39 +132,39 @@ impl fmt::Debug for AnyHandle {
     }
 }
 
-impl Into<AnyHandle> for Handle<Channel> {
-    fn into(self) -> AnyHandle {
-        AnyHandle::Channel(self)
+impl From<Handle<Channel>> for AnyHandle {
+    fn from(val: Handle<Channel>) -> Self {
+        AnyHandle::Channel(val)
     }
 }
 
-impl Into<AnyHandle> for Handle<Thread> {
-    fn into(self) -> AnyHandle {
-        AnyHandle::Thread(self)
+impl From<Handle<Thread>> for AnyHandle {
+    fn from(val: Handle<Thread>) -> Self {
+        AnyHandle::Thread(val)
     }
 }
 
-impl Into<AnyHandle> for Handle<Folio> {
-    fn into(self) -> AnyHandle {
-        AnyHandle::Folio(self)
+impl From<Handle<Folio>> for AnyHandle {
+    fn from(val: Handle<Folio>) -> Self {
+        AnyHandle::Folio(val)
     }
 }
 
-impl Into<AnyHandle> for Handle<Poll> {
-    fn into(self) -> AnyHandle {
-        AnyHandle::Poll(self)
+impl From<Handle<Poll>> for AnyHandle {
+    fn from(val: Handle<Poll>) -> Self {
+        AnyHandle::Poll(val)
     }
 }
 
-impl Into<AnyHandle> for Handle<Signal> {
-    fn into(self) -> AnyHandle {
-        AnyHandle::Signal(self)
+impl From<Handle<Signal>> for AnyHandle {
+    fn from(val: Handle<Signal>) -> Self {
+        AnyHandle::Signal(val)
     }
 }
 
-impl Into<AnyHandle> for Handle<VmSpace> {
-    fn into(self) -> AnyHandle {
-        AnyHandle::VmSpace(self)
+impl From<Handle<VmSpace>> for AnyHandle {
+    fn from(val: Handle<VmSpace>) -> Self {
+        AnyHandle::VmSpace(val)
     }
 }
 
@@ -177,6 +177,12 @@ const NUM_HANDLES_MAX: usize = 64 * 1024;
 pub struct HandleTable {
     next_id: i32,
     handles: HashMap<HandleId, AnyHandle>,
+}
+
+impl Default for HandleTable {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl HandleTable {

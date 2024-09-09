@@ -37,7 +37,7 @@ static KERNEL_PROCESS: spin::Lazy<SharedRef<Process>> = spin::Lazy::new(|| {
 });
 
 pub fn kernel_process() -> &'static SharedRef<Process> {
-    &*KERNEL_PROCESS
+    &KERNEL_PROCESS
 }
 
 pub fn init() {

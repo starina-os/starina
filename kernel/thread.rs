@@ -101,7 +101,7 @@ impl Thread {
             mutable: SpinLock::new(Mutable {
                 state: State::Runnable,
             }),
-            arch: arch::Thread::new_kernel(vmspace, pc as usize, sp, arg),
+            arch: arch::Thread::new_kernel(vmspace, pc, sp, arg),
             process,
         });
 
