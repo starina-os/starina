@@ -59,7 +59,7 @@ fn probe(devices: &[Device], device_type: u32) -> Option<(VirtioMmio, Irq)> {
 
 #[derive(Debug)]
 enum Context {
-    Autopilot,
+    Startup,
     Interrupt,
     Tcpip,
 }
@@ -94,7 +94,7 @@ pub fn main(mut env: Environ) {
 
     let mut mainloop = Mainloop::<Context, Message>::new().unwrap();
     mainloop
-        .add_channel(env.take_channel("dep:startup").unwrap(), Context::Autopilot)
+        .add_channel(env.take_channel("dep:startup").unwrap(), Context::Startup)
         .unwrap();
     mainloop
         .add_interrupt(interrupt, Context::Interrupt)
@@ -103,7 +103,11 @@ pub fn main(mut env: Environ) {
     let mut tcpip_sender = None;
     loop {
         match mainloop.next() {
-            Event::Message(Context::Autopilot, Message::NewClient(m), _) => {
+            Event::Message {
+                ctx: Context::Startup,
+                message: Message::NewClient(m),
+                ..
+            } => {
                 let tcpip_ch = m.handle.take::<Channel>().unwrap();
                 let (sender, receiver) = tcpip_ch.split();
                 tcpip_sender = Some(sender.clone());
@@ -112,8 +116,12 @@ pub fn main(mut env: Environ) {
                     .add_channel((sender, receiver), Context::Tcpip)
                     .unwrap();
             }
-            Event::Message(Context::Tcpip, Message::Tx(tx), _) => {
-                trace!("sending {} bytes", tx.payload.len());
+            Event::Message {
+                ctx: Context::Tcpip,
+                message: Message::Tx(m),
+                ..
+            } => {
+                trace!("sending {} bytes", m.payload.len());
                 let buffer_index = transmitq_buffers.pop_free().expect("no free tx buffers");
                 let vaddr = transmitq_buffers.vaddr(buffer_index);
                 let paddr = transmitq_buffers.paddr(buffer_index);
@@ -138,7 +146,7 @@ pub fn main(mut env: Environ) {
                         vaddr.add(header_len).as_mut_ptr(),
                         dma_buf_len - header_len,
                     );
-                    buf[..tx.payload.len()].copy_from_slice(tx.payload.as_slice());
+                    buf[..m.payload.len()].copy_from_slice(m.payload.as_slice());
                 }
 
                 let chain = &[
@@ -148,14 +156,17 @@ pub fn main(mut env: Environ) {
                     },
                     VirtqDescBuffer::ReadOnlyFromDevice {
                         paddr: paddr.add(header_len),
-                        len: tx.payload.len(),
+                        len: m.payload.len(),
                     },
                 ];
 
                 transmitq.enqueue(chain);
                 transmitq.notify(&mut *transport);
             }
-            Event::Interrupt(Context::Interrupt, interrupt) => {
+            Event::Interrupt {
+                ctx: Context::Interrupt,
+                interrupt,
+            } => {
                 loop {
                     let status = transport.read_isr_status();
                     if !status.queue_intr() {

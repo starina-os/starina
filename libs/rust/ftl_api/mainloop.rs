@@ -28,8 +28,15 @@ pub enum Error {
 
 #[derive(Debug)]
 pub enum Event<'a, Ctx, M: MessageDeserialize> {
-    Message(&'a mut Ctx, M::Reader<'a>, &'a mut ChannelSender),
-    Interrupt(&'a mut Ctx, &'a mut Interrupt),
+    Message {
+        ctx: &'a mut Ctx,
+        message: M::Reader<'a>,
+        sender: &'a mut ChannelSender,
+    },
+    Interrupt {
+        ctx: &'a mut Ctx,
+        interrupt: &'a mut Interrupt,
+    },
     Error(Error),
 }
 
@@ -124,16 +131,23 @@ impl<Ctx, AllM: MessageDeserialize> Mainloop<Ctx, AllM> {
         if poll_ev.contains(PollEvent::READABLE) {
             match &mut entry.object {
                 Object::Channel { sender, receiver } => {
-                    let m = match receiver.try_recv_with_buffer::<AllM>(&mut self.msgbuffer) {
+                    let message = match receiver.try_recv_with_buffer::<AllM>(&mut self.msgbuffer) {
                         Ok(Some(m)) => m,
                         Ok(None) => return Event::Error(Error::ChannelRecvWouldBlock),
                         Err(err) => return Event::Error(Error::ChannelRecv(err)),
                     };
 
-                    return Event::Message(&mut entry.ctx, m, sender);
+                    return Event::Message {
+                        ctx: &mut entry.ctx,
+                        message,
+                        sender,
+                    };
                 }
                 Object::Interrupt(interrupt) => {
-                    return Event::Interrupt(&mut entry.ctx, interrupt);
+                    return Event::Interrupt {
+                        ctx: &mut entry.ctx,
+                        interrupt,
+                    };
                 }
             }
         }

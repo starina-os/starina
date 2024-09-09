@@ -85,16 +85,28 @@ pub fn main(mut env: Environ) {
 
     loop {
         match mainloop.next() {
-            Event::Message(Context::Ctrl, Message::TcpAccepted(m), _) => {
+            Event::Message {
+                ctx: Context::Ctrl,
+                message: Message::TcpAccepted(m),
+                ..
+            } => {
                 let sock_ch = m.sock.take::<Channel>().unwrap();
                 mainloop
                     .add_channel(sock_ch, Context::Data(Client::new()))
                     .unwrap();
             }
-            Event::Message(Context::Data(client), Message::TcpReceived(m), sender) => {
+            Event::Message {
+                ctx: Context::Data(client),
+                message: Message::TcpReceived(m),
+                sender,
+            } => {
                 client.receive(sender, m.data.as_slice());
             }
-            Event::Message(Context::Data(_), Message::TcpClosed(_), sender) => {
+            Event::Message {
+                ctx: Context::Data(_),
+                message: Message::TcpClosed(_),
+                sender,
+            } => {
                 trace!("client connection closed");
                 let sender_id = sender.handle().id();
                 mainloop.remove(sender_id);

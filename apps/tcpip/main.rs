@@ -352,19 +352,35 @@ pub fn main(mut env: Environ) {
     loop {
         server.poll(&mut mainloop);
         match mainloop.next() {
-            Event::Message(Context::Startup, Message::NewClient(m), _) => {
+            Event::Message {
+                ctx: Context::Startup,
+                message: Message::NewClient(m),
+                ..
+            } => {
                 info!("new autopilot msg...");
                 let new_ch = m.handle.take::<Channel>().unwrap();
                 info!("got new client: {:?}", new_ch);
                 mainloop.add_channel(new_ch, Context::CtrlSocket).unwrap();
             }
-            Event::Message(Context::CtrlSocket, Message::TcpListen(m), sender) => {
+            Event::Message {
+                ctx: Context::CtrlSocket,
+                message: Message::TcpListen(m),
+                sender,
+            } => {
                 server.tcp_listen(sender.clone(), m.port);
             }
-            Event::Message(Context::DataSocket(handle), Message::TcpSend(m), _) => {
+            Event::Message {
+                ctx: Context::DataSocket(handle),
+                message: Message::TcpSend(m),
+                ..
+            } => {
                 server.tcp_send(*handle, m.data.as_slice()).unwrap();
             }
-            Event::Message(Context::Driver, Message::Rx(m), _) => {
+            Event::Message {
+                ctx: Context::Driver,
+                message: Message::Rx(m),
+                ..
+            } => {
                 trace!(
                     "received {} bytes: {:02x?}",
                     m.payload.len(),

@@ -26,18 +26,39 @@ pub fn main(mut env: Environ) {
 
     loop {
         match mainloop.next() {
-            Event::Message(Context::Startup, Message::NewClient(m), _sender) => {
-                let new_ch = m.handle.take::<Channel>().unwrap();
-                mainloop
-                    .add_channel(new_ch, Context::Client { counter: 0 })
-                    .unwrap();
+            Event::Message {
+                ctx: Context::Startup,
+                message,
+                ..
+            } => {
+                match message {
+                    Message::NewClient(m) => {
+                        let new_ch = m.handle.take::<Channel>().unwrap();
+                        mainloop
+                            .add_channel(new_ch, Context::Client { counter: 0 })
+                            .unwrap();
+                    }
+                    _ => {
+                        warn!("unexpected message from startup: {:?}", message);
+                    }
+                }
             }
-            Event::Message(Context::Client { counter }, Message::Ping(_m), sender) => {
-                let reply = PingReply { value: *counter };
-                *counter += 1;
-
-                if let Err(err) = sender.send(reply) {
-                    warn!("failed to reply: {:?}", err);
+            Event::Message {
+                ctx: Context::Client { counter },
+                message,
+                sender,
+            } => {
+                match message {
+                    Message::Ping(_) => {
+                        let reply = PingReply { value: *counter };
+                        *counter += 1;
+                        if let Err(err) = sender.send(reply) {
+                            warn!("failed to reply: {:?}", err);
+                        }
+                    }
+                    _ => {
+                        warn!("unexpected message from client: {:?}", message);
+                    }
                 }
             }
             ev => {
