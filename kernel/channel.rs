@@ -14,6 +14,7 @@ use ftl_types::poll::PollEvent;
 use crate::cpuvar::current_thread;
 use crate::handle::AnyHandle;
 use crate::poll::Poller;
+use crate::process::Process;
 use crate::ref_counted::SharedRef;
 use crate::spinlock::SpinLock;
 use crate::thread::Continuation;
@@ -153,6 +154,7 @@ impl Channel {
         self: &SharedRef<Channel>,
         msgbuffer: UAddr,
         blocking: bool,
+        process: &SharedRef<Process>,
     ) -> Result<MessageInfo, FtlError> {
         let mut entry = {
             let mut mutable = self.mutable.lock();
@@ -161,7 +163,10 @@ impl Channel {
                 None => {
                     if blocking {
                         mutable.wait_queue.listen();
+                        drop(mutable);
+
                         Thread::block_current(Continuation::ChannelRecv {
+                            process: process.clone(),
                             channel: self.clone(),
                             msgbuffer,
                         });

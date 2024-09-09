@@ -1,3 +1,4 @@
+use core::cell::RefMut;
 use core::num::NonZeroIsize;
 use core::sync::atomic::AtomicIsize;
 use core::sync::atomic::Ordering;
@@ -45,6 +46,7 @@ impl ThreadId {
 #[derive(Debug)]
 pub enum Continuation {
     ChannelRecv {
+        process: SharedRef<Process>,
         channel: SharedRef<Channel>,
         msgbuffer: UAddr,
     },
@@ -132,8 +134,8 @@ impl Thread {
         mutable.state = State::Runnable;
     }
 
-    pub fn run_continuation(&self) -> ContinuationResult {
-        let mut mutable = self.mutable.lock();
+    pub fn run_continuation(this: RefMut<'_, SharedRef<Self>>) -> ContinuationResult {
+        let mut mutable = this.mutable.lock();
         let continuation = match &mut mutable.state {
             State::Blocked(continuation) => continuation,
             State::Runnable => {
@@ -142,8 +144,12 @@ impl Thread {
         };
 
         match continuation {
-            Continuation::ChannelRecv { channel, msgbuffer } => {
-                match channel.recv(*msgbuffer, false) {
+            Continuation::ChannelRecv {
+                process,
+                channel,
+                msgbuffer,
+            } => {
+                match channel.recv(*msgbuffer, false, process) {
                     Err(FtlError::WouldBlock) => ContinuationResult::StillBlocked,
                     Ok(msginfo) => {
                         mutable.state = State::Runnable;

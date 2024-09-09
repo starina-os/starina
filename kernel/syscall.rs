@@ -18,6 +18,7 @@ use crate::handle::AnyHandle;
 use crate::handle::Handle;
 use crate::interrupt::Interrupt;
 use crate::poll::Poll;
+use crate::process::Process;
 use crate::ref_counted::SharedRef;
 use crate::signal::Signal;
 use crate::uaddr::UAddr;
@@ -56,31 +57,37 @@ fn channel_send(handle: HandleId, msginfo: MessageInfo, msgbuffer: UAddr) -> Res
 }
 
 fn channel_recv(handle: HandleId, msgbuffer: UAddr) -> Result<MessageInfo, FtlError> {
-    let ch: Handle<Channel> = {
-        current_thread()
-            .process()
+    let (process, ch): (SharedRef<Process>, Handle<Channel>) = {
+        let process = current_thread().process().clone();
+
+        let ch = process
             .handles()
             .lock()
             .get_owned(handle, HandleRights::READ)?
             .as_channel()?
-            .clone()
+            .clone();
+
+        (process, ch)
     };
 
-    Handle::into_shared_ref(ch).recv(msgbuffer, true)
+    Handle::into_shared_ref(ch).recv(msgbuffer, true, &process)
 }
 
 fn channel_try_recv(handle: HandleId, msgbuffer: UAddr) -> Result<MessageInfo, FtlError> {
-    let ch: Handle<Channel> = {
-        current_thread()
-            .process()
+    let (process, ch): (SharedRef<Process>, Handle<Channel>) = {
+        let process = current_thread().process().clone();
+
+        let ch = process
             .handles()
             .lock()
             .get_owned(handle, HandleRights::READ)?
             .as_channel()?
-            .clone()
+            .clone();
+
+        (process, ch)
     };
 
-    Handle::into_shared_ref(ch).recv(msgbuffer, false)
+    Handle::into_shared_ref(ch).recv(msgbuffer, false, &process)
 }
 
 fn folio_create(len: usize) -> Result<HandleId, FtlError> {

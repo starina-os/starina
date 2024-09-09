@@ -1,3 +1,5 @@
+use core::fmt;
+
 use crate::handle::HandleTable;
 use crate::ref_counted::SharedRef;
 use crate::spinlock::SpinLock;
@@ -20,6 +22,12 @@ impl Process {
 
     pub fn handles(&self) -> &SpinLock<HandleTable> {
         &self.handles
+    }
+}
+
+impl fmt::Debug for Process {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Process")
     }
 }
 

@@ -6,6 +6,7 @@ use super::interrupt::interrupt_handler;
 use super::thread::Context;
 use crate::scheduler::GLOBAL_SCHEDULER;
 use crate::thread::ContinuationResult;
+use crate::thread::Thread;
 
 pub fn return_to_user() -> ! {
     loop {
@@ -42,8 +43,7 @@ pub fn return_to_user() -> ! {
 
         // Execute the pending continuation if any.
         let context: *mut Context = &current_thread.arch().context as *const _ as *mut _;
-        let result = current_thread.run_continuation();
-        drop(current_thread);
+        let result = Thread::run_continuation(current_thread);
 
         // Can we resume the thread?
         match result {
