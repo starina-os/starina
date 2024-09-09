@@ -311,7 +311,7 @@ struct ElfLoader<'a> {
 }
 
 impl<'a> ElfLoader<'a> {
-    pub fn parse(elf_file: &'static [u8], base_vaddr: VAddr) -> Result<ElfLoader, Error> {
+    pub fn parse(elf_file: &[u8], base_vaddr: VAddr) -> Result<ElfLoader<'_>, Error> {
         let elf = Elf::parse(elf_file).map_err(Error::ParseElf)?;
 
         // TODO: Check DF_1_PIE flag to make sure it's a PIE, not a shared

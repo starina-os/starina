@@ -1,5 +1,4 @@
 #![no_std]
-#![feature(asm_const)]
 #![feature(naked_functions)]
 #![feature(arbitrary_self_types)]
 #![feature(fn_align)]
