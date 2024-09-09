@@ -20,7 +20,7 @@ impl<T> SpinLock<T> {
 
     pub fn lock(&self) -> SpinLockGuard<T> {
         if self.lock.load(Ordering::Relaxed) {
-            panic!(
+            oops!(
                 "spinlock: {:x}: deadlock detected - mutex will never be left locked in single CPU!",
                 self as *const _ as usize
             );

@@ -202,7 +202,7 @@ pub unsafe extern "C" fn kernel_syscall_entry(
                 mv s0, t0
                 call {syscall_handler}
                 sd a0, {a0_offset}(s0)
-                call {return_to_user}
+                j {return_to_user}
             "#,
             context_offset = const offset_of!(crate::arch::CpuVar, context),
             sepc_offset = const offset_of!(Context, sepc),

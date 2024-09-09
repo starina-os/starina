@@ -54,6 +54,7 @@ pub struct AppName(pub &'static str);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ServiceName(pub &'static str);
 
+#[allow(unused)] // Can unused when no drivers are needed.
 #[derive(Debug)]
 pub enum WantedHandle {
     Service(ServiceName),
@@ -61,6 +62,7 @@ pub enum WantedHandle {
 
 #[derive(Debug)]
 pub enum WantedDevice {
+    #[allow(unused)] // Can unused when no drivers are needed.
     DeviceTreeCompatible(&'static str),
 }
 

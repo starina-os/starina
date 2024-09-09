@@ -28,6 +28,7 @@ const AUTOGEN_TEMPLATE: &str = r#"
     }
 
     const STARTUP_APPS: &[crate::startup::AppTemplate] = {
+        #[allow(unused)]
         use crate::startup::{AppTemplate, AppName, ServiceName, WantedHandle, WantedDevice};
 
         &[
