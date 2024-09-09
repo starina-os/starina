@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["kernel", "boot/*", "libs/rust/*", "apps/*", "tools/idlc"]
+members = ["kernel", "boot/*", "libs/rust/*", "apps/*"]
 
 [workspace.package]
 version = "0.0.0"
@@ -32,13 +32,10 @@ walkdir = "2.5.0"
 ftl_kernel = { path = "kernel" }
 ftl_types = { path = "libs/rust/ftl_types" }
 ftl_api = { path = "libs/rust/ftl_api" }
-ftl_autogen = { path = "libs/rust/ftl_autogen" }
-ftl_api_autogen = { path = "libs/rust/ftl_api_autogen" }
 ftl_utils = { path = "libs/rust/ftl_utils" }
 ftl_inlinedvec = { path = "libs/rust/inlinedvec" }
 ftl_bump_allocator = { path = "libs/rust/bump_allocator" }
 ftl_elf = { path = "libs/rust/elf" }
 ftl_virtio = { path = "libs/rust/virtio" }
-ftl_idlc = { path = "tools/idlc" }
 ftl_driver_utils = { path = "libs/rust/ftl_driver_utils" }
-ftl_autogen2 = { path = "libs/rust/ftl_autogen2" }
+ftl_autogen = { path = "libs/rust/ftl_autogen" }

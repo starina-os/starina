@@ -99,3 +99,30 @@ impl<T, const CAP: usize> Default for InlinedVec<T, CAP> {
         Self::new()
     }
 }
+
+impl<T, const CAP: usize> IntoIterator for InlinedVec<T, CAP> {
+    type Item = T;
+    type IntoIter = arrayvec::IntoIter<T, CAP>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
+impl<'a, T, const CAP: usize> IntoIterator for &'a InlinedVec<T, CAP> {
+    type Item = &'a T;
+    type IntoIter = core::slice::Iter<'a, T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.iter()
+    }
+}
+
+impl<'a, T, const CAP: usize> IntoIterator for &'a mut InlinedVec<T, CAP> {
+    type Item = &'a mut T;
+    type IntoIter = core::slice::IterMut<'a, T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.iter_mut()
+    }
+}

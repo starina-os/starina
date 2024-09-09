@@ -12,7 +12,6 @@ ftl_utils = { workspace = true }
 ftl_types = { workspace = true }
 ftl_bump_allocator = { workspace = true }
 ftl_elf = { workspace = true }
-ftl_autogen = { workspace = true }
 ftl_inlinedvec = { workspace = true }
 hashbrown = { workspace = true }
 fdt-rs = { workspace = true }
@@ -24,4 +23,5 @@ spin = { workspace = true }
 anyhow = { workspace = true }
 minijinja = { workspace = true }
 ftl_types = { workspace = true }
+ftl_autogen = { workspace = true, features = ["generate_for_kernel"] }
 serde_json = { workspace = true, features = ["alloc"] }

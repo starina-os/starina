@@ -1,14 +1,17 @@
 #![no_std]
 #![no_main]
 
+ftl_api::autogen!();
+
+use ftl_api::channel::Channel;
 use ftl_api::channel::ChannelSender;
 use ftl_api::environ::Environ;
 use ftl_api::mainloop::Event;
 use ftl_api::mainloop::Mainloop;
 use ftl_api::prelude::*;
-use ftl_api_autogen::apps::http_server::Message;
-use ftl_api_autogen::protocols::tcpip::TcpListenRequest;
-use ftl_api_autogen::protocols::tcpip::TcpSendRequest;
+use ftl_autogen::idl::tcpip::TcpListen;
+use ftl_autogen::idl::tcpip::TcpSend;
+use ftl_autogen::idl::Message;
 
 #[derive(Debug)]
 struct Client {
@@ -26,7 +29,11 @@ impl Client {
         trace!("request: {:?}", req);
 
         let data = &b"HTTP/1.1 200 OK\r\nContent-Length: 12\r\n\r\nHello, world!"[..];
-        tcp_sender.send(TcpSendRequest { data }).unwrap();
+        tcp_sender
+            .send(TcpSend {
+                data: data.try_into().unwrap(),
+            })
+            .unwrap();
     }
 
     pub fn receive(&mut self, tcp_sender: &ChannelSender, data: &[u8]) {
@@ -68,7 +75,7 @@ enum Context {
 pub fn main(mut env: Environ) {
     info!("starting");
     let tcpip_ch = env.take_channel("dep:tcpip").unwrap();
-    tcpip_ch.send(TcpListenRequest { port: 80 }).unwrap();
+    tcpip_ch.send(TcpListen { port: 80 }).unwrap();
 
     let mut mainloop = Mainloop::<Context, Message>::new().unwrap();
     mainloop
@@ -78,14 +85,14 @@ pub fn main(mut env: Environ) {
 
     loop {
         match mainloop.next() {
-            Event::Message(Context::Ctrl, Message::TcpAccepted(mut m), _) => {
-                let sock_ch = m.sock().unwrap();
+            Event::Message(Context::Ctrl, Message::TcpAccepted(m), _) => {
+                let sock_ch = m.sock.take::<Channel>().unwrap();
                 mainloop
                     .add_channel(sock_ch, Context::Data(Client::new()))
                     .unwrap();
             }
             Event::Message(Context::Data(client), Message::TcpReceived(m), sender) => {
-                client.receive(sender, m.data().as_slice());
+                client.receive(sender, m.data.as_slice());
             }
             Event::Message(Context::Data(_), Message::TcpClosed(_), sender) => {
                 trace!("client connection closed");

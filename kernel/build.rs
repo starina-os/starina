@@ -64,8 +64,10 @@ const AUTOGEN_TEMPLATE: &str = r#"
 "#;
 
 fn main() {
+    ftl_autogen::generate().expect("autogen failed");
+
     let out_dir = env::var_os("OUT_DIR").unwrap();
-    let dest_path = Path::new(&out_dir).join("autogen.rs");
+    let dest_path = Path::new(&out_dir).join("kernel_autogen.rs");
 
     let build_dir = PathBuf::from(env::var("BUILD_DIR").expect("$BUILD_DIR is not set"));
     assert!(build_dir.is_absolute());

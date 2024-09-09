@@ -88,7 +88,7 @@ disk.img:
 	$(PROGRESS) "GEN" "$(@)"
 	dd if=/dev/zero of=$(@) bs=1M count=8
 
-ftl.elf: $(sources) $(app_elfs) Makefile libs/rust/ftl_autogen/lib.rs Makefile
+ftl.elf: $(sources) $(app_elfs) Makefile Makefile
 	$(PROGRESS) "CARGO" "boot/$(ARCH)"
 	RUSTFLAGS="$(RUSTFLAGS)" \
 	CARGO_TARGET_DIR="$(BUILD_DIR)/cargo" \
@@ -107,7 +107,7 @@ ftl.pe: ftl.elf
 #       a change in compiler flags. Indeed it is, but it doesn't affect the output binary.
 #
 #       I'll file an issue on rust-lang/rust to hear  community's opinion.
-$(BUILD_DIR)/%.elf: $(sources) libs/rust/ftl_autogen/lib.rs Makefile
+$(BUILD_DIR)/%.elf: $(sources) Makefile
 	$(PROGRESS) "CARGO" "$(@)"
 	mkdir -p $(@D)
 	RUSTFLAGS="$(RUSTFLAGS)" \
@@ -118,22 +118,3 @@ $(BUILD_DIR)/%.elf: $(sources) libs/rust/ftl_autogen/lib.rs Makefile
 		--manifest-path $(patsubst $(BUILD_DIR)/%.elf,%,$(@))/Cargo.toml
 	cp $(BUILD_DIR)/cargo/$(ARCH)-user/$(BUILD)/$(patsubst $(BUILD_DIR)/apps/%.elf,%,$(@)) $(@)
 	$(OBJCOPY) --strip-all --strip-debug $(@) $(@).stripped
-
-$(BUILD_DIR)/ftl_idlc: $(shell find tools/idlc libs/rust/ftl_types -name '*.rs') $(shell find tools/idlc -name '*.j2')
-	mkdir -p $(@D)
-	$(PROGRESS) "CARGO" "tools/idlc"
-	RUSTFLAGS="$(RUSTFLAGS)" \
-	CARGO_TARGET_DIR="$(BUILD_DIR)/cargo" \
-		$(CARGO) build \
-			$(if $(RELEASE),--release,) \
-			--manifest-path tools/idlc/Cargo.toml
-	mv $(BUILD_DIR)/cargo/$(BUILD)/ftl_idlc $(@)
-
-libs/rust/ftl_autogen/lib.rs: idl.json $(BUILD_DIR)/ftl_idlc $(shell find $(APPS) -name '*.spec.json') Makefile
-	mkdir -p build
-	$(PROGRESS) "ILDC" "$(@)"
-	./$(BUILD_DIR)/ftl_idlc \
-		--autogen-outfile $(@) \
-		--api-autogen-outfile libs/rust/ftl_api_autogen/lib.rs \
-		--idl-file idl.json \
-		$(foreach app_dir,$(APPS),--app-specs $(app_dir)/app.spec.json)

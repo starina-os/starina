@@ -15,3 +15,4 @@ serde_json = { workspace = true, features = ["alloc"] }
 
 ftl_types = { workspace = true }
 ftl_utils = { workspace = true }
+ftl_inlinedvec = { workspace = true }

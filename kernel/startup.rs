@@ -2,7 +2,10 @@ use alloc::format;
 use alloc::string::ToString;
 use alloc::vec::Vec;
 
-use ftl_autogen::protocols::autopilot::NewclientRequest;
+// FIXME: Define ftl_autogen::idl::include!()
+include!(concat!(env!("OUT_DIR"), "/autogen.rs"));
+
+use ftl_autogen::idl::autopilot::NewClient;
 use ftl_elf::Elf;
 use ftl_elf::PhdrType;
 use ftl_elf::ET_DYN;
@@ -12,9 +15,9 @@ use ftl_types::environ::EnvironSerializer;
 use ftl_types::error::FtlError;
 use ftl_types::handle::HandleId;
 use ftl_types::handle::HandleRights;
+use ftl_types::idl::MovedHandle;
 use ftl_types::message::MessageBuffer;
 use ftl_types::message::MessageSerialize;
-use ftl_types::message::MovedHandle;
 use ftl_types::syscall::VsyscallPage;
 use ftl_types::vmspace::PageProtect;
 use ftl_utils::alignment::align_up;
@@ -106,20 +109,20 @@ impl<'a> StartupAppLoader<'a> {
             .unwrap();
 
         let mut msgbuffer = MessageBuffer::new();
-        (NewclientRequest {
-            handle: MovedHandle(handle_id),
+        (NewClient {
+            handle: MovedHandle::new(handle_id).into(),
         })
         .serialize(&mut msgbuffer);
 
-        let app_name = self.service_to_app_name.get(service_name).unwrap();
+        let app_name = match self.service_to_app_name.get(service_name) {
+            Some(app_name) => app_name,
+            None => panic!("service \"{}\" not found", service_name.0),
+        };
 
         self.our_chs
             .get(app_name)
             .unwrap()
-            .send(
-                NewclientRequest::MSGINFO,
-                UAddr::from_kernel_ptr(&msgbuffer),
-            )
+            .send(NewClient::MSGINFO, UAddr::from_kernel_ptr(&msgbuffer))
             .unwrap();
 
         Handle::new(ch2.into(), HandleRights::ALL).into()

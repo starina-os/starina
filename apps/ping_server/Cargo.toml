@@ -10,7 +10,6 @@ path = "main.rs"
 
 [dependencies]
 ftl_api = { workspace = true }
-ftl_api_autogen = { workspace = true }
 
 [build-dependencies]
-ftl_autogen2 = { workspace = true }
+ftl_autogen = { workspace = true }

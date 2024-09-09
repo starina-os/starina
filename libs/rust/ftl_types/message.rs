@@ -33,7 +33,6 @@ impl MessageInfo {
 #[repr(C, align(16))] // Align to 16 bytes for SIMD instructions.
 pub struct MessageBuffer {
     pub data: [u8; MESSAGE_DATA_MAX_LEN],
-    pub handles: [HandleId; MESSAGE_HANDLES_MAX_COUNT],
 }
 
 impl MessageBuffer {
@@ -41,23 +40,26 @@ impl MessageBuffer {
         // TODO: Avoid zeroing the buffer because it's not necessary.
         Self {
             data: [0; MESSAGE_DATA_MAX_LEN],
-            handles: [HandleId::from_raw(0); MESSAGE_HANDLES_MAX_COUNT],
         }
+    }
+
+    pub fn handle_id(&self, index: usize) -> HandleId {
+        debug_assert!(index < MESSAGE_HANDLES_MAX_COUNT);
+        unsafe { *(self.data.as_ptr().add(index * size_of::<HandleId>()) as *const HandleId) }
     }
 }
 
 /// Invariant: size_of::<MessageBuffer> >= size_of::<T>().
 pub trait MessageSerialize: Sized {
+    const NUM_HANDLES: usize;
     const MSGINFO: MessageInfo;
     fn serialize(self, buffer: &mut MessageBuffer);
 }
 
 pub trait MessageDeserialize: Sized {
     type Reader<'a>: 'a;
-    fn deserialize<'a>(buffer: &'a MessageBuffer, msginfo: MessageInfo)
-        -> Option<Self::Reader<'a>>;
+    fn deserialize<'a>(
+        buffer: &'a mut MessageBuffer,
+        msginfo: MessageInfo,
+    ) -> Option<Self::Reader<'a>>;
 }
-
-#[derive(Debug, PartialEq, Eq)]
-#[repr(transparent)]
-pub struct MovedHandle(pub HandleId);

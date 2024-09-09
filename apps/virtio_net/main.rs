@@ -1,6 +1,9 @@
 #![no_std]
 #![no_main]
 
+ftl_api::autogen!();
+
+use ftl_api::channel::Channel;
 use ftl_api::environ::Environ;
 use ftl_api::folio::MmioFolio;
 use ftl_api::interrupt::Interrupt;
@@ -10,8 +13,8 @@ use ftl_api::prelude::*;
 use ftl_api::types::address::PAddr;
 use ftl_api::types::environ::Device;
 use ftl_api::types::interrupt::Irq;
-use ftl_api_autogen::apps::virtio_net::Message;
-use ftl_api_autogen::protocols::ethernet_device;
+use ftl_autogen::idl::ethernet_device;
+use ftl_autogen::idl::Message;
 use ftl_driver_utils::buffer_pool::BufferPool;
 use ftl_virtio::transports::mmio::VirtioMmio;
 use ftl_virtio::transports::VirtioTransport;
@@ -100,8 +103,8 @@ pub fn main(mut env: Environ) {
     let mut tcpip_sender = None;
     loop {
         match mainloop.next() {
-            Event::Message(Context::Autopilot, Message::NewclientRequest(mut m), _) => {
-                let tcpip_ch = m.handle().unwrap();
+            Event::Message(Context::Autopilot, Message::NewClient(m), _) => {
+                let tcpip_ch = m.handle.take::<Channel>().unwrap();
                 let (sender, receiver) = tcpip_ch.split();
                 tcpip_sender = Some(sender.clone());
 
@@ -110,7 +113,7 @@ pub fn main(mut env: Environ) {
                     .unwrap();
             }
             Event::Message(Context::Tcpip, Message::Tx(tx), _) => {
-                trace!("sending {} bytes", tx.payload().len());
+                trace!("sending {} bytes", tx.payload.len());
                 let buffer_index = transmitq_buffers.pop_free().expect("no free tx buffers");
                 let vaddr = transmitq_buffers.vaddr(buffer_index);
                 let paddr = transmitq_buffers.paddr(buffer_index);
@@ -135,7 +138,7 @@ pub fn main(mut env: Environ) {
                         vaddr.add(header_len).as_mut_ptr(),
                         dma_buf_len - header_len,
                     );
-                    buf[..tx.payload().len()].copy_from_slice(tx.payload().as_slice());
+                    buf[..tx.payload.len()].copy_from_slice(tx.payload.as_slice());
                 }
 
                 let chain = &[
@@ -145,7 +148,7 @@ pub fn main(mut env: Environ) {
                     },
                     VirtqDescBuffer::ReadOnlyFromDevice {
                         paddr: paddr.add(header_len),
-                        len: tx.payload().len(),
+                        len: tx.payload.len(),
                     },
                 ];
 
@@ -184,7 +187,9 @@ pub fn main(mut env: Environ) {
 
                             trace!("received {} bytes", data.len());
                             if let Some(tcpip_sender) = &tcpip_sender {
-                                let rx = ethernet_device::Rx { payload: data };
+                                let rx = ethernet_device::Rx {
+                                    payload: data.try_into().unwrap(),
+                                };
                                 if let Err(err) = tcpip_sender.send(rx) {
                                     warn!("failed to send rx: {:?}", err);
                                 }

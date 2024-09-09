@@ -8,7 +8,9 @@ macro_rules! static_assert {
             $condition,
             concat!(
                 "\n\nSTATIC ASSERTION FAILURE: the following condition is not met:\n\n    ",
-                stringify!($condition),
+                file!(),
+                ":",
+                stringify!(line!()),
                 "\n\n"
             )
         );

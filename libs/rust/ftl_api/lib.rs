@@ -9,7 +9,6 @@ pub mod channel;
 pub mod environ;
 pub mod folio;
 pub mod handle;
-pub mod start;
 pub mod interrupt;
 pub mod log;
 pub mod mainloop;
@@ -18,6 +17,7 @@ pub mod poll;
 pub mod prelude;
 pub mod print;
 pub mod signal;
+pub mod start;
 pub mod syscall;
 pub mod vmspace;
 

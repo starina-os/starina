@@ -1,11 +1,15 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt;
+use core::num::NonZeroI32;
 use core::str;
 use core::str::Utf8Error;
 
+use ftl_utils::static_assert;
 use serde::Deserialize;
 use serde::Serialize;
+
+use crate::handle::HandleId;
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct IdlFile {
@@ -24,7 +28,6 @@ pub struct Protocol {
 pub enum Ty {
     UInt16,
     Int32,
-    Handle,
     Channel,
     Bytes { capacity: usize },
     String { capacity: usize },
@@ -35,7 +38,6 @@ impl fmt::Display for Ty {
         match self {
             Ty::UInt16 => write!(f, "u16"),
             Ty::Int32 => write!(f, "i32"),
-            Ty::Handle => write!(f, "handle"),
             Ty::Channel => write!(f, "channel"),
             Ty::Bytes { capacity } => write!(f, "bytes<{}>", capacity),
             Ty::String { capacity } => write!(f, "string<{}>", capacity),
@@ -155,5 +157,43 @@ impl<const CAP: usize> TryFrom<&str> for StringField<CAP> {
     fn try_from(value: &str) -> Result<StringField<CAP>, TooManyItemsError> {
         let bytes = BytesField::try_from(value.as_bytes())?;
         Ok(StringField(bytes))
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct MovedHandle(NonZeroI32);
+
+impl MovedHandle {
+    pub const fn new(handle_id: HandleId) -> MovedHandle {
+        // TODO: Make other handle types non-zero to avoid unwrap.
+        let raw_id = match NonZeroI32::new(handle_id.as_i32()) {
+            Some(raw_id) => raw_id,
+            None => panic!("Handle ID must be non-zero"),
+        };
+
+        MovedHandle(raw_id)
+    }
+
+    pub fn handle_id(&self) -> HandleId {
+        HandleId::from_raw(self.0.get())
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct HandleField(Option<MovedHandle>);
+
+static_assert!(size_of::<HandleField>() == size_of::<HandleId>());
+
+impl HandleField {
+    pub fn take<T: From<MovedHandle>>(&mut self) -> Option<T> {
+        self.0.take().map(From::from)
+    }
+}
+
+impl From<MovedHandle> for HandleField {
+    fn from(moved_handle: MovedHandle) -> HandleField {
+        HandleField(Some(moved_handle))
     }
 }

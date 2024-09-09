@@ -1,0 +1,94 @@
+pub mod ftl_autogen {
+pub mod idl {
+    {% if not generate_for_kernel %}
+    use ftl_api::types as ftl_types;
+    {% endif %}
+
+    use ftl_types::message::MessageSerialize;
+    use ftl_types::message::MessageDeserialize;
+    use ftl_types::message::MessageBuffer;
+    use ftl_types::message::MessageInfo;
+
+    #[derive(Debug)]
+    pub enum Message<'a> {
+        {% for m in messages %}
+        #[allow(unused)]
+        {{ m.name }}(&'a mut {{ m.protocol_name }}::{{ m.name }}),
+        {% endfor %}
+    }
+
+    impl MessageDeserialize for Message<'_> {
+        type Reader<'a> = Message<'a>;
+
+        fn deserialize(buffer: &mut MessageBuffer, msginfo: MessageInfo)
+            -> Option<Self::Reader<'_>> {
+            match msginfo {
+                {% for m in messages %}
+                    {{ m.protocol_name }}::{{ m.name }}::MSGINFO => {
+                        let msg = {{ m.protocol_name }}::{{ m.name }}::deserialize(buffer, msginfo)?;
+                        Some(Message::{{ m.name }}(msg))
+                    },
+                {% endfor %}
+                _ => None,
+            }
+        }
+    }
+
+    {% for protocol in protocols %}
+    pub mod {{ protocol.name }} {
+        #[allow(unused)]
+        use super::*;
+
+        {% for m in messages %}
+            #[repr(C)]
+            #[derive(Debug)]
+            pub struct {{ m.name }} {
+                {%- for f in m.fields %}
+                {%- if f.is_handle %}
+                pub {{ f.name }}: {{ f.ty }},
+                {%- endif %}
+                {%- endfor %}
+
+                {%- for f in m.fields %}
+                {%- if not f.is_handle %}
+                pub {{ f.name }}: {{ f.ty }},
+                {%- endif %}
+                {%- endfor %}
+            }
+
+            impl MessageSerialize for {{ m.name }} {
+                const NUM_HANDLES: usize = {{ m.num_handles }};
+                const MSGINFO: MessageInfo = MessageInfo::from_raw(
+                    ({{ m.msgid }} << 14)
+                    | ((Self::NUM_HANDLES as isize) << 12)
+                    | (::core::mem::size_of::<Self>() - Self::NUM_HANDLES * ::core::mem::size_of::<ftl_types::handle::HandleId>()) as isize,
+                );
+
+                fn serialize(self, buffer: &mut MessageBuffer) {
+                    // FIXME: Avoid copy entire bytes/str.
+                    unsafe {
+                        debug_assert!(::core::mem::size_of::<Self>() <= ftl_types::message::MESSAGE_DATA_MAX_LEN);
+                        core::ptr::write(buffer.data.as_mut_ptr() as *mut Self, self);
+                    }
+                }
+            }
+
+            impl MessageDeserialize for {{ m.name }} {
+                type Reader<'a> = &'a mut Self;
+
+                fn deserialize<'a>(buffer: &'a mut MessageBuffer, msginfo: MessageInfo)
+                    -> Option<Self::Reader<'a>> {
+                    if msginfo != Self::MSGINFO {
+                        return None;
+                    }
+
+                    debug_assert!(::core::mem::size_of::<Self>() <= ftl_types::message::MESSAGE_DATA_MAX_LEN);
+                    let msg = unsafe { &mut *(buffer.data.as_mut_ptr() as *mut Self) };
+                    Some(msg)
+                }
+            }
+        {% endfor %}
+    }
+    {% endfor %}
+}
+}

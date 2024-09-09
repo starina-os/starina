@@ -12,11 +12,11 @@ use ftl_api::mainloop::Event;
 use ftl_api::mainloop::Mainloop;
 use ftl_api::prelude::*;
 use ftl_api::types::error::FtlError;
-use ftl_autogen2_generated::protocols::ethernet_device;
-use ftl_autogen2_generated::protocols::tcpip::TcpAccepted;
-use ftl_autogen2_generated::protocols::tcpip::TcpClosed;
-use ftl_autogen2_generated::protocols::tcpip::TcpReceived;
-use ftl_autogen2_generated::Message;
+use ftl_autogen::idl::ethernet_device;
+use ftl_autogen::idl::tcpip::TcpAccepted;
+use ftl_autogen::idl::tcpip::TcpClosed;
+use ftl_autogen::idl::tcpip::TcpReceived;
+use ftl_autogen::idl::Message;
 use smoltcp::iface::Config;
 use smoltcp::iface::Interface;
 use smoltcp::iface::SocketHandle;
@@ -61,7 +61,7 @@ impl<'a> smoltcp::phy::TxToken for TxTokenImpl<'a> {
         let ret = f(&mut buf[..len]);
 
         let tx = ethernet_device::Tx {
-            payload: &buf[..len],
+            payload: buf[..len].try_into().unwrap(),
         };
         if let Err(err) = self.0.driver_sender.send(tx) {
             warn!("failed to send: {:?}", err);
@@ -224,7 +224,10 @@ impl<'a> Server<'a> {
                             }
 
                             // FIXME: Backpressure
-                            ch.send(TcpReceived { data: &buf[..len] }).unwrap();
+                            ch.send(TcpReceived {
+                                data: buf[..len].try_into().unwrap(),
+                            })
+                            .unwrap();
                         }
                     }
                     (State::Established { .. }, tcp::State::Established) => {
@@ -349,25 +352,25 @@ pub fn main(mut env: Environ) {
     loop {
         server.poll(&mut mainloop);
         match mainloop.next() {
-            Event::Message(Context::Startup, Message::NewclientRequest(mut m), _) => {
+            Event::Message(Context::Startup, Message::NewClient(m), _) => {
                 info!("new autopilot msg...");
-                let new_ch = m.handle().unwrap();
+                let new_ch = m.handle.take::<Channel>().unwrap();
                 info!("got new client: {:?}", new_ch);
                 mainloop.add_channel(new_ch, Context::CtrlSocket).unwrap();
             }
-            Event::Message(Context::CtrlSocket, Message::TcpListenRequest(m), sender) => {
-                server.tcp_listen(sender.clone(), m.port());
+            Event::Message(Context::CtrlSocket, Message::TcpListen(m), sender) => {
+                server.tcp_listen(sender.clone(), m.port);
             }
-            Event::Message(Context::DataSocket(handle), Message::TcpSendRequest(m), _) => {
-                server.tcp_send(*handle, m.data().as_slice()).unwrap();
+            Event::Message(Context::DataSocket(handle), Message::TcpSend(m), _) => {
+                server.tcp_send(*handle, m.data.as_slice()).unwrap();
             }
             Event::Message(Context::Driver, Message::Rx(m), _) => {
                 trace!(
                     "received {} bytes: {:02x?}",
-                    m.payload().len(),
-                    &m.payload().as_slice()[0..14]
+                    m.payload.len(),
+                    &m.payload.as_slice()[0..14]
                 );
-                server.receive_pkt(m.payload().as_slice());
+                server.receive_pkt(m.payload.as_slice());
             }
             ev => {
                 warn!("unhandled event: {:?}", ev);

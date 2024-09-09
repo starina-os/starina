@@ -9,7 +9,7 @@ use crate::memory;
 use crate::process;
 use crate::startup;
 
-include!(concat!(env!("OUT_DIR"), "/autogen.rs"));
+include!(concat!(env!("OUT_DIR"), "/kernel_autogen.rs"));
 
 /// A free region of memory available for software.
 #[derive(Debug)]

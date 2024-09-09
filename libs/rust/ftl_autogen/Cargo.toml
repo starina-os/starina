@@ -5,11 +5,14 @@ authors = { workspace = true }
 edition = { workspace = true }
 
 [lib]
-path = "lib.rs"
+path = "./lib.rs"
 
 [dependencies]
+anyhow = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true, features = ["std"] }
 ftl_types = { workspace = true }
-ftl_api = { workspace = true, optional = true }
+minijinja = { workspace = true }
 
 [features]
-api = ["ftl_api"]
+generate_for_kernel = []
