@@ -163,6 +163,15 @@ pub fn poll_add(
     Ok(())
 }
 
+pub fn poll_remove(poll_handle_id: HandleId, target_handle_id: HandleId) -> Result<(), FtlError> {
+    syscall2(
+        SyscallNumber::PollRemove,
+        poll_handle_id.as_isize(),
+        target_handle_id.as_isize(),
+    )?;
+    Ok(())
+}
+
 pub fn poll_wait(handle: HandleId) -> Result<PollSyscallResult, FtlError> {
     let ret = syscall1(SyscallNumber::PollWait, handle.as_isize())?;
     Ok(PollSyscallResult::from_raw(ret))

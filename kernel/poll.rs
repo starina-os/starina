@@ -114,6 +114,19 @@ impl Poll {
         Ok(())
     }
 
+    pub fn remove(&self, handle_id: HandleId) -> Result<(), FtlError> {
+        let mut mutable = self.mutable.lock();
+        let poller = match mutable.entries.remove(&handle_id) {
+            Some(poller) => poller,
+            None => {
+                return Err(FtlError::HandleNotFound);
+            }
+        };
+
+        poller.detach();
+        Ok(())
+    }
+
     pub fn wait(self: &SharedRef<Poll>, blocking: bool) -> Result<(PollEvent, HandleId), FtlError> {
         let mut mutable = self.mutable.lock();
         for poller in mutable.entries.values() {

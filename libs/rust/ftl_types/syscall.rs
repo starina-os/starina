@@ -20,6 +20,7 @@ pub enum SyscallNumber {
     InterruptAck = 18,
     VmSpaceMap = 19,
     ChannelTryRecv = 20,
+    PollRemove = 21,
 }
 
 pub type VsyscallEntry = extern "C" fn(isize, isize, isize, isize, isize, isize, isize) -> isize;

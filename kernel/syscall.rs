@@ -156,6 +156,17 @@ fn poll_add(
     Ok(())
 }
 
+fn poll_remove(poll_handle_id: HandleId, target_handle_id: HandleId) -> Result<(), FtlError> {
+    let current_thread = current_thread();
+    let handles = current_thread.process().handles().lock();
+    let poll = handles
+        .get_owned(poll_handle_id, HandleRights::WRITE)?
+        .as_poll()?;
+
+    poll.remove(target_handle_id)?;
+    Ok(())
+}
+
 fn poll_wait(handle_id: HandleId) -> Result<PollSyscallResult, FtlError> {
     let poll = {
         current_thread()
@@ -337,6 +348,12 @@ fn handle_syscall(
             let target_handle_id = HandleId::from_raw_isize_truncated(a1);
             let interests = PollEvent::from_raw(a2 as u8);
             poll_add(poll_handle_id, target_handle_id, interests)?;
+            Ok(0)
+        }
+        _ if n == SyscallNumber::PollRemove as isize => {
+            let poll_handle_id = HandleId::from_raw_isize_truncated(a0);
+            let target_handle_id = HandleId::from_raw_isize_truncated(a1);
+            poll_remove(poll_handle_id, target_handle_id)?;
             Ok(0)
         }
         _ if n == SyscallNumber::PollWait as isize => {

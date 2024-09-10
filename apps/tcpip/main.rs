@@ -255,7 +255,7 @@ impl<'a> Server<'a> {
                     }
                     | State::Established { sender } => {
                         sender.send(TcpClosed {}).unwrap();
-                        mainloop.remove(sender.handle().id());
+                        mainloop.remove(sender.handle().id()).unwrap();
                     }
                 }
             }

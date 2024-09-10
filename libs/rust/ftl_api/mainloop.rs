@@ -72,10 +72,10 @@ impl<Ctx, AllM: MessageDeserialize> Mainloop<Ctx, AllM> {
         })
     }
 
-    pub fn remove(&mut self, handle_id: HandleId) {
-        self.objects.remove(&handle_id);
-        // TODO:
-        // self.poll.remove()
+    pub fn remove(&mut self, handle_id: HandleId) -> Result<(), FtlError> {
+        self.poll.remove(handle_id)?;
+        self.objects.remove(&handle_id); // TODO: warn if not found
+        Ok(())
     }
 
     pub fn add_channel<T: Into<(ChannelSender, ChannelReceiver)>>(

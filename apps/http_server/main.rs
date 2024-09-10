@@ -109,7 +109,7 @@ pub fn main(mut env: Environ) {
             } => {
                 trace!("client connection closed");
                 let sender_id = sender.handle().id();
-                mainloop.remove(sender_id);
+                mainloop.remove(sender_id).unwrap();
             }
             ev => {
                 warn!("unexpected event: {:?}", ev);

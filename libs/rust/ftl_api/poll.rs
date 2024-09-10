@@ -25,6 +25,10 @@ impl Poll {
         syscall::poll_add(self.handle.id(), handle, interests)
     }
 
+    pub fn remove(&self, pollee: HandleId) -> Result<(), FtlError> {
+        syscall::poll_remove(self.handle.id(), pollee)
+    }
+
     pub fn wait(&self) -> Result<(PollEvent, HandleId), FtlError> {
         let ret = syscall::poll_wait(self.handle.id())?;
         Ok((ret.event(), ret.handle()))
