@@ -295,7 +295,10 @@ fn handle_syscall(
             print(UAddr::new(a0 as usize), a1 as usize);
             Ok(0)
         }
-        _ if n == SyscallNumber::ChannelCreate as isize => channel_create(),
+        _ if n == SyscallNumber::ChannelCreate as isize => {
+            let first_handle = channel_create()?;
+            Ok(first_handle)
+        }
         _ if n == SyscallNumber::ChannelSend as isize => {
             let handle = HandleId::from_raw_isize_truncated(a0);
             let msginfo = MessageInfo::from_raw(a1);
