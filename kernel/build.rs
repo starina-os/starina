@@ -10,7 +10,7 @@ use ftl_types::spec::SpecFile;
 use minijinja::context;
 use minijinja::Environment;
 
-const AUTOGEN_TEMPLATE: &str = r#"
+const STARTUP_DEFS_TEMPLATE: &str = r#"
 
     macro_rules! aligned_include_bytes {
         ($file:expr, $align:expr) => { {
@@ -67,7 +67,7 @@ fn main() {
     ftl_autogen::generate().expect("autogen failed");
 
     let out_dir = env::var_os("OUT_DIR").unwrap();
-    let dest_path = Path::new(&out_dir).join("kernel_autogen.rs");
+    let dest_path = Path::new(&out_dir).join("startup_defs.rs");
 
     let build_dir = PathBuf::from(env::var("BUILD_DIR").expect("$BUILD_DIR is not set"));
     assert!(build_dir.is_absolute());
@@ -102,9 +102,9 @@ fn main() {
     }
 
     let mut j2env = Environment::new();
-    j2env.add_template("autogen", AUTOGEN_TEMPLATE).unwrap();
-    let autogen = j2env
-        .get_template("autogen")
+    j2env.add_template("startup_defs", STARTUP_DEFS_TEMPLATE).unwrap();
+    let startup_defs = j2env
+        .get_template("startup_defs")
         .unwrap()
         .render(context! {
             build_dir => build_dir,
@@ -113,5 +113,5 @@ fn main() {
         .unwrap();
 
     println!("cargo::rerun-if-env-changed=STARTUP_APP_DIRS");
-    fs::write(dest_path, &autogen).unwrap();
+    fs::write(dest_path, &startup_defs).unwrap();
 }

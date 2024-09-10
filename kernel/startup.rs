@@ -2,8 +2,8 @@ use alloc::format;
 use alloc::string::ToString;
 use alloc::vec::Vec;
 
-// FIXME: Define ftl_autogen::idl::include!()
 include!(concat!(env!("OUT_DIR"), "/autogen.rs"));
+include!(concat!(env!("OUT_DIR"), "/startup_defs.rs"));
 
 use ftl_autogen::idl::autopilot::NewClient;
 use ftl_elf::Elf;
@@ -298,8 +298,8 @@ impl<'a> StartupAppLoader<'a> {
     }
 }
 
-pub fn load_startup_apps(templates: &[AppTemplate], device_tree: &DeviceTree) {
-    StartupAppLoader::new(device_tree).load(templates);
+pub fn load_startup_apps(device_tree: &DeviceTree) {
+    StartupAppLoader::new(device_tree).load(&STARTUP_APPS);
 }
 
 struct ElfLoader<'a> {
