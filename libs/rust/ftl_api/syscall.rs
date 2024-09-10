@@ -46,6 +46,19 @@ pub fn syscall(
     }
 }
 
+#[cfg(not(target_os="none"))]
+pub fn syscall(
+    _n: SyscallNumber,
+    _a0: isize,
+    _a1: isize,
+    _a2: isize,
+    _a3: isize,
+    _a4: isize,
+    _a5: isize,
+) -> Result<isize, FtlError> {
+    panic!("syscall not implemented in test mode");
+}
+
 pub fn syscall0(n: SyscallNumber) -> Result<isize, FtlError> {
     syscall(n, 0, 0, 0, 0, 0, 0)
 }

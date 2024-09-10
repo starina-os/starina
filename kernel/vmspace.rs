@@ -5,7 +5,7 @@ use ftl_types::address::VAddr;
 use ftl_types::error::FtlError;
 use ftl_types::vmspace::PageProtect;
 
-use crate::arch::{self};
+use crate::arch;
 use crate::folio::Folio;
 use crate::handle::Handle;
 use crate::spinlock::SpinLock;
