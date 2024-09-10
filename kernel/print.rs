@@ -42,7 +42,7 @@ macro_rules! println {
     }};
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Ord, PartialOrd)]
 #[allow(dead_code)]
 pub enum LogLevel {
     Error,
@@ -58,21 +58,24 @@ macro_rules! log {
         use $crate::print::LogLevel;
 
         const RESET_COLOR: &str = "\x1b[0m";
-        let (color, level_str) = match $level {
-            LogLevel::Error => ("\x1b[91m", "ERR"),
-            LogLevel::Warn =>  ("\x1b[33m", "WARN"),
-            LogLevel::Info =>  ("\x1b[96m", "INFO"),
-            LogLevel::Debug => ("\x1b[0m", "DEBUG"),
-            LogLevel::Trace => ("\x1b[0m", "TRACE"),
-        };
 
-        $crate::println!(
-            "[kernel      ] {}{:6}{} {}",
-            color,
-            level_str,
-            RESET_COLOR,
-            format_args!($($arg)+)
-        );
+        if cfg!(debug_assertions) || $level <= LogLevel::Info {
+            let (color, level_str) = match $level {
+                LogLevel::Error => ("\x1b[91m", "ERR"),
+                LogLevel::Warn =>  ("\x1b[33m", "WARN"),
+                LogLevel::Info =>  ("\x1b[96m", "INFO"),
+                LogLevel::Debug => ("\x1b[0m", "DEBUG"),
+                LogLevel::Trace => ("\x1b[0m", "TRACE"),
+            };
+
+            $crate::println!(
+                "[kernel      ] {}{:6}{} {}",
+                color,
+                level_str,
+                RESET_COLOR,
+                format_args!($($arg)+)
+            );
+        }
     }};
 }
 
@@ -117,4 +120,13 @@ macro_rules! oops {
             i += 1;
         });
     }};
+}
+
+#[macro_export]
+macro_rules! debug_warn {
+    ($($arg:tt)+) => {
+        if cfg!(debug_assertions) {
+            $crate::warn!($($arg)+);
+        }
+    };
 }

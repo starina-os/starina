@@ -47,7 +47,7 @@ pub fn syscall(
     }
 }
 
-#[cfg(not(target_os="none"))]
+#[cfg(not(target_os = "none"))]
 pub fn syscall(
     _n: SyscallNumber,
     _a0: isize,

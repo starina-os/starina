@@ -239,7 +239,7 @@ impl<'a> Server<'a> {
                 }
 
                 if close {
-                    warn!("closing socket");
+                    debug_warn!("closing socket");
                     closed_sockets.push(*handle);
                 }
             }
@@ -326,7 +326,7 @@ struct Socket {
 
 #[no_mangle]
 pub fn main(mut env: Environ) {
-    info!("starting...");
+    info!("starting");
 
     // For smoltcp
     log::set_logger(&LOGGER).unwrap();
@@ -357,9 +357,8 @@ pub fn main(mut env: Environ) {
                 message: Message::NewClient(m),
                 ..
             } => {
-                info!("new autopilot msg...");
                 let new_ch = m.handle.take::<Channel>().unwrap();
-                info!("got new client: {:?}", new_ch);
+                trace!("got new client: {:?}", new_ch);
                 mainloop.add_channel(new_ch, Context::CtrlSocket).unwrap();
             }
             Event::Message {

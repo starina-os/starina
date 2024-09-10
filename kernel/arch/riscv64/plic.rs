@@ -101,7 +101,6 @@ pub fn handle_interrupt() {
     let irq = PLIC.lock().as_mut().unwrap().get_pending_irq();
     let listeners = LISTENERS.lock();
     if let Some(listener) = listeners.get(&irq) {
-        println!("triggering interrupt: {:?}", irq);
         listener.trigger().unwrap();
     }
 }

@@ -46,7 +46,7 @@ fn probe(devices: &[Device], device_type: u32) -> Option<(VirtioMmio, Irq)> {
                 return Some((transport, irq));
             }
             Some(ty) => {
-                warn!("unexpected device type: {}", ty);
+                debug_warn!("unexpected device type: {}", ty);
             }
             None => {
                 warn!("failed to probe the device");

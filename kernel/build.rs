@@ -102,7 +102,9 @@ fn main() {
     }
 
     let mut j2env = Environment::new();
-    j2env.add_template("startup_defs", STARTUP_DEFS_TEMPLATE).unwrap();
+    j2env
+        .add_template("startup_defs", STARTUP_DEFS_TEMPLATE)
+        .unwrap();
     let startup_defs = j2env
         .get_template("startup_defs")
         .unwrap()
