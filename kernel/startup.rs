@@ -5,7 +5,7 @@ use alloc::vec::Vec;
 include!(concat!(env!("OUT_DIR"), "/autogen.rs"));
 include!(concat!(env!("OUT_DIR"), "/startup_defs.rs"));
 
-use ftl_autogen::idl::autopilot::NewClient;
+use ftl_autogen::idl::startup::NewClient;
 use ftl_elf::Elf;
 use ftl_elf::PhdrType;
 use ftl_elf::ET_DYN;

@@ -1,7 +1,7 @@
 {
     "protocols": [
         {
-            "name": "autopilot",
+            "name": "startup",
             "rpcs": [
                 {
                     "name": "new_client",
