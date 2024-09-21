@@ -13,6 +13,3 @@ serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true, features = ["std"] }
 ftl_types = { workspace = true }
 minijinja = { workspace = true }
-
-[features]
-generate_for_kernel = []

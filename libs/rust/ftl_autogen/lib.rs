@@ -101,7 +101,7 @@ fn find_idl_file() -> Result<PathBuf> {
     anyhow::bail!("idl.json not found in any parent directory of CARGO_MANIFEST_DIR");
 }
 
-pub fn generate() -> Result<()> {
+fn do_generate(for_kernel: bool) -> Result<()> {
     let out_dir = env::var_os("OUT_DIR").unwrap();
     let dest_path = Path::new(&out_dir).join("autogen.rs");
     let idl_path = find_idl_file()?;
@@ -168,11 +168,19 @@ pub fn generate() -> Result<()> {
         .render(context! {
             messages => messages,
             protocols => protocols,
-            generate_for_kernel => cfg!(feature = "generate_for_kernel"),
+            generate_for_kernel => for_kernel,
         })
         .context("failed to generate autogen")?;
 
     std::fs::write(&dest_path, lib_rs)?;
 
     Ok(())
+}
+
+pub fn generate_for_kernel() -> Result<()> {
+    do_generate(true)
+}
+
+pub fn generate_for_app() -> Result<()> {
+    do_generate(false)
 }

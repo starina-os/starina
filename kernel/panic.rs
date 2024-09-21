@@ -10,7 +10,8 @@ use crate::arch;
 static PANIC_COUNTER: AtomicU8 = AtomicU8::new(0);
 
 /// Kernel panic handler.
-#[panic_handler]
+#[cfg_attr(target_os = "none", panic_handler)]
+#[cfg_attr(not(target_os = "none"), allow(unused))]
 fn panic(info: &PanicInfo) -> ! {
     // In case it panics while handling a panic, this panic handler implements
     // some fallback logic to try to at least print the panic details.

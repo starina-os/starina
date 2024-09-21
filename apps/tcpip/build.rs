@@ -1,3 +1,3 @@
 fn main() {
-    ftl_autogen::generate().expect("autogen failed");
+    ftl_autogen::generate_for_app().expect("autogen failed");
 }

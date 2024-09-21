@@ -84,6 +84,13 @@ fmt:
 fix:
 	cargo clippy --fix --allow-dirty --allow-staged $(CARGOFLAGS)
 
+.PHONY: rustdoc
+rustdoc:
+	$(PROGRESS) "CARGO" "doc"
+	BUILD_DIR="$(realpath $(BUILD_DIR))" \
+	STARTUP_APP_DIRS="$(foreach app_dir,$(STARTUP_APPS),$(realpath $(app_dir)))" \
+		$(CARGO) doc
+
 disk.img:
 	$(PROGRESS) "GEN" "$(@)"
 	dd if=/dev/zero of=$(@) bs=1M count=8

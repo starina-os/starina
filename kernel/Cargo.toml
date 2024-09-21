@@ -23,5 +23,5 @@ spin = { workspace = true }
 anyhow = { workspace = true }
 minijinja = { workspace = true }
 ftl_types = { workspace = true }
-ftl_autogen = { workspace = true, features = ["generate_for_kernel"] }
+ftl_autogen = { workspace = true }
 serde_json = { workspace = true, features = ["alloc"] }

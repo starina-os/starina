@@ -64,7 +64,7 @@ const STARTUP_DEFS_TEMPLATE: &str = r#"
 "#;
 
 fn main() {
-    ftl_autogen::generate().expect("autogen failed");
+    ftl_autogen::generate_for_kernel().expect("autogen failed");
 
     let out_dir = env::var_os("OUT_DIR").unwrap();
     let dest_path = Path::new(&out_dir).join("startup_defs.rs");

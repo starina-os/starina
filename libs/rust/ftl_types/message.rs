@@ -49,7 +49,7 @@ impl MessageBuffer {
     }
 }
 
-/// Invariant: size_of::<MessageBuffer> >= size_of::<T>().
+/// Invariant: `size_of::<MessageBuffer> >= size_of::<T>()`.
 pub trait MessageSerialize: Sized {
     const NUM_HANDLES: usize;
     const MSGINFO: MessageInfo;
