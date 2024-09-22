@@ -1,5 +1,7 @@
 use core::fmt;
 
+use crate::arch::get_cpuvar;
+use crate::arch::return_to_user;
 use crate::handle::HandleTable;
 use crate::ref_counted::SharedRef;
 use crate::spinlock::SpinLock;
@@ -22,6 +24,20 @@ impl Process {
 
     pub fn handles(&self) -> &SpinLock<HandleTable> {
         &self.handles
+    }
+
+    pub fn exit_current() -> ! {
+        {
+            let cpuvar = get_cpuvar();
+            let mut current_thread = cpuvar.current_thread.borrow_mut();
+            current_thread.set_runnable();
+            *current_thread = cpuvar.idle_thread.clone();
+        }
+
+        debug_warn!("exited a process");
+
+        // TODO: Destroy the process.
+        return_to_user();
     }
 }
 

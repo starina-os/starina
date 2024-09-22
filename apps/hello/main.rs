@@ -7,5 +7,4 @@ use ftl_api::prelude::*;
 #[no_mangle]
 pub fn main(_env: Environ) {
     info!("Hello World from hello app!");
-    loop {}
 }

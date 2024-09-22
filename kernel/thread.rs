@@ -64,6 +64,7 @@ pub enum ContinuationResult {
 enum State {
     Runnable,
     Blocked(Continuation),
+    Exited,
 }
 
 struct Mutable {
@@ -134,9 +135,17 @@ impl Thread {
         mutable.state = State::Runnable;
     }
 
+    pub fn set_exited(&self) {
+        let mut mutable = self.mutable.lock();
+        mutable.state = State::Exited;
+    }
+
     pub fn run_continuation(this: RefMut<'_, SharedRef<Self>>) -> ContinuationResult {
         let mut mutable = this.mutable.lock();
         let continuation = match &mut mutable.state {
+            State::Exited => {
+                unreachable!()
+            }
             State::Blocked(continuation) => continuation,
             State::Runnable => {
                 return ContinuationResult::ReturnToUser(None);

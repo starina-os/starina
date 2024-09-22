@@ -298,6 +298,12 @@ pub fn interrupt_ack(handle: HandleId) -> Result<(), FtlError> {
     Ok(())
 }
 
+/// Exits the current process.
+pub fn process_exit() -> ! {
+    syscall0(SyscallNumber::ProcessExit).unwrap();
+    unreachable!();
+}
+
 static mut VSYSCALL_ENTRY: *const VsyscallEntry = core::ptr::null();
 
 pub(crate) fn set_vsyscall(vsyscall: &VsyscallPage) {

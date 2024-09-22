@@ -3,7 +3,8 @@ use ftl_types::syscall::VsyscallPage;
 
 use crate::allocator;
 use crate::environ::Environ;
-use crate::syscall;
+use crate::syscall::process_exit;
+use crate::syscall::{self};
 use crate::vmspace::VmSpace;
 
 // TODO: Avoid Mutex.
@@ -40,4 +41,5 @@ pub unsafe extern "C" fn start_rust(vsyscall_page: *const VsyscallPage) {
     APP_VMSPACE.lock().replace(vmspace);
 
     main(env);
+    process_exit();
 }

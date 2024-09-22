@@ -281,6 +281,10 @@ fn vmspace_map(
     vmspace.map_anywhere(len, folio, prot)
 }
 
+fn process_exit() -> ! {
+    Process::exit_current()
+}
+
 fn handle_syscall(
     a0: isize,
     a1: isize,
@@ -404,6 +408,9 @@ fn handle_syscall(
             let prot = PageProtect::from_raw(a3 as u8);
             let vaddr = vmspace_map(handle_id, len, folio, prot)?;
             Ok(vaddr.as_usize() as isize)
+        }
+        _ if n == SyscallNumber::ProcessExit as isize => {
+            process_exit();
         }
         _ => {
             warn!(
