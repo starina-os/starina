@@ -1,14 +1,14 @@
 {
-    "name": "http_server",
-    "kind": "app/v0",
-    "spec": {
-        "depends": [
-            {
-                "name": "tcpip",
-                "type": "service",
-                "protocol": "tcpip"
-            }
-        ],
-        "provides": []
-    }
+  "name": "http_server",
+  "kind": "app/v0",
+  "spec": {
+    "depends": [
+      {
+        "name": "tcpip",
+        "type": "service",
+        "protocol": "tcpip"
+      }
+    ],
+    "provides": []
+  }
 }

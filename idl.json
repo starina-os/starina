@@ -1,132 +1,131 @@
 {
-    "protocols": [
+  "protocols": [
+    {
+      "name": "startup",
+      "rpcs": [
         {
-            "name": "startup",
-            "rpcs": [
-                {
-                    "name": "new_client",
-                    "request": {
-                        "fields": [
-                            {
-                                "name": "handle",
-                                "type": "channel"
-                            }
-                        ]
-                    },
-                    "response": {
-                        "fields": [
-                        ]
-                    }
-                }
+          "name": "new_client",
+          "request": {
+            "fields": [
+              {
+                "name": "handle",
+                "type": "channel"
+              }
             ]
-        },
-        {
-            "name": "ping",
-            "rpcs": [
-                {
-                    "name": "ping",
-                    "request": {
-                        "fields": [
-                            {
-                                "name": "value",
-                                "type": "int32"
-                            }
-                        ]
-                    },
-                    "response": {
-                        "fields": [
-                            {
-                                "name": "value",
-                                "type": "int32"
-                            }
-                        ]
-                    }
-                }
-            ]
-        },
-        {
-            "name": "ethernet_device",
-            "oneways": [
-                {
-                    "name": "tx",
-                    "fields": [
-                        {
-                            "name": "payload",
-                            "type": "bytes",
-                            "capacity": 1514
-                        }
-                    ]
-                },
-                {
-                    "name": "rx",
-                    "fields": [
-                        {
-                            "name": "payload",
-                            "type": "bytes",
-                            "capacity": 1514
-                        }
-                    ]
-                }
-            ]
-        },
-        {
-            "name": "tcpip",
-            "rpcs": [
-                {
-                    "name": "tcp_listen",
-                    "request": {
-                        "fields": [
-                            {
-                                "name": "port",
-                                "type": "uint16"
-                            }
-                        ]
-                    },
-                    "response": {
-                        "fields": []
-                    }
-                },
-                {
-                    "name": "tcp_send",
-                    "request": {
-                        "fields": [
-                            {
-                                "type": "bytes",
-                                "name": "data",
-                                "capacity": 2048
-                            }
-                        ]
-                    },
-                    "response": {
-                        "fields": []
-                    }
-                }
-            ],
-            "oneways": [
-                {
-                    "name": "tcp_closed",
-                    "fields": []
-                },
-                {
-                    "name": "tcp_accepted",
-                    "fields": [
-                        {
-                            "name": "sock",
-                            "type": "channel"
-                        }
-                    ]
-                },
-                {
-                    "name": "tcp_received",
-                    "fields": [
-                        {
-                            "name": "data",
-                            "type": "bytes",
-                            "capacity": 2048
-                        }
-                    ]
-                }
-            ]
+          },
+          "response": {
+            "fields": []
+          }
         }
-    ]
+      ]
+    },
+    {
+      "name": "ping",
+      "rpcs": [
+        {
+          "name": "ping",
+          "request": {
+            "fields": [
+              {
+                "name": "value",
+                "type": "int32"
+              }
+            ]
+          },
+          "response": {
+            "fields": [
+              {
+                "name": "value",
+                "type": "int32"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "ethernet_device",
+      "oneways": [
+        {
+          "name": "tx",
+          "fields": [
+            {
+              "name": "payload",
+              "type": "bytes",
+              "capacity": 1514
+            }
+          ]
+        },
+        {
+          "name": "rx",
+          "fields": [
+            {
+              "name": "payload",
+              "type": "bytes",
+              "capacity": 1514
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "tcpip",
+      "rpcs": [
+        {
+          "name": "tcp_listen",
+          "request": {
+            "fields": [
+              {
+                "name": "port",
+                "type": "uint16"
+              }
+            ]
+          },
+          "response": {
+            "fields": []
+          }
+        },
+        {
+          "name": "tcp_send",
+          "request": {
+            "fields": [
+              {
+                "type": "bytes",
+                "name": "data",
+                "capacity": 2048
+              }
+            ]
+          },
+          "response": {
+            "fields": []
+          }
+        }
+      ],
+      "oneways": [
+        {
+          "name": "tcp_closed",
+          "fields": []
+        },
+        {
+          "name": "tcp_accepted",
+          "fields": [
+            {
+              "name": "sock",
+              "type": "channel"
+            }
+          ]
+        },
+        {
+          "name": "tcp_received",
+          "fields": [
+            {
+              "name": "data",
+              "type": "bytes",
+              "capacity": 2048
+            }
+          ]
+        }
+      ]
+    }
+  ]
 }

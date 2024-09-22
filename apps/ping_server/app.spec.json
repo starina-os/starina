@@ -1,8 +1,10 @@
 {
-    "name": "ping_server",
-    "kind": "app/v0",
-    "spec": {
-        "depends": [],
-        "provides": ["ping_server"]
-    }
+  "name": "ping_server",
+  "kind": "app/v0",
+  "spec": {
+    "depends": [],
+    "provides": [
+      "ping_server"
+    ]
+  }
 }

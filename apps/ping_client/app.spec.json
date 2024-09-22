@@ -1,14 +1,14 @@
 {
-    "name": "ping_client",
-    "kind": "app/v0",
-    "spec": {
-        "depends": [
-            {
-                "name": "ping_server",
-                "type": "service",
-                "protocol": "ping_server"
-            }
-        ],
-        "provides": []
-    }
+  "name": "ping_client",
+  "kind": "app/v0",
+  "spec": {
+    "depends": [
+      {
+        "name": "ping_server",
+        "type": "service",
+        "protocol": "ping_server"
+      }
+    ],
+    "provides": []
+  }
 }
