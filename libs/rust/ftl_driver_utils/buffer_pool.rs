@@ -1,4 +1,4 @@
-use ftl_api::folio::MmioFolio;
+use ftl_api::folio::MappedFolio;
 use ftl_api::prelude::vec::Vec;
 use ftl_api::types::address::PAddr;
 use ftl_api::types::address::VAddr;
@@ -8,7 +8,7 @@ use ftl_utils::alignment::align_up;
 pub struct BufferIndex(usize);
 
 pub struct BufferPool {
-    folio: MmioFolio,
+    folio: MappedFolio,
     free_indices: Vec<BufferIndex>,
     buffer_size: usize,
     num_buffers: usize,
@@ -16,7 +16,7 @@ pub struct BufferPool {
 
 impl BufferPool {
     pub fn new(buffer_size: usize, num_buffers: usize) -> BufferPool {
-        let folio = MmioFolio::create(align_up(buffer_size * num_buffers, 4096)).unwrap();
+        let folio = MappedFolio::create(align_up(buffer_size * num_buffers, 4096)).unwrap();
         let mut free_indices = Vec::new();
         for i in 0..num_buffers {
             free_indices.push(BufferIndex(i));

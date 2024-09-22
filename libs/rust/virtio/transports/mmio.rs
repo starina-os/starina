@@ -1,4 +1,4 @@
-use ftl_api::folio::MmioFolio;
+use ftl_api::folio::MappedFolio;
 use ftl_api::prelude::*;
 use ftl_api::types::address::PAddr;
 use ftl_driver_utils::mmio::LittleEndian;
@@ -37,11 +37,11 @@ static QUEUE_DEVICE_HIGH_REG: MmioReg<LittleEndian, WriteOnly, u32> = MmioReg::n
 static CONFIG_REG_BASE: MmioReg<LittleEndian, ReadWrite, u8> = MmioReg::new(0x100);
 
 pub struct VirtioMmio {
-    mmio: MmioFolio,
+    mmio: MappedFolio,
 }
 
 impl VirtioMmio {
-    pub fn new(mmio: MmioFolio) -> VirtioMmio {
+    pub fn new(mmio: MappedFolio) -> VirtioMmio {
         VirtioMmio { mmio }
     }
 }

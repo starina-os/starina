@@ -47,7 +47,7 @@ pub struct CpuVar {
 unsafe impl Sync for CpuVar {}
 
 pub fn current_thread() -> Ref<'static, SharedRef<Thread>> {
-    arch::cpuvar().current_thread.borrow()
+    arch::get_cpuvar().current_thread.borrow()
 }
 
 static CPUVARS: SpinLock<InlinedVec<CpuVar, { arch::NUM_CPUS_MAX }>> =

@@ -2,11 +2,10 @@ use core::arch::asm;
 
 use super::plic;
 use super::switch::return_to_user;
-use crate::arch::cpuvar;
 use crate::syscall::syscall_handler;
 
 pub extern "C" fn interrupt_handler() -> ! {
-    let cpuvar = cpuvar();
+    let cpuvar = super::get_cpuvar();
 
     let scause: u64;
     let stval: u64;

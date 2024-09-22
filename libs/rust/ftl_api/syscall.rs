@@ -114,8 +114,9 @@ pub fn handle_close(handle: HandleId) -> Result<(), FtlError> {
     Ok(())
 }
 
-pub fn print(s: &[u8]) -> Result<(), FtlError> {
-    syscall2(SyscallNumber::Print, s.as_ptr() as isize, s.len() as isize)?;
+/// Prints a string to the debug console.
+pub fn console_write(s: &[u8]) -> Result<(), FtlError> {
+    syscall2(SyscallNumber::ConsoleWrite, s.as_ptr() as isize, s.len() as isize)?;
     Ok(())
 }
 

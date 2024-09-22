@@ -10,7 +10,7 @@ use crate::thread::Thread;
 
 pub fn return_to_user() -> ! {
     loop {
-        let mut current_thread = super::cpuvar().current_thread.borrow_mut();
+        let mut current_thread = super::get_cpuvar().current_thread.borrow_mut();
 
         // Preemptive scheduling: push the current thread back to the
         // runqueue if it's still runnable.

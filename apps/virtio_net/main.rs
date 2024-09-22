@@ -5,7 +5,7 @@ ftl_api::autogen!();
 
 use ftl_api::channel::Channel;
 use ftl_api::environ::Environ;
-use ftl_api::folio::MmioFolio;
+use ftl_api::folio::MappedFolio;
 use ftl_api::interrupt::Interrupt;
 use ftl_api::mainloop::Event;
 use ftl_api::mainloop::Mainloop;
@@ -37,7 +37,7 @@ struct VirtioNetModernHeader {
 fn probe(devices: &[Device], device_type: u32) -> Option<(VirtioMmio, Irq)> {
     for device in devices {
         let base_paddr = PAddr::new(device.reg as usize);
-        let mmio = MmioFolio::create_pinned(base_paddr, 0x1000).unwrap();
+        let mmio = MappedFolio::create_pinned(base_paddr, 0x1000).unwrap();
 
         let mut transport = VirtioMmio::new(mmio);
         match transport.probe() {
@@ -233,7 +233,7 @@ pub fn main(mut env: Environ) {
 
                     receiveq.notify(&mut *transport);
                     transport.ack_interrupt(status);
-                    interrupt.ack().unwrap();
+                    interrupt.acknowledge().unwrap();
                 }
             }
             ev => {

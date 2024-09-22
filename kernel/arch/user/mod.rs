@@ -50,15 +50,15 @@ pub fn set_cpuvar(cpuvar: *mut crate::cpuvar::CpuVar) {
     todo!()
 }
 
-pub fn cpuvar() -> &'static crate::cpuvar::CpuVar {
+pub fn get_cpuvar() -> &'static crate::cpuvar::CpuVar {
     todo!()
 }
 
-pub fn create_interrupt(interrupt: &SharedRef<Interrupt>) -> Result<(), FtlError> {
+pub fn interrupt_create(interrupt: &SharedRef<Interrupt>) -> Result<(), FtlError> {
     todo!()
 }
 
-pub fn ack_interrupt(irq: Irq) -> Result<(), FtlError> {
+pub fn interrupt_ack(irq: Irq) -> Result<(), FtlError> {
     todo!()
 }
 

@@ -2,7 +2,7 @@ use core::mem::size_of;
 use core::sync::atomic::Ordering;
 use core::sync::atomic::{self};
 
-use ftl_api::folio::MmioFolio;
+use ftl_api::folio::MappedFolio;
 use ftl_api::prelude::Vec;
 use ftl_api::types::address::PAddr;
 use ftl_api::types::address::VAddr;
@@ -69,7 +69,7 @@ pub struct VirtqUsedChain {
 /// A virtqueue.
 pub struct VirtQueue {
     #[allow(dead_code)]
-    folio: MmioFolio,
+    folio: MappedFolio,
     index: u16,
     num_descs: u16,
     last_used_index: u16,
@@ -97,7 +97,7 @@ impl VirtQueue {
             size_of::<u16>() * 3 + size_of::<VirtqUsedElem>() * (num_descs as usize);
         let virtq_size = used_ring_off + align_up(used_ring_size, PAGE_SIZE);
 
-        let folio = MmioFolio::create(align_up(virtq_size, PAGE_SIZE))
+        let folio = MappedFolio::create(align_up(virtq_size, PAGE_SIZE))
             .expect("failed to allocate virtuqeue");
 
         let virtqueue_vaddr = folio.vaddr();

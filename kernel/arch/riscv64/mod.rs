@@ -21,11 +21,11 @@ mod thread;
 mod vmspace;
 
 pub use backtrace::backtrace;
-pub use cpuvar::cpuvar;
+pub use cpuvar::get_cpuvar;
 pub use cpuvar::set_cpuvar;
 pub use cpuvar::CpuVar;
-pub use plic::ack_interrupt;
-pub use plic::create_interrupt;
+pub use plic::interrupt_ack;
+pub use plic::interrupt_create;
 pub use switch::kernel_syscall_entry;
 pub use switch::return_to_user;
 pub use thread::Thread;

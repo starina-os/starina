@@ -1,6 +1,6 @@
 use core::marker::PhantomData;
 
-use ftl_api::folio::MmioFolio;
+use ftl_api::folio::MappedFolio;
 
 pub trait Endianess {
     fn into_host_u16(&self, n: u16) -> u16;
@@ -93,55 +93,55 @@ impl<E: Endianess, A: Access, T: Copy> MmioReg<E, A, T> {
     /// region might lead to unexpected behavior.
     ///
     /// TODO: What about memory ordering?
-    fn do_read(&self, folio: &mut MmioFolio) -> T {
+    fn do_read(&self, folio: &mut MappedFolio) -> T {
         self.do_read_with_offset(folio, 0)
     }
 
-    pub fn do_read_with_offset(&self, folio: &mut MmioFolio, offset: usize) -> T {
+    pub fn do_read_with_offset(&self, folio: &mut MappedFolio, offset: usize) -> T {
         let vaddr = folio.vaddr().as_usize() + self.offset + offset * size_of::<T>();
         unsafe { core::ptr::read_volatile(vaddr as *const T) }
     }
 
-    fn do_write_with_offset(&self, folio: &mut MmioFolio, offset: usize, value: T) {
+    fn do_write_with_offset(&self, folio: &mut MappedFolio, offset: usize, value: T) {
         let vaddr = folio.vaddr().as_usize() + self.offset + offset * size_of::<T>();
         unsafe { core::ptr::write_volatile(vaddr as *mut T, value) };
     }
 
-    fn do_write(&self, folio: &mut MmioFolio, value: T) {
+    fn do_write(&self, folio: &mut MappedFolio, value: T) {
         self.do_write_with_offset(folio, 0, value);
     }
 }
 
 impl<E: Endianess, T: Copy> MmioReg<E, ReadOnly, T> {
-    pub fn read(&self, folio: &mut MmioFolio) -> T {
+    pub fn read(&self, folio: &mut MappedFolio) -> T {
         self.do_read(folio)
     }
 
-    pub fn read_with_offset(&self, folio: &mut MmioFolio, offset: usize) -> T {
+    pub fn read_with_offset(&self, folio: &mut MappedFolio, offset: usize) -> T {
         self.do_read_with_offset(folio, offset)
     }
 }
 
 impl<E: Endianess, T: Copy> MmioReg<E, WriteOnly, T> {
-    pub fn write(&self, folio: &mut MmioFolio, value: T) {
+    pub fn write(&self, folio: &mut MappedFolio, value: T) {
         self.do_write(folio, value)
     }
 }
 
 impl<E: Endianess, T: Copy> MmioReg<E, ReadWrite, T> {
-    pub fn read(&self, folio: &mut MmioFolio) -> T {
+    pub fn read(&self, folio: &mut MappedFolio) -> T {
         self.do_read(folio)
     }
 
-    pub fn read_with_offset(&self, folio: &mut MmioFolio, offset: usize) -> T {
+    pub fn read_with_offset(&self, folio: &mut MappedFolio, offset: usize) -> T {
         self.do_read_with_offset(folio, offset)
     }
 
-    pub fn write(&self, folio: &mut MmioFolio, value: T) {
+    pub fn write(&self, folio: &mut MappedFolio, value: T) {
         self.do_write(folio, value)
     }
 
-    pub fn write_with_offset(&self, folio: &mut MmioFolio, offset: usize, value: T) {
+    pub fn write_with_offset(&self, folio: &mut MappedFolio, offset: usize, value: T) {
         self.do_write_with_offset(folio, offset, value)
     }
 }

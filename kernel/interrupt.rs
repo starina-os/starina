@@ -17,7 +17,7 @@ impl Interrupt {
         let signal = Signal::new()?;
         let interrupt = SharedRef::new(Interrupt { irq, signal });
 
-        arch::create_interrupt(&interrupt)?;
+        arch::interrupt_create(&interrupt)?;
         Ok(interrupt)
     }
 
@@ -38,6 +38,6 @@ impl Interrupt {
     }
 
     pub fn ack(&self) -> Result<(), FtlError> {
-        arch::ack_interrupt(self.irq)
+        arch::interrupt_ack(self.irq)
     }
 }

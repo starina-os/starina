@@ -18,7 +18,7 @@ impl core::fmt::Write for Printer {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
         for c in s.chars() {
             if c == '\n' || self.buffer.len() >= MAX_BUFFER_SIZE {
-                let _ = syscall::print(self.buffer.as_bytes());
+                let _ = syscall::console_write(self.buffer.as_bytes());
                 self.buffer.clear();
             } else {
                 self.buffer.push(c);

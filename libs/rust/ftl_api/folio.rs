@@ -30,14 +30,17 @@ impl Folio {
     }
 }
 
-pub struct MmioFolio {
+/// A folio mapped to the current process's address space.
+pub struct MappedFolio {
     _folio: Folio,
     paddr: PAddr,
     vaddr: VAddr,
 }
 
-impl MmioFolio {
-    pub fn create(len: usize) -> Result<MmioFolio, FtlError> {
+impl MappedFolio {
+    /// Allocates a folio at an arbitrary physical address, and maps it to the
+    /// current process's address space.
+    pub fn create(len: usize) -> Result<MappedFolio, FtlError> {
         let handle = syscall::folio_create(len)?;
         let vaddr = syscall::vmspace_map(
             app_vmspace_handle(),
@@ -46,7 +49,7 @@ impl MmioFolio {
             PageProtect::READABLE | PageProtect::WRITABLE,
         )?;
         let paddr = syscall::folio_paddr(handle)?;
-        Ok(MmioFolio {
+        Ok(MappedFolio {
             _folio: Folio {
                 handle: OwnedHandle::from_raw(handle),
             },
@@ -64,7 +67,7 @@ impl MmioFolio {
             PageProtect::READABLE | PageProtect::WRITABLE,
         )?;
 
-        Ok(MmioFolio {
+        Ok(MappedFolio {
             _folio: Folio {
                 handle: OwnedHandle::from_raw(handle),
             },

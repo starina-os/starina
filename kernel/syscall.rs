@@ -23,7 +23,7 @@ use crate::ref_counted::SharedRef;
 use crate::signal::Signal;
 use crate::uaddr::UAddr;
 
-fn print(uaddr: UAddr, len: usize) {
+fn console_write(uaddr: UAddr, len: usize) {
     // TODO: Avoid copying the entire string into kernel.
     let bytes = uaddr.read_from_user_to_vec(0, len);
     let s = core::str::from_utf8(&bytes).unwrap().trim_end();
@@ -291,8 +291,8 @@ fn handle_syscall(
     n: isize,
 ) -> Result<isize, FtlError> {
     match n {
-        _ if n == SyscallNumber::Print as isize => {
-            print(UAddr::new(a0 as usize), a1 as usize);
+        _ if n == SyscallNumber::ConsoleWrite as isize => {
+            console_write(UAddr::new(a0 as usize), a1 as usize);
             Ok(0)
         }
         _ if n == SyscallNumber::ChannelCreate as isize => {

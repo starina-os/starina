@@ -18,7 +18,7 @@ impl CpuVar {
     }
 }
 
-pub fn cpuvar() -> &'static crate::cpuvar::CpuVar {
+pub fn get_cpuvar() -> &'static crate::cpuvar::CpuVar {
     // Load the address of the current CPU's `CpuVar` from `tp`.
     let cpuvar: *const crate::cpuvar::CpuVar;
     unsafe {

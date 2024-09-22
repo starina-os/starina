@@ -4,7 +4,7 @@ use ftl_types::address::PAddr;
 use ftl_types::error::FtlError;
 use ftl_types::interrupt::Irq;
 
-use crate::arch::cpuvar;
+use crate::arch::get_cpuvar;
 use crate::cpuvar::CpuId;
 use crate::device_tree::DeviceTree;
 use crate::folio::Folio;
@@ -60,7 +60,7 @@ impl Plic {
     }
 
     pub fn get_pending_irq(&mut self) -> Irq {
-        let raw_irq = claim_reg(cpuvar().cpu_id).read(&mut self.folio);
+        let raw_irq = claim_reg(get_cpuvar().cpu_id).read(&mut self.folio);
         Irq::from_raw(raw_irq as usize)
     }
 
@@ -78,21 +78,21 @@ impl Plic {
     pub fn ack_interrupt(&mut self, irq: Irq) {
         assert!(irq.as_usize() < IRQ_MAX);
 
-        claim_reg(cpuvar().cpu_id).write(&mut self.folio, irq.as_usize() as u32);
+        claim_reg(get_cpuvar().cpu_id).write(&mut self.folio, irq.as_usize() as u32);
     }
 }
 
 static PLIC: SpinLock<Option<Plic>> = SpinLock::new(None);
 static LISTENERS: SpinLock<BTreeMap<Irq, SharedRef<Interrupt>>> = SpinLock::new(BTreeMap::new());
 
-pub fn create_interrupt(interrupt: &SharedRef<Interrupt>) -> Result<(), FtlError> {
+pub fn interrupt_create(interrupt: &SharedRef<Interrupt>) -> Result<(), FtlError> {
     let irq = interrupt.irq();
     PLIC.lock().as_mut().unwrap().enable_irq(irq);
     LISTENERS.lock().insert(irq, interrupt.clone());
     Ok(())
 }
 
-pub fn ack_interrupt(irq: Irq) -> Result<(), FtlError> {
+pub fn interrupt_ack(irq: Irq) -> Result<(), FtlError> {
     PLIC.lock().as_mut().unwrap().ack_interrupt(irq);
     Ok(())
 }
