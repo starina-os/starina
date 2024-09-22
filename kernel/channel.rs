@@ -102,9 +102,11 @@ impl Channel {
                 let handle_id = msgbuffer.read_from_user_at(offset);
                 offset += size_of::<HandleId>();
 
+                // SAFETY: unwrap() won't panic because it should have enough
+                //         capacity up to MESSAGE_HANDLES_MAX_COUNT.
                 handle_ids
                     .try_push(handle_id)
-                    .map_err(|_| FtlError::TooManyHandles)?;
+                    .unwrap();
 
                 if !our_handles.is_movable(handle_id) {
                     return Err(FtlError::HandleNotMovable);
