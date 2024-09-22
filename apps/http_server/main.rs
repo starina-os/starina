@@ -75,6 +75,8 @@ enum Context {
 pub fn main(mut env: Environ) {
     info!("starting");
     let tcpip_ch = env.take_channel("dep:tcpip").unwrap();
+
+    // FIXME: Wait for the reply to make sure it succeeds.
     tcpip_ch.send(TcpListen { port: 80 }).unwrap();
 
     let mut mainloop = Mainloop::<Context, Message>::new().unwrap();
