@@ -8,6 +8,49 @@ use crate::handle::OwnedHandle;
 use crate::syscall;
 
 /// A hardware interrupt object.
+///
+/// This object provides functionalities to handle hardware interrupts from devices
+/// in device drivers:
+///
+/// - Enable interrupts by acquiring the object ([`Interrupt::create`]).
+/// - Acknowledge the interrupt ([`Interrupt::acknowledge`]).
+/// - Wait for interrupts in an event loop ([`Mainloop::add_interrupt`](crate::mainloop::Mainloop::add_interrupt))
+///
+/// # Example
+///
+/// ```
+/// use ftl_api::interrupt::Interrupt;
+/// use ftl_api::types::interrupt::Irq;
+///
+/// // Ideally, you should get the IRQ from the device tree.
+/// let irq = Irq::new(1);
+///
+/// // Acquire the ownership of the interrupt.
+/// let interrupt = Interrupt::create(irq).unwrap();
+///
+/// // Register the interrupt to the mainloop.
+/// let mut mainloop = Mainloop::new().unwrap();
+/// mainloop
+///     .add_interrupt(interrupt, Context::Interrupt)
+///     .unwrap();
+///
+/// // Wait for interrupts in the mainloop...
+/// loop {
+///     match mainloop.next() {
+///         Event::Interrupt { ctx: Context::Interrupt, .. } => {
+///             // Handle the interrupt.
+///             do_something();
+///
+///            // Tell the kernel that we have handled the interrupt and are
+///            // ready for the next one.
+///             interrupt.acknowledge().unwrap();
+///         }
+///         ev => {
+///             warn!("unexpected event: {:?}", ev);
+///         }
+///     }
+/// }
+/// ```
 pub struct Interrupt {
     handle: OwnedHandle,
 }

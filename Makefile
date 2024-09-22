@@ -90,7 +90,8 @@ rustdoc:
 	BUILD_DIR="$(realpath $(BUILD_DIR))" \
 	STARTUP_APP_DIRS="$(foreach app_dir,$(STARTUP_APPS),$(realpath $(app_dir)))" \
 		$(CARGO) doc \
-			--package ftl_api
+			--package ftl_api \
+			--package ftl_driver_utils
 
 disk.img:
 	$(PROGRESS) "GEN" "$(@)"

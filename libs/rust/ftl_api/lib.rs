@@ -3,6 +3,31 @@
 //! This is [`libstd`](https://doc.rust-lang.org/std/) in FTL. All components
 //! except the kernel use this library.
 //!
+//! # APIs you should to know
+//!
+//! Here are the most frequently used APIs that you will encounter first:
+//!
+//! - [`info!`], [`warn!`], [`error!`], [`debug!`], [`trace!`]: Logging macros.
+//! - [`Channel`](channel::Channel): A channel for inter-process communication.
+//! - [`Environ`](environ::Environ): Environment variables in FTL.
+//!
+//! ## Server APIs
+//!
+//! Servers are long-running processes that provide services to clients, such as
+//! device drivers, filesystem drivers, TCP/IP stack, and so on.
+//!
+//! - [`Mainloop`](mainloop::Mainloop): An event loop for applications.
+//!
+//! ## Device driver APIs
+//!
+//! In FTL, device drivers are servers with the hardware access. To control the
+//! hardware conveniently, FTL provides the following APIs:
+//!
+//! - [`MappedFolio`](folio::MappedFolio): A physically-contiguous memory region for DMA/MMIO access.
+//! - [`Interrupt`](interrupt::Interrupt): Hardware interrupt handling.
+//! - `ftl_driver_utils::mmio`: Type-safe MMIO access.
+//! - `ftl_driver_utils::BufferPool`: The DMA buffer pool allocator.
+//!
 //! # Prelude
 //!
 //! The [`prelude`] module contains the most common types and traits that you'll
