@@ -104,9 +104,7 @@ impl Channel {
 
                 // SAFETY: unwrap() won't panic because it should have enough
                 //         capacity up to MESSAGE_HANDLES_MAX_COUNT.
-                handle_ids
-                    .try_push(handle_id)
-                    .unwrap();
+                handle_ids.try_push(handle_id).unwrap();
 
                 if !our_handles.is_movable(handle_id) {
                     return Err(FtlError::HandleNotMovable);
