@@ -1,3 +1,4 @@
+//! Low-level system call interfaces.
 use ftl_types::address::PAddr;
 use ftl_types::address::VAddr;
 use ftl_types::error::FtlError;
@@ -60,22 +61,27 @@ pub fn syscall(
     panic!("syscall not implemented in test mode");
 }
 
+/// Invokes a system call with no arguments.
 pub fn syscall0(n: SyscallNumber) -> Result<isize, FtlError> {
     syscall(n, 0, 0, 0, 0, 0, 0)
 }
 
+/// Invokes a system call with 1 argument.
 pub fn syscall1(n: SyscallNumber, a0: isize) -> Result<isize, FtlError> {
     syscall(n, a0, 0, 0, 0, 0, 0)
 }
 
+/// Invokes a system call with 2 arguments.
 pub fn syscall2(n: SyscallNumber, a0: isize, a1: isize) -> Result<isize, FtlError> {
     syscall(n, a0, a1, 0, 0, 0, 0)
 }
 
+/// Invokes a system call with 3 arguments.
 pub fn syscall3(n: SyscallNumber, a0: isize, a1: isize, a2: isize) -> Result<isize, FtlError> {
     syscall(n, a0, a1, a2, 0, 0, 0)
 }
 
+/// Invokes a system call with 4 arguments.
 pub fn syscall4(
     n: SyscallNumber,
     a0: isize,
@@ -86,6 +92,7 @@ pub fn syscall4(
     syscall(n, a0, a1, a2, a3, 0, 0)
 }
 
+/// Invokes a system call with 5 arguments.
 pub fn syscall5(
     n: SyscallNumber,
     a0: isize,
@@ -97,6 +104,7 @@ pub fn syscall5(
     syscall(n, a0, a1, a2, a3, a4, 0)
 }
 
+/// Invokes a system call with 6 arguments.
 pub fn syscall6(
     n: SyscallNumber,
     a0: isize,
@@ -109,6 +117,7 @@ pub fn syscall6(
     syscall(n, a0, a1, a2, a3, a4, a5)
 }
 
+/// Closes a handle.
 pub fn handle_close(handle: HandleId) -> Result<(), FtlError> {
     syscall1(SyscallNumber::HandleClose, handle.as_isize())?;
     Ok(())
@@ -120,12 +129,14 @@ pub fn console_write(s: &[u8]) -> Result<(), FtlError> {
     Ok(())
 }
 
+/// Creates a folio at an arbitrary physical address.
 pub fn folio_create(len: usize) -> Result<HandleId, FtlError> {
     let ret = syscall1(SyscallNumber::FolioCreate, len as isize)?;
     let handle_id = HandleId::from_raw_isize_truncated(ret);
     Ok(handle_id)
 }
 
+/// Creates a folio at a fixed physical address.
 pub fn folio_create_fixed(paddr: PAddr, len: usize) -> Result<HandleId, FtlError> {
     let ret = syscall2(
         SyscallNumber::FolioCreateFixed,
@@ -136,11 +147,13 @@ pub fn folio_create_fixed(paddr: PAddr, len: usize) -> Result<HandleId, FtlError
     Ok(handle_id)
 }
 
+/// Returns the physical address of a folio.
 pub fn folio_paddr(handle: HandleId) -> Result<usize, FtlError> {
     let ret = syscall1(SyscallNumber::FolioPAddr, handle.as_isize())?;
     Ok(ret as usize)
 }
 
+/// Maps a folio into the specified virtual address space.
 pub fn vmspace_map(
     handle: HandleId,
     len: usize,
@@ -158,12 +171,14 @@ pub fn vmspace_map(
     Ok(VAddr::new(ret as usize))
 }
 
+/// Creates a poll object.
 pub fn poll_create() -> Result<HandleId, FtlError> {
     let ret = syscall0(SyscallNumber::PollCreate)?;
     let handle_id = HandleId::from_raw_isize_truncated(ret);
     Ok(handle_id)
 }
 
+/// Adds a target handle to a poll object.
 pub fn poll_add(
     poll_handle_id: HandleId,
     target_handle_id: HandleId,
@@ -178,6 +193,7 @@ pub fn poll_add(
     Ok(())
 }
 
+/// Removes a target handle from a poll object.
 pub fn poll_remove(poll_handle_id: HandleId, target_handle_id: HandleId) -> Result<(), FtlError> {
     syscall2(
         SyscallNumber::PollRemove,
@@ -187,11 +203,13 @@ pub fn poll_remove(poll_handle_id: HandleId, target_handle_id: HandleId) -> Resu
     Ok(())
 }
 
+/// Waits for an event on a poll object. Blocking.
 pub fn poll_wait(handle: HandleId) -> Result<PollSyscallResult, FtlError> {
     let ret = syscall1(SyscallNumber::PollWait, handle.as_isize())?;
     Ok(PollSyscallResult::from_raw(ret))
 }
 
+/// Creates a channel pair.
 pub fn channel_create() -> Result<(HandleId, HandleId), FtlError> {
     let ret = syscall0(SyscallNumber::ChannelCreate)?;
     let handle0 = HandleId::from_raw_isize_truncated(ret);
@@ -199,6 +217,7 @@ pub fn channel_create() -> Result<(HandleId, HandleId), FtlError> {
     Ok((handle0, handle1))
 }
 
+/// Sends a message to a channel.
 pub fn channel_send(
     handle: HandleId,
     msginfo: MessageInfo,
@@ -213,6 +232,7 @@ pub fn channel_send(
     Ok(())
 }
 
+/// Receives a message from a channel. Blocking.
 pub fn channel_recv(
     handle: HandleId,
     msgbuffer: *mut MessageBuffer,
@@ -225,6 +245,7 @@ pub fn channel_recv(
     Ok(MessageInfo::from_raw(ret))
 }
 
+/// Tries to receive a message from a channel. Non-blocking.
 pub fn channel_try_recv(
     handle: HandleId,
     msgbuffer: *mut MessageBuffer,
@@ -237,12 +258,14 @@ pub fn channel_try_recv(
     Ok(MessageInfo::from_raw(ret))
 }
 
+/// Creates a signal object.
 pub fn signal_create() -> Result<HandleId, FtlError> {
     let ret = syscall0(SyscallNumber::SignalCreate)?;
     let handle_id = HandleId::from_raw_isize_truncated(ret);
     Ok(handle_id)
 }
 
+/// Updates a signal's value.
 pub fn signal_update(handle: HandleId, value: SignalBits) -> Result<(), FtlError> {
     syscall2(
         SyscallNumber::SignalUpdate,
@@ -252,17 +275,20 @@ pub fn signal_update(handle: HandleId, value: SignalBits) -> Result<(), FtlError
     Ok(())
 }
 
+/// Reads and clears a signal's value atomically. Non-blocking.
 pub fn signal_clear(handle: HandleId) -> Result<SignalBits, FtlError> {
     let ret = syscall1(SyscallNumber::SignalClear, handle.as_isize())?;
     Ok(SignalBits::from_raw(ret as i32))
 }
 
+/// Creates a interrupt object.
 pub fn interrupt_create(irq: Irq) -> Result<HandleId, FtlError> {
     let ret = syscall1(SyscallNumber::InterruptCreate, irq.as_usize() as isize)?;
     let handle_id = HandleId::from_raw_isize_truncated(ret);
     Ok(handle_id)
 }
 
+/// Acknowledges an interrupt.
 pub fn interrupt_ack(handle: HandleId) -> Result<(), FtlError> {
     syscall1(SyscallNumber::InterruptAck, handle.as_isize())?;
     Ok(())
@@ -270,7 +296,7 @@ pub fn interrupt_ack(handle: HandleId) -> Result<(), FtlError> {
 
 static mut VSYSCALL_ENTRY: *const VsyscallEntry = core::ptr::null();
 
-pub fn set_vsyscall(vsyscall: &VsyscallPage) {
+pub(crate) fn set_vsyscall(vsyscall: &VsyscallPage) {
     unsafe {
         VSYSCALL_ENTRY = vsyscall.entry;
     }

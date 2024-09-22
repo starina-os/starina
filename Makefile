@@ -89,7 +89,8 @@ rustdoc:
 	$(PROGRESS) "CARGO" "doc"
 	BUILD_DIR="$(realpath $(BUILD_DIR))" \
 	STARTUP_APP_DIRS="$(foreach app_dir,$(STARTUP_APPS),$(realpath $(app_dir)))" \
-		$(CARGO) doc
+		$(CARGO) doc \
+			--package ftl_api
 
 disk.img:
 	$(PROGRESS) "GEN" "$(@)"

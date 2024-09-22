@@ -5,7 +5,7 @@ use alloc::vec::Vec;
 
 /// Userspace address.
 ///
-/// FIXME: The current implementation assumes in-kernel apps only.
+/// TODO: The current implementation assumes in-kernel apps only.
 pub struct UAddr(usize);
 
 impl UAddr {

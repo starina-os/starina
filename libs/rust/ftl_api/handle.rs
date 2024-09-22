@@ -1,3 +1,6 @@
+//! Kernel object handle types.
+use core::fmt;
+
 use ftl_types::handle::HandleId;
 
 use crate::syscall;
@@ -10,7 +13,7 @@ use crate::warn;
 /// This type is marked as `#[repr(transparent)]` to ensure that it can be
 /// transmuted to a `HandleId`. Some code depend on this fact so don't change
 /// the sturcture of this type!
-#[derive(Debug, PartialEq, Eq)]
+#[derive(PartialEq, Eq)]
 #[repr(transparent)]
 pub struct OwnedHandle(HandleId);
 
@@ -32,5 +35,11 @@ impl Drop for OwnedHandle {
             // bug.
             warn!("failed to close handle: {:?}", err);
         }
+    }
+}
+
+impl fmt::Debug for OwnedHandle {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "#{}", self.0.as_isize())
     }
 }

@@ -5,7 +5,7 @@ use linked_list_allocator::LockedHeap;
 #[global_allocator]
 static GLOBAL_ALLOCATOR: LockedHeap = LockedHeap::empty();
 
-pub fn init() {
+pub(crate) fn init() {
     extern "C" {
         static __heap: u8;
         static __heap_end: u8;

@@ -1,3 +1,25 @@
+//! Logging utilities.
+//!
+//! [`std::println!`](https://doc.rust-lang.org/std/macro.println.html)
+//! for FTL applications.
+//!
+//! # Format string syntax
+//!
+//! See [`core::fmt`](https://doc.rust-lang.org/core/fmt/index.html) for the
+//! format syntax.
+//!
+//! # Examples
+//!
+//! ```
+//! use ftl_api::prelude::*; // Import all logging macros.
+//!
+//! info!("Hello, world!");
+//!
+//! let answer = 42;
+//! debug!("The answer is {}", answer);
+//! ```
+
+/// The log level.
 #[derive(Clone, Copy, PartialEq, Eq, Ord, PartialOrd)]
 pub enum LogLevel {
     Error,
@@ -7,6 +29,7 @@ pub enum LogLevel {
     Trace,
 }
 
+/// Logs a message.
 #[macro_export]
 macro_rules! log {
     ($level:expr, $($arg:tt)+) => {{
@@ -34,31 +57,37 @@ macro_rules! log {
     }};
 }
 
+/// Logs with [`LogLevel::Error`].
 #[macro_export]
 macro_rules! error {
     ($($arg:tt)+) => { $crate::log!($crate::log::LogLevel::Error, $($arg)+) }
 }
 
+/// Logs with [`LogLevel::Warn`].
 #[macro_export]
 macro_rules! warn {
     ($($arg:tt)+) => { $crate::log!($crate::log::LogLevel::Warn, $($arg)+) }
 }
 
+/// Logs with [`LogLevel::Info`].
 #[macro_export]
 macro_rules! info {
     ($($arg:tt)+) => { $crate::log!($crate::log::LogLevel::Info, $($arg)+) }
 }
 
+/// Logs with [`LogLevel::Debug`].
 #[macro_export]
 macro_rules! debug {
     ($($arg:tt)+) => { $crate::log!($crate::log::LogLevel::Debug, $($arg)+) }
 }
 
+/// Logs with [`LogLevel::Trace`].
 #[macro_export]
 macro_rules! trace {
     ($($arg:tt)+) => { $crate::log!($crate::log::LogLevel::Trace, $($arg)+) }
 }
 
+/// Similar to [`warn!`], but only logs in debug mode.
 #[macro_export]
 macro_rules! debug_warn {
     ($($arg:tt)+) => {

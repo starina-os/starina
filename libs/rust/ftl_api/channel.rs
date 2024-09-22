@@ -1,3 +1,4 @@
+//! A message-passing channel.
 use alloc::boxed::Box;
 use alloc::sync::Arc;
 use core::fmt;
@@ -16,12 +17,15 @@ use ftl_types::message::MESSAGE_HANDLES_MAX_COUNT;
 use crate::handle::OwnedHandle;
 use crate::syscall;
 
+/// Error type for receive operations.
 #[derive(Debug, PartialEq, Eq)]
 pub enum RecvError {
     Syscall(FtlError),
     Deserialize(MessageInfo),
 }
 
+/// An asynchronous, bounded, and bi-directional message-passing mechanism between
+/// processes.
 pub struct Channel {
     handle: OwnedHandle,
 }
@@ -54,10 +58,12 @@ fn do_recv<M: MessageDeserialize>(
 }
 
 impl Channel {
+    /// Creates a new channel from a handle.
     pub fn from_handle(handle: OwnedHandle) -> Channel {
         Channel { handle }
     }
 
+    /// Creates a new channel pair, connected to each other.
     pub fn create() -> Result<(Channel, Channel), FtlError> {
         let (handle0, handle1) = syscall::channel_create()?;
         let ch0 = Channel {
@@ -70,10 +76,15 @@ impl Channel {
         Ok((ch0, ch1))
     }
 
+    /// Returns the handle of the channel.
     pub fn handle(&self) -> &OwnedHandle {
         &self.handle
     }
 
+    /// Splits the channel into sender/receiver halves.
+    ///
+    /// Currently, it's no more than `Arc<Channel>`, but splitting a channel
+    /// whenever you can is recommended for future compatibility.
     pub fn split(self) -> (ChannelSender, ChannelReceiver) {
         let ch = Arc::new(self);
         let sender = ChannelSender { ch: ch.clone() };
@@ -81,6 +92,12 @@ impl Channel {
         (sender, receiver)
     }
 
+    /// Sends a message to the channel's peer. Non-blocking.
+    ///
+    /// # Note
+    ///
+    /// If the peer's message queue is full, this method will return an error
+    /// immediately without blocking.
     pub fn send<M: MessageSerialize>(&self, msg: M) -> Result<(), FtlError> {
         static CACHED_BUFFER: spin::Mutex<Option<Box<MessageBuffer>>> = spin::Mutex::new(None);
 
@@ -97,6 +114,7 @@ impl Channel {
         ret
     }
 
+    /// Sends a message to the channel's peer using the provided buffer. Non-blocking.
     pub fn send_with_buffer<M: MessageSerialize>(
         &self,
         buffer: &mut MessageBuffer,
@@ -109,6 +127,7 @@ impl Channel {
         syscall::channel_send(self.handle.id(), M::MSGINFO, buffer)
     }
 
+    /// Receives a message from the channel's peer. Blocking.
     pub fn try_recv_with_buffer<'a, M: MessageDeserialize>(
         &self,
         buffer: &'a mut MessageBuffer,
@@ -124,6 +143,7 @@ impl Channel {
         Ok(Some(msg))
     }
 
+    /// Receives a message from the channel's peer using the provided buffer. Blocking.
     pub fn recv_with_buffer<'a, M: MessageDeserialize>(
         &self,
         buffer: &'a mut MessageBuffer,
@@ -172,6 +192,8 @@ impl From<Channel> for HandleField {
     }
 }
 
+/// The sender half of a channel. Only send operations are allowed.
+
 #[derive(Debug)]
 pub struct ChannelReceiver {
     ch: Arc<Channel>,
@@ -197,6 +219,7 @@ impl ChannelReceiver {
     }
 }
 
+/// The receiver half of a channel. Only receive operations are allowed.
 #[derive(Debug, Clone)]
 pub struct ChannelSender {
     ch: Arc<Channel>,
