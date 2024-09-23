@@ -29,7 +29,7 @@ endif
 
 ifeq ($(ARCH),riscv64)
 QEMU      ?= qemu-system-riscv64
-QEMUFLAGS += -machine virt -m 256 -bios default
+QEMUFLAGS += -machine virt -m 256 -bios default -rtc base=localtime
 QEMUFLAGS += -global virtio-mmio.force-legacy=false
 QEMUFLAGS += -drive id=drive0,file=disk.img,format=raw,if=none
 QEMUFLAGS += -device virtio-blk-device,drive=drive0,bus=virtio-mmio-bus.0

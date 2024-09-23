@@ -1,0 +1,17 @@
+[package]
+name = "goldfish_rtc"
+version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
+
+[[bin]]
+name = "goldfish_rtc"
+path = "main.rs"
+
+[dependencies]
+ftl_api = { workspace = true }
+ftl_driver_utils = { workspace = true }
+chrono = { version = "0.4.38", features = ["alloc"], default-features = false }
+
+[build-dependencies]
+ftl_autogen = { workspace = true }

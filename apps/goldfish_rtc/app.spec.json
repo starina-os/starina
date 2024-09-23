@@ -1,0 +1,8 @@
+{
+  "name": "goldfish_rtc",
+  "kind": "app/v0",
+  "spec": {
+    "depends": [],
+    "provides": []
+  }
+}
