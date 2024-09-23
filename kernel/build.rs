@@ -44,7 +44,10 @@ const STARTUP_DEFS_TEMPLATE: &str = r#"
                 handles: &[
                     {% for depend in app.depends %}
                         {% if depend.type == "service" %}
-                            WantedHandle::Service(ServiceName("{{ depend.protocol }}")),
+                            WantedHandle::Service {
+                                dep_name: DepName("{{ depend.name }}"),
+                                service_name: ServiceName("{{ depend.protocol }}"),
+                            },
                         {% endif %}
                     {% endfor %}
                 ],

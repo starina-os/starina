@@ -57,10 +57,16 @@ pub struct AppName(pub &'static str);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ServiceName(pub &'static str);
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct DepName(pub &'static str);
+
 #[allow(unused)] // Can unused when no drivers are needed.
 #[derive(Debug)]
 pub enum WantedHandle {
-    Service(ServiceName),
+    Service {
+        dep_name: DepName,
+        service_name: ServiceName,
+    },
 }
 
 #[derive(Debug)]
@@ -263,8 +269,11 @@ impl<'a> StartupAppLoader<'a> {
         for (i, wanted_handle) in template.handles.iter().enumerate() {
             let handle_id = HandleId::from_raw((i + 1).try_into().unwrap());
             let handle = match wanted_handle {
-                WantedHandle::Service(service_name) => {
-                    env.push_channel(&format!("dep:{}", service_name.0), handle_id);
+                WantedHandle::Service {
+                    dep_name,
+                    service_name,
+                } => {
+                    env.push_channel(&format!("dep:{}", dep_name.0), handle_id);
                     self.get_server_ch(service_name)
                 }
             };
