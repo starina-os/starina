@@ -1,4 +1,6 @@
 #![no_std]
 
-pub mod buffer_pool;
+mod dma_buffer_pool;
 pub mod mmio;
+
+pub use dma_buffer_pool::DmaBufferPool;

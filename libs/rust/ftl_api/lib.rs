@@ -26,7 +26,7 @@
 //! - [`MappedFolio`](folio::MappedFolio): A physically-contiguous memory region for DMA/MMIO access.
 //! - [`Interrupt`](interrupt::Interrupt): Hardware interrupt handling.
 //! - `ftl_driver_utils::mmio`: Type-safe MMIO access.
-//! - `ftl_driver_utils::BufferPool`: The DMA buffer pool allocator.
+//! - `ftl_driver_utils::DmaBufferPool`: The DMA buffer pool allocator.
 //!
 //! # Prelude
 //!

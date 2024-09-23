@@ -15,7 +15,7 @@ use ftl_api::types::environ::Device;
 use ftl_api::types::interrupt::Irq;
 use ftl_autogen::idl::ethernet_device;
 use ftl_autogen::idl::Message;
-use ftl_driver_utils::buffer_pool::BufferPool;
+use ftl_driver_utils::DmaBufferPool;
 use ftl_virtio::transports::mmio::VirtioMmio;
 use ftl_virtio::transports::VirtioTransport;
 use ftl_virtio::virtqueue::VirtqDescBuffer;
@@ -78,11 +78,11 @@ pub fn main(mut env: Environ) {
     let mut transmitq = virtqueues.get_mut(1).unwrap().take().unwrap();
     let mut receiveq = virtqueues.get_mut(0).unwrap().take().unwrap();
     let dma_buf_len = 4096;
-    let mut receiveq_buffers = BufferPool::new(dma_buf_len, receiveq.num_descs() as usize);
-    let mut transmitq_buffers = BufferPool::new(dma_buf_len, transmitq.num_descs() as usize);
+    let mut receiveq_buffers = DmaBufferPool::new(dma_buf_len, receiveq.num_descs() as usize);
+    let mut transmitq_buffers = DmaBufferPool::new(dma_buf_len, transmitq.num_descs() as usize);
 
     // Fill the receive queue with buffers.
-    while let Some(buffer_index) = receiveq_buffers.pop_free() {
+    while let Some(buffer_index) = receiveq_buffers.allocate() {
         let chain = &[VirtqDescBuffer::WritableFromDevice {
             paddr: receiveq_buffers.paddr(buffer_index),
             len: dma_buf_len,
@@ -122,7 +122,7 @@ pub fn main(mut env: Environ) {
                 ..
             } => {
                 trace!("sending {} bytes", m.payload.len());
-                let buffer_index = transmitq_buffers.pop_free().expect("no free tx buffers");
+                let buffer_index = transmitq_buffers.allocate().expect("no free tx buffers");
                 let vaddr = transmitq_buffers.vaddr(buffer_index);
                 let paddr = transmitq_buffers.paddr(buffer_index);
 
@@ -185,7 +185,7 @@ pub fn main(mut env: Environ) {
                             remaining -= read_len;
 
                             let buffer_index = receiveq_buffers
-                                .paddr_to_index(paddr)
+                                .paddr_to_id(paddr)
                                 .expect("invalid paddr");
                             let vaddr = receiveq_buffers.vaddr(buffer_index);
                             let header_len = size_of::<VirtioNetModernHeader>();
@@ -208,7 +208,7 @@ pub fn main(mut env: Environ) {
                                 warn!("no tcpip ch, droppping packet...");
                             }
 
-                            receiveq_buffers.push_free(buffer_index);
+                            receiveq_buffers.free(buffer_index);
                         }
                     }
 
@@ -217,12 +217,12 @@ pub fn main(mut env: Environ) {
                             panic!("unexpected desc");
                         };
                         let buffer_index = transmitq_buffers
-                            .paddr_to_index(paddr)
+                            .paddr_to_id(paddr)
                             .expect("invalid paddr");
-                        transmitq_buffers.push_free(buffer_index);
+                        transmitq_buffers.free(buffer_index);
                     }
 
-                    while let Some(buffer_index) = receiveq_buffers.pop_free() {
+                    while let Some(buffer_index) = receiveq_buffers.allocate() {
                         let chain = &[VirtqDescBuffer::WritableFromDevice {
                             paddr: receiveq_buffers.paddr(buffer_index),
                             len: dma_buf_len,
