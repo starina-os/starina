@@ -18,6 +18,9 @@ path = "main.rs"
 
 [dependencies]
 ftl_api = { workspace = true }
+
+[build-dependencies]
+ftl_autogen = { workspace = true }
 """
 
 MAIN_RS = """\
@@ -30,6 +33,12 @@ use ftl_api::prelude::*;
 #[no_mangle]
 pub fn main(_env: Environ) {
     info!("Hello World!");
+}
+"""
+
+BUILD_RS = """\
+fn main() {
+    ftl_autogen::generate_for_app().expect("autogen failed");
 }
 """
 
@@ -62,6 +71,7 @@ def generate_app(args):
         error(f"Invalid app name '{app_name}' (must be lowercase alphanumeric with underscores)")
 
     generate(app_dir / "Cargo.toml", replace_placeholders(CARGO_TOML))
+    generate(app_dir / "build.rs", replace_placeholders(BUILD_RS))
     generate(app_dir / "main.rs", replace_placeholders(MAIN_RS))
     generate(app_dir / "app.spec.json", json.dumps({
         "name": app_name,
