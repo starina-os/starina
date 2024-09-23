@@ -4,13 +4,16 @@
 #![no_std]
 #![no_main]
 
-use ftl_api::types::address::PAddr;
-use ftl_api::{environ::Environ, folio::MappedFolio};
+use ftl_api::environ::Environ;
+use ftl_api::folio::MappedFolio;
 use ftl_api::prelude::*;
-use ftl_driver_utils::mmio::{LittleEndian, MmioReg, ReadOnly};
+use ftl_api::types::address::PAddr;
+use ftl_driver_utils::mmio::LittleEndian;
+use ftl_driver_utils::mmio::MmioReg;
+use ftl_driver_utils::mmio::ReadOnly;
 
 /// <https://github.com/qemu/qemu/blob/01dc65a3bc262ab1bec8fe89775e9bbfa627becb/hw/riscv/virt.c#L74>
-const MMIO_BASE: PAddr =PAddr::new(0x101000);
+const MMIO_BASE: PAddr = PAddr::new(0x101000);
 
 const MMIO_SIZE: usize = 4096;
 static TIME_LOW_REG: MmioReg<LittleEndian, ReadOnly, u32> = MmioReg::new(0x00);

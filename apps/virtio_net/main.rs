@@ -184,9 +184,8 @@ pub fn main(mut env: Environ) {
                             let read_len = core::cmp::min(len, remaining);
                             remaining -= read_len;
 
-                            let buffer_index = receiveq_buffers
-                                .paddr_to_id(paddr)
-                                .expect("invalid paddr");
+                            let buffer_index =
+                                receiveq_buffers.paddr_to_id(paddr).expect("invalid paddr");
                             let vaddr = receiveq_buffers.vaddr(buffer_index);
                             let header_len = size_of::<VirtioNetModernHeader>();
                             let data = unsafe {
@@ -216,9 +215,8 @@ pub fn main(mut env: Environ) {
                         let VirtqDescBuffer::ReadOnlyFromDevice { paddr, .. } = descs[0] else {
                             panic!("unexpected desc");
                         };
-                        let buffer_index = transmitq_buffers
-                            .paddr_to_id(paddr)
-                            .expect("invalid paddr");
+                        let buffer_index =
+                            transmitq_buffers.paddr_to_id(paddr).expect("invalid paddr");
                         transmitq_buffers.free(buffer_index);
                     }
 
