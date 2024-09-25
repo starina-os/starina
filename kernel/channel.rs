@@ -201,6 +201,17 @@ impl Channel {
 
         Ok(entry.msginfo)
     }
+
+    pub fn call(
+        self: &SharedRef<Channel>,
+        msginfo: MessageInfo,
+        msgbuffer: UAddr,
+        blocking: bool,
+        process: &SharedRef<Process>,
+    ) -> Result<MessageInfo, FtlError> {
+        self.send(msginfo, msgbuffer)?;
+        self.recv(msgbuffer, blocking, process)
+    }
 }
 
 impl fmt::Debug for Channel {

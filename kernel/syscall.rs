@@ -70,7 +70,8 @@ fn channel_recv(handle: HandleId, msgbuffer: UAddr) -> Result<MessageInfo, FtlEr
         (process, ch)
     };
 
-    Handle::into_shared_ref(ch).recv(msgbuffer, true, &process)
+    let ch_ref = Handle::into_shared_ref(ch);
+    ch_ref.recv(msgbuffer, true, &process)
 }
 
 fn channel_try_recv(handle: HandleId, msgbuffer: UAddr) -> Result<MessageInfo, FtlError> {
@@ -87,7 +88,30 @@ fn channel_try_recv(handle: HandleId, msgbuffer: UAddr) -> Result<MessageInfo, F
         (process, ch)
     };
 
-    Handle::into_shared_ref(ch).recv(msgbuffer, false, &process)
+    let ch_ref = Handle::into_shared_ref(ch);
+    ch_ref.recv(msgbuffer, false, &process)
+}
+
+fn channel_call(
+    handle: HandleId,
+    msginfo: MessageInfo,
+    msgbuffer: UAddr,
+) -> Result<MessageInfo, FtlError> {
+    let (process, ch): (SharedRef<Process>, Handle<Channel>) = {
+        let process = current_thread().process().clone();
+
+        let ch = process
+            .handles()
+            .lock()
+            .get_owned(handle, HandleRights::READ)?
+            .as_channel()?
+            .clone();
+
+        (process, ch)
+    };
+
+    let ch_ref = Handle::into_shared_ref(ch);
+    ch_ref.call(msginfo, msgbuffer, true, &process)
 }
 
 fn folio_create(len: usize) -> Result<HandleId, FtlError> {
@@ -321,6 +345,13 @@ fn handle_syscall(
             let msgbuffer = UAddr::new(a1 as usize);
             let msginfo = channel_try_recv(handle, msgbuffer)?;
             Ok(msginfo.as_raw())
+        }
+        _ if n == SyscallNumber::ChannelCall as isize => {
+            let handle = HandleId::from_raw_isize_truncated(a0);
+            let request_msginfo = MessageInfo::from_raw(a1);
+            let msgbuffer = UAddr::new(a2 as usize);
+            let reply_msginfo = channel_call(handle, request_msginfo, msgbuffer)?;
+            Ok(reply_msginfo.as_raw())
         }
         _ if n == SyscallNumber::FolioCreate as isize => {
             let handle_id = folio_create(a0 as usize)?;
