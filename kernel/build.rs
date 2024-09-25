@@ -96,9 +96,13 @@ fn main() {
             .unwrap();
         let app_spec: AppSpec = match spec.spec {
             Spec::App(app_spec) => app_spec,
-            // spec => {
-            //     panic!("{}: expected app spec, found {:?}", app_spec_path.display(), spec);
-            // }
+            spec => {
+                panic!(
+                    "{}: expected app spec, found {:?}",
+                    app_spec_path.display(),
+                    spec
+                );
+            }
         };
 
         startup_apps.push((spec.name, app_spec));

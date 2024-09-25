@@ -14,6 +14,7 @@ spin = "0.9.8"
 linked_list_allocator = "0.10.5"
 serde = { version = "1.0.203", default-features = false }
 serde_json = { version = "1.0.117", default-features = false, features = ["alloc"] }
+serde_yaml = "0.9.34"
 fdt-rs = { version = "0.4.5", default-features = false }
 smoltcp = { version = "0.11.0", default-features = false }
 httparse = { version = "1.9.4", default-features = false }

@@ -1,12 +1,12 @@
 {
-  "name": "ping_client",
+  "name": "echo_client",
   "kind": "app/v0",
   "spec": {
     "depends": [
       {
-        "name": "ping_server",
+        "name": "echo",
         "type": "service",
-        "protocol": "ping_server"
+        "interface": "echo"
       }
     ],
     "provides": []

@@ -1,0 +1,16 @@
+name: ethernet_device
+kind: interface/v0
+spec:
+  messages:
+  - name: tx
+    context: control
+    type: push
+    origin: client
+    params:
+    - { name: payload, type: bytes, capacity: 2048, help: "The data to transmit" }
+  - name: rx
+    context: control
+    type: push
+    origin: server
+    params:
+    - { name: payload, type: bytes, capacity: 2048, help: "The frame received" }

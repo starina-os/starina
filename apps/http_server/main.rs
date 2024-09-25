@@ -9,6 +9,7 @@ use ftl_api::environ::Environ;
 use ftl_api::mainloop::Event;
 use ftl_api::mainloop::Mainloop;
 use ftl_api::prelude::*;
+use ftl_api::types::message::MessageBuffer;
 use ftl_autogen::idl::tcpip::TcpListen;
 use ftl_autogen::idl::tcpip::TcpSend;
 use ftl_autogen::idl::Message;
@@ -66,9 +67,9 @@ impl Client {
 enum Context {
     Startup,
     // TCP/IP control channel.
-    Ctrl,
+    Listen,
     // TCP/IP data channel. Represents each TCP connection.
-    Data(Client),
+    Conn(Client),
 }
 
 #[no_mangle]
@@ -76,36 +77,39 @@ pub fn main(mut env: Environ) {
     info!("starting");
     let tcpip_ch = env.take_channel("dep:tcpip").unwrap();
 
-    // FIXME: Wait for the reply to make sure it succeeds.
-    tcpip_ch.send(TcpListen { port: 80 }).unwrap();
+    let mut msgbuffer = MessageBuffer::new();
+    let listen_reply = tcpip_ch
+        .call_with_buffer(TcpListen { port: 80 }, &mut msgbuffer)
+        .unwrap();
+    let listen_ch = listen_reply.listen.take::<Channel>().unwrap();
 
     let mut mainloop = Mainloop::<Context, Message>::new().unwrap();
     mainloop
         .add_channel(env.take_channel("dep:startup").unwrap(), Context::Startup)
         .unwrap();
-    mainloop.add_channel(tcpip_ch, Context::Ctrl).unwrap();
+    mainloop.add_channel(listen_ch, Context::Listen).unwrap();
 
     loop {
         match mainloop.next() {
             Event::Message {
-                ctx: Context::Ctrl,
+                ctx: Context::Listen,
                 message: Message::TcpAccepted(m),
                 ..
             } => {
-                let sock_ch = m.sock.take::<Channel>().unwrap();
+                let sock_ch = m.conn.take::<Channel>().unwrap();
                 mainloop
-                    .add_channel(sock_ch, Context::Data(Client::new()))
+                    .add_channel(sock_ch, Context::Conn(Client::new()))
                     .unwrap();
             }
             Event::Message {
-                ctx: Context::Data(client),
+                ctx: Context::Conn(client),
                 message: Message::TcpReceived(m),
                 sender,
             } => {
                 client.receive(sender, m.data.as_slice());
             }
             Event::Message {
-                ctx: Context::Data(_),
+                ctx: Context::Conn(_),
                 message: Message::TcpClosed(_),
                 sender,
             } => {

@@ -6,7 +6,7 @@
       {
         "name": "tcpip",
         "type": "service",
-        "protocol": "tcpip"
+        "interface": "tcpip"
       }
     ],
     "provides": []

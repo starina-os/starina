@@ -1,74 +1,11 @@
-use alloc::string::String;
-use alloc::vec::Vec;
 use core::fmt;
 use core::num::NonZeroI32;
 use core::str;
 use core::str::Utf8Error;
 
 use ftl_utils::static_assert;
-use serde::Deserialize;
-use serde::Serialize;
 
 use crate::handle::HandleId;
-
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct IdlFile {
-    pub protocols: Vec<Protocol>,
-}
-
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Protocol {
-    pub name: String,
-    pub oneways: Option<Vec<Oneway>>,
-    pub rpcs: Option<Vec<Rpc>>,
-}
-
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase", tag = "type")]
-pub enum Ty {
-    UInt16,
-    Int32,
-    Channel,
-    Bytes { capacity: usize },
-    String { capacity: usize },
-}
-
-impl fmt::Display for Ty {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Ty::UInt16 => write!(f, "u16"),
-            Ty::Int32 => write!(f, "i32"),
-            Ty::Channel => write!(f, "channel"),
-            Ty::Bytes { capacity } => write!(f, "bytes<{}>", capacity),
-            Ty::String { capacity } => write!(f, "string<{}>", capacity),
-        }
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Field {
-    pub name: String,
-    #[serde(flatten)]
-    pub ty: Ty,
-}
-
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Message {
-    pub fields: Vec<Field>,
-}
-
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Oneway {
-    pub name: String,
-    pub fields: Vec<Field>,
-}
-
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Rpc {
-    pub name: String,
-    pub request: Message,
-    pub response: Message,
-}
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct TooManyItemsError;

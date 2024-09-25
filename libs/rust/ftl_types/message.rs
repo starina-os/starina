@@ -56,6 +56,10 @@ pub trait MessageSerialize: Sized {
     fn serialize(self, buffer: &mut MessageBuffer);
 }
 
+pub trait MessageCallable: Sized {
+    type Reply: MessageDeserialize;
+}
+
 pub trait MessageDeserialize: Sized {
     type Reader<'a>: 'a;
     fn deserialize<'a>(

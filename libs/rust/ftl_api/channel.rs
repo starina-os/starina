@@ -9,6 +9,7 @@ use ftl_types::error::FtlError;
 use ftl_types::idl::HandleField;
 use ftl_types::idl::MovedHandle;
 use ftl_types::message::MessageBuffer;
+use ftl_types::message::MessageCallable;
 use ftl_types::message::MessageDeserialize;
 use ftl_types::message::MessageInfo;
 use ftl_types::message::MessageSerialize;
@@ -24,16 +25,23 @@ pub enum RecvError {
     Deserialize(MessageInfo),
 }
 
+/// Error type for send-then-receive operations.
+#[derive(Debug, PartialEq, Eq)]
+pub enum CallError {
+    Syscall(FtlError),
+    Deserialize(MessageInfo),
+}
+
 /// An asynchronous, bounded, and bi-directional message-passing mechanism between
 /// processes.
 pub struct Channel {
     handle: OwnedHandle,
 }
 
-fn do_recv<M: MessageDeserialize>(
+fn process_received_message<M: MessageDeserialize>(
     buffer: &mut MessageBuffer,
     msginfo: MessageInfo,
-) -> Result<M::Reader<'_>, RecvError> {
+) -> Result<M::Reader<'_>, MessageInfo> {
     // FIXME: Due to a possibly false-positive borrow check issue, we can't
     //        use `buffer` anymore in the Option::ok_or_else below. This is a
     //        naive workaround.
@@ -53,7 +61,7 @@ fn do_recv<M: MessageDeserialize>(
             syscall::handle_close(handle_id).expect("failed to close handle");
         }
 
-        RecvError::Deserialize(msginfo)
+        msginfo
     })
 }
 
@@ -139,7 +147,7 @@ impl Channel {
             Err(err) => return Err(RecvError::Syscall(err)),
         };
 
-        let msg = do_recv::<M>(buffer, msginfo)?;
+        let msg = process_received_message::<M>(buffer, msginfo).map_err(RecvError::Deserialize)?;
         Ok(Some(msg))
     }
 
@@ -152,8 +160,25 @@ impl Channel {
         let msginfo =
             syscall::channel_recv(self.handle.id(), buffer).map_err(RecvError::Syscall)?;
 
-        let msg = do_recv::<M>(buffer, msginfo)?;
+        let msg = process_received_message::<M>(buffer, msginfo).map_err(RecvError::Deserialize)?;
         Ok(msg)
+    }
+
+    /// Send a message and then receive a reply. Blocking.
+    pub fn call_with_buffer<'a, M>(
+        &self,
+        msg: M,
+        buffer: &'a mut MessageBuffer,
+    ) -> Result<<<M as MessageCallable>::Reply as MessageDeserialize>::Reader<'a>, CallError>
+    where
+        M: MessageSerialize + MessageCallable,
+    {
+        msg.serialize(buffer);
+        let msginfo = syscall::channel_call(self.handle.id(), M::MSGINFO, buffer)
+            .map_err(CallError::Syscall)?;
+        let reply = process_received_message::<<M as MessageCallable>::Reply>(buffer, msginfo)
+            .map_err(CallError::Deserialize)?;
+        Ok(reply)
     }
 }
 

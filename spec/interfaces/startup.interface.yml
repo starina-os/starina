@@ -1,0 +1,10 @@
+name: startup
+kind: interface/v0
+spec:
+  messages:
+  - name: new_client
+    context: control
+    type: push
+    origin: server
+    params:
+    - { name: handle, type: channel, help: "The new client channel" }

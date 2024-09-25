@@ -6,7 +6,7 @@
       {
         "name": "ethernet_device",
         "type": "service",
-        "protocol": "ethernet_device"
+        "interface": "ethernet_device"
       }
     ],
     "provides": [

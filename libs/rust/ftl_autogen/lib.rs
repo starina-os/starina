@@ -7,48 +7,61 @@ use std::path::PathBuf;
 
 use anyhow::Context;
 use anyhow::Result;
-use ftl_types::idl;
-use ftl_types::idl::IdlFile;
+use ftl_types::spec::InterfaceSpec;
+use ftl_types::spec::MessageField;
+use ftl_types::spec::MessageFieldType;
+use ftl_types::spec::MessageType;
+use ftl_types::spec::Spec;
+use ftl_types::spec::SpecFile;
 use minijinja::context;
 use minijinja::Environment;
 use serde::Serialize;
 
 #[derive(Debug, Serialize, Clone)]
-struct Field {
+struct JinjaField {
     name: String,
     ty: String,
     is_handle: bool,
 }
 
 #[derive(Debug, Serialize, Clone)]
-struct Message {
-    protocol_name: String,
+struct JinjaMessage {
+    interface_name: String,
     name: String,
     msgid: isize,
     num_handles: isize,
-    fields: Vec<Field>,
+    reply_message_name: Option<String>,
+    fields: Vec<JinjaField>,
 }
 
 #[derive(Debug, Serialize, Clone)]
-struct Protocol {
+struct JinjaInterface {
     name: String,
-    messages: Vec<Message>,
+    messages: Vec<JinjaMessage>,
 }
 
-fn resolve_type(ty: &idl::Ty) -> String {
+fn resolve_type(ty: &MessageFieldType) -> String {
     match ty {
-        idl::Ty::UInt16 => "u16".to_string(),
-        idl::Ty::Int32 => "i32".to_string(),
-        idl::Ty::Channel => "ftl_types::idl::HandleField".to_string(),
-        idl::Ty::Bytes { capacity } => format!("ftl_types::idl::BytesField<{capacity}>"),
-        idl::Ty::String { capacity } => format!("ftl_types::idl::StringField<{capacity}>"),
+        MessageFieldType::UInt8 => "u8".to_string(),
+        MessageFieldType::UInt16 => "u16".to_string(),
+        MessageFieldType::UInt32 => "u32".to_string(),
+        MessageFieldType::Int8 => "i8".to_string(),
+        MessageFieldType::Int16 => "i16".to_string(),
+        MessageFieldType::Int32 => "i32".to_string(),
+        MessageFieldType::Channel => "ftl_types::idl::HandleField".to_string(),
+        MessageFieldType::Bytes { capacity } => format!("ftl_types::idl::BytesField<{capacity}>"),
+        MessageFieldType::String { capacity } => format!("ftl_types::idl::StringField<{capacity}>"),
     }
 }
 
-fn num_handles(fields: &[Field]) -> isize {
+fn is_handle(ty: &MessageFieldType) -> bool {
+    matches!(ty, MessageFieldType::Channel)
+}
+
+fn num_handles(fields: &[MessageField]) -> isize {
     fields
         .iter()
-        .filter(|f| f.ty == "ftl_types::idl::HandleField")
+        .filter(|f| is_handle(&f.ty))
         .count()
         .try_into()
         .unwrap()
@@ -73,101 +86,139 @@ impl fmt::Display for CamelCase<'_> {
     }
 }
 
-fn visit_fields(idl_fields: &[idl::Field]) -> Vec<Field> {
+fn visit_fields(idl_fields: &[MessageField]) -> Vec<JinjaField> {
     let mut fields = Vec::with_capacity(idl_fields.len());
     for f in idl_fields {
-        fields.push(Field {
+        fields.push(JinjaField {
             name: f.name.clone(),
             ty: resolve_type(&f.ty),
-            is_handle: matches!(f.ty, idl::Ty::Channel),
+            is_handle: is_handle(&f.ty),
         });
     }
 
     fields
 }
 
-fn find_idl_file() -> Result<PathBuf> {
+fn find_spec_dir() -> Result<PathBuf> {
     let manifest_dir = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").unwrap());
     let mut dir = manifest_dir.as_path();
     while let Some(parent_dir) = dir.parent() {
-        let idl_path = parent_dir.join("idl.json");
-        if idl_path.exists() {
-            return Ok(idl_path);
+        let path = parent_dir.join("spec/interfaces");
+        if path.is_dir() {
+            return Ok(path);
         }
 
         dir = parent_dir;
     }
 
-    anyhow::bail!("idl.json not found in any parent directory of CARGO_MANIFEST_DIR");
+    anyhow::bail!(
+        "spec/interfaces directory not found in any parent directory of CARGO_MANIFEST_DIR"
+    );
+}
+
+fn visit_interface(
+    interface_name: &str,
+    spec: &InterfaceSpec,
+    next_msgid: &mut isize,
+) -> Result<JinjaInterface> {
+    let mut jinja_messages = Vec::with_capacity(spec.messages.len());
+    for message in &spec.messages {
+        let reply_message_name = format!("{}Reply", CamelCase(&message.name));
+
+        jinja_messages.push(JinjaMessage {
+            interface_name: interface_name.to_string(),
+            name: format!("{}", CamelCase(&message.name)),
+            msgid: *next_msgid,
+            num_handles: num_handles(&message.params),
+            fields: visit_fields(&message.params),
+            reply_message_name: if message.ty == MessageType::Call {
+                Some(reply_message_name.clone())
+            } else {
+                None
+            },
+        });
+        *next_msgid += 1;
+
+        match (message.returns.as_ref(), &message.ty) {
+            (Some(returns), MessageType::Call) => {
+                jinja_messages.push(JinjaMessage {
+                    interface_name: interface_name.to_string(),
+                    name: reply_message_name,
+                    msgid: *next_msgid,
+                    num_handles: num_handles(&returns),
+                    fields: visit_fields(returns),
+                    reply_message_name: None,
+                });
+                *next_msgid += 1;
+            }
+            (Some(_), _) => {
+                panic!(
+                    "{}:{}: non-call message must not have \"returns\"",
+                    interface_name, message.name
+                );
+            }
+            (None, MessageType::Call) => {
+                panic!(
+                    "{}:{}: call message must have \"returns\"",
+                    interface_name, message.name
+                );
+            }
+            (None, _) => {
+                // Non-call message without returns. Nothing to do.
+            }
+        }
+    }
+
+    Ok(JinjaInterface {
+        name: interface_name.to_string(),
+        messages: jinja_messages,
+    })
 }
 
 fn do_generate(for_kernel: bool) -> Result<()> {
     let out_dir = env::var_os("OUT_DIR").unwrap();
     let dest_path = Path::new(&out_dir).join("autogen.rs");
-    let idl_path = find_idl_file()?;
-
-    let idl_file = File::open(idl_path)?;
-    let idl: IdlFile = serde_json::from_reader(&idl_file)?;
+    let spec_dir = find_spec_dir()?;
 
     let mut next_msgid = 1;
-    let mut messages = Vec::new();
-    let mut protocols = Vec::new();
-    for protocol in idl.protocols {
-        let mut protocol_messages = Vec::new();
-        if let Some(oneways) = &protocol.oneways {
-            for oneway in oneways {
-                let fields = visit_fields(&oneway.fields);
-                protocol_messages.push(Message {
-                    protocol_name: protocol.name.clone(),
-                    name: format!("{}", CamelCase(&oneway.name)),
-                    msgid: next_msgid,
-                    num_handles: num_handles(&fields),
-                    fields,
-                });
-                next_msgid += 1;
+    let mut interfaces = Vec::new();
+    for dentry in spec_dir
+        .read_dir()
+        .context("failed to readdir spec/interfaces")?
+    {
+        let dentry = dentry.unwrap();
+        let spec_file = File::open(dentry.path())
+            .with_context(|| format!("failed to open spec file {}", dentry.path().display()))?;
+        let spec: SpecFile = serde_yaml::from_reader(spec_file)
+            .with_context(|| format!("failed to parse spec file {}", dentry.path().display()))?;
+
+        let interface_spec = match spec.spec {
+            Spec::Interface(spec) => spec,
+            _ => {
+                panic!("{}: expected interface spec", dentry.path().display());
             }
-        }
+        };
 
-        if let Some(rpcs) = &protocol.rpcs {
-            for rpc in rpcs {
-                let req_fields = visit_fields(&rpc.request.fields);
-                protocol_messages.push(Message {
-                    protocol_name: protocol.name.clone(),
-                    name: format!("{}", CamelCase(&rpc.name)),
-                    msgid: next_msgid,
-                    num_handles: num_handles(&req_fields),
-                    fields: req_fields,
-                });
-                next_msgid += 1;
+        let iface = visit_interface(&spec.name, &interface_spec, &mut next_msgid)
+            .with_context(|| format!("failed to process interface {}", dentry.path().display()))?;
 
-                let reply_fields = visit_fields(&rpc.response.fields);
-                protocol_messages.push(Message {
-                    protocol_name: protocol.name.clone(),
-                    name: format!("{}Reply", CamelCase(&rpc.name)),
-                    msgid: next_msgid,
-                    num_handles: num_handles(&reply_fields),
-                    fields: reply_fields,
-                });
-                next_msgid += 1;
-            }
-        }
-
-        messages.extend(protocol_messages.iter().cloned());
-        protocols.push(Protocol {
-            name: protocol.name,
-            messages: protocol_messages.clone(),
-        });
+        interfaces.push(iface);
     }
 
-    let mut j2env = Environment::new();
-    j2env
+    let mut all_messages = Vec::new();
+    for iface in &interfaces {
+        all_messages.extend(iface.messages.iter().cloned());
+    }
+
+    let mut jinja_env = Environment::new();
+    jinja_env
         .add_template("autogen", include_str!("autogen.rs.j2"))
         .unwrap();
-    let template = j2env.get_template("autogen")?;
+    let template = jinja_env.get_template("autogen")?;
     let lib_rs = template
         .render(context! {
-            messages => messages,
-            protocols => protocols,
+            messages => all_messages,
+            interfaces => interfaces,
             generate_for_kernel => for_kernel,
         })
         .context("failed to generate autogen")?;

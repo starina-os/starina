@@ -6,6 +6,7 @@ pub mod idl {
 
     use ftl_types::message::MessageSerialize;
     use ftl_types::message::MessageDeserialize;
+    use ftl_types::message::MessageCallable;
     use ftl_types::message::MessageBuffer;
     use ftl_types::message::MessageInfo;
 
@@ -13,7 +14,7 @@ pub mod idl {
     pub enum Message<'a> {
         {% for m in messages %}
         #[allow(unused)]
-        {{ m.name }}(&'a mut {{ m.protocol_name }}::{{ m.name }}),
+        {{ m.name }}(&'a mut {{ m.interface_name }}::{{ m.name }}),
         {% endfor %}
     }
 
@@ -24,8 +25,8 @@ pub mod idl {
             -> Option<Self::Reader<'_>> {
             match msginfo {
                 {% for m in messages %}
-                    {{ m.protocol_name }}::{{ m.name }}::MSGINFO => {
-                        let msg = {{ m.protocol_name }}::{{ m.name }}::deserialize(buffer, msginfo)?;
+                    {{ m.interface_name }}::{{ m.name }}::MSGINFO => {
+                        let msg = {{ m.interface_name }}::{{ m.name }}::deserialize(buffer, msginfo)?;
                         Some(Message::{{ m.name }}(msg))
                     },
                 {% endfor %}
@@ -34,8 +35,8 @@ pub mod idl {
         }
     }
 
-    {% for protocol in protocols %}
-    pub mod {{ protocol.name }} {
+    {% for interface in interfaces %}
+    pub mod {{ interface.name }} {
         #[allow(unused)]
         use super::*;
 
@@ -72,6 +73,12 @@ pub mod idl {
                     }
                 }
             }
+
+            {% if m.reply_message_name %}
+                impl MessageCallable for {{ m.name }} {
+                    type Reply = {{  m.reply_message_name }};
+                }
+            {% endif %}
 
             impl MessageDeserialize for {{ m.name }} {
                 type Reader<'a> = &'a mut Self;

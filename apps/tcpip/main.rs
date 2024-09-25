@@ -15,6 +15,7 @@ use ftl_api::types::error::FtlError;
 use ftl_autogen::idl::ethernet_device;
 use ftl_autogen::idl::tcpip::TcpAccepted;
 use ftl_autogen::idl::tcpip::TcpClosed;
+use ftl_autogen::idl::tcpip::TcpListenReply;
 use ftl_autogen::idl::tcpip::TcpReceived;
 use ftl_autogen::idl::Message;
 use smoltcp::iface::Config;
@@ -174,21 +175,26 @@ impl<'a> Server<'a> {
                 let smol_sock = self.smol_sockets.get_mut::<tcp::Socket>(sock.smol_handle);
                 let mut close = false;
                 match (&mut sock.state, smol_sock.state()) {
-                    (State::Listening { .. }, tcp::State::Listen | tcp::State::SynReceived) => {}
+                    (SockState::Listening { .. }, tcp::State::Listen | tcp::State::SynReceived) => {
+                    }
                     (
-                        State::Listening {
-                            ctrl_sender,
+                        SockState::Listening {
+                            listen_sender,
                             listen_endpoint,
                         },
                         tcp::State::Established,
                     ) => {
-                        let (ch1, ch2) = Channel::create().unwrap();
-                        ctrl_sender.send(TcpAccepted { sock: ch1.into() }).unwrap();
+                        let (their_ch, our_ch) = Channel::create().unwrap();
+                        listen_sender
+                            .send(TcpAccepted {
+                                conn: their_ch.into(),
+                            })
+                            .unwrap();
 
-                        let (ch2_sender, ch2_receiver) = ch2.split();
+                        let (our_ch_sender, our_ch_receiver) = our_ch.split();
                         mainloop
                             .add_channel(
-                                (ch2_sender.clone(), ch2_receiver),
+                                (our_ch_sender.clone(), our_ch_receiver),
                                 Context::DataSocket(sock.smol_handle),
                             )
                             .unwrap();
@@ -203,19 +209,21 @@ impl<'a> Server<'a> {
                         new_listen_sock.listen(*listen_endpoint).unwrap();
                         new_sockets.push(Socket {
                             smol_handle: new_listen_sock_handle,
-                            state: State::Listening {
+                            state: SockState::Listening {
                                 listen_endpoint: *listen_endpoint,
-                                ctrl_sender: ctrl_sender.clone(),
+                                listen_sender: listen_sender.clone(),
                             },
                         });
 
-                        sock.state = State::Established { sender: ch2_sender };
+                        sock.state = SockState::Established {
+                            sender: our_ch_sender,
+                        };
                     }
-                    (State::Listening { .. }, _) => {
+                    (SockState::Listening { .. }, _) => {
                         // Inactive, closed, or unknown state. Close the socket.
                         close = true;
                     }
-                    (State::Established { sender: ch }, _) if smol_sock.can_recv() => {
+                    (SockState::Established { sender: ch }, _) if smol_sock.can_recv() => {
                         loop {
                             let mut buf = [0; 2048];
                             let len = smol_sock.recv_slice(&mut buf).unwrap();
@@ -230,10 +238,10 @@ impl<'a> Server<'a> {
                             .unwrap();
                         }
                     }
-                    (State::Established { .. }, tcp::State::Established) => {
+                    (SockState::Established { .. }, tcp::State::Established) => {
                         // Do nothing.
                     }
-                    (State::Established { .. }, _) => {
+                    (SockState::Established { .. }, _) => {
                         close = true;
                     }
                 }
@@ -249,13 +257,12 @@ impl<'a> Server<'a> {
                 self.smol_sockets.remove(sock.smol_handle);
 
                 match sock.state {
-                    State::Listening {
-                        ctrl_sender: sender,
-                        ..
-                    }
-                    | State::Established { sender } => {
+                    SockState::Established { sender } => {
                         sender.send(TcpClosed {}).unwrap();
                         mainloop.remove(sender.handle().id()).unwrap();
+                    }
+                    _ => {
+                        unreachable!();
                     }
                 }
             }
@@ -266,7 +273,8 @@ impl<'a> Server<'a> {
         }
     }
 
-    pub fn tcp_listen(&mut self, ctrl_sender: ChannelSender, port: u16) {
+    pub fn tcp_listen(&mut self, port: u16) -> Result<Channel, FtlError> {
+        let (our_listen_ch, their_listen_ch) = Channel::create()?;
         let listen_endpoint = IpListenEndpoint { addr: None, port };
 
         let rx_buf = tcp::SocketBuffer::new(vec![0; 8192]);
@@ -274,18 +282,22 @@ impl<'a> Server<'a> {
         let mut sock = tcp::Socket::new(rx_buf, tx_buf);
         sock.listen(listen_endpoint).unwrap();
 
+        let (listen_sender, _) = our_listen_ch.split();
+
         info!("listening on port {}", port);
         let handle = self.smol_sockets.add(sock);
         self.sockets.insert(
             handle,
             Socket {
                 smol_handle: handle,
-                state: State::Listening {
-                    ctrl_sender,
+                state: SockState::Listening {
+                    listen_sender,
                     listen_endpoint,
                 },
             },
         );
+
+        Ok(their_listen_ch)
     }
 
     pub fn tcp_send(&mut self, handle: SocketHandle, data: &[u8]) -> Result<(), FtlError> {
@@ -293,7 +305,7 @@ impl<'a> Server<'a> {
             .sockets
             .get_mut(&handle)
             .ok_or(FtlError::HandleNotFound)?;
-        if !matches!(socket.state, State::Established { .. }) {
+        if !matches!(socket.state, SockState::Established { .. }) {
             return Err(FtlError::InvalidState);
         }
 
@@ -309,9 +321,9 @@ impl<'a> Server<'a> {
     }
 }
 
-enum State {
+enum SockState {
     Listening {
-        ctrl_sender: ChannelSender,
+        listen_sender: ChannelSender,
         listen_endpoint: IpListenEndpoint,
     },
     Established {
@@ -321,7 +333,7 @@ enum State {
 
 struct Socket {
     smol_handle: SocketHandle,
-    state: State,
+    state: SockState,
 }
 
 #[no_mangle]
@@ -366,7 +378,17 @@ pub fn main(mut env: Environ) {
                 message: Message::TcpListen(m),
                 sender,
             } => {
-                server.tcp_listen(sender.clone(), m.port);
+                match server.tcp_listen(m.port) {
+                    Ok(ch) => {
+                        if let Err(err) = sender.send(TcpListenReply { listen: ch.into() }) {
+                            debug_warn!("failed to send: {:?}", err);
+                        }
+                    }
+                    Err(err) => {
+                        warn!("failed to listen: {:?}", err);
+                        // TODO:
+                    }
+                }
             }
             Event::Message {
                 ctx: Context::DataSocket(handle),

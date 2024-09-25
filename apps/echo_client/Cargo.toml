@@ -1,11 +1,11 @@
 [package]
-name = "ping_server"
+name = "echo_client"
 version = { workspace = true }
 authors = { workspace = true }
 edition = { workspace = true }
 
 [[bin]]
-name = "ping_server"
+name = "echo_client"
 path = "main.rs"
 
 [dependencies]

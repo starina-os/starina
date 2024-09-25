@@ -262,6 +262,21 @@ pub fn channel_try_recv(
     Ok(MessageInfo::from_raw(ret))
 }
 
+/// Sends a message and then receives a reply. Blocking.
+pub fn channel_call(
+    handle: HandleId,
+    msginfo: MessageInfo,
+    msgbuffer: *const MessageBuffer,
+) -> Result<MessageInfo, FtlError> {
+    let ret = syscall3(
+        SyscallNumber::ChannelCall,
+        handle.as_isize(),
+        msginfo.as_raw(),
+        msgbuffer as isize,
+    )?;
+    Ok(MessageInfo::from_raw(ret))
+}
+
 /// Creates a signal object.
 pub fn signal_create() -> Result<HandleId, FtlError> {
     let ret = syscall0(SyscallNumber::SignalCreate)?;
