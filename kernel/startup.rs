@@ -122,7 +122,13 @@ impl<'a> StartupAppLoader<'a> {
 
         let app_name = match self.service_to_app_name.get(service_name) {
             Some(app_name) => app_name,
-            None => panic!("service \"{}\" not found", service_name.0),
+            None => {
+                panic!(
+                    "service \"{}\" not found, available services are: {:?}",
+                    service_name.0,
+                    self.service_to_app_name.keys()
+                );
+            }
         };
 
         self.our_chs
