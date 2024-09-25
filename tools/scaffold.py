@@ -30,8 +30,10 @@ MAIN_RS = """\
 use ftl_api::environ::Environ;
 use ftl_api::prelude::*;
 
+ftl_api::autogen!();
+
 #[no_mangle]
-pub fn main(_env: Environ) {
+pub fn main(mut env: Environ) {
     info!("Hello World!");
 }
 """
