@@ -26,7 +26,7 @@ pub struct DeviceTree {
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase", tag = "type")]
 pub enum Depend {
-    Service { protocol: String },
+    Service { interface: String },
     Device { device_tree: Option<DeviceTree> },
 }
 
