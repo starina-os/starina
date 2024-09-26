@@ -9,6 +9,9 @@ use ftl_autogen::idl::startup::NewClient;
 use ftl_elf::Elf;
 use ftl_elf::PhdrType;
 use ftl_elf::ET_DYN;
+use ftl_elf::PF_R;
+use ftl_elf::PF_W;
+use ftl_elf::PF_X;
 use ftl_types::address::PAddr;
 use ftl_types::address::VAddr;
 use ftl_types::environ::EnvironSerializer;
@@ -382,26 +385,59 @@ impl<'a> ElfLoader<'a> {
                 let file_part_len = core::cmp::min(file_size.saturating_sub(offset), PAGE_SIZE);
                 let zero_part_len = PAGE_SIZE - file_part_len;
 
+                let mut map_flags = PageProtect::zeroed();
+                if phdr.p_flags & PF_R != 0 {
+                    map_flags |= PageProtect::READABLE;
+                }
+
+                if phdr.p_flags & PF_W != 0 {
+                    map_flags |= PageProtect::WRITABLE;
+                }
+
+                if phdr.p_flags & PF_X != 0 {
+                    map_flags |= PageProtect::EXECUTABLE;
+                }
+
                 let paddr = if file_part_len > 0 {
-                    self.elf_paddr.add(file_offset + offset)
+                    let paddr_in_original = self.elf_paddr.add(file_offset + offset);
+                    if !map_flags.contains(PageProtect::WRITABLE) {
+                        // Read-only segment. No need to copy (assuming Rust
+                        // guaranntees immutability of the segment).
+                        paddr_in_original
+                    } else {
+                        // Writable segment. We need to copy the segment to a
+                        // new physical page so that multiple instances of the
+                        // same app can have their own writable memory.
+                        let folio = Folio::alloc(PAGE_SIZE).unwrap();
+                        let folio_vaddr = paddr2vaddr(folio.paddr()).unwrap();
+                        let copy_len = core::cmp::min(file_part_len, folio.len());
+                        let dest_slice: &mut [u8] = unsafe {
+                            core::slice::from_raw_parts_mut(
+                                folio_vaddr.as_mut_ptr(),
+                                copy_len,
+                            )
+                        };
+                        dest_slice.copy_from_slice(&self.elf_file[(file_offset + offset)..(file_offset + offset + copy_len)]);
+                        let folio_paddr = folio.paddr();
+                        // FIXME: track this ownership
+                        core::mem::forget(folio);
+                        folio_paddr
+                    }
                 } else {
+                    let folio = Folio::alloc(PAGE_SIZE).unwrap();
+                    let folio_paddr = folio.paddr();
                     // FIXME: track this ownership
-                    Folio::alloc(PAGE_SIZE).unwrap().paddr()
+                    core::mem::forget(folio);
+                    folio_paddr
                 };
 
-                // TODO: Make sure we won't start the same app more than once
-                //       because we map the same physical page, even in writable
-                //       pages like .data section.
                 vmspace
-                    .map_fixed(
-                        vaddr,
-                        paddr,
-                        PAGE_SIZE,
-                        PageProtect::READABLE | PageProtect::WRITABLE | PageProtect::EXECUTABLE,
-                    )
+                    .map_fixed(vaddr, paddr, PAGE_SIZE, map_flags)
                     .unwrap();
 
                 if zero_part_len > 0 {
+                    // TODO: We might not need to zero-fill. Folio is already
+                    //       zero-filled for security reasons.
                     let slice: &mut [u8] = unsafe {
                         core::slice::from_raw_parts_mut(
                             vaddr.add(file_part_len).as_mut_ptr(),

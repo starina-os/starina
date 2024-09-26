@@ -51,6 +51,13 @@ pub enum PhdrType {
     Tls = 7,
 }
 
+/// Executable segment.
+pub const PF_X: u32 = 0x1;
+/// Writable segment.
+pub const PF_W: u32 = 0x2;
+/// Readable segment.
+pub const PF_R: u32 = 0x4;
+
 #[derive(Debug)]
 #[repr(C)]
 pub struct Phdr64 {

@@ -41,3 +41,15 @@ impl ops::BitAnd for PageProtect {
         PageProtect(self.0 & rhs.0)
     }
 }
+
+impl ops::BitOrAssign for PageProtect {
+    fn bitor_assign(&mut self, rhs: Self) {
+        self.0 |= rhs.0;
+    }
+}
+
+impl ops::BitAndAssign for PageProtect {
+    fn bitand_assign(&mut self, rhs: Self) {
+        self.0 &= rhs.0;
+    }
+}
