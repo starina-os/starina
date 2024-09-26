@@ -69,6 +69,7 @@ fn use_temporary_msgbuffer<F, R>(f: F) -> R
 where
     F: FnOnce(&mut MessageBuffer) -> R,
 {
+    // FIXME: Use a thread-local storage not to block other threads.
     static CACHED_BUFFER: spin::Mutex<Option<Box<MessageBuffer>>> = spin::Mutex::new(None);
 
     // Try to reuse the buffer to avoid memory allocation.
