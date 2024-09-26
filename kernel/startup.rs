@@ -412,12 +412,12 @@ impl<'a> ElfLoader<'a> {
                         let folio_vaddr = paddr2vaddr(folio.paddr()).unwrap();
                         let copy_len = core::cmp::min(file_part_len, folio.len());
                         let dest_slice: &mut [u8] = unsafe {
-                            core::slice::from_raw_parts_mut(
-                                folio_vaddr.as_mut_ptr(),
-                                copy_len,
-                            )
+                            core::slice::from_raw_parts_mut(folio_vaddr.as_mut_ptr(), copy_len)
                         };
-                        dest_slice.copy_from_slice(&self.elf_file[(file_offset + offset)..(file_offset + offset + copy_len)]);
+                        dest_slice.copy_from_slice(
+                            &self.elf_file
+                                [(file_offset + offset)..(file_offset + offset + copy_len)],
+                        );
                         let folio_paddr = folio.paddr();
                         // FIXME: track this ownership
                         core::mem::forget(folio);
