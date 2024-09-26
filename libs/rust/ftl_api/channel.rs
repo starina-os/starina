@@ -22,14 +22,14 @@ use crate::syscall;
 #[derive(Debug, PartialEq, Eq)]
 pub enum RecvError {
     Syscall(FtlError),
-    Deserialize(MessageInfo),
+    Unexpected(MessageInfo),
 }
 
 /// Error type for send-then-receive operations.
 #[derive(Debug, PartialEq, Eq)]
 pub enum CallError {
     Syscall(FtlError),
-    Deserialize(MessageInfo),
+    Unexpected(MessageInfo),
 }
 
 /// An asynchronous, bounded, and bi-directional message-passing mechanism between
@@ -158,7 +158,7 @@ impl Channel {
             Err(err) => return Err(RecvError::Syscall(err)),
         };
 
-        let msg = process_received_message::<M>(buffer, msginfo).map_err(RecvError::Deserialize)?;
+        let msg = process_received_message::<M>(buffer, msginfo).map_err(RecvError::Unexpected)?;
         Ok(Some(msg))
     }
 
@@ -185,7 +185,7 @@ impl Channel {
             syscall::channel_recv(self.handle.id(), msgbuffer).map_err(RecvError::Syscall)?;
 
         let msg =
-            process_received_message::<M>(msgbuffer, msginfo).map_err(RecvError::Deserialize)?;
+            process_received_message::<M>(msgbuffer, msginfo).map_err(RecvError::Unexpected)?;
         Ok(msg)
     }
 
@@ -204,7 +204,7 @@ impl Channel {
         let msginfo = syscall::channel_call(self.handle.id(), M::MSGINFO, msgbuffer)
             .map_err(CallError::Syscall)?;
         let reply = process_received_message::<M::Reply>(msgbuffer, msginfo)
-            .map_err(CallError::Deserialize)?;
+            .map_err(CallError::Unexpected)?;
         Ok(reply)
     }
 }

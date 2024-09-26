@@ -60,7 +60,7 @@ pub struct Message {
     #[serde(rename = "type")]
     pub ty: MessageType,
     /// The channel context.
-    pub context: String,
+    pub context: Option<String>,
     /// Who sends the message.
     pub origin: Option<MessageOrigin>,
     /// The message fields.
@@ -77,6 +77,9 @@ pub enum MessageType {
     Call,
     /// An one-way message.
     Push,
+    /// A error message in call replies. It's server-to-client and one-way, not
+    /// vice versa.
+    Error,
 }
 
 /// Who sends the message.
