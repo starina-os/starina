@@ -5,7 +5,7 @@
 //!
 //! # Format string syntax
 //!
-//! See [`core::fmt`](https://doc.rust-lang.org/core/fmt/index.html) for the
+//! See [`std::fmt`](https://doc.rust-lang.org/std/fmt/index.html) for the
 //! format syntax.
 //!
 //! # Examples
