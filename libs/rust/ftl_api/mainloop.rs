@@ -240,7 +240,7 @@ impl<Ctx, AllM: MessageDeserialize> Mainloop<Ctx, AllM> {
         if poll_ev.contains(PollEvent::READABLE) {
             match &mut entry.object {
                 Object::Channel { sender, receiver } => {
-                    let message = match receiver.try_recv_with_buffer::<AllM>(&mut self.msgbuffer) {
+                    let message = match receiver.try_recv::<AllM>(&mut self.msgbuffer) {
                         Ok(Some(m)) => m,
                         Ok(None) => return Event::Error(Error::ChannelRecvWouldBlock),
                         Err(err) => return Event::Error(Error::ChannelRecv(err)),

@@ -17,9 +17,7 @@ pub fn main(mut env: Environ) {
         value = value.saturating_add(1);
 
         let mut msgbuffer = MessageBuffer::new();
-        let reply = echo_ch
-            .call_with_buffer(Ping { value }, &mut msgbuffer)
-            .unwrap();
-        info!("received: {}", reply.value);
+        let reply = echo_ch.call(Ping { value }, &mut msgbuffer).unwrap();
+        info!("received: {:?}", reply);
     }
 }

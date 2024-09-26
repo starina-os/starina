@@ -79,7 +79,7 @@ pub fn main(mut env: Environ) {
 
     let mut msgbuffer = MessageBuffer::new();
     let listen_reply = tcpip_ch
-        .call_with_buffer(TcpListen { port: 80 }, &mut msgbuffer)
+        .call(TcpListen { port: 80 }, &mut msgbuffer)
         .unwrap();
     let listen_ch = listen_reply.listen.take::<Channel>().unwrap();
 

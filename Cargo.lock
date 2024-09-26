@@ -397,22 +397,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3fdb12b2476b595f9358c5161aa467c2438859caa136dec86c26fdd2efe17b92"
 
 [[package]]
-name = "ping_client"
-version = "0.0.0"
-dependencies = [
- "ftl_api",
- "ftl_autogen",
-]
-
-[[package]]
-name = "ping_server"
-version = "0.0.0"
-dependencies = [
- "ftl_api",
- "ftl_autogen",
-]
-
-[[package]]
 name = "proc-macro-error"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"

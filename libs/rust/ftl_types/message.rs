@@ -1,3 +1,5 @@
+use core::fmt::Debug;
+
 use crate::handle::HandleId;
 
 pub const MESSAGE_DATA_MAX_LEN: usize = 0xfff;
@@ -50,18 +52,18 @@ impl MessageBuffer {
 }
 
 /// Invariant: `size_of::<MessageBuffer> >= size_of::<T>()`.
-pub trait MessageSerialize: Sized {
+pub trait MessageSerialize: Debug + Sized {
     const NUM_HANDLES: usize;
     const MSGINFO: MessageInfo;
     fn serialize(self, buffer: &mut MessageBuffer);
 }
 
-pub trait MessageCallable: Sized {
+pub trait MessageCallable: MessageSerialize {
     type Reply: MessageDeserialize;
 }
 
-pub trait MessageDeserialize: Sized {
-    type Reader<'a>: 'a;
+pub trait MessageDeserialize: Debug + Sized {
+    type Reader<'a>: Debug + 'a;
     fn deserialize<'a>(
         buffer: &'a mut MessageBuffer,
         msginfo: MessageInfo,
