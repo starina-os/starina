@@ -55,8 +55,9 @@ QEMUFLAGS += $(if $(GDB),-gdb tcp::7789 -S)
 app_elfs := $(foreach app,$(APPS),$(BUILD_DIR)/$(app).elf)
 sources += \
 	$(shell find \
-		boot/$(ARCH) kernel libs apps \
-		-name '*.rs' -o -name '*.json' -o -name '*.ld' -o -name '*.toml' -o -name '*.S' \
+		boot/$(ARCH) kernel libs apps spec \
+		-name '*.rs' -o -name '*.ld' -o -name '*.S' -o -name '*.S' \
+		-o -name '*.json' -o -name '*.yml' -o -name '*.toml' -o -name '*.j2' \
 	)
 
 .DEFAULT_GOAL := default
