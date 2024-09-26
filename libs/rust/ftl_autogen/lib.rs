@@ -228,10 +228,16 @@ fn do_generate(for_kernel: bool) -> Result<()> {
     Ok(())
 }
 
+fn print_cargo_instructions() {
+    println!("cargo:rerun-if-changed=spec/interfaces");
+}
+
 pub fn generate_for_kernel() -> Result<()> {
+    print_cargo_instructions();
     do_generate(true)
 }
 
 pub fn generate_for_app() -> Result<()> {
+    print_cargo_instructions();
     do_generate(false)
 }
