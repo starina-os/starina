@@ -83,10 +83,21 @@ fmt:
 fix:
 	cargo clippy --fix --allow-dirty --allow-staged $(CARGOFLAGS)
 
+.PHONY: docs
+docs:
+	rm -rf $(BUILD_DIR)/docs
+	mkdir -p $(BUILD_DIR)/docs
+	$(PROGRESS) "DOCSHIP" "docs"
+	docship --indir docs --outdir $(BUILD_DIR)/docs
+	$(MAKE) rustdoc
+	mv $(BUILD_DIR)/cargo/doc $(BUILD_DIR)/docs/rust
+
+
 .PHONY: rustdoc
 rustdoc:
 	$(PROGRESS) "CARGO" "doc"
 	BUILD_DIR="$(realpath $(BUILD_DIR))" \
+	CARGO_TARGET_DIR="$(BUILD_DIR)/cargo" \
 	STARTUP_APP_DIRS="$(foreach app_dir,$(STARTUP_APPS),$(realpath $(app_dir)))" \
 		$(CARGO) doc \
 			--package ftl_api \

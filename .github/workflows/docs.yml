@@ -1,0 +1,84 @@
+# Generate docs and deploy to Vercel.
+name: Docs
+
+on:
+  push:
+  pull_request:
+    branches:
+      - main
+
+permissions: read-all
+
+env:
+  CARGO_TERM_COLOR: always
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 22
+
+    - name: Set up Rust
+      run: |
+        rustup toolchain install nightly
+        rustup default nightly
+        rustup component add rust-src
+
+    - name: Cache Cargo dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          build/target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-
+
+    - name: Cache build artifacts
+      uses: actions/cache@v4
+      with:
+        path: build
+        key: ${{ runner.os }}-build-${{ hashFiles('**/*.rs', '**/Cargo.toml', '**/Cargo.lock', 'Makefile') }}
+
+    - name: Install Docship
+      run: npm install -g docship
+
+    - name: Build
+      run: make docs
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: docs
+        path: build/docs
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+    - uses: actions/download-artifact@v4
+      with:
+        name: docs
+        path: docs
+
+    - name: Install Vercel CLI
+      run: npm install -g vercel
+
+    - name: Deploy to Vercel
+      run: vercel --prod docs -t "$VERCEL_TOKEN"
+      env:
+        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+        VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
