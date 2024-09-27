@@ -26,6 +26,7 @@ enum Context {
 #[no_mangle]
 pub fn main(mut env: Environ) {
     info!("starting");
+    let startup_ch = env.take_channel("dep:startup").unwrap();
     let tcpip_ch = env.take_channel("dep:tcpip").unwrap();
 
     let mut msgbuffer = MessageBuffer::new();
@@ -35,9 +36,7 @@ pub fn main(mut env: Environ) {
     let listen_ch = listen_reply.listen.take::<Channel>().unwrap();
 
     let mut mainloop = Mainloop::<Context, Message>::new().unwrap();
-    mainloop
-        .add_channel(env.take_channel("dep:startup").unwrap(), Context::Startup)
-        .unwrap();
+    mainloop.add_channel(startup_ch, Context::Startup).unwrap();
     mainloop.add_channel(listen_ch, Context::Listen).unwrap();
 
     loop {
