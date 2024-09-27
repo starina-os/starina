@@ -40,7 +40,7 @@ pub mod idl {
         #[allow(unused)]
         use super::*;
 
-        {% for m in messages %}
+        {% for m in interface.messages %}
             #[repr(C)]
             #[derive(Debug)]
             pub struct {{ m.name }} {
