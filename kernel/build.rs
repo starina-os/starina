@@ -72,10 +72,24 @@ fn main() {
     let out_dir = env::var_os("OUT_DIR").unwrap();
     let dest_path = Path::new(&out_dir).join("startup_defs.rs");
 
-    let build_dir = PathBuf::from(env::var("BUILD_DIR").expect("$BUILD_DIR is not set"));
+    let build_dir = match env::var("BUILD_DIR") {
+        Ok(build_dir) => PathBuf::from(build_dir),
+        Err(_) => {
+            // FIXME: A fallback for builds in rust-analzyer.
+            let manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
+            PathBuf::from(manifest_dir).join("build")
+        }
+    };
     assert!(build_dir.is_absolute());
 
-    let startup_apps_str = env::var("STARTUP_APP_DIRS").expect("$STARTUP_APPS is not set");
+    let startup_apps_str = match env::var("STARTUP_APP_DIRS") {
+        Ok(startup_apps_str) => startup_apps_str,
+        Err(_) => {
+            // FIXME: A fallback for builds in rust-analzyer.
+            "".to_string()
+        }
+    };
+
     let mut startup_apps: Vec<(String, AppSpec)> = Vec::new();
     for app_dir in startup_apps_str.split_ascii_whitespace() {
         let app_dir = Path::new(app_dir);
