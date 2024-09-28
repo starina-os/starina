@@ -36,6 +36,8 @@ pub enum Event<'a, Ctx, M: MessageDeserialize> {
         sender: &'a mut ChannelSender,
         /// The per-object state associated with the channel object.
         ctx: &'a mut Ctx,
+        /// The handle ID of the channel.
+        handle_id: HandleId,
         /// The received message.
         message: M::Reader<'a>,
     },
@@ -59,6 +61,7 @@ enum Object {
 }
 
 struct Entry<Ctx> {
+    handle_id: HandleId,
     ctx: Ctx,
     object: Object,
 }
@@ -199,6 +202,7 @@ impl<Ctx, AllM: MessageDeserialize> Mainloop<Ctx, AllM> {
         let entry = Entry {
             ctx: state,
             object: Object::Channel { receiver, sender },
+            handle_id,
         };
 
         self.objects.insert(handle_id, entry);
@@ -219,6 +223,7 @@ impl<Ctx, AllM: MessageDeserialize> Mainloop<Ctx, AllM> {
         let entry = Entry {
             ctx: state,
             object: Object::Interrupt(interrupt),
+            handle_id,
         };
 
         self.objects.insert(handle_id, entry);
@@ -248,6 +253,7 @@ impl<Ctx, AllM: MessageDeserialize> Mainloop<Ctx, AllM> {
 
                     return Event::Message {
                         ctx: &mut entry.ctx,
+                        handle_id: entry.handle_id,
                         message,
                         sender,
                     };

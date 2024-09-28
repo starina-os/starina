@@ -377,6 +377,7 @@ pub fn main(mut env: Environ) {
                 ctx: Context::CtrlSocket,
                 message: Message::TcpListen(m),
                 sender,
+                ..
             } => {
                 match server.tcp_listen(m.port) {
                     Ok(ch) => {

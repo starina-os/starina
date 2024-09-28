@@ -55,6 +55,7 @@ pub fn main(mut env: Environ) {
                 ctx: Context::Conn(conn),
                 message: Message::TcpReceived(m),
                 sender,
+                ..
             } => {
                 conn.tcp_receive(m.data.as_slice(), sender);
             }
@@ -62,6 +63,7 @@ pub fn main(mut env: Environ) {
                 ctx: Context::Conn(_),
                 message: Message::TcpClosed(_),
                 sender,
+                ..
             } => {
                 trace!("client connection closed");
                 let sender_id = sender.handle().id();

@@ -12,8 +12,6 @@ use ftl_virtio::virtqueue::VirtqDescBuffer;
 use ftl_virtio::virtqueue::VirtqUsedChain;
 use ftl_virtio::VIRTIO_DEVICE_TYPE_NET;
 
-use crate::ftl_autogen::idl::ethernet_device::Rx;
-
 const DMA_BUF_SIZE: usize = 4096;
 
 #[derive(Debug, Copy, Clone)]

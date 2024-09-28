@@ -39,6 +39,7 @@ pub fn main(mut env: Environ) {
                 ctx: Context::Client,
                 message: Message::Ping(m),
                 sender,
+                ..
             } => {
                 let reply = PingReply { value: m.value };
                 if let Err(err) = sender.send(reply) {
