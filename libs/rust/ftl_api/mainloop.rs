@@ -29,6 +29,7 @@ pub enum Error {
 
 /// Events that applications need to handle.
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum Event<'a, Ctx, M: MessageDeserialize> {
     /// A received message.
     Message {
