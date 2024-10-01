@@ -28,10 +28,10 @@ impl<'a> smoltcp::phy::TxToken for TxTokenImpl<'a> {
     {
         assert!(len <= self.0.tx_buf.len());
 
-        /// Let smoltcp fill a packet to transmit.
-        let ret = f(&mut self.0.buf[..len]);
+        // Let smoltcp fill a packet to transmit.
+        let ret = f(&mut self.0.tx_buf[..len]);
 
-        (self.0.transmit)(&self.0.buf[..len]);
+        (self.0.transmit)(&self.0.tx_buf[..len]);
         ret
     }
 }
