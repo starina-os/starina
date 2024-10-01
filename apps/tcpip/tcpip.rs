@@ -49,11 +49,13 @@ pub enum SocketEvent<'a> {
 }
 
 pub struct TcpIp<'a> {
-    recv_buf: Vec<u8>,
+    /// Our socket states. The key is the smoltcp socket handle.
+    sockets: HashMap<SocketHandle, Socket>,
+    /// The smoltcp socket states.
     smol_sockets: SocketSet<'a>,
     device: NetDevice,
+    recv_buf: Vec<u8>,
     iface: Interface,
-    sockets: HashMap<SocketHandle, Socket>,
 }
 
 impl<'a> TcpIp<'a> {
@@ -78,6 +80,11 @@ impl<'a> TcpIp<'a> {
         }
     }
 
+    /// Makes progress in smoltcp - receive RX packets, update socket states,
+    /// and transmit TX packets.
+    ///
+    /// As it detects changes in socket states, it calls the `callback` so that
+    /// we can do message passing in the main loop.
     pub fn poll<F>(&mut self, mut callback: F)
     where
         F: FnMut(SocketEvent<'_>),

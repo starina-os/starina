@@ -1,6 +1,9 @@
 use ftl_api::prelude::*;
 
+/// A logger implementation for `log` crate so that we can observe what's
+/// happening in smoltcp.
 struct Logger;
+
 static LOGGER: Logger = Logger;
 
 impl log::Log for Logger {

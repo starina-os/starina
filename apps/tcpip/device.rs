@@ -4,13 +4,16 @@ use ftl_api::prelude::*;
 use smoltcp::phy::DeviceCapabilities;
 use smoltcp::time::Instant;
 
+/// Represents a right to receive a RX packet.
 pub struct RxTokenImpl(Vec<u8>);
 
 impl smoltcp::phy::RxToken for RxTokenImpl {
+    /// Smoltcp wants to receive a packet.
     fn consume<R, F>(mut self, f: F) -> R
     where
         F: FnOnce(&mut [u8]) -> R,
     {
+        // Simply pass the buffer to smoltcp.
         f(&mut self.0)
     }
 }
@@ -18,19 +21,25 @@ impl smoltcp::phy::RxToken for RxTokenImpl {
 pub struct TxTokenImpl<'a>(&'a mut NetDevice);
 
 impl<'a> smoltcp::phy::TxToken for TxTokenImpl<'a> {
+    /// Smoltcp wants to transmit a packet of `len` bytes.
     fn consume<R, F>(self, len: usize, f: F) -> R
     where
         F: FnOnce(&mut [u8]) -> R,
     {
-        let mut buf = [0u8; 1514];
-        let ret = f(&mut buf[..len]);
-        (self.0.transmit)(&buf[..len]);
+        assert!(len <= self.0.tx_buf.len());
+
+        /// Let smoltcp fill a packet to transmit.
+        let ret = f(&mut self.0.buf[..len]);
+
+        (self.0.transmit)(&self.0.buf[..len]);
         ret
     }
 }
 
+/// A network device implementation for smoltcp.
 pub struct NetDevice {
     transmit: Box<dyn Fn(&[u8])>,
+    tx_buf: Vec<u8>,
     rx_queue: VecDeque<Vec<u8>>,
 }
 
@@ -38,6 +47,7 @@ impl NetDevice {
     pub fn new(transmit: Box<dyn Fn(&[u8])>) -> NetDevice {
         NetDevice {
             transmit,
+            tx_buf: vec![0; 1514],
             rx_queue: VecDeque::new(),
         }
     }
