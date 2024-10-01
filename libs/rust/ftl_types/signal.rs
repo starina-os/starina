@@ -1,5 +1,6 @@
 use core::ops;
 
+// TODO: Should we use unsigned integers instead?
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 #[repr(transparent)]
 pub struct SignalBits(i32);

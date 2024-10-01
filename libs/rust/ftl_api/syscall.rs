@@ -157,7 +157,7 @@ pub fn folio_paddr(handle: HandleId) -> Result<usize, FtlError> {
     Ok(ret as usize)
 }
 
-/// Maps a folio into the specified virtual address space.
+/// Maps a folio into a virtual address space.
 pub fn vmspace_map(
     handle: HandleId,
     len: usize,
@@ -183,33 +183,29 @@ pub fn poll_create() -> Result<HandleId, FtlError> {
 }
 
 /// Adds a target handle to a poll object.
-pub fn poll_add(
-    poll_handle_id: HandleId,
-    target_handle_id: HandleId,
-    interests: PollEvent,
-) -> Result<(), FtlError> {
+pub fn poll_add(poll: HandleId, object: HandleId, interests: PollEvent) -> Result<(), FtlError> {
     syscall3(
         SyscallNumber::PollAdd,
-        poll_handle_id.as_isize(),
-        target_handle_id.as_isize(),
+        poll.as_isize(),
+        object.as_isize(),
         interests.as_raw() as isize,
     )?;
     Ok(())
 }
 
 /// Removes a target handle from a poll object.
-pub fn poll_remove(poll_handle_id: HandleId, target_handle_id: HandleId) -> Result<(), FtlError> {
+pub fn poll_remove(poll: HandleId, object: HandleId) -> Result<(), FtlError> {
     syscall2(
         SyscallNumber::PollRemove,
-        poll_handle_id.as_isize(),
-        target_handle_id.as_isize(),
+        poll.as_isize(),
+        object.as_isize(),
     )?;
     Ok(())
 }
 
 /// Waits for an event on a poll object. Blocking.
-pub fn poll_wait(handle: HandleId) -> Result<PollSyscallResult, FtlError> {
-    let ret = syscall1(SyscallNumber::PollWait, handle.as_isize())?;
+pub fn poll_wait(poll: HandleId) -> Result<PollSyscallResult, FtlError> {
+    let ret = syscall1(SyscallNumber::PollWait, poll.as_isize())?;
     Ok(PollSyscallResult::from_raw(ret))
 }
 
