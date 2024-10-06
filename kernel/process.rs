@@ -17,11 +17,6 @@ impl Process {
         }
     }
 
-    pub fn in_kernel_space(&self) -> bool {
-        // TODO: Support user space.
-        true
-    }
-
     pub fn handles(&self) -> &SpinLock<HandleTable> {
         &self.handles
     }
