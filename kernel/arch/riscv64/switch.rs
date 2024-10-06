@@ -9,6 +9,8 @@ use crate::scheduler::GLOBAL_SCHEDULER;
 use crate::thread::ContinuationResult;
 use crate::thread::Thread;
 
+/// Switches to the thread execution: save the current thread, picks the next
+/// thread to run, and restores the next thread's context.
 pub fn return_to_user() -> ! {
     loop {
         let (mut current_thread, in_idle) = {
@@ -75,6 +77,7 @@ pub fn return_to_user() -> ! {
     }
 }
 
+/// Restores the thread context.
 unsafe fn do_return_to_user(context: *const Context) -> ! {
     asm!(r#"
         sd a0, {context_offset}(tp) // Update CpuVar.arch.context
@@ -165,6 +168,7 @@ unsafe fn do_return_to_user(context: *const Context) -> ! {
     );
 }
 
+/// The entry point for the system call from in-kernel apps.
 #[naked]
 pub unsafe extern "C" fn kernel_syscall_entry(
     _a0: isize,
@@ -179,11 +183,13 @@ pub unsafe extern "C" fn kernel_syscall_entry(
         asm!(
             r#"
                 // Disable interrupts in kernel.
+                // TODO: Perhaps it is *always* disabled?
                 csrci sstatus, 1 << 1
 
                 csrrw tp, sscratch, tp
                 ld t0, {context_offset}(tp) // Load CpuVar.arch.context
 
+                // Save general-purpose registers.
                 sd sp, {sp_offset}(t0)
                 sd gp, {gp_offset}(t0)
                 sd s0, {s0_offset}(t0)
@@ -200,14 +206,23 @@ pub unsafe extern "C" fn kernel_syscall_entry(
                 sd s11, {s11_offset}(t0)
                 sd ra, {sepc_offset}(t0)
 
+                // Save sstatus.
                 csrr t1, sstatus
                 sd t1, {sstatus_offset}(t0)
 
+                // Read the original tp temporarily saved in sscratch, and
+                // restore the original sscratch value.
                 csrrw t1, sscratch, tp
                 sd t1, {tp_offset}(t0)
 
+                // Save t0 temporarily as it will be used later.
                 mv s0, t0
+
+                // Handle the system call.
                 call {syscall_handler}
+
+                // Save the return value in the thread context, and switch
+                // to the next thread.
                 sd a0, {a0_offset}(s0)
                 j {return_to_user}
             "#,
@@ -237,6 +252,7 @@ pub unsafe extern "C" fn kernel_syscall_entry(
     }
 }
 
+/// The entry point for traps: exceptions, interrupts, and system calls.
 #[link_section = ".text.switch_to_kernel"]
 #[naked]
 pub unsafe extern "C" fn switch_to_kernel() -> ! {

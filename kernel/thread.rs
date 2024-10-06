@@ -1,3 +1,4 @@
+//! Kernel-level thread.
 use core::cell::RefMut;
 
 use ftl_types::error::FtlError;
@@ -18,14 +19,14 @@ use crate::vmspace::VmSpace;
 /// The blocked thread state.
 #[derive(Debug)]
 pub enum Continuation {
+    /// Waiting for a message (`channel_recv` or `channel_call` system calls).
     ChannelRecv {
         process: SharedRef<Process>,
         channel: SharedRef<Channel>,
         msgbuffer: UAddr,
     },
-    PollWait {
-        poll: SharedRef<Poll>,
-    },
+    /// Waiting for a poll event (`poll_wait` system call).
+    PollWait { poll: SharedRef<Poll> },
 }
 
 pub enum ContinuationResult {

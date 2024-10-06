@@ -1,3 +1,4 @@
+//! Channel: bi-drectional, asynchronous, bounded message channel.
 use alloc::collections::VecDeque;
 use alloc::vec::Vec;
 use core::fmt;
@@ -20,16 +21,23 @@ use crate::thread::Thread;
 use crate::uaddr::UAddr;
 use crate::wait_queue::WaitQueue;
 
+/// A message queue entry.
 struct MessageEntry {
     msginfo: MessageInfo,
     data: Vec<u8>,
     handles: InlinedVec<AnyHandle, MESSAGE_HANDLES_MAX_COUNT>,
 }
 
+/// Channel object fields that are mutable.
 struct Mutable {
+    /// The peer channel. If it's `None`, the peer is not connected anymore
+    /// and sending a message will fail.
     peer: Option<SharedRef<Channel>>,
+    /// The received message queue.
     queue: VecDeque<MessageEntry>,
+    /// Event listeners (polls).
     pollers: Vec<SharedRef<Poller>>,
+    /// Event listeners (threads).
     wait_queue: WaitQueue,
 }
 
@@ -38,6 +46,7 @@ pub struct Channel {
 }
 
 impl Channel {
+    /// Creates a channel pair.
     pub fn new() -> Result<(SharedRef<Channel>, SharedRef<Channel>), FtlError> {
         let ch0 = SharedRef::new(Channel {
             mutable: SpinLock::new(Mutable {

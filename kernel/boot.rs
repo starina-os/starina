@@ -1,3 +1,4 @@
+//! The kernel entry point.
 use ftl_inlinedvec::InlinedVec;
 use ftl_utils::byte_size::ByteSize;
 
@@ -29,6 +30,8 @@ pub struct BootInfo {
 pub fn boot(cpu_id: CpuId, bootinfo: BootInfo) -> ! {
     info!("FTL - Faster Than \"L\"");
 
+    // Memory subystem should be initialized first to enable dynamic memory
+    // allocation.
     memory::init(&bootinfo);
 
     let device_tree = DeviceTree::parse(bootinfo.dtb_addr);

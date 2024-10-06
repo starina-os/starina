@@ -1,3 +1,4 @@
+//! Signal, an asynchronous event notification mechanism.
 use alloc::vec::Vec;
 
 use ftl_types::error::FtlError;

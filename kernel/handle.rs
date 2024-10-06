@@ -1,3 +1,4 @@
+//! Kernel object handle.
 use core::fmt;
 use core::ops::Deref;
 

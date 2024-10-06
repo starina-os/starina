@@ -1,3 +1,4 @@
+//! Folio, a physically-contiguous memory region.
 use core::alloc::GlobalAlloc;
 use core::alloc::Layout;
 

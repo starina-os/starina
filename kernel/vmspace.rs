@@ -1,3 +1,4 @@
+//! Virtual memory space management.
 use alloc::vec::Vec;
 
 use ftl_types::address::PAddr;

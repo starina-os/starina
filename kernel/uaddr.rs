@@ -1,3 +1,4 @@
+//! Userspace memory access.
 use alloc::vec::Vec;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]

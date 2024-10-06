@@ -1,3 +1,11 @@
+//! System call implementation.
+//!
+//! # System call handler cannot block!
+//!
+//! Due to the single-stack kernel design, the system call handler cannot
+//! block. Instead, when it needs to wait for an event, it should save the
+//! state into [`Continuation`](crate::thread::Continuation), switch to another
+//! thread, and retry later.
 use ftl_types::address::PAddr;
 use ftl_types::address::VAddr;
 use ftl_types::error::FtlError;
@@ -454,6 +462,10 @@ fn handle_syscall(
     }
 }
 
+/// The system call handler. Handles system calls with the given arguments,
+/// and returns its return value.
+///
+/// `arch` layer should call this function when a system call is made.
 pub fn syscall_handler(
     a0: isize,
     a1: isize,

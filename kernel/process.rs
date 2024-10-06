@@ -1,3 +1,4 @@
+//! Process management.
 use core::fmt;
 
 use crate::arch::get_cpuvar;

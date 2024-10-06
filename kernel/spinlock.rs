@@ -1,3 +1,4 @@
+//! Spinlock implementation.
 use core::cell::UnsafeCell;
 use core::ops::Deref;
 use core::ops::DerefMut;

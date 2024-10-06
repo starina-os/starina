@@ -1,3 +1,4 @@
+//! Per-CPU variables.
 use core::cell::Ref;
 use core::cell::RefCell;
 use core::fmt;
