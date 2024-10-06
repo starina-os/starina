@@ -5,7 +5,7 @@ use core::fmt;
 use ftl_inlinedvec::InlinedVec;
 
 use crate::arch;
-use crate::ref_counted::SharedRef;
+use crate::refcount::SharedRef;
 use crate::spinlock::SpinLock;
 use crate::thread::Thread;
 

@@ -8,7 +8,7 @@ use ftl_types::poll::PollEvent;
 use hashbrown::HashMap;
 
 use crate::handle::AnyHandle;
-use crate::ref_counted::SharedRef;
+use crate::refcount::SharedRef;
 use crate::spinlock::SpinLock;
 use crate::thread::Continuation;
 use crate::thread::Thread;

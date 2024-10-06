@@ -21,7 +21,7 @@ mod memory;
 mod panic;
 mod poll;
 mod process;
-mod ref_counted;
+mod refcount;
 mod scheduler;
 mod signal;
 mod spinlock;

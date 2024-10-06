@@ -39,7 +39,7 @@ use crate::handle::AnyHandle;
 use crate::handle::Handle;
 use crate::process::kernel_process;
 use crate::process::Process;
-use crate::ref_counted::SharedRef;
+use crate::refcount::SharedRef;
 use crate::thread::Thread;
 use crate::uaddr::UAddr;
 use crate::vmspace::VmSpace;

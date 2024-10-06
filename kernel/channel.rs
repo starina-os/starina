@@ -13,7 +13,7 @@ use crate::cpuvar::current_thread;
 use crate::handle::AnyHandle;
 use crate::poll::Poller;
 use crate::process::Process;
-use crate::ref_counted::SharedRef;
+use crate::refcount::SharedRef;
 use crate::spinlock::SpinLock;
 use crate::thread::Continuation;
 use crate::thread::Thread;

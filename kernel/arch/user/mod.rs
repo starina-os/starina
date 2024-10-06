@@ -5,7 +5,7 @@ use ftl_types::interrupt::Irq;
 
 use crate::cpuvar::CpuId;
 use crate::interrupt::Interrupt;
-use crate::ref_counted::SharedRef;
+use crate::refcount::SharedRef;
 
 pub fn halt() -> ! {
     todo!()

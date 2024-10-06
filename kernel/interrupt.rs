@@ -4,7 +4,7 @@ use ftl_types::signal::SignalBits;
 
 use crate::arch;
 use crate::poll::Poller;
-use crate::ref_counted::SharedRef;
+use crate::refcount::SharedRef;
 use crate::signal::Signal;
 
 pub struct Interrupt {

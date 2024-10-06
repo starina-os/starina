@@ -11,7 +11,7 @@ use crate::channel::Channel;
 use crate::folio::Folio;
 use crate::interrupt::Interrupt;
 use crate::poll::Poll;
-use crate::ref_counted::SharedRef;
+use crate::refcount::SharedRef;
 use crate::signal::Signal;
 use crate::thread::Thread;
 use crate::vmspace::VmSpace;

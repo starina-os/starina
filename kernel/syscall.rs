@@ -19,7 +19,7 @@ use crate::handle::Handle;
 use crate::interrupt::Interrupt;
 use crate::poll::Poll;
 use crate::process::Process;
-use crate::ref_counted::SharedRef;
+use crate::refcount::SharedRef;
 use crate::signal::Signal;
 use crate::uaddr::UAddr;
 

@@ -1,7 +1,7 @@
 use core::arch::asm;
 
 use super::thread::Context;
-use crate::ref_counted::SharedRef;
+use crate::refcount::SharedRef;
 use crate::thread::Thread;
 
 pub struct CpuVar {

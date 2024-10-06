@@ -9,7 +9,7 @@ use crate::cpuvar::CpuId;
 use crate::device_tree::DeviceTree;
 use crate::folio::Folio;
 use crate::interrupt::Interrupt;
-use crate::ref_counted::SharedRef;
+use crate::refcount::SharedRef;
 use crate::spinlock::SpinLock;
 use crate::utils::mmio::LittleEndian;
 use crate::utils::mmio::MmioFolio;

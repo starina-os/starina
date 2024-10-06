@@ -5,7 +5,7 @@ use ftl_types::poll::PollEvent;
 use ftl_types::signal::SignalBits;
 
 use crate::poll::Poller;
-use crate::ref_counted::SharedRef;
+use crate::refcount::SharedRef;
 use crate::spinlock::SpinLock;
 
 struct Mutable {

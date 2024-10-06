@@ -1,7 +1,7 @@
 use alloc::collections::VecDeque;
 
 use crate::cpuvar::current_thread;
-use crate::ref_counted::SharedRef;
+use crate::refcount::SharedRef;
 use crate::thread::Thread;
 
 pub struct WaitQueue {
