@@ -398,12 +398,12 @@ impl<'a> ElfLoader<'a> {
                     map_flags |= PageProtect::EXECUTABLE;
                 }
 
-                let paddr = if file_part_len > 0 {
+                let folio = if file_part_len > 0 {
                     let paddr_in_original = self.elf_paddr.add(file_offset + offset);
                     if !map_flags.contains(PageProtect::WRITABLE) {
                         // Read-only segment. No need to copy (assuming Rust
                         // guaranntees immutability of the segment).
-                        paddr_in_original
+                        Folio::alloc_shared(paddr_in_original, PAGE_SIZE).unwrap()
                     } else {
                         // Writable segment. We need to copy the segment to a
                         // new physical page so that multiple instances of the
@@ -418,22 +418,14 @@ impl<'a> ElfLoader<'a> {
                             &self.elf_file
                                 [(file_offset + offset)..(file_offset + offset + copy_len)],
                         );
-                        let folio_paddr = folio.paddr();
-                        // FIXME: track this ownership
-                        core::mem::forget(folio);
-                        folio_paddr
+
+                        folio
                     }
                 } else {
-                    let folio = Folio::alloc(PAGE_SIZE).unwrap();
-                    let folio_paddr = folio.paddr();
-                    // FIXME: track this ownership
-                    core::mem::forget(folio);
-                    folio_paddr
+                    Folio::alloc(PAGE_SIZE).unwrap()
                 };
 
-                vmspace
-                    .map_fixed(vaddr, paddr, PAGE_SIZE, map_flags)
-                    .unwrap();
+                vmspace.map(vaddr, folio, PAGE_SIZE, map_flags).unwrap();
 
                 if zero_part_len > 0 {
                     // TODO: We might not need to zero-fill. Folio is already

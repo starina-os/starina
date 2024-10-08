@@ -1,7 +1,4 @@
 //! Virtual memory space management.
-use alloc::vec::Vec;
-
-use ftl_types::address::PAddr;
 use ftl_types::address::VAddr;
 use ftl_types::error::FtlError;
 use ftl_types::vmspace::PageProtect;
@@ -9,35 +6,33 @@ use ftl_types::vmspace::PageProtect;
 use crate::arch;
 use crate::folio::Folio;
 use crate::handle::Handle;
-use crate::spinlock::SpinLock;
-
-struct Mutable {
-    folios: Vec<Handle<Folio>>,
-}
 
 pub struct VmSpace {
     arch: arch::VmSpace,
-    mutable: SpinLock<Mutable>,
 }
 
 impl VmSpace {
     pub fn kernel_space() -> Result<VmSpace, FtlError> {
         let arch = arch::VmSpace::new()?;
-        let mutable = SpinLock::new(Mutable { folios: Vec::new() });
-        Ok(VmSpace { arch, mutable })
+        Ok(VmSpace { arch })
     }
 
     pub fn arch(&self) -> &arch::VmSpace {
         &self.arch
     }
 
-    pub fn map_fixed(
+    pub fn map(
         &self,
         vaddr: VAddr,
-        paddr: PAddr,
+        folio: Folio,
         len: usize,
         _prot: PageProtect,
     ) -> Result<(), FtlError> {
+        let paddr = folio.paddr();
+
+        // The arch's page table will own the folio.
+        core::mem::forget(folio);
+
         self.arch.map_fixed(vaddr, paddr, len)?;
         Ok(())
     }
@@ -54,9 +49,8 @@ impl VmSpace {
 
         let paddr = folio.paddr();
 
-        // FIXME: Track folio's ownership to page table
-        let mut mutable = self.mutable.lock();
-        mutable.folios.push(folio);
+        // The arch's page table will own the folio.
+        core::mem::forget(folio);
 
         self.arch.map_anywhere(paddr, len)
     }
