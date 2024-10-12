@@ -62,7 +62,7 @@ pub fn interrupt_ack(irq: Irq) -> Result<(), FtlError> {
     todo!()
 }
 
-pub fn init(cpu_id: CpuId, device_tree: &crate::device_tree::DeviceTree) {
+pub fn init(cpu_id: CpuId, device_tree: Option<&crate::device_tree::DeviceTree>) {
     todo!()
 }
 

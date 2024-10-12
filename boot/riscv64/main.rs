@@ -40,7 +40,7 @@ unsafe extern "C" fn riscv64_boot(hartid: u64, dtb_addr: u64) -> ! {
         CpuId::new(hartid.try_into().expect("too big hartid")),
         BootInfo {
             free_mems,
-            dtb_addr: dtb_addr as *const u8,
+            dtb_addr: Some(dtb_addr as *const u8),
         },
     );
 }

@@ -60,7 +60,9 @@ pub fn console_write(bytes: &[u8]) {
     }
 }
 
-pub fn init(cpu_id: CpuId, device_tree: &crate::device_tree::DeviceTree) {
+pub fn early_init(_cpu_id: CpuId) {}
+
+pub fn init(cpu_id: CpuId, device_tree: Option<&crate::device_tree::DeviceTree>) {
     unsafe {
         let mut sie: u64;
         asm!("csrr {}, sie", out(reg) sie);
@@ -75,5 +77,6 @@ pub fn init(cpu_id: CpuId, device_tree: &crate::device_tree::DeviceTree) {
         asm!("csrw sscratch, tp");
     }
 
+    let device_tree = device_tree.unwrap();
     plic::init(cpu_id, device_tree);
 }

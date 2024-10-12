@@ -88,7 +88,7 @@ pub struct AppTemplate {
 }
 
 struct StartupAppLoader<'a> {
-    device_tree: &'a DeviceTree,
+    device_tree: Option<&'a DeviceTree>,
     service_to_app_name: HashMap<ServiceName, AppName>,
     our_chs: HashMap<AppName, SharedRef<Channel>>,
     their_chs: HashMap<AppName, SharedRef<Channel>>,
@@ -97,7 +97,7 @@ struct StartupAppLoader<'a> {
 }
 
 impl<'a> StartupAppLoader<'a> {
-    pub fn new(device_tree: &DeviceTree) -> StartupAppLoader {
+    pub fn new(device_tree: Option<&DeviceTree>) -> StartupAppLoader {
         let vmspace = SharedRef::new(VmSpace::kernel_space().unwrap());
         StartupAppLoader {
             device_tree,
@@ -145,25 +145,27 @@ impl<'a> StartupAppLoader<'a> {
 
     fn get_devices(&mut self, compat: &str) -> Vec<ftl_types::environ::Device> {
         let mut devices = Vec::new();
-        for device in self.device_tree.devices() {
-            if device.compatible == compat {
-                let interrupts = match &device.interrupts {
-                    Some(interrupts) => {
-                        let mut vec = Vec::new();
-                        for interrupt in interrupts.iter() {
-                            vec.push(*interrupt);
+        if let Some(device_tree) = self.device_tree.as_ref() {
+            for device in device_tree.devices() {
+                if device.compatible == compat {
+                    let interrupts = match &device.interrupts {
+                        Some(interrupts) => {
+                            let mut vec = Vec::new();
+                            for interrupt in interrupts.iter() {
+                                vec.push(*interrupt);
+                            }
+                            Some(vec)
                         }
-                        Some(vec)
-                    }
-                    None => None,
-                };
+                        None => None,
+                    };
 
-                devices.push(ftl_types::environ::Device {
-                    name: device.name.to_string(),
-                    compatible: device.compatible.to_string(),
-                    reg: device.reg,
-                    interrupts,
-                });
+                    devices.push(ftl_types::environ::Device {
+                        name: device.name.to_string(),
+                        compatible: device.compatible.to_string(),
+                        reg: device.reg,
+                        interrupts,
+                    });
+                }
             }
         }
 
@@ -316,7 +318,7 @@ impl<'a> StartupAppLoader<'a> {
     }
 }
 
-pub fn load_startup_apps(device_tree: &DeviceTree) {
+pub fn load_startup_apps(device_tree: Option<&DeviceTree>) {
     StartupAppLoader::new(device_tree).load(&STARTUP_APPS);
 }
 
