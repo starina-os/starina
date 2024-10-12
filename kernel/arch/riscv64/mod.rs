@@ -24,6 +24,7 @@ pub use backtrace::backtrace;
 pub use cpuvar::get_cpuvar;
 pub use cpuvar::set_cpuvar;
 pub use cpuvar::CpuVar;
+pub use idle::idle;
 pub use plic::interrupt_ack;
 pub use plic::interrupt_create;
 pub use switch::kernel_syscall_entry;
