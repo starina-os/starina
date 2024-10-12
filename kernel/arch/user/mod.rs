@@ -41,7 +41,6 @@ pub unsafe extern "C" fn kernel_syscall_entry(
     _a3: isize,
     _a4: isize,
     _a5: isize,
-    _a6: isize,
 ) -> isize {
     todo!()
 }

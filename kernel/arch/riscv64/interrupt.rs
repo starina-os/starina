@@ -66,8 +66,7 @@ pub extern "C" fn interrupt_handler() -> ! {
         let a3 = unsafe { (*cpuvar.arch.context).a3 } as isize;
         let a4 = unsafe { (*cpuvar.arch.context).a4 } as isize;
         let a5 = unsafe { (*cpuvar.arch.context).a5 } as isize;
-        let a6 = unsafe { (*cpuvar.arch.context).a6 } as isize;
-        let ret = syscall_handler(a0, a1, a2, a3, a4, a5, a6);
+        let ret = syscall_handler(a0, a1, a2, a3, a4, a5);
         unsafe {
             (*cpuvar.arch.context).a0 = ret as usize;
         }

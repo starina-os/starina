@@ -23,21 +23,19 @@ pub fn syscall(
     a2: isize,
     a3: isize,
     a4: isize,
-    a5: isize,
 ) -> Result<isize, FtlError> {
     use core::arch::asm;
 
     unsafe {
         asm!(
-            "jalr a7",
+            "jalr a6",
             inout("a0") a0,
             in("a1") a1,
             in("a2") a2,
             in("a3") a3,
             in("a4") a4,
-            in("a5") a5,
-            in("a6") n as isize,
-            in("a7") VSYSCALL_ENTRY
+            in("a5") n as isize,
+            in("a6") VSYSCALL_ENTRY
         );
     }
 
@@ -56,29 +54,28 @@ pub fn syscall(
     _a2: isize,
     _a3: isize,
     _a4: isize,
-    _a5: isize,
 ) -> Result<isize, FtlError> {
     panic!("syscall not implemented in test mode");
 }
 
 /// Invokes a system call with no arguments.
 pub fn syscall0(n: SyscallNumber) -> Result<isize, FtlError> {
-    syscall(n, 0, 0, 0, 0, 0, 0)
+    syscall(n, 0, 0, 0, 0, 0)
 }
 
 /// Invokes a system call with 1 argument.
 pub fn syscall1(n: SyscallNumber, a0: isize) -> Result<isize, FtlError> {
-    syscall(n, a0, 0, 0, 0, 0, 0)
+    syscall(n, a0, 0, 0, 0, 0)
 }
 
 /// Invokes a system call with 2 arguments.
 pub fn syscall2(n: SyscallNumber, a0: isize, a1: isize) -> Result<isize, FtlError> {
-    syscall(n, a0, a1, 0, 0, 0, 0)
+    syscall(n, a0, a1, 0, 0, 0)
 }
 
 /// Invokes a system call with 3 arguments.
 pub fn syscall3(n: SyscallNumber, a0: isize, a1: isize, a2: isize) -> Result<isize, FtlError> {
-    syscall(n, a0, a1, a2, 0, 0, 0)
+    syscall(n, a0, a1, a2, 0, 0)
 }
 
 /// Invokes a system call with 4 arguments.
@@ -89,7 +86,7 @@ pub fn syscall4(
     a2: isize,
     a3: isize,
 ) -> Result<isize, FtlError> {
-    syscall(n, a0, a1, a2, a3, 0, 0)
+    syscall(n, a0, a1, a2, a3, 0)
 }
 
 /// Invokes a system call with 5 arguments.
@@ -101,20 +98,7 @@ pub fn syscall5(
     a3: isize,
     a4: isize,
 ) -> Result<isize, FtlError> {
-    syscall(n, a0, a1, a2, a3, a4, 0)
-}
-
-/// Invokes a system call with 6 arguments.
-pub fn syscall6(
-    n: SyscallNumber,
-    a0: isize,
-    a1: isize,
-    a2: isize,
-    a3: isize,
-    a4: isize,
-    a5: isize,
-) -> Result<isize, FtlError> {
-    syscall(n, a0, a1, a2, a3, a4, a5)
+    syscall(n, a0, a1, a2, a3, a4)
 }
 
 /// Closes a handle.
