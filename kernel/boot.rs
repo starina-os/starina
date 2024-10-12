@@ -9,6 +9,7 @@ use crate::device_tree::DeviceTree;
 use crate::memory;
 use crate::process;
 use crate::startup;
+use crate::thread::Thread;
 
 /// A free region of memory available for software.
 #[derive(Debug)]
@@ -43,5 +44,5 @@ pub fn boot(cpu_id: CpuId, bootinfo: BootInfo) -> ! {
     arch::init(cpu_id, device_tree.as_ref());
 
     startup::load_startup_apps(device_tree.as_ref());
-    arch::return_to_user();
+    Thread::switch();
 }

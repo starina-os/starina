@@ -1,8 +1,8 @@
 use core::arch::asm;
 
 use super::plic;
-use super::switch::return_to_user;
 use crate::syscall::syscall_handler;
+use crate::thread::Thread;
 
 pub extern "C" fn interrupt_handler() -> ! {
     let cpuvar = super::get_cpuvar();
@@ -74,5 +74,5 @@ pub extern "C" fn interrupt_handler() -> ! {
         panic!("unhandled intrrupt");
     }
 
-    return_to_user();
+    Thread::switch();
 }

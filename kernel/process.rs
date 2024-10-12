@@ -2,10 +2,10 @@
 use core::fmt;
 
 use crate::arch::get_cpuvar;
-use crate::arch::return_to_user;
 use crate::handle::HandleTable;
 use crate::refcount::SharedRef;
 use crate::spinlock::SpinLock;
+use crate::thread::Thread;
 use crate::vmspace::VmSpace;
 
 pub struct Process {
@@ -40,7 +40,7 @@ impl Process {
         debug_warn!("exited a process");
 
         // TODO: Destroy the process.
-        return_to_user();
+        Thread::switch();
     }
 }
 
