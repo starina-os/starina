@@ -14,7 +14,6 @@ use crate::refcount::SharedRef;
 use crate::scheduler::GLOBAL_SCHEDULER;
 use crate::spinlock::SpinLock;
 use crate::uaddr::UAddr;
-use crate::vmspace::VmSpace;
 
 /// The blocked thread state.
 #[derive(Debug)]
@@ -64,7 +63,6 @@ impl Thread {
 
     pub fn spawn_kernel(
         process: SharedRef<Process>,
-        vmspace: SharedRef<VmSpace>,
         pc: usize,
         sp: usize,
         arg: usize,
@@ -73,7 +71,7 @@ impl Thread {
             mutable: SpinLock::new(Mutable {
                 state: State::Runnable,
             }),
-            arch: arch::Thread::new_kernel(vmspace, pc, sp, arg),
+            arch: arch::Thread::new_kernel(pc, sp, arg),
             process,
         });
 

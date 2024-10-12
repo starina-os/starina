@@ -183,7 +183,7 @@ impl<'a> StartupAppLoader<'a> {
         mut env: EnvironSerializer,
         handles: Vec<AnyHandle>,
     ) {
-        let proc = SharedRef::new(Process::create());
+        let proc = SharedRef::new(Process::create(self.vmspace.clone()));
 
         let mut handle_table = proc.handles().lock();
         let mut i = 0;
@@ -241,13 +241,8 @@ impl<'a> StartupAppLoader<'a> {
         let sp = stack_vaddr.add(KERNEL_STACK_SIZE).as_usize();
         handle_table.add(stack_folio).unwrap();
 
-        let thread = Thread::spawn_kernel(
-            proc.clone(),
-            self.vmspace.clone(),
-            entry_addr,
-            sp,
-            vsyscall_buffer_ptr.as_usize(),
-        );
+        let thread =
+            Thread::spawn_kernel(proc.clone(), entry_addr, sp, vsyscall_buffer_ptr.as_usize());
         handle_table
             .add(Handle::new(thread, HandleRights::ALL))
             .unwrap();

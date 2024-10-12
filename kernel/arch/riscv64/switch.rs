@@ -43,12 +43,8 @@ pub fn return_to_user() -> ! {
         // Make the next thread the current thread.
         *current_thread = next;
 
-        // Switch to the new thread's address space.sstatus,a1
-        if let Some(vmspace) = current_thread.arch().vmspace.as_ref() {
-            vmspace.switch();
-        } else {
-            panic!("did not switch satp");
-        }
+        // Switch to the new thread's address space.
+        current_thread.process().vmspace().switch();
 
         // Execute the pending continuation if any.
         let context: *mut Context = &current_thread.arch().context as *const _ as *mut _;
