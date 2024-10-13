@@ -2,6 +2,7 @@
 
 use core::marker::PhantomData;
 
+use ftl_types::address::PAddr;
 use ftl_types::address::VAddr;
 use ftl_types::error::FtlError;
 
@@ -162,5 +163,9 @@ impl MmioFolio {
     pub fn from_folio(folio: Folio) -> Result<MmioFolio, FtlError> {
         let vaddr = paddr2vaddr(folio.paddr())?;
         Ok(MmioFolio { folio, vaddr })
+    }
+
+    pub fn paddr(&self) -> PAddr {
+        self.folio.paddr()
     }
 }
