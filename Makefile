@@ -1,7 +1,8 @@
-# "riscv64"
+# ARCH=riscv64 MACHINE=qemu-virt
+# ARCH=x64     MACHINE=qemu-x86_64
 ARCH    ?= riscv64
-
 MACHINE ?= qemu-virt
+
 RELEASE ?=            # "1" to build release version
 V       ?=            # "1" to enable verbose output
 
@@ -28,16 +29,19 @@ endif
 
 ifeq ($(ARCH),riscv64)
 QEMU      ?= qemu-system-riscv64
-QEMUFLAGS += -machine virt -m 256 -bios default -rtc base=localtime
-QEMUFLAGS += -global virtio-mmio.force-legacy=false
-QEMUFLAGS += -drive id=drive0,file=disk.img,format=raw,if=none
-QEMUFLAGS += -device virtio-blk-device,drive=drive0,bus=virtio-mmio-bus.0
-QEMUFLAGS += -device virtio-net-device,netdev=net0,bus=virtio-mmio-bus.2
-QEMUFLAGS += -object filter-dump,id=fiter0,netdev=net0,file=virtio-net.pcap
-QEMUFLAGS += -netdev user,id=net0,hostfwd=tcp:127.0.0.1:1234-:80
+QEMUFLAGS += -machine virt -m 256 -bios default
+else ifeq ($(ARCH),x64)
+QEMU      ?= qemu-system-x86_64
+QEMUFLAGS += -machine microvm,ioapic2=off -cpu Icelake-Server -m 256
 else
 $(error "Unknown ARCH: $(ARCH)")
 endif
+
+QEMUFLAGS += -rtc base=localtime
+QEMUFLAGS += -global virtio-mmio.force-legacy=false
+QEMUFLAGS += -device virtio-net-device,netdev=net0,bus=virtio-mmio-bus.0
+QEMUFLAGS += -object filter-dump,id=fiter0,netdev=net0,file=virtio-net.pcap
+QEMUFLAGS += -netdev user,id=net0,hostfwd=tcp:127.0.0.1:1234-:80
 
 CARGO    ?= cargo
 PROGRESS ?= printf "  \\033[1;96m%8s\\033[0m  \\033[1;m%s\\033[0m\\n"
@@ -65,8 +69,11 @@ default: ftl.elf
 
 .PHONY: run
 run: ftl.elf disk.img
-	$(PROGRESS) "QEMU" "ftl.elf"
-	$(QEMU) $(QEMUFLAGS) -kernel ftl.elf
+	cp ftl.elf build/ftl.qemu.elf
+ifeq ($(ARCH),x64)
+	python3 ./tools/make-bootable-on-qemu.py build/ftl.qemu.elf
+endif
+	$(QEMU) $(QEMUFLAGS) -kernel build/ftl.qemu.elf
 
 .PHONY: clean
 clean:

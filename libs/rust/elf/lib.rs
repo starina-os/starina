@@ -3,6 +3,7 @@
 use core::mem::size_of;
 
 pub const R_RISCV_RELATIVE: u64 = 3;
+pub const R_X86_64_RELATIVE: u64 = 8;
 pub const R_AARCH64_RELATIVE: u64 = 1027;
 
 #[cfg(target_pointer_width = "64")]

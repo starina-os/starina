@@ -500,6 +500,11 @@ impl<'a> ElfLoader<'a> {
         for rela in rela_entries {
             let base = self.base_vaddr.as_usize();
             match rela.r_info {
+                #[cfg(target_arch = "x86_64")]
+                ftl_elf::R_X86_64_RELATIVE => unsafe {
+                    let ptr = (base + rela.r_offset as usize) as *mut i64;
+                    *ptr += (base as i64) + rela.r_addend;
+                },
                 #[cfg(target_arch = "riscv64")]
                 ftl_elf::R_RISCV_RELATIVE => unsafe {
                     let ptr = (base + rela.r_offset as usize) as *mut i64;

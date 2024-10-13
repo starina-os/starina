@@ -54,6 +54,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "boot_x64"
+version = "0.0.0"
+dependencies = [
+ "ftl_inlinedvec",
+ "ftl_kernel",
+ "ftl_utils",
+]
+
+[[package]]
 name = "byteorder"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
