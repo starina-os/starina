@@ -268,6 +268,12 @@ impl<'a> StartupAppLoader<'a> {
             panic!("ran out of virtual address space");
         }
 
+        trace!(
+            "kernel app: name=\"{}\", base={}",
+            template.name.0,
+            base_vaddr
+        );
+
         let entry_addr = elf_loader.load_into_memory(&self.vmspace)?;
 
         let mut env = EnvironSerializer::new();
