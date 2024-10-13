@@ -3,6 +3,8 @@ use ftl_types::address::PAddr;
 use ftl_types::address::VAddr;
 use ftl_types::error::FtlError;
 use ftl_types::vmspace::PageProtect;
+use ftl_utils::alignment::align_down;
+use ftl_utils::alignment::align_up;
 
 use crate::handle::OwnedHandle;
 use crate::start::app_vmspace_handle;
@@ -91,10 +93,14 @@ impl MappedFolio {
     /// Allocates a folio at a specific physical address (`paddr`), and maps it to the
     /// current process's address space.
     pub fn create_pinned(paddr: PAddr, len: usize) -> Result<MappedFolio, FtlError> {
-        let handle = syscall::folio_create_fixed(paddr, len)?;
+        let offset = paddr.as_usize() % 4096; // FIXME:
+        let map_paddr = PAddr::new(align_down(paddr.as_usize(), 4096));
+        let map_len = align_up(len, 4096);
+
+        let handle = syscall::folio_create_fixed(map_paddr, map_len)?;
         let vaddr = syscall::vmspace_map(
             app_vmspace_handle(),
-            len,
+            map_len,
             handle,
             PageProtect::READABLE | PageProtect::WRITABLE,
         )?;
@@ -104,7 +110,7 @@ impl MappedFolio {
                 handle: OwnedHandle::from_raw(handle),
             },
             paddr,
-            vaddr,
+            vaddr: vaddr.add(offset),
         })
     }
 
