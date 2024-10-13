@@ -170,7 +170,7 @@ impl<'a> StartupAppLoader<'a> {
         }
 
         if devices.is_empty() {
-            panic!("no device found for {}", compat);
+            warn!("no device found for {}", compat);
         }
 
         devices
