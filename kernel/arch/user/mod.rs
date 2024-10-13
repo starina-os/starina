@@ -30,7 +30,11 @@ where
     todo!()
 }
 
-pub fn return_to_user() -> ! {
+pub fn return_to_user(thread: *mut Thread, sysret: Option<isize>) -> ! {
+    todo!()
+}
+
+pub fn idle() -> ! {
     todo!()
 }
 
