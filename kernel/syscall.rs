@@ -468,6 +468,6 @@ fn handle_syscall(
 pub fn syscall_handler(a0: isize, a1: isize, a2: isize, a3: isize, a4: isize, n: isize) -> isize {
     match handle_syscall(a0, a1, a2, a3, a4, n) {
         Ok(isize) => isize,
-        Err(err) => err as isize,
+        Err(err) => -(err as isize),
     }
 }
