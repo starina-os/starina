@@ -33,6 +33,7 @@ pub enum EnvType {
     Channel,
     Devices,
     VmSpace,
+    String,
 }
 
 pub struct EnvironSerializer(String);
@@ -61,6 +62,7 @@ impl EnvironSerializer {
             EnvType::Channel => "=ch:",
             EnvType::Devices => "=devices:",
             EnvType::VmSpace => "=vmspace:",
+            EnvType::String => "=string:",
         });
 
         write!(&mut self.0, "{}\n", value).unwrap();
@@ -77,6 +79,10 @@ impl EnvironSerializer {
     pub fn push_devices(&mut self, key: &str, devices: &[Device]) {
         let devices_json = serde_json::to_string(devices).unwrap();
         self.push(key, EnvType::Devices, devices_json);
+    }
+
+    pub fn push_string(&mut self, key: &str, value: &str) {
+        self.push(key, EnvType::String, value);
     }
 }
 
@@ -102,6 +108,7 @@ impl<'a> EnvironDeserializer<'a> {
             "ch" => EnvType::Channel,
             "devices" => EnvType::Devices,
             "vmspace" => EnvType::VmSpace,
+            "string" => EnvType::String,
             _ => {
                 panic!("invalid environ entry: {}", line);
             }

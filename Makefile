@@ -32,7 +32,7 @@ QEMU      ?= qemu-system-riscv64
 QEMUFLAGS += -machine virt -m 256 -bios default
 else ifeq ($(ARCH),x64)
 QEMU      ?= qemu-system-x86_64
-QEMUFLAGS += -machine microvm,ioapic2=off -cpu Icelake-Server -m 256
+QEMUFLAGS += -cpu Icelake-Server -m 256 -machine microvm,ioapic2=off,acpi=off
 else
 $(error "Unknown ARCH: $(ARCH)")
 endif

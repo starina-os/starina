@@ -155,7 +155,7 @@ pub struct MpConfigTable {
     reserved: u8,
 }
 
-pub fn find_mp_floatptr(paddr: PAddr, len: usize) -> Option<&'static MpFloatPtr> {
+fn find_mp_floatptr_in(paddr: PAddr, len: usize) -> Option<&'static MpFloatPtr> {
     // It scans fhe region in 16-byte increments because the MP spec says:
     //
     // > It must span a minimum of 16 contiguous bytes, beginning on a 16-
@@ -171,26 +171,39 @@ pub fn find_mp_floatptr(paddr: PAddr, len: usize) -> Option<&'static MpFloatPtr>
     None
 }
 
+//// Possible memory locations for the MP floating pointer structure:
+///
+/// > This structure must be stored in at least one of the following memory
+/// > locations, because the operating system searches for the MP floating
+/// > pointer structure in the order described below:
+/// >
+/// > a. In the first kilobyte of Extended BIOS Data Area (EBDA), or
+/// >
+/// > b. Within the last kilobyte of system base memory (e.g., 639K-640K for
+/// >    systems with 640 KB of base memory or 511K-512K for systems with
+/// >    512 KB of base memory) if the EBDA segment is undefined, or
+/// >
+/// > c. In the BIOS ROM address space between 0F0000h and 0FFFFFh
+///
+/// In our case, we assume it exists in 0xF0000-0xFFFFF for simplicity. If
+/// you encounter a real machine that doesn't have the MP floating pointer
+/// struct in this region, let me know.
+const MPTABLE_RANGES: &[(PAddr, usize)] =
+    &[(PAddr::new(0xf0000), 0x10000), (PAddr::new(0x9fc00), 0x400)];
+
+fn find_mp_floatptr() -> Option<&'static MpFloatPtr> {
+    let mut floatptr: Option<&'static MpFloatPtr> = None;
+    for (paddr, len) in MPTABLE_RANGES {
+        if let Some(ptr) = find_mp_floatptr_in(*paddr, *len) {
+            return Some(ptr);
+        }
+    }
+
+    None
+}
+
 pub fn init() {
-    // Find the MP floating pointer structure. According to the MP spec:
-    //
-    // > This structure must be stored in at least one of the following memory
-    // > locations, because the operating system searches for the MP floating
-    // > pointer structure in the order described below:
-    // >
-    // > a. In the first kilobyte of Extended BIOS Data Area (EBDA), or
-    // >
-    // > b. Within the last kilobyte of system base memory (e.g., 639K-640K for
-    // >    systems with 640 KB of base memory or 511K-512K for systems with
-    // >    512 KB of base memory) if the EBDA segment is undefined, or
-    // >
-    // > c. In the BIOS ROM address space between 0F0000h and 0FFFFFh
-    //
-    // In our case, we assume it exists in 0xF0000-0xFFFFF for simplicity. If
-    // you encounter a real machine that doesn't have the MP floating pointer
-    // struct in this region, let me know.
-    let floatptr = find_mp_floatptr(PAddr::new(0xf0000), 0x10000)
-        .expect("MP floating pointer struct not found");
+    let floatptr = find_mp_floatptr().expect("MP floating pointer structure not found");
 
     let config_table: &'static MpConfigTable = unsafe {
         &*paddr2vaddr(PAddr::new(floatptr.config_table_addr as usize))
@@ -209,9 +222,10 @@ pub fn init() {
     local_apic::init(PAddr::new(config_table.local_apic_addr as usize));
 
     // Scan the configuration table entries.
-    let mut paddr = PAddr::new(floatptr.config_table_addr as usize + size_of::<MpConfigTable>());
     let mut ioapic_entry: Option<&'static MpIoApicEntry> = None;
-    for _ in 0..config_table.entry_count {
+    let mut offset = size_of::<MpConfigTable>();
+    while offset < config_table.len as usize {
+        let mut paddr = PAddr::new(floatptr.config_table_addr as usize + offset);
         let entry_type: u8 = unsafe { *paddr2vaddr(paddr).unwrap().as_ptr() };
         let entry_len = match entry_type {
             0 => size_of::<MpProcessorEntry>(),
@@ -229,7 +243,7 @@ pub fn init() {
             }
         };
 
-        paddr = paddr.add(entry_len);
+        offset += entry_len;
     }
 
     io_apic::init(PAddr::new(ioapic_entry.unwrap().io_apic_addr as usize));

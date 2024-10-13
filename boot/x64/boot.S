@@ -23,9 +23,9 @@ gdt_end:
 // https://www.gnu.org/software/grub/manual/multiboot/multiboot.html
 .align 8
 multiboot_header:
-.long 0x1badb002
-.long 0x00000000
-.long -(0x1badb002 + 0x00000000)
+.long 0x1badb002 // magic
+.long 0x00000004 // flags: cmdline
+.long -(0x1badb002 + 0x00000004)
 
 // The entry point jumped from the bootloader.
 .code32

@@ -1,3 +1,5 @@
+use core::fmt;
+
 use crate::InlinedVec;
 use crate::TooManyItemsError;
 
@@ -24,6 +26,22 @@ impl<const CAP: usize> InlinedString<CAP> {
     pub fn as_str(&self) -> &str {
         // SAFETY: We guarantee that the string is always a valid UTF-8 string.
         unsafe { core::str::from_utf8_unchecked(self.0.as_slice()) }
+    }
+
+    pub fn try_push_u8(&mut self, c: u8) -> Result<(), TooManyItemsError> {
+        self.0.try_push(c).map_err(|_| TooManyItemsError)
+    }
+}
+
+impl<const CAP: usize> fmt::Debug for InlinedString<CAP> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self.as_str())
+    }
+}
+
+impl<const CAP: usize> fmt::Display for InlinedString<CAP> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.as_str())
     }
 }
 

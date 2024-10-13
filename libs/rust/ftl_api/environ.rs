@@ -17,6 +17,7 @@ enum Value {
     Channel(Channel),
     VmSpace(VmSpace),
     Devices(Vec<Device>),
+    String(&'static str),
 }
 
 /// Environ, short for *environment*, is a collection of key-value pairs that
@@ -103,6 +104,7 @@ impl Environ {
                     let devices = serde_json::from_str(value_str).unwrap();
                     Value::Devices(devices)
                 }
+                EnvType::String => Value::String(value_str),
             };
 
             entries.insert(key, value);
@@ -146,6 +148,14 @@ impl Environ {
         match self.entries.get(key) {
             Some(Value::Devices(devices)) => Some(devices),
             Some(_) => panic!("not devices"),
+            None => None,
+        }
+    }
+
+    pub fn string(&self, key: &str) -> Option<&str> {
+        match self.entries.get(key) {
+            Some(Value::String(s)) => Some(s),
+            Some(_) => panic!("not a string"),
             None => None,
         }
     }

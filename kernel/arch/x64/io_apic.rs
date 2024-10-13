@@ -50,7 +50,6 @@ impl IoApic {
     }
 
     pub fn init(&mut self) {
-        info!("initializing IOAPIC: {}", self.folio.paddr());
         // Disable all hardware interrupts.
         let n = IOAPIC_REG_IOAPICVER.read(&mut self.folio) >> 16 + 1;
         for i in 0..n {
@@ -61,7 +60,6 @@ impl IoApic {
     }
 
     pub fn enable_irq(&mut self, irq: Irq) {
-        info!("Enabling IRQ {}", irq.as_usize());
         ioredtbl_high_reg(irq).write(&mut self.folio, 0);
         ioredtbl_low_reg(irq).write(&mut self.folio, VECTOR_IRQ_BASE + irq.as_usize() as u32);
     }

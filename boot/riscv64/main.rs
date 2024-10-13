@@ -39,6 +39,7 @@ unsafe extern "C" fn riscv64_boot(hartid: u64, dtb_addr: u64) -> ! {
     ftl_kernel::boot::boot(
         CpuId::new(hartid.try_into().expect("too big hartid")),
         BootInfo {
+            cmdline: None,
             free_mems,
             dtb_addr: Some(dtb_addr as *const u8),
         },

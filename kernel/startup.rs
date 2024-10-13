@@ -32,6 +32,7 @@ use crate::arch::vaddr2paddr;
 use crate::arch::PAGE_SIZE;
 use crate::arch::USERSPACE_END;
 use crate::arch::USERSPACE_START;
+use crate::boot::BootInfo;
 use crate::channel::Channel;
 use crate::device_tree::DeviceTree;
 use crate::folio::Folio;
@@ -182,6 +183,7 @@ impl<'a> StartupAppLoader<'a> {
         entry_addr: usize,
         mut env: EnvironSerializer,
         handles: Vec<AnyHandle>,
+        bootinfo: &BootInfo,
     ) {
         let proc = SharedRef::new(Process::create(self.vmspace.clone()));
 
@@ -202,6 +204,9 @@ impl<'a> StartupAppLoader<'a> {
 
         env.push_channel("dep:startup", startup_ch_id);
         env.push_vmspace("vmspace", vmspace_id);
+        if let Some(cmdline) = &bootinfo.cmdline {
+            env.push_string("boot_args", cmdline.as_str());
+        }
 
         let env_str = env.finish();
         let environ_pages =
@@ -260,7 +265,7 @@ impl<'a> StartupAppLoader<'a> {
             .unwrap();
     }
 
-    fn load_app(&mut self, template: &AppTemplate) -> Result<(), Error> {
+    fn load_app(&mut self, template: &AppTemplate, bootinfo: &BootInfo) -> Result<(), Error> {
         let base_vaddr = self.next_base_vaddr;
         let elf_loader = ElfLoader::parse(template.elf_file, base_vaddr)?;
         self.next_base_vaddr = self.next_base_vaddr.add(elf_loader.vmspace_len);
@@ -298,11 +303,11 @@ impl<'a> StartupAppLoader<'a> {
             env.push_devices(compat, &self.get_devices(compat));
         }
 
-        self.create_process(&template.name, entry_addr, env, handles);
+        self.create_process(&template.name, entry_addr, env, handles, bootinfo);
         Ok(())
     }
 
-    pub fn load(&mut self, templates: &[AppTemplate]) {
+    pub fn load(&mut self, templates: &[AppTemplate], bootinfo: &BootInfo) {
         for t in templates {
             let (ch0, ch1) = Channel::new().unwrap();
             self.our_chs.insert(t.name, ch0);
@@ -314,13 +319,13 @@ impl<'a> StartupAppLoader<'a> {
         }
 
         for t in templates {
-            self.load_app(t).unwrap();
+            self.load_app(t, bootinfo).unwrap();
         }
     }
 }
 
-pub fn load_startup_apps(device_tree: Option<&DeviceTree>) {
-    StartupAppLoader::new(device_tree).load(&STARTUP_APPS);
+pub fn load_startup_apps(device_tree: Option<&DeviceTree>, bootinfo: &BootInfo) {
+    StartupAppLoader::new(device_tree).load(&STARTUP_APPS, bootinfo);
 }
 
 struct ElfLoader<'a> {

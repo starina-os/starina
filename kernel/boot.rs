@@ -1,4 +1,5 @@
 //! The kernel entry point.
+use ftl_inlinedvec::InlinedString;
 use ftl_inlinedvec::InlinedVec;
 use ftl_utils::byte_size::ByteSize;
 
@@ -23,6 +24,7 @@ pub struct FreeMem {
 /// The boot information passed from the bootloader.
 #[derive(Debug)]
 pub struct BootInfo {
+    pub cmdline: Option<InlinedString<126>>,
     pub free_mems: InlinedVec<FreeMem, 8>,
     pub dtb_addr: Option<*const u8>,
 }
@@ -34,6 +36,10 @@ pub fn boot(cpu_id: CpuId, bootinfo: BootInfo) -> ! {
     println!();
     info!("FTL - Faster Than \"L\"");
 
+    if let Some(cmdline) = &bootinfo.cmdline {
+        trace!("cmdline: {}", cmdline);
+    }
+
     // Memory subystem should be initialized first to enable dynamic memory
     // allocation.
     memory::init(&bootinfo);
@@ -44,7 +50,7 @@ pub fn boot(cpu_id: CpuId, bootinfo: BootInfo) -> ! {
     arch::init(cpu_id, device_tree.as_ref());
 
     trace!("loading startup apps...");
-    startup::load_startup_apps(device_tree.as_ref());
+    startup::load_startup_apps(device_tree.as_ref(), &bootinfo);
 
     trace!("starting the apps...");
     Thread::switch();
