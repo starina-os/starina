@@ -213,6 +213,7 @@ impl VirtQueue {
 
     /// Returns a chain of descriptors processed by the device.
     pub fn pop_used(&mut self) -> Option<VirtqUsedChain> {
+        // TODO: Shouldn't we use atomic read here?
         if self.last_used_index == self.used().index {
             return None;
         }

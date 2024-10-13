@@ -13,6 +13,7 @@ const VIRTIO_STATUS_DRIVER_OK: u8 = 4;
 const VIRTIO_STATUS_FEAT_OK: u8 = 8;
 // const VIRTIO_F_VERSION_1: u64 = 1 << 32;
 
+#[derive(Debug, Copy, Clone)]
 #[repr(transparent)]
 pub struct IsrStatus(pub u8);
 
