@@ -6,31 +6,32 @@ use ftl_types::interrupt::Irq;
 use crate::cpuvar::CpuId;
 use crate::interrupt::Interrupt;
 use crate::refcount::SharedRef;
+use crate::syscall::syscall_handler;
 
 pub fn halt() -> ! {
     todo!()
 }
 
-pub fn paddr2vaddr(paddr: PAddr) -> Result<VAddr, FtlError> {
+pub fn paddr2vaddr(_paddr: PAddr) -> Result<VAddr, FtlError> {
     todo!()
 }
 
-pub fn vaddr2paddr(vaddr: VAddr) -> Result<PAddr, FtlError> {
+pub fn vaddr2paddr(_vaddr: VAddr) -> Result<PAddr, FtlError> {
     todo!()
 }
 
-pub fn console_write(bytes: &[u8]) {
+pub fn console_write(_bytes: &[u8]) {
     todo!()
 }
 
-pub fn backtrace<F>(mut callback: F)
+pub fn backtrace<F>(_callback: F)
 where
     F: FnMut(usize),
 {
     todo!()
 }
 
-pub fn return_to_user(thread: *mut Thread, sysret: Option<isize>) -> ! {
+pub fn return_to_user(_thread: *mut Thread, _sysret: Option<isize>) -> ! {
     todo!()
 }
 
@@ -39,17 +40,22 @@ pub fn idle() -> ! {
 }
 
 pub unsafe extern "C" fn kernel_syscall_entry(
-    _a0: isize,
-    _a1: isize,
-    _a2: isize,
-    _a3: isize,
-    _a4: isize,
-    _a5: isize,
+    a0: isize,
+    a1: isize,
+    a2: isize,
+    a3: isize,
+    a4: isize,
+    n: isize,
 ) -> isize {
-    todo!()
+    // Dummy if statement to avoid unused variable warnings.
+    if false {
+        syscall_handler(a0, a1, a2, a3, a4, n);
+    }
+
+    todo!();
 }
 
-pub fn set_cpuvar(cpuvar: *mut crate::cpuvar::CpuVar) {
+pub fn set_cpuvar(_cpuvar: *mut crate::cpuvar::CpuVar) {
     todo!()
 }
 
@@ -57,22 +63,26 @@ pub fn get_cpuvar() -> &'static crate::cpuvar::CpuVar {
     todo!()
 }
 
-pub fn interrupt_create(interrupt: &SharedRef<Interrupt>) -> Result<(), FtlError> {
+pub fn interrupt_create(_interrupt: &SharedRef<Interrupt>) -> Result<(), FtlError> {
     todo!()
 }
 
-pub fn interrupt_ack(irq: Irq) -> Result<(), FtlError> {
+pub fn interrupt_ack(_irq: Irq) -> Result<(), FtlError> {
     todo!()
 }
 
-pub fn init(cpu_id: CpuId, device_tree: Option<&crate::device_tree::DeviceTree>) {
+pub fn early_init(_cpu_id: CpuId) {
+    todo!()
+}
+
+pub fn init(_cpu_id: CpuId, _device_tree: Option<&crate::device_tree::DeviceTree>) {
     todo!()
 }
 
 pub struct CpuVar {}
 
 impl CpuVar {
-    pub fn new(idle_thread: &SharedRef<crate::thread::Thread>) -> Self {
+    pub fn new(_idle_thread: &SharedRef<crate::thread::Thread>) -> Self {
         todo!()
     }
 }
@@ -84,11 +94,11 @@ impl VmSpace {
         todo!()
     }
 
-    pub fn map_fixed(&self, vaddr: VAddr, paddr: PAddr, len: usize) -> Result<(), FtlError> {
+    pub fn map_fixed(&self, _vaddr: VAddr, _paddr: PAddr, _len: usize) -> Result<(), FtlError> {
         todo!()
     }
 
-    pub fn map_anywhere(&self, paddr: PAddr, len: usize) -> Result<VAddr, FtlError> {
+    pub fn map_anywhere(&self, _paddr: PAddr, _len: usize) -> Result<VAddr, FtlError> {
         todo!()
     }
 
@@ -104,12 +114,7 @@ impl Thread {
         todo!()
     }
 
-    pub fn new_kernel(
-        vmspace: SharedRef<crate::vmspace::VmSpace>,
-        pc: usize,
-        sp: usize,
-        arg: usize,
-    ) -> Thread {
+    pub fn new_kernel(_pc: usize, _sp: usize, _arg: usize) -> Thread {
         todo!()
     }
 }

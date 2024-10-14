@@ -28,6 +28,7 @@ impl DeviceTree {
         &self.devices
     }
 
+    #[allow(dead_code)]
     pub fn find_device_by_id(&self, compatible: &str) -> Option<&Device> {
         self.devices.iter().find(|d| d.compatible == compatible)
     }
