@@ -28,13 +28,11 @@ fn handle_request(buf: &[u8], tcp_sender: &ChannelSender) {
         }
         Ok(Status::Partial) => {
             warn!("unexpected httparse::Status::Partial");
-            return;
         }
         Err(e) => {
             debug_warn!("error parsing request: {:?}", e);
-            return;
         }
-    };
+    }
 }
 
 #[derive(Debug)]

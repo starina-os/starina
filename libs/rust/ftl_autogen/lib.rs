@@ -145,7 +145,7 @@ fn visit_interface(
                     interface_name: interface_name.to_string(),
                     name: reply_message_name,
                     msgid: *next_msgid,
-                    num_handles: num_handles(&returns),
+                    num_handles: num_handles(returns),
                     fields: visit_fields(returns),
                     reply_message_name: None,
                 });

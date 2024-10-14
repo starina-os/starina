@@ -39,7 +39,7 @@ fn parse_boot_args(boot_args: &str) -> Option<(u64 /* paddr */, u32 /* irq */)> 
             let irq_str = parts.next()?;
 
             let paddr = u64::from_str_radix(paddr_str, 16).ok()?;
-            let irq = u32::from_str_radix(irq_str, 10).ok()?;
+            let irq = irq_str.parse::<u32>().ok()?;
             return Some((paddr, irq));
         }
     }
@@ -53,7 +53,7 @@ pub fn main(mut env: Environ) {
     let startup_ch = env.take_channel("dep:startup").unwrap();
 
     let mut virtio_net = match env.devices("virtio,mmio") {
-        Some(devices) if !devices.is_empty() => VirtioNet::new(&devices),
+        Some(devices) if !devices.is_empty() => VirtioNet::new(devices),
         _ => {
             let boot_args = env.string("boot_args").unwrap();
             let (reg, irq) = parse_boot_args(boot_args).unwrap();
@@ -61,7 +61,7 @@ pub fn main(mut env: Environ) {
             let devices = &[Device {
                 name: "virtio,mmio".to_string(),
                 compatible: "virtio,mmio".to_string(),
-                reg: reg,
+                reg,
                 interrupts: Some(vec![irq]),
             }];
 

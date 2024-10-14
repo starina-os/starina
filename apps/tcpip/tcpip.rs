@@ -60,7 +60,7 @@ pub struct TcpIp<'a> {
 
 impl<'a> TcpIp<'a> {
     pub fn new(mut device: NetDevice, hwaddr: HardwareAddress) -> TcpIp<'a> {
-        let config = Config::new(hwaddr.into());
+        let config = Config::new(hwaddr);
         let mut iface = Interface::new(config, &mut device, now());
         let smol_sockets = SocketSet::new(Vec::with_capacity(16));
 

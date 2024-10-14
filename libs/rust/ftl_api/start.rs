@@ -16,7 +16,7 @@ pub fn app_vmspace_handle() -> HandleId {
 
 fn parse_environ(vsyscall: &VsyscallPage) -> Environ {
     let env_bytes =
-        unsafe { ::core::slice::from_raw_parts((*vsyscall).environ_ptr, (*vsyscall).environ_len) };
+        unsafe { ::core::slice::from_raw_parts(vsyscall.environ_ptr, vsyscall.environ_len) };
     let env_str = ::core::str::from_utf8(env_bytes).unwrap();
 
     Environ::parse(env_str)

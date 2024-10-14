@@ -11,7 +11,7 @@ use minijinja::context;
 use minijinja::Environment;
 
 const STARTUP_DEFS_TEMPLATE: &str = r#"
-
+    #[allow(unused_macros)]
     macro_rules! aligned_include_bytes {
         ($file:expr, $align:expr) => { {
             // A wrapper to ensure the inner type is aligned to $align bytes.

@@ -164,7 +164,7 @@ impl Environ {
 impl fmt::Debug for Environ {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_map()
-            .entries(self.entries.iter().map(|(k, v)| (k, v)))
+            .entries(self.entries.iter())
             .finish()
     }
 }

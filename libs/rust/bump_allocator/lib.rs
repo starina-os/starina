@@ -32,6 +32,12 @@ pub struct BumpAllocator {
     bottom: usize,
 }
 
+impl Default for BumpAllocator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl BumpAllocator {
     // Creates a new bump allocator. Initially, the allocator has no memory
     // region. Call `add_region` to add a memory region.

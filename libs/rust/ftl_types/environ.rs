@@ -38,6 +38,12 @@ pub enum EnvType {
 
 pub struct EnvironSerializer(String);
 
+impl Default for EnvironSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl EnvironSerializer {
     pub fn new() -> EnvironSerializer {
         EnvironSerializer(String::new())
@@ -65,7 +71,7 @@ impl EnvironSerializer {
             EnvType::String => "=string:",
         });
 
-        write!(&mut self.0, "{}\n", value).unwrap();
+        writeln!(&mut self.0, "{}", value).unwrap();
     }
 
     pub fn push_channel(&mut self, key: &str, ch: HandleId) {

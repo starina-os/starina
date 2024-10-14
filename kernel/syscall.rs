@@ -205,7 +205,7 @@ fn poll_wait(handle_id: HandleId) -> Result<PollSyscallResult, FtlError> {
             .process()
             .handles()
             .lock()
-            .get_owned(handle_id, HandleRights::READ | HandleRights::READ)?
+            .get_owned(handle_id, HandleRights::READ)?
             .as_poll()?
             .clone()
     };

@@ -37,6 +37,12 @@ pub struct MessageBuffer {
     pub data: [u8; MESSAGE_DATA_MAX_LEN],
 }
 
+impl Default for MessageBuffer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MessageBuffer {
     pub fn new() -> Self {
         // TODO: Avoid zeroing the buffer because it's not necessary.
@@ -64,8 +70,8 @@ pub trait MessageCallable: MessageSerialize {
 
 pub trait MessageDeserialize: Debug + Sized {
     type Reader<'a>: Debug + 'a;
-    fn deserialize<'a>(
-        buffer: &'a mut MessageBuffer,
+    fn deserialize(
+        buffer: &mut MessageBuffer,
         msginfo: MessageInfo,
-    ) -> Option<Self::Reader<'a>>;
+    ) -> Option<Self::Reader<'_>>;
 }

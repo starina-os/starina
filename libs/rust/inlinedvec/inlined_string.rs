@@ -10,6 +10,12 @@ use crate::TooManyItemsError;
 /// of the string. It's guaranteed to be a valid UTF-8 string.
 pub struct InlinedString<const CAP: usize>(InlinedVec<u8, CAP>);
 
+impl<const CAP: usize> Default for InlinedString<CAP> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<const CAP: usize> InlinedString<CAP> {
     pub const fn new() -> Self {
         Self(InlinedVec::new())

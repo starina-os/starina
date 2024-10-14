@@ -188,11 +188,9 @@ impl<'a> StartupAppLoader<'a> {
         let proc = SharedRef::new(Process::create(self.vmspace.clone()));
 
         let mut handle_table = proc.handles().lock();
-        let mut i = 0;
-        for handle in handles {
+        for (i, handle) in handles.into_iter().enumerate() {
             let handle_id = handle_table.add(handle).unwrap();
-            debug_assert_eq!(handle_id.as_i32(), i + 1);
-            i += 1;
+            debug_assert_eq!(handle_id.as_i32(), (i + 1) as i32);
         }
 
         let startup_ch = self.their_chs.remove(name).unwrap();
@@ -325,7 +323,7 @@ impl<'a> StartupAppLoader<'a> {
 }
 
 pub fn load_startup_apps(device_tree: Option<&DeviceTree>, bootinfo: &BootInfo) {
-    StartupAppLoader::new(device_tree).load(&STARTUP_APPS, bootinfo);
+    StartupAppLoader::new(device_tree).load(STARTUP_APPS, bootinfo);
 }
 
 struct ElfLoader<'a> {
