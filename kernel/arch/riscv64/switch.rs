@@ -1,4 +1,5 @@
 use core::arch::asm;
+use core::arch::naked_asm;
 use core::mem::offset_of;
 
 use super::interrupt::interrupt_handler;
@@ -15,7 +16,7 @@ pub unsafe extern "C" fn kernel_syscall_entry(
     _a5: isize,
 ) -> isize {
     unsafe {
-        asm!(
+        naked_asm!(
             r#"
                 // Disable interrupts in kernel.
                 // TODO: Perhaps it is *always* disabled?
@@ -82,7 +83,6 @@ pub unsafe extern "C" fn kernel_syscall_entry(
             s11_offset = const offset_of!(Context, s11),
             syscall_handler = sym crate::syscall::syscall_handler,
             switch_thread = sym crate::thread::switch_thread,
-            options(noreturn)
         )
     }
 }
@@ -92,7 +92,7 @@ pub unsafe extern "C" fn kernel_syscall_entry(
 #[naked]
 pub unsafe extern "C" fn switch_to_kernel() -> ! {
     unsafe {
-        asm!(
+        naked_asm!(
             r#"
                 csrrw tp, sscratch, tp      // Save tp to sscratch and load Cpuvar
                 sd a0, {s0_scratch_offset}(tp)
@@ -177,7 +177,6 @@ pub unsafe extern "C" fn switch_to_kernel() -> ! {
             t5_offset = const offset_of!(Context, t5),
             t6_offset = const offset_of!(Context, t6),
             interrupt_handler = sym interrupt_handler,
-            options(noreturn)
         )
     }
 }

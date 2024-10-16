@@ -1,6 +1,7 @@
 use core::arch::asm;
 use core::cell::RefMut;
 use core::mem::offset_of;
+use core::arch::naked_asm;
 
 use super::gdt::KERNEL_CS;
 use super::idt::VECTOR_IRQ_BASE;
@@ -20,7 +21,7 @@ pub unsafe extern "C" fn kernel_syscall_entry(
     _a4: isize,
     _a5: isize,
 ) -> isize {
-    asm!(
+    naked_asm!(
         r#"
             cli
             mov rax, gs:[{context_offset}]
@@ -78,7 +79,6 @@ pub unsafe extern "C" fn kernel_syscall_entry(
         r15_offset = const offset_of!(Context, r15),
         syscall_handler = sym crate::syscall::syscall_handler,
         switch_thread = sym crate::thread::switch_thread,
-        options(noreturn)
     )
 }
 

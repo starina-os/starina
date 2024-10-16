@@ -1,4 +1,5 @@
 use core::arch::asm;
+use core::arch::naked_asm;
 
 use super::csr::write_stvec;
 use super::interrupt::interrupt_handler;
@@ -8,7 +9,7 @@ use crate::arch::riscv64::csr::StvecMode;
 #[link_section = ".text.idle_entry"]
 #[naked]
 unsafe extern "C" fn idle_entry() -> ! {
-    asm!(
+    naked_asm!(
         r#"
             j {resume_from_idle}
         "#,
