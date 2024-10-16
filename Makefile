@@ -1,5 +1,5 @@
 # ARCH=riscv64 MACHINE=qemu-virt
-# ARCH=x64     MACHINE=qemu-x86_64
+# ARCH=x64     MACHINE=pc
 ARCH    ?= riscv64
 MACHINE ?= qemu-virt
 
@@ -42,6 +42,10 @@ QEMUFLAGS += -global virtio-mmio.force-legacy=false
 QEMUFLAGS += -device virtio-net-device,netdev=net0,bus=virtio-mmio-bus.0
 QEMUFLAGS += -object filter-dump,id=fiter0,netdev=net0,file=virtio-net.pcap
 QEMUFLAGS += -netdev user,id=net0,hostfwd=tcp:127.0.0.1:1234-:80
+
+ifneq ($(KVM),)
+QEMUFLAGS += -accel kvm
+endif
 
 CARGO    ?= cargo
 PROGRESS ?= printf "  \\033[1;96m%8s\\033[0m  \\033[1;m%s\\033[0m\\n"
