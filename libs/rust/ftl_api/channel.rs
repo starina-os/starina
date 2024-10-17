@@ -194,8 +194,8 @@ impl Channel {
     /// See [`Self::recv`] for more details on `buffer`.
     pub fn call<'a, M>(
         &self,
-        request: M,
         msgbuffer: &'a mut MessageBuffer,
+        request: M,
     ) -> Result<<M::Reply as MessageDeserialize>::Reader<'a>, CallError>
     where
         M: MessageCallable,
