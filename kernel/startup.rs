@@ -264,28 +264,8 @@ impl<'a> StartupAppLoader<'a> {
             )
             .unwrap();
 
-        // Allocate stack. FIXME: We don't need kernel stack anymore.
-        const KERNEL_STACK_SIZE: usize = 128 * 1024; // FIXME:
-        let stack_folio = Handle::new(
-            SharedRef::new(Folio::alloc(KERNEL_STACK_SIZE).unwrap()),
-            HandleRights::ALL,
-        );
-        let stack_vaddr: VAddr = vmspace
-            .map_anywhere_user(
-                KERNEL_STACK_SIZE,
-                stack_folio.clone(),
-                PageProtect::READABLE | PageProtect::WRITABLE,
-            )
-            .unwrap();
-        let sp = stack_vaddr.add(KERNEL_STACK_SIZE).as_usize();
-        handle_table.add(stack_folio).unwrap();
-
-        let thread = Thread::spawn_kernel(
-            proc.clone(),
-            entry_addr,
-            sp,
-            vsyscall_buffer_vaddr.as_usize(),
-        );
+        let thread =
+            Thread::spawn_kernel(proc.clone(), entry_addr, vsyscall_buffer_vaddr.as_usize());
         handle_table
             .add(Handle::new(thread, HandleRights::ALL))
             .unwrap();

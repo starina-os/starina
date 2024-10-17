@@ -50,7 +50,7 @@ impl Thread {
         }
     }
 
-    pub fn new_kernel(pc: usize, sp: usize, arg: usize) -> Thread {
+    pub fn new_kernel(pc: usize, arg: usize) -> Thread {
         let mut sstatus: usize;
         unsafe {
             core::arch::asm!("csrr {}, sstatus", out(reg) sstatus);
@@ -60,7 +60,6 @@ impl Thread {
             context: Context {
                 sepc: pc,
                 sstatus,
-                sp,
                 a0: arg,
                 ..Default::default()
             },

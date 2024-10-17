@@ -114,7 +114,7 @@ impl Thread {
         todo!()
     }
 
-    pub fn new_kernel(_pc: usize, _sp: usize, _arg: usize) -> Thread {
+    pub fn new_kernel(_pc: usize, _arg: usize) -> Thread {
         todo!()
     }
 }

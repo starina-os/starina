@@ -35,11 +35,10 @@ impl Thread {
         }
     }
 
-    pub fn new_kernel(pc: usize, sp: usize, arg: usize) -> Thread {
+    pub fn new_kernel(pc: usize, arg: usize) -> Thread {
         Thread {
             context: Context {
                 rip: pc,
-                rsp: sp,
                 rdi: arg,
                 ..Default::default()
             },
