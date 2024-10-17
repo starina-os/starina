@@ -22,6 +22,11 @@ impl PageProtect {
         (self.0 & other.0) != 0
     }
 
+    pub fn user_allowed_flags(&self) -> bool {
+        let allowed = Self::READABLE | Self::WRITABLE | Self::EXECUTABLE;
+        (self.0 & allowed.0) == self.0
+    }
+
     pub fn as_raw(&self) -> u8 {
         self.0
     }

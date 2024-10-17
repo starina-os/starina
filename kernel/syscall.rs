@@ -296,6 +296,10 @@ fn vmspace_map(
     folio: HandleId,
     prot: PageProtect,
 ) -> Result<VAddr, FtlError> {
+    if !prot.user_allowed_flags() {
+        return Err(FtlError::InvalidArg);
+    }
+
     let (vmspace, folio) = {
         let current = current_thread();
         let handles = current.process().handles().lock();
