@@ -14,7 +14,6 @@ unsafe extern "C" fn idle_entry() -> ! {
             j {resume_from_idle}
         "#,
         resume_from_idle = sym resume_from_idle,
-        options(noreturn)
     );
 }
 
