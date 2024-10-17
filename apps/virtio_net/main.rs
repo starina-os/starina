@@ -11,6 +11,7 @@ use ftl_api::mainloop::Event;
 use ftl_api::mainloop::Mainloop;
 use ftl_api::prelude::*;
 use ftl_api::types::environ::Device;
+use ftl_autogen::idl::ethernet_device::ReadHwaddrReply;
 use ftl_autogen::idl::ethernet_device::Rx;
 use ftl_autogen::idl::Message;
 use virtio_net::VirtioNet;
@@ -19,7 +20,7 @@ use virtio_net::VirtioNet;
 enum Context {
     Startup,
     Interrupt,
-    Tcpip,
+    Upstream,
 }
 
 /// Parses `virtio_mmio.device=512@0xfeb00000:5` into `(0xfeb00000, 5)`.
@@ -92,11 +93,21 @@ pub fn main(mut env: Environ) {
                 tcpip_ch = Some(sender.clone());
 
                 mainloop
-                    .add_channel((sender, receiver), Context::Tcpip)
+                    .add_channel((sender, receiver), Context::Upstream)
                     .unwrap();
             }
             Event::Message {
-                ctx: Context::Tcpip,
+                ctx: Context::Upstream,
+                message: Message::ReadHwaddr(_),
+                sender,
+                ..
+            } => {
+                let _ = sender.send(ReadHwaddrReply {
+                    hwaddr: virtio_net.hwaddr().try_into().unwrap(),
+                });
+            }
+            Event::Message {
+                ctx: Context::Upstream,
                 message: Message::Tx(m),
                 ..
             } => {

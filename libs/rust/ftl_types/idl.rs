@@ -69,6 +69,27 @@ impl<const CAP: usize> TryFrom<&[u8]> for BytesField<CAP> {
     }
 }
 
+impl<const CAP: usize, const SIZE: usize> TryFrom<&[u8; SIZE]> for BytesField<CAP> {
+    type Error = TooManyItemsError;
+
+    fn try_from(value: &[u8; SIZE]) -> Result<BytesField<CAP>, TooManyItemsError> {
+        debug_assert!(CAP <= u16::MAX as usize); // FIXME: This assertion doesn't work
+
+        if SIZE > CAP {
+            return Err(TooManyItemsError);
+        }
+
+        // Zeroing the remaining part is very important to avoid leak
+        // information - the kernel will keep copying the whole CAP bytes
+        // regardless of the length!
+        let mut data: [u8; CAP] = [0; CAP];
+
+        data[..value.len()].copy_from_slice(value);
+
+        Ok(BytesField::new(data, value.len() as u16))
+    }
+}
+
 #[derive(PartialEq, Eq, Clone, Copy)]
 #[repr(transparent)]
 pub struct StringField<const CAP: usize>(BytesField<CAP>);

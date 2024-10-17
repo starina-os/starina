@@ -9,6 +9,7 @@ use ftl_api::environ::Environ;
 use ftl_api::mainloop::Event;
 use ftl_api::mainloop::Mainloop;
 use ftl_api::prelude::*;
+use ftl_api::types::message::MessageBuffer;
 use ftl_autogen::idl::ethernet_device;
 use ftl_autogen::idl::tcpip::TcpAccepted;
 use ftl_autogen::idl::tcpip::TcpClosed;
@@ -40,7 +41,13 @@ pub fn main(mut env: Environ) {
     let driver_ch = env.take_channel("dep:ethernet_device").unwrap();
     let startup_ch = env.take_channel("dep:startup").unwrap();
 
-    let mac = HardwareAddress::Ethernet(EthernetAddress([0x52, 0x54, 0x00, 0x12, 0x34, 0x56])); // FIXME:
+    let mut msgbuffer = MessageBuffer::new();
+    let hwaddr_reply: &mut ethernet_device::ReadHwaddrReply = driver_ch
+        .call(&mut msgbuffer, ethernet_device::ReadHwaddr {})
+        .unwrap();
+
+    let raw_mac = hwaddr_reply.hwaddr.as_slice().try_into().unwrap();
+    let mac = HardwareAddress::Ethernet(EthernetAddress(raw_mac));
 
     // The ethernet device will call this closure to transmit packets.
     let (driver_sender, driver_receiver) = driver_ch.split();

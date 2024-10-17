@@ -1,3 +1,5 @@
+use core::mem::offset_of;
+
 use ftl_api::folio::MappedFolio;
 use ftl_api::interrupt::Interrupt;
 use ftl_api::prelude::*;
@@ -24,6 +26,19 @@ struct VirtioNetModernHeader {
     checksum_start: u16,
     checksum_offset: u16,
     // num_buffer: u16,
+}
+
+#[repr(C, packed)]
+struct VirtioNetConfig {
+    mac: [u8; 6],
+    status: u16,
+    max_virtqueue_pairs: u16,
+    mtu: u16,
+    speed: u32,
+    duplex: u8,
+    rss_max_key_size: u8,
+    rss_max_indirection_table_length: u16,
+    supported_hash_types: u32,
 }
 
 fn probe(devices: &[Device], device_type: u32) -> Option<(VirtioMmio, Irq)> {
@@ -56,12 +71,18 @@ pub struct VirtioNet {
     transmitq_buffers: DmaBufferPool,
     receiveq: VirtQueue,
     receiveq_buffers: DmaBufferPool,
+    mac: [u8; 6],
 }
 
 impl VirtioNet {
     pub fn new(devices: &[Device]) -> VirtioNet {
         let (mut transport, irq) = probe(devices, VIRTIO_DEVICE_TYPE_NET).unwrap();
         assert!(transport.is_modern());
+
+        let mut mac = [0; 6];
+        for i in 0..6 {
+            mac[i] = transport.read_device_config8((offset_of!(VirtioNetConfig, mac) + i) as u16)
+        }
 
         let interrupt = Interrupt::create(irq).unwrap();
         let mut transport = Box::new(transport) as Box<dyn VirtioTransport>;
@@ -90,7 +111,12 @@ impl VirtioNet {
             transmitq_buffers,
             receiveq,
             receiveq_buffers,
+            mac,
         }
+    }
+
+    pub fn hwaddr(&self) -> &[u8; 6] {
+        &self.mac
     }
 
     pub fn take_interrupt(&mut self) -> Option<Interrupt> {

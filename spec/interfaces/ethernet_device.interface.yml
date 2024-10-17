@@ -2,6 +2,13 @@ name: ethernet_device
 kind: interface/v0
 spec:
   messages:
+  - name: read_hwaddr
+    context: control
+    type: call
+    origin: client
+    params: []
+    returns:
+    - { name: hwaddr, type: bytes, capacity: 8, help: "The hardware address" }
   - name: tx
     context: control
     type: push
