@@ -9,9 +9,10 @@ use crate::ftl_autogen::idl::tcpip::TcpSend;
 const REQUEST_MAX_SIZE: usize = 32 * 1024;
 
 fn do_handle_request(req: Request, tcp_sender: &ChannelSender) {
-    info!("{}, {}", req.method.unwrap(), req.path.unwrap());
+    info!("{} {}", req.method.unwrap(), req.path.unwrap());
 
-    let data = b"HTTP/1.1 200 OK\r\nContent-Length: 12\r\n\r\nHello, world!";
+    let data =
+        b"HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: 92\r\n\r\n<html><head><meta charset=\"utf-8\"></head><body><h1>FTL</h1><hr>Servered by FTL</body></html>";
     tcp_sender
         .send(TcpSend {
             data: data.as_slice().try_into().unwrap(),
