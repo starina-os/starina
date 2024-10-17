@@ -34,6 +34,8 @@ pub use vmspace::VmSpace;
 pub use vmspace::USERSPACE_END;
 pub use vmspace::USERSPACE_START;
 
+pub const VSYSCALL_ENTRY_ADDR: VAddr = VAddr::new(0x9000);
+
 pub const PAGE_SIZE: usize = 4096;
 pub const NUM_CPUS_MAX: usize = 8;
 
@@ -71,6 +73,11 @@ pub fn init(cpu_id: CpuId, device_tree: Option<&crate::device_tree::DeviceTree>)
         sie |= 1 << 5; // STIE: supervisor-level timer interrupts
         sie |= 1 << 9; // SEIE: supervisor-level external interrupts
         asm!("csrw sie, {}", in(reg) sie);
+
+        let mut sstatus: u64;
+        asm!("csrr {}, sstatus", out(reg) sstatus);
+        sstatus |= 1 << 18; // SUM: Supervisor User Memory access
+        asm!("csrw sstatus, {}", in(reg) sstatus);
 
         write_stvec(switch_to_kernel as *const () as usize, StvecMode::Direct);
 

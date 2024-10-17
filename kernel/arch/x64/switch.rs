@@ -1,7 +1,7 @@
 use core::arch::asm;
+use core::arch::naked_asm;
 use core::cell::RefMut;
 use core::mem::offset_of;
-use core::arch::naked_asm;
 
 use super::gdt::KERNEL_CS;
 use super::idt::VECTOR_IRQ_BASE;

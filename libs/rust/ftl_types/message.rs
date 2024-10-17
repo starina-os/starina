@@ -70,8 +70,5 @@ pub trait MessageCallable: MessageSerialize {
 
 pub trait MessageDeserialize: Debug + Sized {
     type Reader<'a>: Debug + 'a;
-    fn deserialize(
-        buffer: &mut MessageBuffer,
-        msginfo: MessageInfo,
-    ) -> Option<Self::Reader<'_>>;
+    fn deserialize(buffer: &mut MessageBuffer, msginfo: MessageInfo) -> Option<Self::Reader<'_>>;
 }

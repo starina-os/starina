@@ -12,3 +12,10 @@ boot:
     mv fp, zero
     la sp, __boot_stack_top
     j riscv64_boot
+
+.rodata
+.balign 4096
+.global __vsyscall_page
+__vsyscall_page:
+    ecall
+    ret

@@ -8,6 +8,7 @@ impl PageProtect {
     pub const READABLE: PageProtect = PageProtect::from_raw(1 << 1);
     pub const WRITABLE: PageProtect = PageProtect::from_raw(1 << 2);
     pub const EXECUTABLE: PageProtect = PageProtect::from_raw(1 << 3);
+    pub const USER: PageProtect = PageProtect::from_raw(1 << 4);
 
     pub const fn zeroed() -> PageProtect {
         PageProtect(0)

@@ -310,7 +310,7 @@ fn vmspace_map(
         (vmspace, folio)
     };
 
-    vmspace.map_anywhere(len, folio, prot)
+    vmspace.map_anywhere_user(len, folio, prot)
 }
 
 fn process_exit() -> ! {

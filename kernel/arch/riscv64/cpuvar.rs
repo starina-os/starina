@@ -7,13 +7,20 @@ use crate::thread::Thread;
 pub struct CpuVar {
     pub(super) context: *mut Context,
     pub(super) s0_scratch: u64,
+    pub(super) kernel_sp: u64,
 }
 
 impl CpuVar {
     pub fn new(idle_thread: &SharedRef<Thread>) -> Self {
+        extern "C" {
+            static __boot_stack_top: u8;
+        }
+
+        let sp_top = unsafe { &__boot_stack_top as *const _ as u64 };
         Self {
             context: &idle_thread.arch().context as *const _ as *mut _,
             s0_scratch: 0,
+            kernel_sp: sp_top,
         }
     }
 }

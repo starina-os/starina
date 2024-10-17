@@ -10,7 +10,6 @@ use ftl_elf::Elf;
 use ftl_elf::PhdrType;
 use ftl_elf::ET_DYN;
 use ftl_elf::PF_R;
-use ftl_elf::PF_W;
 use ftl_elf::PF_X;
 use ftl_types::address::PAddr;
 use ftl_types::address::VAddr;
@@ -33,6 +32,7 @@ use crate::arch::PAGE_SIZE;
 use crate::arch::USERSPACE_END;
 use crate::arch::USERSPACE_START;
 use crate::boot::BootInfo;
+use crate::boot::USERMODE_ENABLED;
 use crate::channel::Channel;
 use crate::device_tree::DeviceTree;
 use crate::folio::Folio;
@@ -93,19 +93,16 @@ struct StartupAppLoader<'a> {
     service_to_app_name: HashMap<ServiceName, AppName>,
     our_chs: HashMap<AppName, SharedRef<Channel>>,
     their_chs: HashMap<AppName, SharedRef<Channel>>,
-    vmspace: SharedRef<VmSpace>,
     next_base_vaddr: VAddr,
 }
 
 impl<'a> StartupAppLoader<'a> {
     pub fn new(device_tree: Option<&DeviceTree>) -> StartupAppLoader {
-        let vmspace = SharedRef::new(VmSpace::kernel_space().unwrap());
         StartupAppLoader {
             device_tree,
             service_to_app_name: HashMap::new(),
             our_chs: HashMap::new(),
             their_chs: HashMap::new(),
-            vmspace,
             next_base_vaddr: USERSPACE_START,
         }
     }
@@ -182,10 +179,13 @@ impl<'a> StartupAppLoader<'a> {
         name: &AppName,
         entry_addr: usize,
         mut env: EnvironSerializer,
+        vmspace: VmSpace,
         handles: Vec<AnyHandle>,
         bootinfo: &BootInfo,
     ) {
-        let proc = SharedRef::new(Process::create(self.vmspace.clone()));
+        // let vmspace = SharedRef::new(VmSpace::kernel_space().unwrap());
+        let vmspace = SharedRef::new(vmspace);
+        let proc = SharedRef::new(Process::create(vmspace.clone()));
 
         let mut handle_table = proc.handles().lock();
         for (i, handle) in handles.into_iter().enumerate() {
@@ -197,7 +197,7 @@ impl<'a> StartupAppLoader<'a> {
         let startup_ch_handle = Handle::new(startup_ch, HandleRights::ALL);
         let startup_ch_id = handle_table.add(startup_ch_handle).unwrap();
 
-        let vmspace_handle = Handle::new(self.vmspace.clone(), HandleRights::ALL);
+        let vmspace_handle = Handle::new(vmspace.clone(), HandleRights::ALL);
         let vmspace_id = handle_table.add(vmspace_handle).unwrap();
 
         env.push_channel("dep:startup", startup_ch_id);
@@ -209,11 +209,42 @@ impl<'a> StartupAppLoader<'a> {
         let env_str = env.finish();
         let environ_pages =
             Folio::alloc(align_up(env_str.len(), PAGE_SIZE)).expect("failed to allocate folio");
-        let environ_pages_vaddr = paddr2vaddr(environ_pages.paddr()).unwrap();
         let environ_pages_slice: &mut [u8] = unsafe {
-            core::slice::from_raw_parts_mut(environ_pages_vaddr.as_mut_ptr(), environ_pages.len())
+            let vaddr = paddr2vaddr(environ_pages.paddr()).unwrap();
+            core::slice::from_raw_parts_mut(vaddr.as_mut_ptr(), environ_pages.len())
         };
         environ_pages_slice[..env_str.len()].copy_from_slice(env_str.as_bytes());
+
+        let vsyscall_page_paddr = {
+            extern "C" {
+                static __vsyscall_page: u8;
+            }
+
+            let page_addr = unsafe { &__vsyscall_page as *const u8 as usize };
+            vaddr2paddr(VAddr::new(page_addr)).unwrap()
+        };
+
+        warn!(
+            "mapping vsyscall page at {:x} -> {:x}...",
+            arch::VSYSCALL_ENTRY_ADDR.as_usize(),
+            vsyscall_page_paddr.as_usize()
+        );
+        vmspace
+            .map_vaddr_user(
+                arch::VSYSCALL_ENTRY_ADDR,
+                vsyscall_page_paddr,
+                PAGE_SIZE,
+                PageProtect::EXECUTABLE,
+            )
+            .unwrap();
+
+        let environ_vaddr: VAddr = vmspace
+            .map_anywhere_user(
+                environ_pages.len(),
+                Handle::new(SharedRef::new(environ_pages), HandleRights::ALL),
+                PageProtect::READABLE,
+            )
+            .unwrap();
 
         let vsyscall_buffer = Folio::alloc(PAGE_SIZE).unwrap();
         let vsyscall_buffer_ptr = paddr2vaddr(vsyscall_buffer.paddr()).unwrap();
@@ -221,21 +252,35 @@ impl<'a> StartupAppLoader<'a> {
             vsyscall_buffer_ptr
                 .as_mut_ptr::<VsyscallPage>()
                 .write(VsyscallPage {
-                    entry: arch::kernel_syscall_entry as *const _,
-                    environ_ptr: environ_pages_vaddr.as_mut_ptr(),
+                    entry: if USERMODE_ENABLED {
+                        arch::VSYSCALL_ENTRY_ADDR.as_ptr()
+                    } else {
+                        arch::kernel_syscall_entry as *const _
+                    },
+                    environ_ptr: environ_vaddr.as_mut_ptr(),
                     environ_len: env_str.len(),
                 });
         }
 
-        // Allocate stack.
+        let vsyscall_buffer_vaddr: VAddr = vmspace
+            .map_anywhere_user(
+                vsyscall_buffer.len(),
+                Handle::new(SharedRef::new(vsyscall_buffer), HandleRights::ALL),
+                PageProtect::READABLE,
+            )
+            .unwrap();
+
+        info!("environ_vaddr: {}", environ_vaddr);
+        info!("vsyscall_buffer_vaddr: {}", vsyscall_buffer_vaddr);
+
+        // Allocate stack. FIXME: We don't need kernel stack anymore.
         const KERNEL_STACK_SIZE: usize = 128 * 1024; // FIXME:
         let stack_folio = Handle::new(
             SharedRef::new(Folio::alloc(KERNEL_STACK_SIZE).unwrap()),
             HandleRights::ALL,
         );
-        let stack_vaddr = self
-            .vmspace
-            .map_anywhere(
+        let stack_vaddr: VAddr = vmspace
+            .map_anywhere_user(
                 KERNEL_STACK_SIZE,
                 stack_folio.clone(),
                 PageProtect::READABLE | PageProtect::WRITABLE,
@@ -244,22 +289,14 @@ impl<'a> StartupAppLoader<'a> {
         let sp = stack_vaddr.add(KERNEL_STACK_SIZE).as_usize();
         handle_table.add(stack_folio).unwrap();
 
-        let thread =
-            Thread::spawn_kernel(proc.clone(), entry_addr, sp, vsyscall_buffer_ptr.as_usize());
+        let thread = Thread::spawn_kernel(
+            proc.clone(),
+            entry_addr,
+            sp,
+            vsyscall_buffer_vaddr.as_usize(),
+        );
         handle_table
             .add(Handle::new(thread, HandleRights::ALL))
-            .unwrap();
-        handle_table
-            .add(Handle::new(
-                SharedRef::new(vsyscall_buffer),
-                HandleRights::ALL,
-            ))
-            .unwrap();
-        handle_table
-            .add(Handle::new(
-                SharedRef::new(environ_pages),
-                HandleRights::ALL,
-            ))
             .unwrap();
     }
 
@@ -272,13 +309,16 @@ impl<'a> StartupAppLoader<'a> {
         }
 
         trace!(
-            "kernel app: name=\"{}\", base={}",
+            "user app: name=\"{}\", base={}",
             template.name.0,
             base_vaddr
         );
 
-        let entry_addr = elf_loader.load_into_memory(&self.vmspace)?;
+        trace!("mapping memory...");
+        let vmspace = VmSpace::new().unwrap();
+        let entry_addr = elf_loader.load_into_memory(&vmspace)?;
 
+        info!("populating channels...");
         let mut env = EnvironSerializer::new();
         let mut handles = Vec::with_capacity(template.handles.len());
         for (i, wanted_handle) in template.handles.iter().enumerate() {
@@ -301,7 +341,7 @@ impl<'a> StartupAppLoader<'a> {
             env.push_devices(compat, &self.get_devices(compat));
         }
 
-        self.create_process(&template.name, entry_addr, env, handles, bootinfo);
+        self.create_process(&template.name, entry_addr, env, vmspace, handles, bootinfo);
         Ok(())
     }
 
@@ -396,9 +436,11 @@ impl<'a> ElfLoader<'a> {
                     map_flags |= PageProtect::READABLE;
                 }
 
-                if phdr.p_flags & PF_W != 0 {
-                    map_flags |= PageProtect::WRITABLE;
-                }
+                map_flags |= PageProtect::WRITABLE; // FIXME: needed for resolving relocs
+
+                // if phdr.p_flags & PF_W != 0 {
+                //     map_flags |= PageProtect::WRITABLE;
+                // }
 
                 if phdr.p_flags & PF_X != 0 {
                     map_flags |= PageProtect::EXECUTABLE;
@@ -431,7 +473,9 @@ impl<'a> ElfLoader<'a> {
                     Folio::alloc(PAGE_SIZE).unwrap()
                 };
 
-                vmspace.map(vaddr, folio, PAGE_SIZE, map_flags).unwrap();
+                vmspace
+                    .map_user(vaddr, folio, PAGE_SIZE, map_flags)
+                    .unwrap();
 
                 if zero_part_len > 0 {
                     // TODO: We might not need to zero-fill. Folio is already

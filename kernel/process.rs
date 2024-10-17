@@ -51,7 +51,7 @@ impl fmt::Debug for Process {
 }
 
 pub static KERNEL_VMSPACE: spin::Lazy<SharedRef<VmSpace>> = spin::Lazy::new(|| {
-    let vmspace = VmSpace::kernel_space().unwrap();
+    let vmspace = VmSpace::new().unwrap();
     SharedRef::new(vmspace)
 });
 

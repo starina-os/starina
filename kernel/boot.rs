@@ -29,12 +29,19 @@ pub struct BootInfo {
     pub dtb_addr: Option<*const u8>,
 }
 
+pub const USERMODE_ENABLED: bool = option_env!("USERMODE").is_some();
+
 /// The entry point of the kernel.
 pub fn boot(cpu_id: CpuId, bootinfo: BootInfo) -> ! {
     arch::early_init(cpu_id);
 
     println!();
     info!("FTL - Faster Than \"L\"");
+    if USERMODE_ENABLED {
+        info!("Usermode isolation enabled");
+    } else {
+        info!("Usermode isolation disabled - set USERMODE=1 to enable");
+    }
 
     if let Some(cmdline) = &bootinfo.cmdline {
         trace!("cmdline: {}", cmdline);

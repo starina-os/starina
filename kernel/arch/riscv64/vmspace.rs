@@ -4,6 +4,7 @@ use core::mem;
 use ftl_types::address::PAddr;
 use ftl_types::address::VAddr;
 use ftl_types::error::FtlError;
+use ftl_types::vmspace::PageProtect;
 use ftl_utils::alignment::is_aligned;
 
 use crate::arch::paddr2vaddr;
@@ -18,6 +19,7 @@ const PTE_V: u64 = 1 << 0;
 const PTE_R: u64 = 1 << 1;
 const PTE_W: u64 = 1 << 2;
 const PTE_X: u64 = 1 << 3;
+const PTE_U: u64 = 1 << 4;
 const PTE_PPN_SHIFT: usize = 10;
 
 const SATP_MODE_SV48: u64 = 9 << 60;
@@ -79,33 +81,61 @@ impl PageTable {
             VAddr::new(0x8020_0000),
             PAddr::new(0x8020_0000),
             0x8ff00000 - 0x8020_0000,
+            PageProtect::READABLE | PageProtect::WRITABLE | PageProtect::EXECUTABLE,
         )?;
         // PLIC
-        self.map_range(VAddr::new(0x0c00_0000), PAddr::new(0x0c00_0000), 0x400000)?;
+        self.map_range(
+            VAddr::new(0x0c00_0000),
+            PAddr::new(0x0c00_0000),
+            0x400000,
+            PageProtect::READABLE | PageProtect::WRITABLE,
+        )?;
         // UART
-        self.map_range(VAddr::new(0x1000_0000), PAddr::new(0x1000_0000), 0x1000)?;
+        self.map_range(
+            VAddr::new(0x1000_0000),
+            PAddr::new(0x1000_0000),
+            0x1000,
+            PageProtect::READABLE | PageProtect::WRITABLE,
+        )?;
         // Virtio
-        self.map_range(VAddr::new(0x10001000), PAddr::new(0x10001000), 0x1000)?;
+        self.map_range(
+            VAddr::new(0x10001000),
+            PAddr::new(0x10001000),
+            0x1000,
+            PageProtect::READABLE | PageProtect::WRITABLE,
+        )?;
         Ok(())
     }
 
-    fn map_range(&mut self, vaddr: VAddr, paddr: PAddr, len: usize) -> Result<(), FtlError> {
+    fn map_range(
+        &mut self,
+        vaddr: VAddr,
+        paddr: PAddr,
+        len: usize,
+        prot: PageProtect,
+    ) -> Result<(), FtlError> {
         assert!(is_aligned(len, PAGE_SIZE));
 
         for offset in (0..len).step_by(PAGE_SIZE) {
-            self.map(vaddr.add(offset), paddr.add(offset), PAGE_SIZE)?;
+            self.map(vaddr.add(offset), paddr.add(offset), PAGE_SIZE, prot)?;
         }
         Ok(())
     }
 
-    pub fn map(&mut self, vaddr: VAddr, paddr: PAddr, len: usize) -> Result<(), FtlError> {
+    pub fn map(
+        &mut self,
+        vaddr: VAddr,
+        paddr: PAddr,
+        len: usize,
+        prot: PageProtect,
+    ) -> Result<(), FtlError> {
         // trace!("map: {:08x} -> {:08x}", vaddr.as_usize(), paddr.as_usize());
         assert!(is_aligned(vaddr.as_usize(), PAGE_SIZE));
         assert!(is_aligned(paddr.as_usize(), PAGE_SIZE));
         assert!(is_aligned(len, PAGE_SIZE));
 
         for offset in (0..len).step_by(PAGE_SIZE) {
-            self.map_4kb(vaddr.add(offset), paddr.add(offset))?;
+            self.map_4kb(vaddr.add(offset), paddr.add(offset), prot)?;
         }
 
         // FIXME: Invalidate TLB
@@ -118,7 +148,7 @@ impl PageTable {
         Ok(unsafe { &mut *vaddr.as_mut_ptr() })
     }
 
-    fn map_4kb(&mut self, vaddr: VAddr, paddr: PAddr) -> Result<(), FtlError> {
+    fn map_4kb(&mut self, vaddr: VAddr, paddr: PAddr, prot: PageProtect) -> Result<(), FtlError> {
         assert!(is_aligned(vaddr.as_usize(), PAGE_SIZE));
         assert!(is_aligned(paddr.as_usize(), PAGE_SIZE));
 
@@ -152,7 +182,21 @@ impl PageTable {
             return Err(FtlError::AlreadyMapped);
         }
 
-        *entry = Entry::new(paddr, PTE_X | PTE_W | PTE_R | PTE_V);
+        let mut flags = PTE_V;
+        if prot.contains(PageProtect::READABLE) {
+            flags |= PTE_R;
+        }
+        if prot.contains(PageProtect::WRITABLE) {
+            flags |= PTE_W;
+        }
+        if prot.contains(PageProtect::EXECUTABLE) {
+            flags |= PTE_X;
+        }
+        if prot.contains(PageProtect::USER) {
+            flags |= PTE_U;
+        }
+
+        *entry = Entry::new(paddr, flags);
         Ok(())
     }
 }
@@ -205,16 +249,27 @@ impl VmSpace {
         })
     }
 
-    pub fn map_fixed(&self, vaddr: VAddr, paddr: PAddr, len: usize) -> Result<(), FtlError> {
-        self.mutable.lock().table.map(vaddr, paddr, len)
+    pub fn map_fixed(
+        &self,
+        vaddr: VAddr,
+        paddr: PAddr,
+        len: usize,
+        prot: PageProtect,
+    ) -> Result<(), FtlError> {
+        self.mutable.lock().table.map(vaddr, paddr, len, prot)
     }
 
-    pub fn map_anywhere(&self, paddr: PAddr, len: usize) -> Result<VAddr, FtlError> {
+    pub fn map_anywhere(
+        &self,
+        paddr: PAddr,
+        len: usize,
+        prot: PageProtect,
+    ) -> Result<VAddr, FtlError> {
         assert!(is_aligned(len, PAGE_SIZE));
 
         let mut mutable = self.mutable.lock();
         let vaddr = mutable.valloc.alloc(len)?;
-        mutable.table.map(vaddr, paddr, len)?;
+        mutable.table.map(vaddr, paddr, len, prot)?;
         Ok(vaddr)
     }
 

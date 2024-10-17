@@ -59,7 +59,12 @@ pub extern "C" fn interrupt_handler() -> ! {
 
     if (is_intr, code) == (true, 9) {
         plic::handle_interrupt();
-    } else if (is_intr, code) == (false, 9) {
+    } else if (is_intr, code) == (false, 8) {
+        unsafe {
+            // Skip ecall instruction
+            (*cpuvar.arch.context).sepc += 4 as usize;
+        }
+
         let a0 = unsafe { (*cpuvar.arch.context).a0 } as isize;
         let a1 = unsafe { (*cpuvar.arch.context).a1 } as isize;
         let a2 = unsafe { (*cpuvar.arch.context).a2 } as isize;

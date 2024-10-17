@@ -5,6 +5,7 @@ MACHINE ?= qemu-virt
 
 RELEASE ?=            # "1" to build release version
 V       ?=            # "1" to enable verbose output
+USERMODE ?=           # "1" to enable usermode isolation
 
 APPS         ?= apps/tcpip apps/virtio_net apps/http_server
 STARTUP_APPS ?= $(APPS)
@@ -124,6 +125,7 @@ ftl.elf: $(sources) $(app_elfs) Makefile Makefile
 	RUSTFLAGS="$(RUSTFLAGS)" \
 	CARGO_TARGET_DIR="$(BUILD_DIR)/cargo" \
 	BUILD_DIR="$(realpath $(BUILD_DIR))" \
+	$(if $(USERMODE),USERMODE=1) \
 	STARTUP_APP_DIRS="$(foreach app_dir,$(STARTUP_APPS),$(realpath $(app_dir)))" \
 		$(CARGO) build $(CARGOFLAGS) \
 		--target boot/$(ARCH)/$(ARCH)-$(MACHINE).json \

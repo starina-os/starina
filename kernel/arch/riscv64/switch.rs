@@ -54,6 +54,8 @@ pub unsafe extern "C" fn kernel_syscall_entry(
                 // Save t0 temporarily as it will be used later.
                 mv s0, t0
 
+                ld sp, {kernel_sp_offset}(tp)
+
                 // Handle the system call.
                 call {syscall_handler}
 
@@ -63,6 +65,7 @@ pub unsafe extern "C" fn kernel_syscall_entry(
                 j {switch_thread}
             "#,
             context_offset = const offset_of!(crate::arch::CpuVar, context),
+            kernel_sp_offset = const offset_of!(crate::arch::CpuVar, kernel_sp),
             sepc_offset = const offset_of!(Context, sepc),
             sstatus_offset = const offset_of!(Context, sstatus),
             sp_offset = const offset_of!(Context, sp),
@@ -128,6 +131,7 @@ pub unsafe extern "C" fn switch_to_kernel() -> ! {
                 sd t5, {t5_offset}(a0)
                 sd t6, {t6_offset}(a0)
 
+
                 csrr a1, sepc
                 sd a1, {sepc_offset}(a0)
                 csrr a1, sstatus
@@ -139,10 +143,12 @@ pub unsafe extern "C" fn switch_to_kernel() -> ! {
                 ld a1, {s0_scratch_offset}(tp)
                 sd a1, {a0_offset}(a0)
 
+                ld sp, {kernel_sp_offset}(tp)
                 j {interrupt_handler}
             "#,
             context_offset = const offset_of!(crate::arch::CpuVar, context),
             s0_scratch_offset = const offset_of!(crate::arch::CpuVar, s0_scratch),
+            kernel_sp_offset = const offset_of!(crate::arch::CpuVar, kernel_sp),
             sepc_offset = const offset_of!(Context, sepc),
             sstatus_offset = const offset_of!(Context, sstatus),
             ra_offset = const offset_of!(Context, ra),
@@ -189,6 +195,19 @@ pub fn return_to_user(thread: *mut super::Thread, sysret: Option<isize>) -> ! {
         }
     }
 
+    let mut sstatus: u64;
+    unsafe {
+        asm!("csrr {0}, sstatus", out(reg) sstatus);
+
+        if crate::boot::USERMODE_ENABLED {
+            sstatus &= !(1 << 8); // Clear SPP to go back to user mode
+        } else {
+            sstatus |= 1 << 8; // Set SPP to go back to kernel mode
+        }
+
+        asm!("csrw sstatus, {0}", in(reg) sstatus);
+    }
+
     unsafe {
         asm!(r#"
             sd a0, {context_offset}(tp) // Update CpuVar.arch.context
@@ -196,14 +215,6 @@ pub fn return_to_user(thread: *mut super::Thread, sysret: Option<isize>) -> ! {
             ld a1, {sepc_offset}(a0)
             csrw sepc, a1
             ld a1, {sstatus_offset}(a0)
-
-            // Go back to the kernel mode. We don't yet support user mode.
-            //
-            // FIXME: Avoid updating sstatus here, and instead update it properly in
-            //        kernel entry points.
-            or a1, a1, 1 << 8
-
-            csrw sstatus, a1
 
             // Restore general-purpose registers except tp.
             ld ra, {ra_offset}(a0)
