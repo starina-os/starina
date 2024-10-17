@@ -40,6 +40,7 @@ use crate::handle::AnyHandle;
 use crate::handle::Handle;
 use crate::process::kernel_process;
 use crate::process::Process;
+use crate::process::KERNEL_VMSPACE;
 use crate::refcount::SharedRef;
 use crate::thread::Thread;
 use crate::uaddr::UAddr;
@@ -179,12 +180,10 @@ impl<'a> StartupAppLoader<'a> {
         name: &AppName,
         entry_addr: usize,
         mut env: EnvironSerializer,
-        vmspace: VmSpace,
+        vmspace: SharedRef<VmSpace>,
         handles: Vec<AnyHandle>,
         bootinfo: &BootInfo,
     ) {
-        // let vmspace = SharedRef::new(VmSpace::kernel_space().unwrap());
-        let vmspace = SharedRef::new(vmspace);
         let proc = SharedRef::new(Process::create(vmspace.clone()));
 
         let mut handle_table = proc.handles().lock();
@@ -224,11 +223,6 @@ impl<'a> StartupAppLoader<'a> {
             vaddr2paddr(VAddr::new(page_addr)).unwrap()
         };
 
-        warn!(
-            "mapping vsyscall page at {:x} -> {:x}...",
-            arch::VSYSCALL_ENTRY_ADDR.as_usize(),
-            vsyscall_page_paddr.as_usize()
-        );
         vmspace
             .map_vaddr_user(
                 arch::VSYSCALL_ENTRY_ADDR,
@@ -269,9 +263,6 @@ impl<'a> StartupAppLoader<'a> {
                 PageProtect::READABLE,
             )
             .unwrap();
-
-        info!("environ_vaddr: {}", environ_vaddr);
-        info!("vsyscall_buffer_vaddr: {}", vsyscall_buffer_vaddr);
 
         // Allocate stack. FIXME: We don't need kernel stack anymore.
         const KERNEL_STACK_SIZE: usize = 128 * 1024; // FIXME:
@@ -314,11 +305,14 @@ impl<'a> StartupAppLoader<'a> {
             base_vaddr
         );
 
-        trace!("mapping memory...");
-        let vmspace = VmSpace::new().unwrap();
+        let vmspace = if USERMODE_ENABLED {
+            KERNEL_VMSPACE.clone()
+        } else {
+            SharedRef::new(VmSpace::new().unwrap())
+        };
+
         let entry_addr = elf_loader.load_into_memory(&vmspace)?;
 
-        info!("populating channels...");
         let mut env = EnvironSerializer::new();
         let mut handles = Vec::with_capacity(template.handles.len());
         for (i, wanted_handle) in template.handles.iter().enumerate() {
@@ -414,7 +408,7 @@ impl<'a> ElfLoader<'a> {
         self.base_vaddr.as_usize() + (self.elf.ehdr.e_entry as usize)
     }
 
-    fn map_segments(&mut self, vmspace: &VmSpace) {
+    fn map_segments(&mut self, vmspace: &SharedRef<VmSpace>) {
         for phdr in self.elf.phdrs {
             if phdr.p_type != ftl_elf::PhdrType::Load {
                 continue;
@@ -565,7 +559,7 @@ impl<'a> ElfLoader<'a> {
         Ok(())
     }
 
-    pub fn load_into_memory(mut self, vmspace: &VmSpace) -> Result<usize, Error> {
+    pub fn load_into_memory(mut self, vmspace: &SharedRef<VmSpace>) -> Result<usize, Error> {
         vmspace.switch();
         self.map_segments(vmspace);
         self.relocate_rela_dyn()?;
