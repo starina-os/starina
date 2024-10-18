@@ -14,7 +14,7 @@ use ftl_types::syscall::VsyscallEntry;
 use ftl_types::syscall::VsyscallPage;
 use ftl_types::vmspace::PageProtect;
 
-#[cfg(target_arch = "riscv64")]
+#[cfg(all(target_os = "none", target_arch = "riscv64"))]
 #[inline(never)] // TODO: List clobbered registers explicitly in asm!
 pub fn syscall(
     n: SyscallNumber,
@@ -46,7 +46,7 @@ pub fn syscall(
     }
 }
 
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_os = "none", target_arch = "x86_64"))]
 #[inline(never)] // TODO: List clobbersed registers explicitly in asm!
 pub fn syscall(
     n: SyscallNumber,
