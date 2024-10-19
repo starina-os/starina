@@ -30,7 +30,7 @@ where
     }
 
     for i in 0..BACKTRACE_MAX_DEPTH {
-        let kernel_start = unsafe { &__kernel_start as *const _ as u64 };
+        let kernel_start = &raw const __kernel_start as u64;
 
         // Substract 4 because the return address is the address of the next instruction
         // after the call instruction. We want the one of the call instruction.

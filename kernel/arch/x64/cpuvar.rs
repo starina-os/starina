@@ -11,7 +11,7 @@ pub struct CpuVar {
 impl CpuVar {
     pub fn new(idle_thread: &SharedRef<crate::thread::Thread>) -> Self {
         Self {
-            context: &idle_thread.arch().context as *const _ as *mut _,
+            context: &raw const idle_thread.arch().context as *mut _,
         }
     }
 }

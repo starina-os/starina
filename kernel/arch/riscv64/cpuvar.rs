@@ -16,9 +16,9 @@ impl CpuVar {
             static __boot_stack_top: u8;
         }
 
-        let sp_top = unsafe { &__boot_stack_top as *const _ as u64 };
+        let sp_top = &raw const __boot_stack_top as u64;
         Self {
-            context: &idle_thread.arch().context as *const _ as *mut _,
+            context: &raw const idle_thread.arch().context as *mut _,
             s0_scratch: 0,
             kernel_sp: sp_top,
         }

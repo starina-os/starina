@@ -21,10 +21,10 @@ extern "C" {
 
 #[no_mangle]
 unsafe extern "C" fn riscv64_boot(hartid: u64, dtb_addr: u64) -> ! {
-    let bss_start = &__bss as *const _ as usize;
-    let bss_end = &__bss_end as *const _ as usize;
-    let free_ram = &__free_ram as *const _ as usize;
-    let free_ram_end = &__free_ram_end as *const _ as usize;
+    let bss_start = &raw const __bss as usize;
+    let bss_end = &raw const __bss_end as usize;
+    let free_ram = &raw const __free_ram as usize;
+    let free_ram_end = &raw const __free_ram_end as usize;
 
     // Clear bss section.
     core::ptr::write_bytes(bss_start as *mut u8, 0, bss_end - bss_start);

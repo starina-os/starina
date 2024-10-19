@@ -7,7 +7,7 @@ use super::thread::Context;
 
 /// The entry point for the system call from in-kernel apps.
 #[naked]
-pub unsafe extern "C" fn kernel_syscall_entry(
+pub extern "C" fn kernel_syscall_entry(
     _a0: isize,
     _a1: isize,
     _a2: isize,

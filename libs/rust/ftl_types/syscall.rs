@@ -24,7 +24,7 @@ pub enum SyscallNumber {
     ProcessExit = 22,
 }
 
-pub type VsyscallEntry = extern "C" fn(isize, isize, isize, isize, isize, isize, isize) -> isize;
+pub type VsyscallEntry = extern "C" fn(isize, isize, isize, isize, isize, isize) -> isize;
 
 #[repr(C)]
 pub struct VsyscallPage {

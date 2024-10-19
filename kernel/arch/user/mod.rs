@@ -39,7 +39,7 @@ pub fn idle() -> ! {
     todo!()
 }
 
-pub unsafe extern "C" fn kernel_syscall_entry(
+pub extern "C" fn kernel_syscall_entry(
     a0: isize,
     a1: isize,
     a2: isize,
