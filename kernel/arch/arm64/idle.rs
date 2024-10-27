@@ -42,7 +42,7 @@ unsafe extern "C" fn arm64_handle_idle_interrupt() {
 }
 
 pub fn idle() -> ! {
-    trace!("idle");
+    warn!("idle");
 
     extern "C" {
         static arm64_idle_exception_vector: [u8; 128 * 16];
