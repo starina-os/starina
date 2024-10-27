@@ -70,9 +70,6 @@ pub fn main(mut env: Environ) {
         }
     };
 
-    trace!("device init");
-
-    trace!("device init OK");
     let mut mainloop = Mainloop::<Context, Message>::new().unwrap();
     mainloop.add_channel(startup_ch, Context::Startup).unwrap();
     mainloop
