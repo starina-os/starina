@@ -136,7 +136,22 @@ impl PageTable {
             self.map_4kb(vaddr.add(offset), paddr.add(offset), prot)?;
         }
 
-        // FIXME: Invalidate TLB
+        unsafe {
+            asm!("dsb ishst");
+        }
+
+        for offset in (0..len).step_by(PAGE_SIZE) {
+            unsafe {
+                asm!(
+                    "tlbi vae1is, {}",
+                    in(reg) vaddr.add(offset).as_usize(),
+                );
+            }
+        }
+
+        unsafe {
+            asm!("isb");
+        }
 
         Ok(())
     }
