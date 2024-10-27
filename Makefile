@@ -62,9 +62,15 @@ QEMUFLAGS += -d cpu_reset,unimp,guest_errors,int -D qemu.log
 QEMUFLAGS += $(if $(GDB),-gdb tcp::7789 -S)
 
 app_elfs := $(foreach app,$(APPS),$(BUILD_DIR)/$(app).elf)
-sources += \
+app_sources += \
 	$(shell find \
-		boot/$(ARCH) kernel libs apps spec \
+		libs apps spec \
+		-name '*.rs' -o -name '*.ld' -o -name '*.S' -o -name '*.S' \
+		-o -name '*.json' -o -name '*.yml' -o -name '*.toml' -o -name '*.j2' \
+	)
+kernel_sources += \
+	$(shell find \
+		boot/$(ARCH) kernel libs spec \
 		-name '*.rs' -o -name '*.ld' -o -name '*.S' -o -name '*.S' \
 		-o -name '*.json' -o -name '*.yml' -o -name '*.toml' -o -name '*.j2' \
 	)
@@ -120,7 +126,7 @@ disk.img:
 	$(PROGRESS) "GEN" "$(@)"
 	dd if=/dev/zero of=$(@) bs=1M count=8
 
-ftl.elf: $(sources) $(app_elfs) Makefile Makefile
+ftl.elf: $(kernel_sources) $(app_elfs) Makefile Makefile
 	$(PROGRESS) "CARGO" "boot/$(ARCH)"
 	RUSTFLAGS="$(RUSTFLAGS)" \
 	CARGO_TARGET_DIR="$(BUILD_DIR)/cargo" \
@@ -140,7 +146,7 @@ ftl.pe: ftl.elf
 #       a change in compiler flags. Indeed it is, but it doesn't affect the output binary.
 #
 #       I'll file an issue on rust-lang/rust to hear  community's opinion.
-$(BUILD_DIR)/%.elf: $(sources) Makefile
+$(BUILD_DIR)/%.elf: $(app_sources) Makefile
 	$(PROGRESS) "CARGO" "$(@)"
 	mkdir -p $(@D)
 	RUSTFLAGS="$(RUSTFLAGS)" \
