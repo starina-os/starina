@@ -22,6 +22,7 @@ use ftl_types::message::MessageBuffer;
 use ftl_types::message::MessageSerialize;
 use ftl_types::syscall::VsyscallPage;
 use ftl_types::vmspace::PageProtect;
+use ftl_utils::alignment::align_down;
 use ftl_utils::alignment::align_up;
 use hashbrown::HashMap;
 
@@ -401,7 +402,6 @@ impl<'a> ElfLoader<'a> {
 
             let mut offset = 0;
             while offset < mem_size {
-                let vaddr = VAddr::new(self.base_vaddr.as_usize() + mem_offset + offset);
                 let file_part_len = core::cmp::min(file_size.saturating_sub(offset), PAGE_SIZE);
                 let zero_part_len = PAGE_SIZE - file_part_len;
 
@@ -447,8 +447,10 @@ impl<'a> ElfLoader<'a> {
                     Folio::alloc(PAGE_SIZE).unwrap()
                 };
 
+                let vaddr = VAddr::new(self.base_vaddr.as_usize() + mem_offset + offset);
+                let aligned_vaddr = VAddr::new(align_down(vaddr.as_usize(), PAGE_SIZE));
                 vmspace
-                    .map_user(vaddr, folio, PAGE_SIZE, map_flags)
+                    .map_user(aligned_vaddr, folio, PAGE_SIZE, map_flags)
                     .unwrap();
 
                 if zero_part_len > 0 {
