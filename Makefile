@@ -1,6 +1,7 @@
 # ARCH=riscv64 MACHINE=qemu-virt
+# ARCH=arm64   MACHINE=qemu-virt
 # ARCH=x64     MACHINE=pc
-ARCH    ?= riscv64
+ARCH    ?= arm64
 MACHINE ?= qemu-virt
 
 RELEASE ?=            # "1" to build release version
@@ -31,6 +32,9 @@ endif
 ifeq ($(ARCH),riscv64)
 QEMU      ?= qemu-system-riscv64
 QEMUFLAGS += -machine virt -m 256 -bios default
+else ifeq ($(ARCH),arm64)
+QEMU      ?= qemu-system-aarch64
+QEMUFLAGS += -machine virt,gic-version=2 -cpu neoverse-n2 -m 256
 else ifeq ($(ARCH),x64)
 QEMU      ?= qemu-system-x86_64
 QEMUFLAGS += -cpu Icelake-Server -m 256 -machine microvm,ioapic2=off,acpi=off

@@ -49,7 +49,11 @@ fn probe(devices: &[Device], device_type: u32) -> Option<(VirtioMmio, Irq)> {
         let mut transport = VirtioMmio::new(mmio);
         match transport.probe() {
             Some(ty) if ty == device_type => {
+                #[cfg(target_arch = "aarch64")]
+                let irq = Irq::from_raw(device.interrupts.as_ref().unwrap()[1] as usize + 32); // FIXME:
+                #[cfg(not(target_arch = "aarch64"))]
                 let irq = Irq::from_raw(device.interrupts.as_ref().unwrap()[0] as usize);
+
                 return Some((transport, irq));
             }
             Some(ty) => {

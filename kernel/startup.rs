@@ -528,6 +528,12 @@ impl<'a> ElfLoader<'a> {
                     let ptr = (base + rela.r_offset as usize) as *mut i64;
                     *ptr += (base as i64) + rela.r_addend;
                 },
+                #[cfg(target_arch = "aarch64")]
+                ftl_elf::R_AARCH64_RELATIVE => unsafe {
+                    let base = self.base_vaddr.as_usize();
+                    let ptr = (base + rela.r_offset as usize) as *mut i64;
+                    *ptr += (base as i64) + rela.r_addend;
+                },
                 #[cfg(target_arch = "riscv64")]
                 ftl_elf::R_RISCV_RELATIVE => unsafe {
                     let base = self.base_vaddr.as_usize();

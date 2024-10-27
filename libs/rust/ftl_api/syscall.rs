@@ -79,6 +79,39 @@ pub fn syscall(
     }
 }
 
+#[cfg(all(target_os = "none", target_arch = "aarch64"))]
+#[inline(never)] // TODO: List clobbersed registers explicitly in asm!
+pub fn syscall(
+    n: SyscallNumber,
+    mut x0: isize,
+    x1: isize,
+    x2: isize,
+    x3: isize,
+    x4: isize,
+) -> Result<isize, FtlError> {
+    use core::arch::asm;
+
+    let x6: isize = unsafe { VSYSCALL_ENTRY as isize };
+    unsafe {
+        asm!(
+            "blr x6",
+            inout("x0") x0,
+            in("x1") x1,
+            in("x2") x2,
+            in("x3") x3,
+            in("x4") x4,
+            in("x5") n as isize,
+            in("x6") x6
+        );
+    }
+
+    if x0 < 0 {
+        unsafe { Err(core::mem::transmute::<isize, FtlError>(x0)) }
+    } else {
+        Ok(x0)
+    }
+}
+
 #[cfg(not(target_os = "none"))]
 pub fn syscall(
     _n: SyscallNumber,
