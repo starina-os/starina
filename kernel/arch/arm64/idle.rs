@@ -51,8 +51,8 @@ pub fn idle() -> ! {
     unsafe {
         asm!("msr vbar_el1, {}", in(reg) &arm64_idle_exception_vector as *const _ as u64);
         asm!("msr daifclr, #2");
-        asm!("wfi");
+        loop {
+            asm!("wfi");
+        }
     }
-
-    unreachable!();
 }

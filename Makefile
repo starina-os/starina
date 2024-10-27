@@ -34,7 +34,11 @@ QEMU      ?= qemu-system-riscv64
 QEMUFLAGS += -machine virt -m 256 -bios default
 else ifeq ($(ARCH),arm64)
 QEMU      ?= qemu-system-aarch64
+ifneq ($(HVF),)
+QEMUFLAGS += -accel hvf -machine virt,gic-version=2,highmem=off -cpu host -m 256
+else
 QEMUFLAGS += -machine virt,gic-version=2 -cpu neoverse-n2 -m 256
+endif
 else ifeq ($(ARCH),x64)
 QEMU      ?= qemu-system-x86_64
 QEMUFLAGS += -cpu Icelake-Server -m 256 -machine microvm,ioapic2=off,acpi=off
