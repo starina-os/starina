@@ -7,7 +7,7 @@ pub fn idle() -> ! {
     loop {
         unsafe {
             asm!("sti; hlt; cli");
-            Thread::switch();
+            Thread::switch(); // FIXME: here should be unreachable
         }
     }
 }
