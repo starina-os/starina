@@ -136,10 +136,12 @@ impl PageTable {
             self.map_4kb(vaddr.add(offset), paddr.add(offset), prot)?;
         }
 
+        // Writes to page tables should be visible before invalidating TLB.
         unsafe {
             asm!("dsb ishst");
         }
 
+        // Invalidate TLB entries for the mapped range.
         for offset in (0..len).step_by(PAGE_SIZE) {
             unsafe {
                 asm!(
@@ -149,6 +151,7 @@ impl PageTable {
             }
         }
 
+        // Ensure we won't execute any instructions before the TLB invalidation.
         unsafe {
             asm!("isb");
         }
