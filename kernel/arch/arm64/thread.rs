@@ -4,7 +4,22 @@ use core::mem::offset_of;
 
 #[no_mangle]
 extern "C" fn arm64_handle_exception() {
-    panic!("unhandled exception");
+    let mut elr: u64;
+    let mut esr: u64;
+    let mut far: u64;
+    unsafe {
+        asm!("mrs {}, elr_el1", out(reg) elr);
+        asm!("mrs {}, esr_el1", out(reg) esr);
+        asm!("mrs {}, far_el1", out(reg) far);
+    }
+
+    panic!(
+        "unhandled exception: elr={:x}, esr={:x} (ec={:b}), far={:x}",
+        elr,
+        esr,
+        (esr >> 26) & 0x3f,
+        far
+    );
 }
 
 #[no_mangle]
