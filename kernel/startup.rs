@@ -5,25 +5,25 @@ use alloc::vec::Vec;
 include!(concat!(env!("OUT_DIR"), "/autogen.rs"));
 include!(concat!(env!("OUT_DIR"), "/startup_defs.rs"));
 
-use ftl_autogen::idl::startup::NewClient;
-use ftl_elf::Elf;
-use ftl_elf::PhdrType;
-use ftl_elf::ET_DYN;
-use ftl_elf::PF_R;
-use ftl_elf::PF_X;
-use ftl_types::address::PAddr;
-use ftl_types::address::VAddr;
-use ftl_types::environ::EnvironSerializer;
-use ftl_types::error::FtlError;
-use ftl_types::handle::HandleId;
-use ftl_types::handle::HandleRights;
-use ftl_types::idl::MovedHandle;
-use ftl_types::message::MessageBuffer;
-use ftl_types::message::MessageSerialize;
-use ftl_types::syscall::VsyscallPage;
-use ftl_types::vmspace::PageProtect;
-use ftl_utils::alignment::align_down;
-use ftl_utils::alignment::align_up;
+use starina_autogen::idl::startup::NewClient;
+use starina_elf::Elf;
+use starina_elf::PhdrType;
+use starina_elf::ET_DYN;
+use starina_elf::PF_R;
+use starina_elf::PF_X;
+use starina_types::address::PAddr;
+use starina_types::address::VAddr;
+use starina_types::environ::EnvironSerializer;
+use starina_types::error::FtlError;
+use starina_types::handle::HandleId;
+use starina_types::handle::HandleRights;
+use starina_types::idl::MovedHandle;
+use starina_types::message::MessageBuffer;
+use starina_types::message::MessageSerialize;
+use starina_types::syscall::VsyscallPage;
+use starina_types::vmspace::PageProtect;
+use starina_utils::alignment::align_down;
+use starina_utils::alignment::align_up;
 use hashbrown::HashMap;
 
 use crate::arch;
@@ -50,7 +50,7 @@ use crate::vmspace::VmSpace;
 #[derive(Debug)]
 #[allow(dead_code)]
 pub enum Error {
-    ParseElf(ftl_elf::ParseError),
+    ParseElf(starina_elf::ParseError),
     AllocFolio(FtlError),
     NoPhdrs,
     NotPIE,
@@ -143,7 +143,7 @@ impl<'a> StartupAppLoader<'a> {
         Handle::new(ch2, HandleRights::ALL).into()
     }
 
-    fn get_devices(&mut self, compat: &str) -> Vec<ftl_types::environ::Device> {
+    fn get_devices(&mut self, compat: &str) -> Vec<starina_types::environ::Device> {
         let mut devices = Vec::new();
         if let Some(device_tree) = self.device_tree.as_ref() {
             for device in device_tree.devices() {
@@ -159,7 +159,7 @@ impl<'a> StartupAppLoader<'a> {
                         None => None,
                     };
 
-                    devices.push(ftl_types::environ::Device {
+                    devices.push(starina_types::environ::Device {
                         name: device.name.to_string(),
                         compatible: device.compatible.to_string(),
                         reg: device.reg,
@@ -391,7 +391,7 @@ impl<'a> ElfLoader<'a> {
 
     fn map_segments(&mut self, vmspace: &SharedRef<VmSpace>) {
         for phdr in self.elf.phdrs {
-            if phdr.p_type != ftl_elf::PhdrType::Load {
+            if phdr.p_type != starina_elf::PhdrType::Load {
                 continue;
             }
 
@@ -471,7 +471,7 @@ impl<'a> ElfLoader<'a> {
         }
     }
 
-    fn get_shdr_by_name(&self, name: &str) -> Option<&ftl_elf::Shdr> {
+    fn get_shdr_by_name(&self, name: &str) -> Option<&starina_elf::Shdr> {
         fn get_cstr(buffer: &[u8], offset: usize) -> Option<&str> {
             let mut len = 0;
             while let Some(&ch) = buffer.get(offset + len) {
@@ -505,7 +505,7 @@ impl<'a> ElfLoader<'a> {
     fn relocate_rela_dyn(&mut self) -> Result<(), Error> {
         use core::mem::size_of;
 
-        use ftl_elf::Rela;
+        use starina_elf::Rela;
 
         let rela_dyn = self.get_shdr_by_name(".rela.dyn").ok_or(Error::NoRelaDyn)?;
         let rela_entries = unsafe {
@@ -523,19 +523,19 @@ impl<'a> ElfLoader<'a> {
         for rela in rela_entries {
             match rela.r_info {
                 #[cfg(target_arch = "x86_64")]
-                ftl_elf::R_X86_64_RELATIVE => unsafe {
+                starina_elf::R_X86_64_RELATIVE => unsafe {
                     let base = self.base_vaddr.as_usize();
                     let ptr = (base + rela.r_offset as usize) as *mut i64;
                     *ptr += (base as i64) + rela.r_addend;
                 },
                 #[cfg(target_arch = "aarch64")]
-                ftl_elf::R_AARCH64_RELATIVE => unsafe {
+                starina_elf::R_AARCH64_RELATIVE => unsafe {
                     let base = self.base_vaddr.as_usize();
                     let ptr = (base + rela.r_offset as usize) as *mut i64;
                     *ptr += (base as i64) + rela.r_addend;
                 },
                 #[cfg(target_arch = "riscv64")]
-                ftl_elf::R_RISCV_RELATIVE => unsafe {
+                starina_elf::R_RISCV_RELATIVE => unsafe {
                     let base = self.base_vaddr.as_usize();
                     let ptr = (base + rela.r_offset as usize) as *mut i64;
                     *ptr += (base as i64) + rela.r_addend;

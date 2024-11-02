@@ -1,6 +1,6 @@
 use core::arch::asm;
 
-use ftl_types::address::PAddr;
+use starina_types::address::PAddr;
 
 use crate::folio::Folio;
 use crate::spinlock::SpinLock;

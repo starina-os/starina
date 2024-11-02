@@ -5,7 +5,7 @@ use core::slice;
 use fdt_rs::base::*;
 use fdt_rs::prelude::*;
 use fdt_rs::spec::fdt_header;
-use ftl_inlinedvec::InlinedVec;
+use starina_inlinedvec::InlinedVec;
 
 pub struct Device {
     pub name: &'static str,

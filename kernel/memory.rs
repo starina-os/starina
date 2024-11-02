@@ -1,7 +1,7 @@
 use core::alloc::GlobalAlloc;
 use core::alloc::Layout;
 
-use ftl_bump_allocator::BumpAllocator;
+use starina_bump_allocator::BumpAllocator;
 
 use crate::boot::BootInfo;
 use crate::boot::FreeMem;

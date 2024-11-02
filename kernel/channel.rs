@@ -3,12 +3,12 @@ use alloc::collections::VecDeque;
 use alloc::vec::Vec;
 use core::fmt;
 
-use ftl_inlinedvec::InlinedVec;
-use ftl_types::error::FtlError;
-use ftl_types::handle::HandleId;
-use ftl_types::message::MessageInfo;
-use ftl_types::message::MESSAGE_HANDLES_MAX_COUNT;
-use ftl_types::poll::PollEvent;
+use starina_inlinedvec::InlinedVec;
+use starina_types::error::FtlError;
+use starina_types::handle::HandleId;
+use starina_types::message::MessageInfo;
+use starina_types::message::MESSAGE_HANDLES_MAX_COUNT;
+use starina_types::poll::PollEvent;
 
 use crate::cpuvar::current_thread;
 use crate::handle::AnyHandle;

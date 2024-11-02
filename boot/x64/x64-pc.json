@@ -13,7 +13,7 @@
     "ld.lld": [
       "--script=boot/x64/x64-pc.ld",
       "-Map",
-      "ftl.map"
+      "starina.map"
     ]
   },
   "llvm-target": "x86_64-unknown-none-elf",

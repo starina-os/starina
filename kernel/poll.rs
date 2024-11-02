@@ -2,10 +2,10 @@ use core::fmt;
 use core::sync::atomic::AtomicU8;
 use core::sync::atomic::Ordering;
 
-use ftl_types::error::FtlError;
-use ftl_types::handle::HandleId;
-use ftl_types::poll::PollEvent;
 use hashbrown::HashMap;
+use starina_types::error::FtlError;
+use starina_types::handle::HandleId;
+use starina_types::poll::PollEvent;
 
 use crate::handle::AnyHandle;
 use crate::refcount::SharedRef;

@@ -1,7 +1,7 @@
-use ftl_api::channel::ChannelSender;
-use ftl_api::collections::HashMap;
-use ftl_api::prelude::*;
-use ftl_api::types::error::FtlError;
+use starina_api::channel::ChannelSender;
+use starina_api::collections::HashMap;
+use starina_api::prelude::*;
+use starina_api::types::error::FtlError;
 use smoltcp::iface::Config;
 use smoltcp::iface::Interface;
 use smoltcp::iface::SocketHandle;

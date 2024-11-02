@@ -9,7 +9,7 @@ name = "echo_client"
 path = "main.rs"
 
 [dependencies]
-ftl_api = { workspace = true }
+starina_api = { workspace = true }
 
 [build-dependencies]
-ftl_autogen = { workspace = true }
+starina_autogen = { workspace = true }

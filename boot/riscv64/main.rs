@@ -4,11 +4,11 @@
 
 use core::arch::global_asm;
 
-use ftl_inlinedvec::InlinedVec;
-use ftl_kernel::boot::BootInfo;
-use ftl_kernel::boot::FreeMem;
-use ftl_kernel::cpuvar::CpuId;
-use ftl_utils::byte_size::ByteSize;
+use starina_inlinedvec::InlinedVec;
+use starina_kernel::boot::BootInfo;
+use starina_kernel::boot::FreeMem;
+use starina_kernel::cpuvar::CpuId;
+use starina_utils::byte_size::ByteSize;
 
 global_asm!(include_str!("boot.S"));
 
@@ -37,7 +37,7 @@ unsafe extern "C" fn riscv64_boot(hartid: u64, dtb_addr: u64) -> ! {
         })
         .expect("too many free mems");
 
-    ftl_kernel::boot::boot(
+    starina_kernel::boot::boot(
         CpuId::new(hartid.try_into().expect("too big hartid")),
         BootInfo {
             cmdline: None,

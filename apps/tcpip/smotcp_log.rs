@@ -1,4 +1,4 @@
-use ftl_api::prelude::*;
+use starina_api::prelude::*;
 
 /// A logger implementation for `log` crate so that we can observe what's
 /// happening in smoltcp.
@@ -22,7 +22,7 @@ impl log::Log for Logger {
     }
 }
 
-// TODO: Move this log crate support to ftl_api. Other libraries may use log
+// TODO: Move this log crate support to starina_api. Other libraries may use log
 //       crate too.
 pub fn init() {
     log::set_logger(&LOGGER).unwrap();

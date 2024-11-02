@@ -1,6 +1,6 @@
-use ftl_types::error::FtlError;
-use ftl_types::interrupt::Irq;
-use ftl_types::signal::SignalBits;
+use starina_types::error::FtlError;
+use starina_types::interrupt::Irq;
+use starina_types::signal::SignalBits;
 
 use crate::arch;
 use crate::poll::Poller;

@@ -4,9 +4,9 @@ use std::path::Path;
 use std::path::PathBuf;
 
 use anyhow::Context;
-use ftl_types::spec::AppSpec;
-use ftl_types::spec::Spec;
-use ftl_types::spec::SpecFile;
+use starina_types::spec::AppSpec;
+use starina_types::spec::Spec;
+use starina_types::spec::SpecFile;
 use minijinja::context;
 use minijinja::Environment;
 
@@ -67,7 +67,7 @@ const STARTUP_DEFS_TEMPLATE: &str = r#"
 "#;
 
 fn main() {
-    ftl_autogen::generate_for_kernel().expect("autogen failed");
+    starina_autogen::generate_for_kernel().expect("autogen failed");
 
     let out_dir = env::var_os("OUT_DIR").unwrap();
     let dest_path = Path::new(&out_dir).join("startup_defs.rs");

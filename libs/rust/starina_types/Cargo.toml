@@ -1,0 +1,13 @@
+[package]
+name = "starina_types"
+version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
+
+[lib]
+path = "lib.rs"
+
+[dependencies]
+starina_utils = { path = "../starina_utils" }
+serde = { workspace = true, features = ["derive", "alloc"] }
+serde_json = { workspace = true, features = ["alloc"] }

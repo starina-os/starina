@@ -1,5 +1,5 @@
 [package]
-name = "ftl_inlinedvec"
+name = "starina_inlinedvec"
 version = { workspace = true }
 authors = { workspace = true }
 edition = { workspace = true }

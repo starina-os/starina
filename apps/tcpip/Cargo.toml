@@ -9,9 +9,15 @@ name = "tcpip"
 path = "main.rs"
 
 [dependencies]
-ftl_api = { workspace = true }
-smoltcp = { workspace = true, features = ["log", "alloc", "medium-ethernet", "socket-tcp", "proto-ipv4"] }
+starina_api = { workspace = true }
+smoltcp = { workspace = true, features = [
+    "log",
+    "alloc",
+    "medium-ethernet",
+    "socket-tcp",
+    "proto-ipv4",
+] }
 log = "0.4.22"
 
 [build-dependencies]
-ftl_autogen = { workspace = true }
+starina_autogen = { workspace = true }

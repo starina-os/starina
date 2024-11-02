@@ -1,5 +1,5 @@
-use ftl_types::address::PAddr;
-use ftl_types::interrupt::Irq;
+use starina_types::address::PAddr;
+use starina_types::interrupt::Irq;
 
 use super::idt::VECTOR_IRQ_BASE;
 use crate::folio::Folio;

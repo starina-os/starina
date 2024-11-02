@@ -1,8 +1,8 @@
 //! Kernel-level thread.
 use core::cell::RefMut;
 
-use ftl_types::error::FtlError;
-use ftl_types::poll::PollSyscallResult;
+use starina_types::error::FtlError;
+use starina_types::poll::PollSyscallResult;
 
 use crate::arch;
 use crate::channel::Channel;

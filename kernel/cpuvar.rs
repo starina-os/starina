@@ -3,7 +3,7 @@ use core::cell::Ref;
 use core::cell::RefCell;
 use core::fmt;
 
-use ftl_inlinedvec::InlinedVec;
+use starina_inlinedvec::InlinedVec;
 
 use crate::arch;
 use crate::refcount::SharedRef;

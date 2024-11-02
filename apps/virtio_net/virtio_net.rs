@@ -1,18 +1,18 @@
 use core::mem::offset_of;
 
-use ftl_api::folio::MappedFolio;
-use ftl_api::interrupt::Interrupt;
-use ftl_api::prelude::*;
-use ftl_api::types::address::PAddr;
-use ftl_api::types::environ::Device;
-use ftl_api::types::interrupt::Irq;
-use ftl_driver_utils::DmaBufferPool;
-use ftl_virtio::transports::mmio::VirtioMmio;
-use ftl_virtio::transports::VirtioTransport;
-use ftl_virtio::virtqueue::VirtQueue;
-use ftl_virtio::virtqueue::VirtqDescBuffer;
-use ftl_virtio::virtqueue::VirtqUsedChain;
-use ftl_virtio::VIRTIO_DEVICE_TYPE_NET;
+use starina_api::folio::MappedFolio;
+use starina_api::interrupt::Interrupt;
+use starina_api::prelude::*;
+use starina_api::types::address::PAddr;
+use starina_api::types::environ::Device;
+use starina_api::types::interrupt::Irq;
+use starina_driver_utils::DmaBufferPool;
+use starina_virtio::transports::mmio::VirtioMmio;
+use starina_virtio::transports::VirtioTransport;
+use starina_virtio::virtqueue::VirtQueue;
+use starina_virtio::virtqueue::VirtqDescBuffer;
+use starina_virtio::virtqueue::VirtqUsedChain;
+use starina_virtio::VIRTIO_DEVICE_TYPE_NET;
 
 const DMA_BUF_SIZE: usize = 4096;
 

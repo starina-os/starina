@@ -2,11 +2,11 @@ use core::mem::size_of;
 use core::sync::atomic::Ordering;
 use core::sync::atomic::{self};
 
-use ftl_api::folio::MappedFolio;
-use ftl_api::prelude::Vec;
-use ftl_api::types::address::PAddr;
-use ftl_api::types::address::VAddr;
-use ftl_utils::alignment::align_up;
+use starina_api::folio::MappedFolio;
+use starina_api::prelude::Vec;
+use starina_api::types::address::PAddr;
+use starina_api::types::address::VAddr;
+use starina_utils::alignment::align_up;
 
 use super::transports::VirtioTransport;
 

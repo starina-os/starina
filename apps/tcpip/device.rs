@@ -1,6 +1,6 @@
-use ftl_api::collections::vec_deque::VecDeque;
-use ftl_api::prelude::vec::Vec;
-use ftl_api::prelude::*;
+use starina_api::collections::vec_deque::VecDeque;
+use starina_api::prelude::vec::Vec;
+use starina_api::prelude::*;
 use smoltcp::phy::DeviceCapabilities;
 use smoltcp::time::Instant;
 

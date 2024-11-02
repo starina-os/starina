@@ -3,7 +3,7 @@
 //! <https://www.qemu.org/docs/master/specs/fw_cfg.html>
 use core::arch::asm;
 
-use ftl_inlinedvec::InlinedString;
+use starina_inlinedvec::InlinedString;
 
 #[repr(u16)]
 enum SelectorKey {

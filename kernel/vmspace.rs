@@ -1,8 +1,8 @@
 //! Virtual memory space management.
-use ftl_types::address::PAddr;
-use ftl_types::address::VAddr;
-use ftl_types::error::FtlError;
-use ftl_types::vmspace::PageProtect;
+use starina_types::address::PAddr;
+use starina_types::address::VAddr;
+use starina_types::error::FtlError;
+use starina_types::vmspace::PageProtect;
 
 use crate::arch;
 use crate::boot::USERMODE_ENABLED;

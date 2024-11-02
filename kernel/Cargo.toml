@@ -1,5 +1,5 @@
 [package]
-name = "ftl_kernel"
+name = "starina_kernel"
 version = { workspace = true }
 authors = { workspace = true }
 edition = { workspace = true }
@@ -8,11 +8,11 @@ edition = { workspace = true }
 path = "lib.rs"
 
 [dependencies]
-ftl_utils = { workspace = true }
-ftl_types = { workspace = true }
-ftl_bump_allocator = { workspace = true }
-ftl_elf = { workspace = true }
-ftl_inlinedvec = { workspace = true }
+starina_utils = { workspace = true }
+starina_types = { workspace = true }
+starina_bump_allocator = { workspace = true }
+starina_elf = { workspace = true }
+starina_inlinedvec = { workspace = true }
 hashbrown = { workspace = true }
 fdt-rs = { workspace = true }
 
@@ -22,6 +22,6 @@ spin = { workspace = true }
 [build-dependencies]
 anyhow = { workspace = true }
 minijinja = { workspace = true }
-ftl_types = { workspace = true }
-ftl_autogen = { workspace = true }
+starina_types = { workspace = true }
+starina_autogen = { workspace = true }
 serde_json = { workspace = true, features = ["alloc"] }

@@ -1,12 +1,12 @@
 #![no_std]
 #![no_main]
 
-ftl_api::autogen!();
+starina_api::autogen!();
 
-use ftl_api::environ::Environ;
-use ftl_api::prelude::*;
-use ftl_api::types::message::MessageBuffer;
-use ftl_autogen::idl::echo::Ping;
+use starina_api::environ::Environ;
+use starina_api::prelude::*;
+use starina_api::types::message::MessageBuffer;
+use starina_autogen::idl::echo::Ping;
 
 #[no_mangle]
 pub fn main(mut env: Environ) {

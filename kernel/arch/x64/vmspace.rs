@@ -1,10 +1,10 @@
 use core::arch::asm;
 use core::mem;
 
-use ftl_types::address::PAddr;
-use ftl_types::address::VAddr;
-use ftl_types::error::FtlError;
-use ftl_utils::alignment::is_aligned;
+use starina_types::address::PAddr;
+use starina_types::address::VAddr;
+use starina_types::error::FtlError;
+use starina_utils::alignment::is_aligned;
 
 use crate::arch::paddr2vaddr;
 use crate::arch::PAGE_SIZE;

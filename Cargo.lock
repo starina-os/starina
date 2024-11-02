@@ -48,27 +48,27 @@ checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 name = "boot_arm64"
 version = "0.0.0"
 dependencies = [
- "ftl_inlinedvec",
- "ftl_kernel",
- "ftl_utils",
+ "starina_inlinedvec",
+ "starina_kernel",
+ "starina_utils",
 ]
 
 [[package]]
 name = "boot_riscv64"
 version = "0.0.0"
 dependencies = [
- "ftl_inlinedvec",
- "ftl_kernel",
- "ftl_utils",
+ "starina_inlinedvec",
+ "starina_kernel",
+ "starina_utils",
 ]
 
 [[package]]
 name = "boot_x64"
 version = "0.0.0"
 dependencies = [
- "ftl_inlinedvec",
- "ftl_kernel",
- "ftl_utils",
+ "starina_inlinedvec",
+ "starina_kernel",
+ "starina_utils",
 ]
 
 [[package]]
@@ -128,16 +128,16 @@ dependencies = [
 name = "echo"
 version = "0.0.0"
 dependencies = [
- "ftl_api",
- "ftl_autogen",
+ "starina_api",
+ "starina_autogen",
 ]
 
 [[package]]
 name = "echo_client"
 version = "0.0.0"
 dependencies = [
- "ftl_api",
- "ftl_autogen",
+ "starina_api",
+ "starina_autogen",
 ]
 
 [[package]]
@@ -175,101 +175,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "ftl_api"
-version = "0.0.0"
-dependencies = [
- "ftl_inlinedvec",
- "ftl_types",
- "ftl_utils",
- "hashbrown",
- "linked_list_allocator",
- "serde_json",
- "spin",
-]
-
-[[package]]
-name = "ftl_autogen"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "ftl_types",
- "minijinja",
- "serde",
- "serde_json",
- "serde_yaml",
-]
-
-[[package]]
-name = "ftl_bump_allocator"
-version = "0.0.0"
-
-[[package]]
-name = "ftl_driver_utils"
-version = "0.0.0"
-dependencies = [
- "ftl_api",
- "ftl_utils",
-]
-
-[[package]]
-name = "ftl_elf"
-version = "0.0.0"
-
-[[package]]
-name = "ftl_inlinedvec"
-version = "0.0.0"
-dependencies = [
- "arrayvec",
-]
-
-[[package]]
-name = "ftl_kernel"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "fdt-rs",
- "ftl_autogen",
- "ftl_bump_allocator",
- "ftl_elf",
- "ftl_inlinedvec",
- "ftl_types",
- "ftl_utils",
- "hashbrown",
- "minijinja",
- "serde_json",
- "spin",
-]
-
-[[package]]
-name = "ftl_types"
-version = "0.0.0"
-dependencies = [
- "ftl_utils",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "ftl_utils"
-version = "0.0.0"
-
-[[package]]
-name = "ftl_virtio"
-version = "0.0.0"
-dependencies = [
- "ftl_api",
- "ftl_driver_utils",
- "ftl_utils",
-]
-
-[[package]]
 name = "goldfish_rtc"
 version = "0.0.0"
 dependencies = [
  "chrono",
- "ftl_api",
- "ftl_autogen",
- "ftl_driver_utils",
+ "starina_api",
+ "starina_autogen",
+ "starina_driver_utils",
 ]
 
 [[package]]
@@ -305,16 +217,16 @@ dependencies = [
 name = "hello"
 version = "0.0.0"
 dependencies = [
- "ftl_api",
+ "starina_api",
 ]
 
 [[package]]
 name = "http_server"
 version = "0.0.0"
 dependencies = [
- "ftl_api",
- "ftl_autogen",
  "httparse",
+ "starina_api",
+ "starina_autogen",
 ]
 
 [[package]]
@@ -576,6 +488,94 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 
 [[package]]
+name = "starina_api"
+version = "0.0.0"
+dependencies = [
+ "hashbrown",
+ "linked_list_allocator",
+ "serde_json",
+ "spin",
+ "starina_inlinedvec",
+ "starina_types",
+ "starina_utils",
+]
+
+[[package]]
+name = "starina_autogen"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "minijinja",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "starina_types",
+]
+
+[[package]]
+name = "starina_bump_allocator"
+version = "0.0.0"
+
+[[package]]
+name = "starina_driver_utils"
+version = "0.0.0"
+dependencies = [
+ "starina_api",
+ "starina_utils",
+]
+
+[[package]]
+name = "starina_elf"
+version = "0.0.0"
+
+[[package]]
+name = "starina_inlinedvec"
+version = "0.0.0"
+dependencies = [
+ "arrayvec",
+]
+
+[[package]]
+name = "starina_kernel"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "fdt-rs",
+ "hashbrown",
+ "minijinja",
+ "serde_json",
+ "spin",
+ "starina_autogen",
+ "starina_bump_allocator",
+ "starina_elf",
+ "starina_inlinedvec",
+ "starina_types",
+ "starina_utils",
+]
+
+[[package]]
+name = "starina_types"
+version = "0.0.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "starina_utils",
+]
+
+[[package]]
+name = "starina_utils"
+version = "0.0.0"
+
+[[package]]
+name = "starina_virtio"
+version = "0.0.0"
+dependencies = [
+ "starina_api",
+ "starina_driver_utils",
+ "starina_utils",
+]
+
+[[package]]
 name = "static_assertions"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -607,10 +607,10 @@ dependencies = [
 name = "tcpip"
 version = "0.0.0"
 dependencies = [
- "ftl_api",
- "ftl_autogen",
  "log",
  "smoltcp",
+ "starina_api",
+ "starina_autogen",
 ]
 
 [[package]]
@@ -661,11 +661,11 @@ checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
 name = "virtio_net"
 version = "0.0.0"
 dependencies = [
- "ftl_api",
- "ftl_autogen",
- "ftl_driver_utils",
- "ftl_utils",
- "ftl_virtio",
+ "starina_api",
+ "starina_autogen",
+ "starina_driver_utils",
+ "starina_utils",
+ "starina_virtio",
 ]
 
 [[package]]

@@ -2,9 +2,9 @@ use core::arch::asm;
 
 use csr::write_stvec;
 use csr::StvecMode;
-use ftl_types::address::PAddr;
-use ftl_types::address::VAddr;
-use ftl_types::error::FtlError;
+use starina_types::address::PAddr;
+use starina_types::address::VAddr;
+use starina_types::error::FtlError;
 use switch::switch_to_kernel;
 
 use crate::cpuvar::CpuId;

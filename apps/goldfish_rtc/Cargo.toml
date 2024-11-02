@@ -9,9 +9,9 @@ name = "goldfish_rtc"
 path = "main.rs"
 
 [dependencies]
-ftl_api = { workspace = true }
-ftl_driver_utils = { workspace = true }
+starina_api = { workspace = true }
+starina_driver_utils = { workspace = true }
 chrono = { version = "0.4.38", features = ["alloc"], default-features = false }
 
 [build-dependencies]
-ftl_autogen = { workspace = true }
+starina_autogen = { workspace = true }

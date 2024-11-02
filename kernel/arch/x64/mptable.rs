@@ -8,7 +8,7 @@
 //! https://pdos.csail.mit.edu/6.828/2011/readings/ia32/MPspec.pdf
 use core::mem::size_of;
 
-use ftl_types::address::PAddr;
+use starina_types::address::PAddr;
 
 use super::io_apic;
 use super::local_apic;

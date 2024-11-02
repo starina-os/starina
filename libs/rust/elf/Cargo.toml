@@ -1,5 +1,5 @@
 [package]
-name = "ftl_elf"
+name = "starina_elf"
 version = { workspace = true }
 authors = { workspace = true }
 edition = { workspace = true }

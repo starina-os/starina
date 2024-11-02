@@ -3,17 +3,17 @@
 
 mod virtio_net;
 
-ftl_api::autogen!();
+starina_api::autogen!();
 
-use ftl_api::channel::Channel;
-use ftl_api::environ::Environ;
-use ftl_api::mainloop::Event;
-use ftl_api::mainloop::Mainloop;
-use ftl_api::prelude::*;
-use ftl_api::types::environ::Device;
-use ftl_autogen::idl::ethernet_device::ReadHwaddrReply;
-use ftl_autogen::idl::ethernet_device::Rx;
-use ftl_autogen::idl::Message;
+use starina_api::channel::Channel;
+use starina_api::environ::Environ;
+use starina_api::mainloop::Event;
+use starina_api::mainloop::Mainloop;
+use starina_api::prelude::*;
+use starina_api::types::environ::Device;
+use starina_autogen::idl::ethernet_device::ReadHwaddrReply;
+use starina_autogen::idl::ethernet_device::Rx;
+use starina_autogen::idl::Message;
 use virtio_net::VirtioNet;
 
 #[derive(Debug)]

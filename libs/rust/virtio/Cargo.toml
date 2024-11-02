@@ -1,5 +1,5 @@
 [package]
-name = "ftl_virtio"
+name = "starina_virtio"
 version = { workspace = true }
 authors = { workspace = true }
 edition = { workspace = true }
@@ -8,6 +8,6 @@ edition = { workspace = true }
 path = "lib.rs"
 
 [dependencies]
-ftl_api = { workspace = true }
-ftl_driver_utils = { workspace = true }
-ftl_utils ={ workspace = true }
+starina_api = { workspace = true }
+starina_driver_utils = { workspace = true }
+starina_utils = { workspace = true }

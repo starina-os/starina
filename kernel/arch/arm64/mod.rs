@@ -1,8 +1,8 @@
 use core::arch::asm;
 use core::arch::global_asm;
 
-use ftl_types::address::PAddr;
-use ftl_types::address::VAddr;
+use starina_types::address::PAddr;
+use starina_types::address::VAddr;
 
 mod backtrace;
 mod cpuvar;
@@ -17,7 +17,7 @@ pub use backtrace::backtrace;
 pub use cpuvar::cpuvar as get_cpuvar;
 pub use cpuvar::set_cpuvar;
 pub use cpuvar::CpuVar;
-use ftl_types::error::FtlError;
+use starina_types::error::FtlError;
 pub use gic_v2::interrupt_ack;
 pub use gic_v2::interrupt_create;
 pub use idle::idle;

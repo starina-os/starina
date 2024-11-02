@@ -1,9 +1,9 @@
 //! Signal, an asynchronous event notification mechanism.
 use alloc::vec::Vec;
 
-use ftl_types::error::FtlError;
-use ftl_types::poll::PollEvent;
-use ftl_types::signal::SignalBits;
+use starina_types::error::FtlError;
+use starina_types::poll::PollEvent;
+use starina_types::signal::SignalBits;
 
 use crate::poll::Poller;
 use crate::refcount::SharedRef;

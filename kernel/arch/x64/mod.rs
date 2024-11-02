@@ -3,9 +3,9 @@ use core::arch::asm;
 use core::arch::global_asm;
 use core::mem::offset_of;
 
-use ftl_types::address::PAddr;
-use ftl_types::address::VAddr;
-use ftl_types::error::FtlError;
+use starina_types::address::PAddr;
+use starina_types::address::VAddr;
+use starina_types::error::FtlError;
 use thread::Context;
 
 use crate::cpuvar::CpuId;

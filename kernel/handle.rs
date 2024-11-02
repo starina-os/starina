@@ -2,10 +2,10 @@
 use core::fmt;
 use core::ops::Deref;
 
-use ftl_types::error::FtlError;
-use ftl_types::handle::HandleId;
-use ftl_types::handle::HandleRights;
-use ftl_types::handle::HANDLE_ID_MASK;
+use starina_types::error::FtlError;
+use starina_types::handle::HandleId;
+use starina_types::handle::HandleRights;
+use starina_types::handle::HANDLE_ID_MASK;
 use hashbrown::HashMap;
 
 use crate::channel::Channel;

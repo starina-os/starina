@@ -1,7 +1,7 @@
 //! The kernel entry point.
-use ftl_inlinedvec::InlinedString;
-use ftl_inlinedvec::InlinedVec;
-use ftl_utils::byte_size::ByteSize;
+use starina_inlinedvec::InlinedString;
+use starina_inlinedvec::InlinedVec;
+use starina_utils::byte_size::ByteSize;
 
 use crate::arch;
 use crate::cpuvar;
@@ -36,7 +36,7 @@ pub fn boot(cpu_id: CpuId, bootinfo: BootInfo) -> ! {
     arch::early_init(cpu_id);
 
     println!();
-    info!("FTL - Faster Than \"L\"");
+    info!("Welcome to Starina");
     if USERMODE_ENABLED {
         info!("Usermode isolation enabled");
     } else {

@@ -6,18 +6,18 @@
 //! block. Instead, when it needs to wait for an event, it should save the
 //! state into [`Continuation`](crate::thread::Continuation), switch to another
 //! thread, and retry later.
-use ftl_types::address::PAddr;
-use ftl_types::address::VAddr;
-use ftl_types::error::FtlError;
-use ftl_types::handle::HandleId;
-use ftl_types::handle::HandleRights;
-use ftl_types::interrupt::Irq;
-use ftl_types::message::MessageInfo;
-use ftl_types::poll::PollEvent;
-use ftl_types::poll::PollSyscallResult;
-use ftl_types::signal::SignalBits;
-use ftl_types::syscall::SyscallNumber;
-use ftl_types::vmspace::PageProtect;
+use starina_types::address::PAddr;
+use starina_types::address::VAddr;
+use starina_types::error::FtlError;
+use starina_types::handle::HandleId;
+use starina_types::handle::HandleRights;
+use starina_types::interrupt::Irq;
+use starina_types::message::MessageInfo;
+use starina_types::poll::PollEvent;
+use starina_types::poll::PollSyscallResult;
+use starina_types::signal::SignalBits;
+use starina_types::syscall::SyscallNumber;
+use starina_types::vmspace::PageProtect;
 
 use crate::channel::Channel;
 use crate::cpuvar::current_thread;

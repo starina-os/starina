@@ -1,5 +1,5 @@
 ---
-title: FTL Documentation
+title: starina Documentation
 ---
 
-- [Rust API Reference](rust/ftl_api/)
+- [Rust API Reference](rust/starina_api/)

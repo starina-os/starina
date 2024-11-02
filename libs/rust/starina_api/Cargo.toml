@@ -1,0 +1,18 @@
+[package]
+name = "starina_api"
+version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
+
+[lib]
+path = "lib.rs"
+
+[dependencies]
+spin = { workspace = true }
+linked_list_allocator = { workspace = true }
+hashbrown = { workspace = true }
+serde_json = { workspace = true, features = ["alloc"] }
+
+starina_types = { workspace = true }
+starina_utils = { workspace = true }
+starina_inlinedvec = { workspace = true }

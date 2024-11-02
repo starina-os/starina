@@ -15,7 +15,7 @@
         "ld.lld": [
             "--script=boot/riscv64/riscv64-qemu-virt.ld",
             "-Map",
-            "ftl.map"
+            "starina.map"
         ]
     },
     "llvm-abiname": "lp64d",

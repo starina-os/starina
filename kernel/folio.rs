@@ -2,10 +2,10 @@
 use core::alloc::GlobalAlloc;
 use core::alloc::Layout;
 
-use ftl_types::address::PAddr;
-use ftl_types::address::VAddr;
-use ftl_types::error::FtlError;
-use ftl_utils::alignment::is_aligned;
+use starina_types::address::PAddr;
+use starina_types::address::VAddr;
+use starina_types::error::FtlError;
+use starina_utils::alignment::is_aligned;
 
 use crate::arch::vaddr2paddr;
 use crate::arch::PAGE_SIZE;

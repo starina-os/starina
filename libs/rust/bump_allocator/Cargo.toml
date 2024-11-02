@@ -1,5 +1,5 @@
 [package]
-name = "ftl_bump_allocator"
+name = "starina_bump_allocator"
 version = { workspace = true }
 authors = { workspace = true }
 edition = { workspace = true }

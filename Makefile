@@ -84,15 +84,15 @@ kernel_sources += \
 	)
 
 .DEFAULT_GOAL := default
-default: ftl.elf
+default: starina.elf
 
 .PHONY: run
-run: ftl.elf disk.img
-	cp ftl.elf build/ftl.qemu.elf
+run: starina.elf disk.img
+	cp starina.elf build/starina.qemu.elf
 ifeq ($(ARCH),x64)
-	python3 ./tools/make-bootable-on-qemu.py build/ftl.qemu.elf
+	python3 ./tools/make-bootable-on-qemu.py build/starina.qemu.elf
 endif
-	$(QEMU) $(QEMUFLAGS) -kernel build/ftl.qemu.elf
+	$(QEMU) $(QEMUFLAGS) -kernel build/starina.qemu.elf
 
 .PHONY: clean
 clean:
@@ -127,14 +127,14 @@ rustdoc:
 	CARGO_TARGET_DIR="$(BUILD_DIR)/cargo" \
 	STARTUP_APP_DIRS="$(foreach app_dir,$(STARTUP_APPS),$(realpath $(app_dir)))" \
 		$(CARGO) doc \
-			--package ftl_api \
-			--package ftl_driver_utils
+			--package starina_api \
+			--package starina_driver_utils
 
 disk.img:
 	$(PROGRESS) "GEN" "$(@)"
 	dd if=/dev/zero of=$(@) bs=1M count=8
 
-ftl.elf: $(kernel_sources) $(app_elfs) Makefile Makefile
+starina.elf: $(kernel_sources) $(app_elfs) Makefile Makefile
 	$(PROGRESS) "CARGO" "boot/$(ARCH)"
 	RUSTFLAGS="$(RUSTFLAGS)" \
 	CARGO_TARGET_DIR="$(BUILD_DIR)/cargo" \
@@ -146,7 +146,7 @@ ftl.elf: $(kernel_sources) $(app_elfs) Makefile Makefile
 		--manifest-path boot/$(ARCH)/Cargo.toml
 	cp $(BUILD_DIR)/cargo/$(ARCH)-$(MACHINE)/$(BUILD)/boot_$(ARCH) $(@)
 
-ftl.pe: ftl.elf
+starina.pe: starina.elf
 	$(PROGRESS) "OBJCOPY" $(@)
 	$(OBJCOPY) -O binary --strip-all $< $(@)
 
@@ -160,7 +160,7 @@ $(BUILD_DIR)/%.elf: $(app_sources) Makefile
 	RUSTFLAGS="$(RUSTFLAGS)" \
 	CARGO_TARGET_DIR="$(BUILD_DIR)/cargo" \
 		$(CARGO) build $(CARGOFLAGS) \
-		--target libs/rust/ftl_api/arch/$(ARCH)/$(ARCH)-user.json \
+		--target libs/rust/starina_api/arch/$(ARCH)/$(ARCH)-user.json \
 		--manifest-path $(patsubst $(BUILD_DIR)/%.elf,%,$(@))/Cargo.toml
 	cp $(BUILD_DIR)/cargo/$(ARCH)-user/$(BUILD)/$(patsubst $(BUILD_DIR)/apps/%.elf,%,$(@)) $(@)
 	$(OBJCOPY) --strip-all --strip-debug $(@) $(@).stripped

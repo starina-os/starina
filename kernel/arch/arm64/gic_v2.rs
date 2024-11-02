@@ -5,9 +5,9 @@
 
 use alloc::collections::BTreeMap;
 
-use ftl_types::address::PAddr;
-use ftl_types::error::FtlError;
-use ftl_types::interrupt::Irq;
+use starina_types::address::PAddr;
+use starina_types::error::FtlError;
+use starina_types::interrupt::Irq;
 
 use crate::device_tree::DeviceTree;
 use crate::folio::Folio;

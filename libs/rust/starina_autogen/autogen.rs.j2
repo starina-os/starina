@@ -1,0 +1,101 @@
+pub mod starina_autogen {
+pub mod idl {
+    {% if not generate_for_kernel %}
+    use starina_api::types as starina_types;
+    {% endif %}
+
+    use starina_types::message::MessageSerialize;
+    use starina_types::message::MessageDeserialize;
+    use starina_types::message::MessageCallable;
+    use starina_types::message::MessageBuffer;
+    use starina_types::message::MessageInfo;
+
+    #[derive(Debug)]
+    pub enum Message<'a> {
+        {% for m in messages %}
+        #[allow(unused)]
+        {{ m.name }}(&'a mut {{ m.interface_name }}::{{ m.name }}),
+        {% endfor %}
+    }
+
+    impl MessageDeserialize for Message<'_> {
+        type Reader<'a> = Message<'a>;
+
+        fn deserialize(buffer: &mut MessageBuffer, msginfo: MessageInfo)
+            -> Option<Self::Reader<'_>> {
+            match msginfo {
+                {% for m in messages %}
+                    {{ m.interface_name }}::{{ m.name }}::MSGINFO => {
+                        let msg = {{ m.interface_name }}::{{ m.name }}::deserialize(buffer, msginfo)?;
+                        Some(Message::{{ m.name }}(msg))
+                    },
+                {% endfor %}
+                _ => None,
+            }
+        }
+    }
+
+    {% for interface in interfaces %}
+    pub mod {{ interface.name }} {
+        #[allow(unused)]
+        use super::*;
+
+        {% for m in interface.messages %}
+            #[repr(C)]
+            #[derive(Debug)]
+            pub struct {{ m.name }} {
+                {%- for f in m.fields %}
+                {%- if f.is_handle %}
+                pub {{ f.name }}: {{ f.ty }},
+                {%- endif %}
+                {%- endfor %}
+
+                {%- for f in m.fields %}
+                {%- if not f.is_handle %}
+                pub {{ f.name }}: {{ f.ty }},
+                {%- endif %}
+                {%- endfor %}
+            }
+
+            impl MessageSerialize for {{ m.name }} {
+                const NUM_HANDLES: usize = {{ m.num_handles }};
+                const MSGINFO: MessageInfo = MessageInfo::from_raw(
+                    ({{ m.msgid }} << 14)
+                    | ((Self::NUM_HANDLES as isize) << 12)
+                    | (::core::mem::size_of::<Self>() - Self::NUM_HANDLES * ::core::mem::size_of::<starina_types::handle::HandleId>()) as isize,
+                );
+
+                fn serialize(self, buffer: &mut MessageBuffer) {
+                    // FIXME: Avoid copy entire bytes/str.
+                    unsafe {
+                        debug_assert!(::core::mem::size_of::<Self>() <= starina_types::message::MESSAGE_DATA_MAX_LEN);
+                        core::ptr::write(buffer.data.as_mut_ptr() as *mut Self, self);
+                    }
+                }
+            }
+
+            {% if m.reply_message_name %}
+                impl MessageCallable for {{ m.name }} {
+                    type Reply = {{  m.reply_message_name }};
+                }
+            {% endif %}
+
+            impl MessageDeserialize for {{ m.name }} {
+                type Reader<'a> = &'a mut Self;
+
+                fn deserialize<'a>(buffer: &'a mut MessageBuffer, msginfo: MessageInfo)
+                    -> Option<Self::Reader<'a>> {
+                    if msginfo != Self::MSGINFO {
+                        return None;
+                    }
+
+                    debug_assert!(::core::mem::size_of::<Self>() <= starina_types::message::MESSAGE_DATA_MAX_LEN);
+                    let msg = unsafe { &mut *(buffer.data.as_mut_ptr() as *mut Self) };
+                    Some(msg)
+                }
+            }
+        {% endfor %}
+    }
+    {% endfor %}
+}
+}

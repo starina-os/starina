@@ -17,20 +17,20 @@ name = "<NAME>"
 path = "main.rs"
 
 [dependencies]
-ftl_api = { workspace = true }
+starina_api = { workspace = true }
 
 [build-dependencies]
-ftl_autogen = { workspace = true }
+starina_autogen = { workspace = true }
 """
 
 MAIN_RS = """\
 #![no_std]
 #![no_main]
 
-use ftl_api::environ::Environ;
-use ftl_api::prelude::*;
+use starina_api::environ::Environ;
+use starina_api::prelude::*;
 
-ftl_api::autogen!();
+starina_api::autogen!();
 
 #[no_mangle]
 pub fn main(mut env: Environ) {
@@ -40,7 +40,7 @@ pub fn main(mut env: Environ) {
 
 BUILD_RS = """\
 fn main() {
-    ftl_autogen::generate_for_app().expect("autogen failed");
+    starina_autogen::generate_for_app().expect("autogen failed");
 }
 """
 

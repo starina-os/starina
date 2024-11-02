@@ -9,4 +9,4 @@ name = "hello"
 path = "main.rs"
 
 [dependencies]
-ftl_api = { workspace = true }
+starina_api = { workspace = true }

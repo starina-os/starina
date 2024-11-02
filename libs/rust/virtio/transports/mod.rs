@@ -1,5 +1,5 @@
-use ftl_api::prelude::*;
-use ftl_api::types::address::PAddr;
+use starina_api::prelude::*;
+use starina_api::types::address::PAddr;
 
 use super::DeviceType;
 use crate::virtqueue::VirtQueue;

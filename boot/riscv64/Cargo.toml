@@ -9,6 +9,6 @@ name = "boot_riscv64"
 path = "main.rs"
 
 [dependencies]
-ftl_kernel = { workspace = true }
-ftl_utils = { workspace = true }
-ftl_inlinedvec = { workspace = true }
+starina_kernel = { workspace = true }
+starina_utils = { workspace = true }
+starina_inlinedvec = { workspace = true }

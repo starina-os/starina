@@ -27,7 +27,7 @@ def prettify_line(executable, line):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-e', help='The kernel executable file', default='ftl.elf')
+    parser.add_argument('-e', help='The kernel executable file', default='starina.elf')
     parser.add_argument('log_file', help='path to log file')
     args = parser.parse_args()
 

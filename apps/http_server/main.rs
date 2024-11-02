@@ -1,16 +1,16 @@
 #![no_std]
 #![no_main]
 
-ftl_api::autogen!();
+starina_api::autogen!();
 
-use ftl_api::channel::Channel;
-use ftl_api::environ::Environ;
-use ftl_api::mainloop::Event;
-use ftl_api::mainloop::Mainloop;
-use ftl_api::prelude::*;
-use ftl_api::types::message::MessageBuffer;
-use ftl_autogen::idl::tcpip::TcpListen;
-use ftl_autogen::idl::Message;
+use starina_api::channel::Channel;
+use starina_api::environ::Environ;
+use starina_api::mainloop::Event;
+use starina_api::mainloop::Mainloop;
+use starina_api::prelude::*;
+use starina_api::types::message::MessageBuffer;
+use starina_autogen::idl::tcpip::TcpListen;
+use starina_autogen::idl::Message;
 
 mod http;
 

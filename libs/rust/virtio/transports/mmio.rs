@@ -1,11 +1,11 @@
-use ftl_api::folio::MappedFolio;
-use ftl_api::prelude::*;
-use ftl_api::types::address::PAddr;
-use ftl_driver_utils::mmio::LittleEndian;
-use ftl_driver_utils::mmio::MmioReg;
-use ftl_driver_utils::mmio::ReadOnly;
-use ftl_driver_utils::mmio::ReadWrite;
-use ftl_driver_utils::mmio::WriteOnly;
+use starina_api::folio::MappedFolio;
+use starina_api::prelude::*;
+use starina_api::types::address::PAddr;
+use starina_driver_utils::mmio::LittleEndian;
+use starina_driver_utils::mmio::MmioReg;
+use starina_driver_utils::mmio::ReadOnly;
+use starina_driver_utils::mmio::ReadWrite;
+use starina_driver_utils::mmio::WriteOnly;
 
 use super::VirtioTransport;
 use crate::transports::IsrStatus;

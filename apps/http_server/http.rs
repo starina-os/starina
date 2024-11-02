@@ -1,10 +1,10 @@
-use ftl_api::channel::ChannelSender;
-use ftl_api::prelude::*;
+use starina_api::channel::ChannelSender;
+use starina_api::prelude::*;
 use httparse::Request;
 use httparse::Status;
 use httparse::EMPTY_HEADER;
 
-use crate::ftl_autogen::idl::tcpip::TcpSend;
+use crate::starina_autogen::idl::tcpip::TcpSend;
 
 const REQUEST_MAX_SIZE: usize = 32 * 1024;
 

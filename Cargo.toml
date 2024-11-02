@@ -13,7 +13,9 @@ hashbrown = "0.14.5"
 spin = "0.9.8"
 linked_list_allocator = "0.10.5"
 serde = { version = "1.0.203", default-features = false }
-serde_json = { version = "1.0.117", default-features = false, features = ["alloc"] }
+serde_json = { version = "1.0.117", default-features = false, features = [
+    "alloc",
+] }
 serde_yaml = "0.9.34"
 fdt-rs = { version = "0.4.5", default-features = false }
 smoltcp = { version = "0.11.0", default-features = false }
@@ -30,13 +32,13 @@ bytes = "1.6.0"
 tempfile = "3.10.1"
 walkdir = "2.5.0"
 
-ftl_kernel = { path = "kernel" }
-ftl_types = { path = "libs/rust/ftl_types" }
-ftl_api = { path = "libs/rust/ftl_api" }
-ftl_utils = { path = "libs/rust/ftl_utils" }
-ftl_inlinedvec = { path = "libs/rust/inlinedvec" }
-ftl_bump_allocator = { path = "libs/rust/bump_allocator" }
-ftl_elf = { path = "libs/rust/elf" }
-ftl_virtio = { path = "libs/rust/virtio" }
-ftl_driver_utils = { path = "libs/rust/ftl_driver_utils" }
-ftl_autogen = { path = "libs/rust/ftl_autogen" }
+starina_kernel = { path = "kernel" }
+starina_types = { path = "libs/rust/starina_types" }
+starina_api = { path = "libs/rust/starina_api" }
+starina_utils = { path = "libs/rust/starina_utils" }
+starina_inlinedvec = { path = "libs/rust/inlinedvec" }
+starina_bump_allocator = { path = "libs/rust/bump_allocator" }
+starina_elf = { path = "libs/rust/elf" }
+starina_virtio = { path = "libs/rust/virtio" }
+starina_driver_utils = { path = "libs/rust/starina_driver_utils" }
+starina_autogen = { path = "libs/rust/starina_autogen" }

@@ -2,9 +2,9 @@
 
 use core::marker::PhantomData;
 
-use ftl_types::address::PAddr;
-use ftl_types::address::VAddr;
-use ftl_types::error::FtlError;
+use starina_types::address::PAddr;
+use starina_types::address::VAddr;
+use starina_types::error::FtlError;
 
 use crate::arch::paddr2vaddr;
 use crate::folio::Folio;

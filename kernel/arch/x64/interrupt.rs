@@ -1,7 +1,7 @@
 use alloc::collections::BTreeMap;
 
-use ftl_types::error::FtlError;
-use ftl_types::interrupt::Irq;
+use starina_types::error::FtlError;
+use starina_types::interrupt::Irq;
 
 use super::io_apic::IO_APIC;
 use super::local_apic::LOCAL_APIC;

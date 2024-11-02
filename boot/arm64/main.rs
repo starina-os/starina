@@ -3,11 +3,11 @@
 
 use core::arch::global_asm;
 
-use ftl_inlinedvec::InlinedVec;
-use ftl_kernel::boot::BootInfo;
-use ftl_kernel::boot::FreeMem;
-use ftl_kernel::cpuvar::CpuId;
-use ftl_utils::byte_size::ByteSize;
+use starina_inlinedvec::InlinedVec;
+use starina_kernel::boot::BootInfo;
+use starina_kernel::boot::FreeMem;
+use starina_kernel::cpuvar::CpuId;
+use starina_utils::byte_size::ByteSize;
 
 global_asm!(include_str!("boot.S"));
 
@@ -42,7 +42,7 @@ unsafe extern "C" fn arm64_boot() -> ! {
     // > https://www.qemu.org/docs/master/system/arm/virt.html
     let dtb_addr = 0x4000_0000;
 
-    ftl_kernel::boot::boot(
+    starina_kernel::boot::boot(
         CpuId::new(0 /* TODO: support multi-processors */),
         BootInfo {
             free_mems,
