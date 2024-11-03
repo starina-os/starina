@@ -1,23 +1,43 @@
-use starina_api::channel::ChannelSender;
-use starina_api::prelude::*;
 use httparse::Request;
 use httparse::Status;
 use httparse::EMPTY_HEADER;
+use starina_api::channel::ChannelSender;
+use starina_api::prelude::*;
 
 use crate::starina_autogen::idl::tcpip::TcpSend;
 
 const REQUEST_MAX_SIZE: usize = 32 * 1024;
 
+const INDEX_HTML: &[u8] = include_bytes!("index.html");
+const NOT_FOUND_HTML: &[u8] = include_bytes!("404.html");
+
 fn do_handle_request(req: Request, tcp_sender: &ChannelSender) {
     info!("{} {}", req.method.unwrap(), req.path.unwrap());
 
-    let data =
-        b"HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: 92\r\n\r\n<html><head><meta charset=\"utf-8\"></head><body><h1>FTL</h1><hr>Servered by FTL</body></html>";
+    let (status, body) = match req.path {
+        Some("/index.html" | "/") => ("200 OK", INDEX_HTML),
+        _ => ("404 Not Found", NOT_FOUND_HTML),
+    };
+
+    let headers = format!(
+        "HTTP/1.1 {}\r\nContent-Type: text/html\r\nServer: Starina\r\nContent-Length: {}\r\n\r\n",
+        status,
+        body.len()
+    );
+
     tcp_sender
         .send(TcpSend {
-            data: data.as_slice().try_into().unwrap(),
+            data: headers.as_bytes().try_into().unwrap(),
         })
         .unwrap();
+
+    for chunk in body.chunks(2048) {
+        tcp_sender
+            .send(TcpSend {
+                data: chunk.try_into().unwrap(),
+            })
+            .unwrap();
+    }
 }
 
 fn handle_request(buf: &[u8], tcp_sender: &ChannelSender) {
