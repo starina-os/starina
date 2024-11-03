@@ -1,5 +1,5 @@
 ---
-title: starina Documentation
+title: Starina Documentation
 ---
 
 - [Rust API Reference](rust/starina_api/)
