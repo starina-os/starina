@@ -27,7 +27,7 @@ ARCH=riscv64
 MACHINE=qemu-virt
 
 # Apps to build.
-APPS = apps/tcpip apps/virtio_net apps/http_server
+APPS = apps/echo apps/tcpip apps/virtio_net apps/http_server
 
 # Apps to be automatically started by the kernel.
 STARTUP_APPS = $(APPS)
@@ -116,6 +116,12 @@ def scaffold_app(args):
 
     print()
     info(f"generated app at {app_dir}")
+
+    ensure_buildconfig_mk()
+    with BUILD_CONFIG_MK.open("a") as f:
+        f.write("\n# added by scaffold:\n")
+        f.write(f"APPS += {app_dir}\n")
+        info(f"added {app_dir} to APPS in buildconfig.mk")
 
 def scaffold_command(args):
     if args.type == "app":
