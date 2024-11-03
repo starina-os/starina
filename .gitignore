@@ -1,5 +1,6 @@
 /target
 /build
+/buildconfig.mk
 *.DS_Store
 *.img
 *.tmp

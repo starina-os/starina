@@ -1,6 +1,5 @@
-# ARCH=riscv64 MACHINE=qemu-virt
-# ARCH=arm64   MACHINE=qemu-virt
-# ARCH=x64     MACHINE=pc
+include buildconfig.mk
+
 ARCH    ?= arm64
 MACHINE ?= qemu-virt
 
@@ -134,7 +133,7 @@ disk.img:
 	$(PROGRESS) "GEN" "$(@)"
 	dd if=/dev/zero of=$(@) bs=1M count=8
 
-starina.elf: $(kernel_sources) $(app_elfs) Makefile Makefile
+starina.elf: $(kernel_sources) $(app_elfs) Makefile buildconfig.mk
 	$(PROGRESS) "CARGO" "boot/$(ARCH)"
 	RUSTFLAGS="$(RUSTFLAGS)" \
 	CARGO_TARGET_DIR="$(BUILD_DIR)/cargo" \
@@ -154,7 +153,7 @@ starina.pe: starina.elf
 #       a change in compiler flags. Indeed it is, but it doesn't affect the output binary.
 #
 #       I'll file an issue on rust-lang/rust to hear  community's opinion.
-$(BUILD_DIR)/%.elf: $(app_sources) Makefile
+$(BUILD_DIR)/%.elf: $(app_sources) Makefile buildconfig.mk
 	$(PROGRESS) "CARGO" "$(@)"
 	mkdir -p $(@D)
 	RUSTFLAGS="$(RUSTFLAGS)" \
