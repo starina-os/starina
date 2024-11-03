@@ -1,5 +1,6 @@
 /target
 /build
+*.DS_Store
 *.img
 *.tmp
 *.log
