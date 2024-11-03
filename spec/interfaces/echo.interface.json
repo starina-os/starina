@@ -1,0 +1,46 @@
+{
+  "name": "echo",
+  "kind": "interface/v0",
+  "spec": {
+    "messages": [
+      {
+        "name": "ping",
+        "context": "control",
+        "type": "call",
+        "params": [
+          {
+            "name": "value",
+            "type": "int32",
+            "help": "The value to return"
+          }
+        ],
+        "returns": [
+          {
+            "name": "value",
+            "type": "int32",
+            "help": "The value returned"
+          }
+        ]
+      },
+      {
+        "name": "please_fail",
+        "context": "control",
+        "type": "call",
+        "params": [],
+        "returns": []
+      },
+      {
+        "name": "oh_snap_error",
+        "type": "error",
+        "params": [
+          {
+            "name": "message",
+            "type": "string",
+            "capacity": 32,
+            "help": "The error message"
+          }
+        ]
+      }
+    ]
+  }
+}

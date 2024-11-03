@@ -193,7 +193,7 @@ fn do_generate(for_kernel: bool) -> Result<()> {
         let dentry = dentry.unwrap();
         let spec_file = File::open(dentry.path())
             .with_context(|| format!("failed to open spec file {}", dentry.path().display()))?;
-        let spec: SpecFile = serde_yaml::from_reader(spec_file)
+        let spec: SpecFile = serde_json::from_reader(spec_file)
             .with_context(|| format!("failed to parse spec file {}", dentry.path().display()))?;
 
         let interface_spec = match spec.spec {

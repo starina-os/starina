@@ -1,0 +1,51 @@
+{
+  "name": "ethernet_device",
+  "kind": "interface/v0",
+  "spec": {
+    "messages": [
+      {
+        "name": "read_hwaddr",
+        "context": "control",
+        "type": "call",
+        "origin": "client",
+        "params": [],
+        "returns": [
+          {
+            "name": "hwaddr",
+            "type": "bytes",
+            "capacity": 8,
+            "help": "The hardware address"
+          }
+        ]
+      },
+      {
+        "name": "tx",
+        "context": "control",
+        "type": "push",
+        "origin": "client",
+        "params": [
+          {
+            "name": "payload",
+            "type": "bytes",
+            "capacity": 2048,
+            "help": "The data to transmit"
+          }
+        ]
+      },
+      {
+        "name": "rx",
+        "context": "control",
+        "type": "push",
+        "origin": "server",
+        "params": [
+          {
+            "name": "payload",
+            "type": "bytes",
+            "capacity": 2048,
+            "help": "The frame received"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,77 @@
+{
+  "name": "tcpip",
+  "kind": "interface/v0",
+  "spec": {
+    "messages": [
+      {
+        "name": "tcp_listen",
+        "type": "call",
+        "context": "control",
+        "params": [
+          {
+            "name": "port",
+            "type": "uint16",
+            "help": "The port to listen on"
+          }
+        ],
+        "returns": [
+          {
+            "name": "listen",
+            "type": "channel",
+            "context": "listen",
+            "help": "The channel to receive new connection channels"
+          }
+        ]
+      },
+      {
+        "name": "tcp_accepted",
+        "type": "push",
+        "origin": "server",
+        "context": "listen",
+        "params": [
+          {
+            "name": "conn",
+            "type": "channel",
+            "context": "connection",
+            "help": "The new connection channel"
+          }
+        ]
+      },
+      {
+        "name": "tcp_send",
+        "type": "push",
+        "origin": "client",
+        "context": "connection",
+        "params": [
+          {
+            "name": "data",
+            "type": "bytes",
+            "capacity": 2048,
+            "help": "The data to send"
+          }
+        ]
+      },
+      {
+        "name": "tcp_closed",
+        "type": "push",
+        "origin": "server",
+        "context": "connection",
+        "params": []
+      },
+      {
+        "name": "tcp_received",
+        "type": "push",
+        "origin": "server",
+        "context": "connection",
+        "params": [
+          {
+            "name": "data",
+            "type": "bytes",
+            "capacity": 2048,
+            "help": "The data received"
+          }
+        ]
+      }
+    ]
+  }
+}
