@@ -4,6 +4,10 @@
 starina_api::autogen!();
 
 use device::NetDevice;
+use smoltcp::iface::SocketHandle;
+use smoltcp::wire::EthernetAddress;
+use smoltcp::wire::HardwareAddress;
+use smoltcp::wire::IpListenEndpoint;
 use starina_api::channel::Channel;
 use starina_api::environ::Environ;
 use starina_api::mainloop::Event;
@@ -16,10 +20,6 @@ use starina_autogen::idl::tcpip::TcpClosed;
 use starina_autogen::idl::tcpip::TcpListenReply;
 use starina_autogen::idl::tcpip::TcpReceived;
 use starina_autogen::idl::Message;
-use smoltcp::iface::SocketHandle;
-use smoltcp::wire::EthernetAddress;
-use smoltcp::wire::HardwareAddress;
-use smoltcp::wire::IpListenEndpoint;
 use tcpip::SocketEvent;
 use tcpip::TcpIp;
 

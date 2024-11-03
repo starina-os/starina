@@ -5,6 +5,7 @@ use alloc::vec::Vec;
 include!(concat!(env!("OUT_DIR"), "/autogen.rs"));
 include!(concat!(env!("OUT_DIR"), "/startup_defs.rs"));
 
+use hashbrown::HashMap;
 use starina_autogen::idl::startup::NewClient;
 use starina_elf::Elf;
 use starina_elf::PhdrType;
@@ -24,7 +25,6 @@ use starina_types::syscall::VsyscallPage;
 use starina_types::vmspace::PageProtect;
 use starina_utils::alignment::align_down;
 use starina_utils::alignment::align_up;
-use hashbrown::HashMap;
 
 use crate::arch;
 use crate::arch::paddr2vaddr;

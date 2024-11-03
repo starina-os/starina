@@ -1,7 +1,3 @@
-use starina_api::channel::ChannelSender;
-use starina_api::collections::HashMap;
-use starina_api::prelude::*;
-use starina_api::types::error::FtlError;
 use smoltcp::iface::Config;
 use smoltcp::iface::Interface;
 use smoltcp::iface::SocketHandle;
@@ -12,6 +8,10 @@ use smoltcp::wire::HardwareAddress;
 use smoltcp::wire::IpAddress;
 use smoltcp::wire::IpCidr;
 use smoltcp::wire::IpListenEndpoint;
+use starina_api::channel::ChannelSender;
+use starina_api::collections::HashMap;
+use starina_api::prelude::*;
+use starina_api::types::error::FtlError;
 
 use crate::device::NetDevice;
 

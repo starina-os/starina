@@ -1,8 +1,8 @@
+use smoltcp::phy::DeviceCapabilities;
+use smoltcp::time::Instant;
 use starina_api::collections::vec_deque::VecDeque;
 use starina_api::prelude::vec::Vec;
 use starina_api::prelude::*;
-use smoltcp::phy::DeviceCapabilities;
-use smoltcp::time::Instant;
 
 /// Represents a right to receive a RX packet.
 pub struct RxTokenImpl(Vec<u8>);

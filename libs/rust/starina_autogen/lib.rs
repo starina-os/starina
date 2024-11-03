@@ -7,15 +7,15 @@ use std::path::PathBuf;
 
 use anyhow::Context;
 use anyhow::Result;
+use minijinja::context;
+use minijinja::Environment;
+use serde::Serialize;
 use starina_types::spec::InterfaceSpec;
 use starina_types::spec::MessageField;
 use starina_types::spec::MessageFieldType;
 use starina_types::spec::MessageType;
 use starina_types::spec::Spec;
 use starina_types::spec::SpecFile;
-use minijinja::context;
-use minijinja::Environment;
-use serde::Serialize;
 
 #[derive(Debug, Serialize, Clone)]
 struct JinjaField {
@@ -49,8 +49,12 @@ fn resolve_type(ty: &MessageFieldType) -> String {
         MessageFieldType::Int16 => "i16".to_string(),
         MessageFieldType::Int32 => "i32".to_string(),
         MessageFieldType::Channel => "starina_types::idl::HandleField".to_string(),
-        MessageFieldType::Bytes { capacity } => format!("starina_types::idl::BytesField<{capacity}>"),
-        MessageFieldType::String { capacity } => format!("starina_types::idl::StringField<{capacity}>"),
+        MessageFieldType::Bytes { capacity } => {
+            format!("starina_types::idl::BytesField<{capacity}>")
+        }
+        MessageFieldType::String { capacity } => {
+            format!("starina_types::idl::StringField<{capacity}>")
+        }
     }
 }
 

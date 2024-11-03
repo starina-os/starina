@@ -1,12 +1,12 @@
 //! The mainloop for applications.
 use core::marker::PhantomData;
 
+use hashbrown::HashMap;
 use starina_types::error::FtlError;
 use starina_types::handle::HandleId;
 use starina_types::message::MessageBuffer;
 use starina_types::message::MessageDeserialize;
 use starina_types::poll::PollEvent;
-use hashbrown::HashMap;
 
 use crate::channel::Channel;
 use crate::channel::ChannelReceiver;

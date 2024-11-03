@@ -2,11 +2,11 @@
 use core::fmt;
 use core::ops::Deref;
 
+use hashbrown::HashMap;
 use starina_types::error::FtlError;
 use starina_types::handle::HandleId;
 use starina_types::handle::HandleRights;
 use starina_types::handle::HANDLE_ID_MASK;
-use hashbrown::HashMap;
 
 use crate::channel::Channel;
 use crate::folio::Folio;

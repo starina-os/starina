@@ -4,11 +4,11 @@ use std::path::Path;
 use std::path::PathBuf;
 
 use anyhow::Context;
+use minijinja::context;
+use minijinja::Environment;
 use starina_types::spec::AppSpec;
 use starina_types::spec::Spec;
 use starina_types::spec::SpecFile;
-use minijinja::context;
-use minijinja::Environment;
 
 const STARTUP_DEFS_TEMPLATE: &str = r#"
     #[allow(unused_macros)]
