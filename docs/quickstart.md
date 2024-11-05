@@ -9,7 +9,7 @@ In this guide, we'll prepare a development environment and write a Hello World a
 The first step is to download the repository to your local machine. Just clone it from GitHub:
 
 ```
-git clone TODO
+git clone https://github.com/starina-os/starina
 ```
 
 ## Install prerequisites
