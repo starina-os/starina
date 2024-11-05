@@ -2,6 +2,12 @@
 
 Starina ("star" + "-ina", inspired by [stellina](https://en.wiktionary.org/wiki/stellina)) is a new general-purpose operating system based on a microkernel architecture. It is designed to provide the best developer experience, enabling even kernel newbies to easily understand and enjoy developing an OS.
 
+## Website is running on Starina!
+
+Visit **[starina.dev](https://starina.dev)** to experience the very first (trivial) production use of Starina, on Linux/QEMU hypervisor on Raspberry Pi imitating a KVM-based cloud environment.
+
+Your every single request boots a new Starina VM instantly.
+
 ## Why Starina?
 
 "What if we try building a microkernel-based general-purpose OS with 21st-century technologies?" This is the question we are trying to answer. There are many microkernel projects out there; however, they often aim to be hobby or research projects or are designed for embedded systems.
