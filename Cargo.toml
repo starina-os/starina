@@ -8,28 +8,26 @@ authors = ["Seiya Nuta <nuta@seiya.me>"]
 edition = "2021"
 
 [workspace.dependencies]
-arrayvec = { version = "0.7.4", default-features = false }
-hashbrown = "0.14.5"
-spin = "0.9.8"
-linked_list_allocator = "0.10.5"
-serde = { version = "1.0.203", default-features = false }
-serde_json = { version = "1.0.117", default-features = false, features = [
-    "alloc",
-] }
-fdt-rs = { version = "0.4.5", default-features = false }
-smoltcp = { version = "0.11.0", default-features = false }
-httparse = { version = "1.9.4", default-features = false }
+arrayvec = { version = "0", default-features = false }
+hashbrown = "0"
+spin = "0"
+linked_list_allocator = "0"
+serde = { version = "1", default-features = false }
+serde_json = { version = "1", default-features = false, features = ["alloc"] }
+fdt-rs = { version = "0", default-features = false }
+smoltcp = { version = "0", default-features = false }
+httparse = { version = "1", default-features = false }
 
-anyhow = "1.0.86"
-quote = "1.0.36"
-syn = "2.0.66"
-proc-macro2 = "1.0.85"
-proc-macro-error = "1.0.4"
-clap = "4.5.7"
-minijinja = "2.0.2"
-bytes = "1.6.0"
-tempfile = "3.10.1"
-walkdir = "2.5.0"
+anyhow = "1"
+quote = "1"
+syn = "2"
+proc-macro2 = "1"
+proc-macro-error = "1"
+clap = "4"
+minijinja = "2"
+bytes = "1"
+tempfile = "3"
+walkdir = "2"
 
 starina_kernel = { path = "kernel" }
 starina_types = { path = "libs/rust/starina_types" }
