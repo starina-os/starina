@@ -1,18 +1,18 @@
 # Starina
 
-Starina ("star" + "-ina", inspired by [stellina](https://en.wiktionary.org/wiki/stellina)) is a new general-purpose operating system based on a microkernel architecture. It is designed to provide the best developer experience, enabling even kernel newbies to easily understand and enjoy developing an operating system.
+Starina ("star" + "-ina", inspired by [stellina](https://en.wiktionary.org/wiki/stellina)) is a new general-purpose operating system based on a microkernel architecture. It is designed to provide the best developer experience, enabling even kernel newbies to easily understand and enjoy developing an OS.
 
 ## Why Starina?
 
-"What if we try building a microkernel-based general-purpose operating system with 21st-century technologies?" This is the question we are trying to answer. There are already many microkernel projects out there; however, they often aim to be hobby or research projects or are designed for embedded systems.
+"What if we try building a microkernel-based general-purpose OS with 21st-century technologies?" This is the question we are trying to answer. There are many microkernel projects out there; however, they often aim to be hobby or research projects or are designed for embedded systems.
 
-Microkernels have been considered impractical due to IPC overhead, but hardware and software have evolved significantly since the 1990s. Isn't it time to revisit the microkernel architecture? Let's use modern technologies and see how far we can go!
+Microkernels have been considered impractical in the general-purpose OS world due to IPC overhead, but hardware and software have evolved significantly since the 1990s. Isn't it time to revisit the microkernel architecture? Let's see how far we can go with ideas we have today!
 
 Starina aims to be:
 
 - **Simple:** Easy to understand and develop, even for non-experts.
 - **Practical:** Aiming to be a general-purpose operating system, not just a hobby or research project.
-- **Performant:** Not sticking rigidly to a beautiful design; compromising for performance when necessary.
+- **Performant:** Not sticking rigidly to a beautiful design; compromising for performance when necessary (without sacrificing microkernel principles of course).
 
 ## Design Principles
 
@@ -22,6 +22,10 @@ To achieve this goal, we have the following design principles:
 - Don't try to achieve the perfect design from the beginning. Imagine how the userspace should look first, not vice versa - the microkernel is just a runtime for applications.
 - The traditional "user-mode" concept is just one of many ways to isolate OS components. Implement faster alternatives like language-based isolation (e.g., Rust/WebAssembly) and Intel/Arm-specific mechanisms (e.g., Intel PKS) for better performance.
 - Implement in [Rust](https://www.rust-lang.org/) with async APIs, without using async Rust (`async fn`). Every component has a simple main loop to make the execution flow clear.
+
+## Is Linux or POSIX compatible?
+
+No. Starina provides completely original APIs and fresh new development experiences. However, to make it easier to adapt to Starina, I plan to implement seamless Linux environment based on real Linux microVM + lightweight integration layer (akin to [LWK](https://en.wikipedia.org/wiki/Lightweight_kernel_operating_system)).
 
 ## Features
 
