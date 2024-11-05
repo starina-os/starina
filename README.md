@@ -23,9 +23,9 @@ To achieve this goal, we have the following design principles:
 - The traditional "user-mode" concept is just one of many ways to isolate OS components. Implement faster alternatives like language-based isolation (e.g., Rust/WebAssembly) and Intel/Arm-specific mechanisms (e.g., Intel PKS) for better performance.
 - Implement in [Rust](https://www.rust-lang.org/) with async APIs, without using async Rust (`async fn`). Every component has a simple main loop to make the execution flow clear.
 
-## Is Linux or POSIX compatible?
+## Is it Linux or POSIX compatible?
 
-No. Starina provides completely original APIs and fresh new development experiences. However, to make it easier to adapt to Starina, I plan to implement seamless Linux environment based on real Linux microVM + lightweight integration layer (akin to [LWK](https://en.wikipedia.org/wiki/Lightweight_kernel_operating_system)).
+No. Starina provides completely original APIs and fresh new development experiences. However, to make it easier to adapt to Starina, I plan to implement seamless Linux environment based on real Linux microVM + lightweight integration layer (akin to [LWK](https://en.wikipedia.org/wiki/Lightweight_kernel_operating_system) in [supercomputing](https://link.springer.com/book/10.1007/978-981-13-6624-6)).
 
 ## Features
 
