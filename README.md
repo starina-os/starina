@@ -26,7 +26,7 @@ To achieve this goal, we have the following design principles:
 
 - Aim to be easy to develop, not to achieve a correct and elegant architecture. Make OS development approachable and fun for everyone.
 - Don't try to achieve the perfect design from the beginning. Imagine how the userspace should look first, not vice versa - the microkernel is just a runtime for applications.
-- The traditional "user-mode" concept is just one of many ways to isolate OS components. Implement faster alternatives like language-based isolation (e.g., Rust/WebAssembly) and Intel/Arm-specific mechanisms (e.g., Intel PKS) for better performance.
+- The traditional "user-mode" concept is just one of many ways to isolate OS components. Implement faster alternatives like language-based isolation (Rust), software-based isolation (WebAssembly), and novel hardware mechanisms (Intel PKS) for better performance.
 - Implement in [Rust](https://www.rust-lang.org/) with async APIs, without using async Rust (`async fn`). Every component has a simple main loop to make the execution flow clear.
 
 ## Is it Linux or POSIX compatible?
