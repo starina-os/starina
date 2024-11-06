@@ -78,7 +78,8 @@ jobs:
       run: npm install -g vercel
 
     - name: Deploy to Vercel
-      run: vercel --prod docs -t "$VERCEL_TOKEN"
+      run: vercel --prod . -t "$VERCEL_TOKEN"
+      working-directory: docs
       env:
         VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
