@@ -20,7 +20,7 @@ fn do_handle_request(req: Request, tcp_sender: &ChannelSender) {
     };
 
     let headers = format!(
-        "HTTP/1.1 {}\r\nContent-Type: text/html\r\nServer: Starina\r\nContent-Length: {}\r\n\r\n",
+        "HTTP/1.1 {}\r\nContent-Type: text/html\r\nX-Powered-by: Starina\r\nContent-Length: {}\r\n\r\n",
         status,
         body.len()
     );
