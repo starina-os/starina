@@ -5,7 +5,8 @@ Documentation is built with [VitePress](https://vitepress.dev/).
 ## How to preview the website locally
 
 ```
-npx vitepress dev
+npm install
+./node_modules/.bin/vitepress dev
 ```
 
 ## Directory structure

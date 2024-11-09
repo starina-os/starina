@@ -53,8 +53,7 @@ jobs:
         key: ${{ runner.os }}-build-${{ hashFiles('**/*.rs', '**/Cargo.toml', '**/Cargo.lock', 'Makefile') }}
 
     - name: Build docs
-      run: npx vitepress build
-      working-directory: docs
+      run: make docs
 
     - uses: actions/upload-artifact@v4
       with:

@@ -12,7 +12,7 @@ export default defineConfig({
 
         sidebar: [
             { text: 'Quickstart', link: '/quickstart' },
-            // { text: 'Rust API Reference', link: '/rust', target: '_blank' },
+            { text: 'Rust API Reference', link: '/rust', target: '_blank' },
             {
                 text: 'Guides',
                 items: [

@@ -114,7 +114,7 @@ docs:
 	rm -rf $(BUILD_DIR)/docs
 	mkdir -p $(BUILD_DIR)/docs
 	$(PROGRESS) "DOCSHIP" "docs"
-	docship --indir docs --outdir $(BUILD_DIR)/docs
+	cd docs && ./node_modules/.bin/vitepress build && cp -r .vitepress/dist/* $(BUILD_DIR)/docs
 	$(MAKE) rustdoc
 	mv $(BUILD_DIR)/cargo/doc $(BUILD_DIR)/docs/rust
 
