@@ -31,8 +31,8 @@ jobs:
 
     - name: Set up pnpm
       uses: pnpm/action-setup@v4
-        with:
-          version: 9
+      with:
+        version: 9
 
     - name: Set up Rust
       run: |
