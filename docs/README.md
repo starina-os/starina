@@ -1,17 +1,18 @@
----
-title: Starina Documentation
----
+# Starina Documentation
 
-## Quickstart
+Documentation is built with [VitePress](https://vitepress.dev/).
 
-- [Quickstart](quickstart)
+## How to preview the website locally
 
-## API Reference
+```
+npm install
+./node_modules/.bin/vitepress dev
+```
 
-- [Rust API Reference](rust/starina_api/)
+## Directory structure
 
-## Guides
+See [VitePress documentation](https://vitepress.dev/guide/routing).
 
-- [writing-your-first-application](guides/writing-your-first-application)
-- [writing-your-first-device-driver](guides/your-first-device-driver)
-- [writing-your-first-server](guides/writing-your-first-server)
+## Markdown syntax
+
+Documentation is written in GitHub Flavored Markdown, with some VitePress-specific features. See [VitePress documentation](https://vitepress.dev/guide/markdown).

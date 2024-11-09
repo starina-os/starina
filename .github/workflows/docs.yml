@@ -29,6 +29,11 @@ jobs:
       with:
         node-version: 22
 
+    - name: Set up pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 9
+
     - name: Set up Rust
       run: |
         rustup toolchain install nightly
@@ -52,10 +57,11 @@ jobs:
         path: build
         key: ${{ runner.os }}-build-${{ hashFiles('**/*.rs', '**/Cargo.toml', '**/Cargo.lock', 'Makefile') }}
 
-    - name: Install Docship
-      run: npm install -g docship
+    - name: Install VitePress
+      run: pnpm install
+      working-directory: docs
 
-    - name: Build
+    - name: Build docs
       run: make docs
 
     - uses: actions/upload-artifact@v4

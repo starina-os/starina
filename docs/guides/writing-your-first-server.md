@@ -1,6 +1,5 @@
----
-title: Writing Your First Server
----
+# Writing Your First Server
+
 
 ## Scaffolding
 
