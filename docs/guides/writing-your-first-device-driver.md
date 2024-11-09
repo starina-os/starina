@@ -1,6 +1,4 @@
----
-title: Writing Your First Device Driver
----
+# Writing Your First Device Driver
 
 ## Scaffolding
 

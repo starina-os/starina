@@ -1,6 +1,4 @@
----
-title: Quickstart
----
+# Quickstart
 
 In this guide, we'll prepare a development environment and write a Hello World application.
 
