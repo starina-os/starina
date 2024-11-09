@@ -52,6 +52,10 @@ jobs:
         path: build
         key: ${{ runner.os }}-build-${{ hashFiles('**/*.rs', '**/Cargo.toml', '**/Cargo.lock', 'Makefile') }}
 
+    - name: Install VitePress
+      run: pnpm install
+      working-directory: docs
+
     - name: Build docs
       run: make docs
 
