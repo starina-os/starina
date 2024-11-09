@@ -52,11 +52,9 @@ jobs:
         path: build
         key: ${{ runner.os }}-build-${{ hashFiles('**/*.rs', '**/Cargo.toml', '**/Cargo.lock', 'Makefile') }}
 
-    - name: Install Docship
-      run: npm install -g docship
-
-    - name: Build
-      run: make docs
+    - name: Build docs
+      run: npx vitepress build
+      working-directory: docs
 
     - uses: actions/upload-artifact@v4
       with:
