@@ -95,7 +95,7 @@ fn scaffold_app(name: &str) -> Result<()> {
         .with_context(|| "failed to open buildconfig.mk")?;
 
     writeln!(buildconfig_file, "\n# Added by scaffold\n")?;
-    writeln!(buildconfig_file, "APPS += {}", app_dir)?;
+    writeln!(buildconfig_file, "APPS += {}", app_dir.display())?;
 
     Ok(())
 }
