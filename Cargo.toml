@@ -28,6 +28,7 @@ minijinja = "2"
 bytes = "1"
 tempfile = "3"
 walkdir = "2"
+regex = "1"
 
 starina_kernel = { path = "kernel" }
 starina_types = { path = "libs/rust/starina_types" }

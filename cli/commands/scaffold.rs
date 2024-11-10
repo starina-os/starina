@@ -7,6 +7,7 @@ use anyhow::Context;
 use anyhow::Result;
 use clap::Parser;
 use clap::Subcommand;
+use regex::Regex;
 use starina_types::spec::AppSpec;
 use starina_types::spec::Spec;
 use starina_types::spec::SpecFile;
@@ -35,6 +36,13 @@ const APP_FILES: &[(&str, &str)] = &[
 ];
 
 fn scaffold_app(name: &str) -> Result<()> {
+    if !Regex::new("^[a-z_][a-z0-9_]*$")?.is_match(name) {
+        bail!(
+            "invalid app name: \"{}\" (must match /^[a-z_][a-z0-9_]*$/)",
+            name
+        );
+    }
+
     let apps_dir = Path::new("apps");
     if !apps_dir.exists() {
         bail!(
@@ -44,6 +52,8 @@ fn scaffold_app(name: &str) -> Result<()> {
     }
 
     let app_dir = apps_dir.join(name);
+    fs::create_dir_all(&app_dir)
+        .with_context(|| format!("failed to mkdir: {}", app_dir.display()))?;
 
     for (dest, template) in APP_FILES {
         let dest_path = app_dir.join(dest);
