@@ -1,0 +1,12 @@
+[package]
+name = "starina-cli"
+version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
+
+[[bin]]
+name = "sx"
+path = "main.rs"
+
+[dependencies]
+clap = { workspace = true, features = ["derive"] }
