@@ -2,12 +2,12 @@
 title: Starina Documentation
 ---
 
-## Quickstart
+## Getting Started
 
 - [Quickstart](quickstart)
 
 ## Guides
 
-- [writing-your-first-application](guides/writing-your-first-application)
-- [writing-your-first-device-driver](guides/writing-your-first-device-driver)
-- [writing-your-first-server](guides/writing-your-first-server)
+- [Writing Your First Application](guides/writing-your-first-application)
+- [Writing Your First Device Driver](guides/writing-your-first-device-driver)
+- [Writing Your First Server](guides/writing-your-first-server)
