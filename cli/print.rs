@@ -6,3 +6,9 @@ macro_rules! error {
         eprintln!("{}error: {}{}", $crate::print::RED, format_args!($($arg)*), $crate::print::RESET);
     }
 }
+
+macro_rules! progress {
+    ($name:expr, $target:expr) => {{
+        println!("{}\t{}", $name, $target)
+    }};
+}

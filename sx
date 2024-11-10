@@ -11,69 +11,7 @@ import json
 import re
 from pathlib import Path
 
-BUILD_CONFIG_MK = Path("buildconfig.mk")
-DEFAULT_BUILDCONFIG_MK = """
-#
-#  Build configuration for make command.
-#
 
-# CPU architecture and machine type:
-#
-#   ARCH=riscv64 MACHINE=qemu-virt
-#   ARCH=arm64   MACHINE=qemu-virt
-#   ARCH=x64     MACHINE=pc
-#
-ARCH=riscv64
-MACHINE=qemu-virt
-
-# Apps to build.
-APPS = apps/echo apps/tcpip apps/virtio_net apps/http_server
-
-# Apps to be automatically started by the kernel.
-STARTUP_APPS = $(APPS)
-
-# 1 to enable release build.
-RELEASE =
-"""
-
-CARGO_TOML = """\
-[package]
-name = "<NAME>"
-version = { workspace = true }
-authors = { workspace = true }
-edition = { workspace = true }
-
-[[bin]]
-name = "<NAME>"
-path = "main.rs"
-
-[dependencies]
-starina_api = { workspace = true }
-
-[build-dependencies]
-starina_autogen = { workspace = true }
-"""
-
-MAIN_RS = """\
-#![no_std]
-#![no_main]
-
-use starina_api::environ::Environ;
-use starina_api::prelude::*;
-
-starina_api::autogen!();
-
-#[no_mangle]
-pub fn main(mut env: Environ) {
-    info!("Hello World!");
-}
-"""
-
-BUILD_RS = """\
-fn main() {
-    starina_autogen::generate_for_app().expect("autogen failed");
-}
-"""
 
 def info(msg):
     print("\x1b[32msx: " + msg + "\x1b[0m")
