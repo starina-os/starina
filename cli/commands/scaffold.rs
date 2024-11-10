@@ -23,6 +23,7 @@ pub struct Args {
 
 #[derive(Subcommand, Debug)]
 enum Scaffold {
+    /// Scaffold a new app.
     App { name: String },
 }
 

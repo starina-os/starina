@@ -7,8 +7,11 @@ mod scaffold;
 
 #[derive(Subcommand, Debug)]
 pub enum Command {
+    /// Build the OS.
     Build(build::Args),
+    /// Build and run the OS.
     Run(run::Args),
+    /// Generate boilterplates.
     Scaffold(scaffold::Args),
 }
 
