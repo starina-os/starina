@@ -1,4 +1,5 @@
 use std::fs;
+use std::fs::OpenOptions;
 use std::path::Path;
 
 use anyhow::bail;
@@ -6,6 +7,9 @@ use anyhow::Context;
 use anyhow::Result;
 use clap::Parser;
 use clap::Subcommand;
+use starina_types::spec::AppSpec;
+use starina_types::spec::Spec;
+use starina_types::spec::SpecFile;
 
 #[derive(Parser, Debug)]
 pub struct Args {
@@ -29,6 +33,7 @@ const APP_FILES: &[(&str, &str)] = &[
         include_str!("../templates/scaffold_app/Cargo.toml"),
     ),
 ];
+
 fn scaffold_app(name: &str) -> Result<()> {
     let apps_dir = Path::new("apps");
     if !apps_dir.exists() {
@@ -49,6 +54,24 @@ fn scaffold_app(name: &str) -> Result<()> {
         fs::write(&dest_path, contents)
             .with_context(|| format!("failed to write to {}", dest_path.display()))?;
     }
+
+    let app_spec_path = app_dir.join("app.spec.json");
+    let app_spec_file = OpenOptions::new()
+        .create_new(true)
+        .write(true)
+        .open(&app_spec_path)
+        .with_context(|| format!("failed to open file: {}", app_spec_path.display()))?;
+    serde_json::to_writer(
+        app_spec_file,
+        &SpecFile {
+            name: name.to_string(),
+            spec: Spec::App(AppSpec {
+                depends: vec![],
+                provides: vec![],
+            }),
+        },
+    )
+    .with_context(|| format!("failed to generate: {}", app_spec_path.display()))?;
 
     Ok(())
 }

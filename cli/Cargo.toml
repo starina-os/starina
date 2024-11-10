@@ -11,3 +11,5 @@ path = "main.rs"
 [dependencies]
 anyhow = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
+starina_types = { workspace = true }
+serde_json = { workspace = true }
