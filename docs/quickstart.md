@@ -44,6 +44,23 @@ rustup target add riscv64gc-unknown-none-elf
 rustup component add rust-src llvm-tools
 ```
 
+## Install CLI developer command (`sx`)
+
+Starina provides a CLI developer command to streamline the development process called `sx`, like `rails` for Ruby on Rails, or `cargo` for Rust.
+
+Enter the Starina repository and install the CLI developer command:
+
+```
+cd starina
+cargo install --path cli
+```
+
+Now you can use the `sx` command to interact with the Starina project:
+
+```
+sx --help
+```
+
 ## Run on QEMU
 
 To run Starina on QEMU, just type `./sx run`:

@@ -18,10 +18,10 @@ fn look_for_cli_dir() -> Option<PathBuf> {
     let mut dir = std::env::current_dir().unwrap();
     loop {
         let cargo_toml_path = dir.join("cli").join("Cargo.toml");
-        let cargo_toml = std::fs::read_to_string(cargo_toml_path);
+        let cargo_toml = std::fs::read_to_string(&cargo_toml_path);
         if let Ok(cargo_toml) = cargo_toml {
             if cargo_toml.contains("name = \"starina-cli\"") {
-                return Some(dir.join("cli"));
+                return Some(cargo_toml_path);
             }
         }
 
@@ -36,7 +36,7 @@ fn main() {
     if exe == "sx" {
         // Try to build and run the local CLI.
         if let Some(cargo_toml_path) = look_for_cli_dir() {
-            println!("Running the local CLI at {} ...", cargo_toml_path.display());
+            println!("Running the local CLI at: {}", cargo_toml_path.display());
             let err = Command::new("cargo")
                 .args(["run", "--bin", "sx", "--manifest-path"])
                 .arg(cargo_toml_path)

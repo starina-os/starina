@@ -7,6 +7,6 @@ use clap::Parser;
 pub struct Args {}
 
 pub fn main(args: Args) {
-    let err = Command::new("make").args(["build"]).exec();
+    let err = Command::new("make").args(["run"]).exec();
     panic!("failed to exec make: {}", err);
 }
