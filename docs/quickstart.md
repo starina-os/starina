@@ -61,6 +61,12 @@ Now you can use the `sx` command to interact with the Starina project:
 sx --help
 ```
 
+> [!TIP]
+>
+> **Why is the command named `sx`?**
+>
+> Because it's very easy to type on a QWERTY keyboard.
+
 ## Run on QEMU
 
 To run Starina on QEMU, just type `./sx run`:

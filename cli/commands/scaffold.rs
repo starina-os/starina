@@ -1,6 +1,9 @@
+use anyhow::Result;
 use clap::Parser;
 
 #[derive(Parser, Debug)]
 pub struct Args {}
 
-pub fn main(args: Args) {}
+pub fn main(args: Args) -> Result<()> {
+    Ok(())
+}

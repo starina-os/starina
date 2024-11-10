@@ -5,6 +5,7 @@ use std::process::Command;
 use clap::Parser;
 
 mod commands;
+mod make;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]

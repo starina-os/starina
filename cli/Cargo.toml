@@ -9,4 +9,6 @@ name = "sx"
 path = "main.rs"
 
 [dependencies]
+anyhow = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
+crossterm = { workspace = true }

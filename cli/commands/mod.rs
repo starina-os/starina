@@ -1,3 +1,4 @@
+use anyhow::Result;
 use clap::Subcommand;
 
 mod build;
@@ -11,7 +12,7 @@ pub enum Command {
     Scaffold(scaffold::Args),
 }
 
-pub fn run_command(command: Command) {
+pub fn run_command(command: Command) -> Result<()> {
     match command {
         Command::Build(args) => build::main(args),
         Command::Run(args) => run::main(args),

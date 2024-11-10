@@ -1,12 +1,12 @@
-use std::os::unix::process::CommandExt;
-use std::process::Command;
-
+use anyhow::Result;
 use clap::Parser;
+
+use crate::make::run_make;
 
 #[derive(Parser, Debug)]
 pub struct Args {}
 
-pub fn main(args: Args) {
-    let err = Command::new("make").args(["build"]).exec();
-    panic!("failed to exec make: {}", err);
+pub fn main(_args: Args) -> Result<()> {
+    run_make("run")?;
+    Ok(())
 }
