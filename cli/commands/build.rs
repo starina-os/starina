@@ -7,6 +7,6 @@ use crate::make::run_make;
 pub struct Args {}
 
 pub fn main(_args: Args) -> Result<()> {
-    run_make("build")?;
+    run_make("starina.elf")?;
     Ok(())
 }
