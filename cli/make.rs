@@ -41,7 +41,7 @@ fn ensure_buildconfig() -> Result<()> {
 }
 
 pub fn run_make(cmd: &str) -> Result<()> {
-    move_to_project_dir();
+    move_to_project_dir()?;
     ensure_buildconfig()?;
     let err = Command::new("make").arg(cmd).exec();
     panic!("failed to exec make: {}", err);
