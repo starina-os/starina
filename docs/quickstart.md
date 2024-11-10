@@ -69,10 +69,10 @@ sx --help
 
 ## Run on QEMU
 
-To run Starina on QEMU, just type `./sx run`:
+To run Starina on QEMU, just type `sx run`:
 
 ```
-$ ./sx run
+$ sx run
 [kernel      ] INFO   Starina - Faster Than "L"
 [kernel      ] DEBUG  free memory: 0x0000000082942000 - 0x0000000086942000 (64 MiB)
 [kernel      ] TRACE  PLIC: paddr=0xc000000

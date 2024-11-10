@@ -1,5 +1,6 @@
 use std::fs;
 use std::fs::OpenOptions;
+use std::io::Write;
 use std::path::Path;
 
 use anyhow::bail;
@@ -11,6 +12,8 @@ use regex::Regex;
 use starina_types::spec::AppSpec;
 use starina_types::spec::Spec;
 use starina_types::spec::SpecFile;
+
+use crate::make::ensure_buildconfig;
 
 #[derive(Parser, Debug)]
 pub struct Args {
@@ -66,6 +69,7 @@ fn scaffold_app(name: &str) -> Result<()> {
     }
 
     let app_spec_path = app_dir.join("app.spec.json");
+    progress!("GEN", app_spec_path.display());
     let app_spec_file = OpenOptions::new()
         .create_new(true)
         .write(true)
@@ -82,6 +86,16 @@ fn scaffold_app(name: &str) -> Result<()> {
         },
     )
     .with_context(|| format!("failed to generate: {}", app_spec_path.display()))?;
+
+    ensure_buildconfig()?;
+    progress!("UPDATE", "buildconfig.mk");
+    let mut buildconfig_file = OpenOptions::new()
+        .append(true)
+        .open("buildconfig.mk")
+        .with_context(|| "failed to open buildconfig.mk")?;
+
+    writeln!(buildconfig_file, "\n# Added by scaffold\n")?;
+    writeln!(buildconfig_file, "APPS += {}", app_dir)?;
 
     Ok(())
 }

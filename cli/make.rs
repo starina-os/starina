@@ -6,7 +6,7 @@ use std::process::Command;
 use anyhow::Context;
 use anyhow::Result;
 
-fn ensure_buildconfig() -> Result<()> {
+pub fn ensure_buildconfig() -> Result<()> {
     let buildconfig_path = Path::new("buildconfig.mk");
     if !buildconfig_path.exists() {
         fs::write(

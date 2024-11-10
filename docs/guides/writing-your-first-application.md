@@ -4,10 +4,10 @@ Let's write a simple Hello World application. In this section, we'll create a si
 
 ## Scaffolding
 
-The first step is to generate a template for your application. Starina provides `sx scaffold` to do that. Just run it with the `--type app <NAME>` option:
+The first step is to generate a template for your application. Starina provides `sx scaffold` to do that:
 
 ```
-$ ./sx scaffold --type app demo
+$ sx scaffold app demo
   GEN apps/demo/Cargo.toml
   GEN apps/demo/build.rs
   GEN apps/demo/main.rs
@@ -31,10 +31,10 @@ Now you have a new directory at `apps/demo` with the following files:
 
 ## Running the application
 
-To run the application, execute `./sx run`:
+To run the application, execute `sx run`:
 
 ```
-$ ./sx run
+$ sx run
 ...
 [demo        ] INFO   Hello World!
 ```
@@ -232,7 +232,7 @@ pub fn main(mut env: Environ) {
 Run the application with `echo`. You will see infinite log messages like this:
 
 ```
-$ ./sx run
+$ sx run
 ...
 [demo        ] INFO   ping_server_ch: Channel(#1)
 [echo        ] INFO   ready
