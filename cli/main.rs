@@ -4,9 +4,11 @@ use std::process::Command;
 
 use clap::Parser;
 
+#[macro_use]
+mod print;
+
 mod commands;
 mod make;
-mod print;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -50,5 +52,7 @@ fn main() {
     }
 
     let args = Cli::parse();
-    commands::run_command(args.command);
+    if let Err(err) = commands::run_command(args.command) {
+        error!("{}", err);
+    }
 }
