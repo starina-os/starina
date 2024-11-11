@@ -3,6 +3,8 @@ import { defineConfig } from 'vitepress';
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
     title: "Starina Documentation",
+    cleanUrls: true,
+
     // https://vitepress.dev/reference/default-theme-config
     themeConfig: {
         nav: [
@@ -10,8 +12,13 @@ export default defineConfig({
         ],
 
         sidebar: [
-            { text: 'Quickstart', link: '/quickstart' },
             { text: 'Rust API Reference', link: '/rust/starina_api/', target: '_blank' },
+            {
+                text: 'Getting Started',
+                items: [
+                    { text: 'Quickstart', link: '/quickstart' },
+                ]
+            },
             {
                 text: 'Guides',
                 items: [
