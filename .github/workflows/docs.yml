@@ -83,6 +83,10 @@ jobs:
     - name: Install Vercel CLI
       run: npm install -g vercel
 
+    - name: Create vercel.json
+      run: |
+        echo '{"cleanUrls": true}' > vercel.json
+
     - name: Deploy to Vercel
       run: vercel --prod . -t "$VERCEL_TOKEN"
       working-directory: docs
