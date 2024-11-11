@@ -72,9 +72,9 @@ fn main() {
     if exe == "sx" {
         // Try to build and run the local CLI.
         if let Some(cargo_toml_path) = look_for_cli_dir() {
-            println!("Running the local CLI at: {}", cargo_toml_path.display());
+            eprintln!("Running the local CLI at: {}\n", cargo_toml_path.display());
             let err = Command::new("cargo")
-                .args(["run", "--bin", "sx", "--manifest-path"])
+                .args(["run", "--quiet", "--bin", "sx", "--manifest-path"])
                 .arg(cargo_toml_path)
                 .args(std::env::args().skip(1))
                 .exec();
