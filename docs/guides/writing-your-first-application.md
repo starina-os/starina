@@ -8,14 +8,11 @@ The first step is to generate a template for your application. Starina provides 
 
 ```
 $ sx scaffold app demo
-  GEN apps/demo/Cargo.toml
-  GEN apps/demo/build.rs
-  GEN apps/demo/main.rs
-  GEN apps/demo/app.spec.json
-
-sx: generated app at apps/demo
-sx: created buildconfig.mk - edit this file to change the build configuration
-sx: added apps/demo to APPS in buildconfig.mk
+GEN     apps/demo/main.rs
+GEN     apps/demo/build.rs
+GEN     apps/demo/Cargo.toml
+GEN     apps/demo/app.spec.json
+UPDATE  buildconfig.mk
 ```
 
 Now you have a new directory at `apps/demo` with the following files:
@@ -130,7 +127,9 @@ $ make run APPS="apps/demo apps/echo"
 
 You can see the `echo` channel is connected to the `demo` application!
 
-> [!TIP] **What is `dep:startup`?**
+> [!TIP]
+>
+> **What is `dep:startup`?**
 >
 > You may notice that there is another channel named `dep:startup`. This is a channel which is connected to the service which started the application.
 >
@@ -182,7 +181,9 @@ use starina_autogen::idl::ping::PingReply;
 
 This internally calls [`include!`](https://doc.rust-lang.org/std/macro.include.html) macro to include the generated code. The auto generated code will be embedded into the file directly, as `starina_autogen` module.
 
-> [!TIP] **Why not defniing interfaces in Rust?**
+> [!TIP]
+>
+> **Why not defniing interfaces in Rust?**
 >
 > Rust `struct`s with procedural macros are powerful, but we prefer IDL because:
 >

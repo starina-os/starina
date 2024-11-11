@@ -17,14 +17,14 @@ export default defineConfig({
                 text: 'Getting Started',
                 items: [
                     { text: 'Quickstart', link: '/quickstart' },
+                    { text: 'Your First Application', link: '/guides/writing-your-first-application' },
                 ]
             },
             {
                 text: 'Guides',
                 items: [
-                    { text: 'Writing Your First Application', link: '/guides/writing-your-first-application' },
-                    { text: 'Writing Your First Server', link: '/guides/writing-your-first-server' },
-                    { text: 'Writing Your First Device Driver', link: '/guides/writing-your-first-device-driver' },
+                    { text: 'Your First Server', link: '/guides/writing-your-first-server' },
+                    { text: 'Your First Device Driver', link: '/guides/writing-your-first-device-driver' },
                 ]
             }
         ],
