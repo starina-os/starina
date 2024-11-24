@@ -15,6 +15,7 @@ use starina_types::message::MessageInfo;
 use starina_types::message::MessageSerialize;
 use starina_types::message::MESSAGE_HANDLES_MAX_COUNT;
 
+use crate::debug_warn;
 use crate::handle::OwnedHandle;
 use crate::syscall;
 
@@ -284,6 +285,12 @@ impl ChannelSender {
 
     pub fn send<M: MessageSerialize>(&self, msg: M) -> Result<(), FtlError> {
         self.ch.send(msg)
+    }
+
+    pub fn reply<M: MessageSerialize>(&self, msg: M) {
+        if let Err(err) = self.send(msg) {
+            debug_warn!("failed to reply: {:?}", err);
+        }
     }
 
     pub fn send_with_buffer<M: MessageSerialize>(
