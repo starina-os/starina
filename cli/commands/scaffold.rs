@@ -76,7 +76,7 @@ fn scaffold_app(name: &str) -> Result<()> {
         .write(true)
         .open(&app_spec_path)
         .with_context(|| format!("failed to open file: {}", app_spec_path.display()))?;
-    serde_json::to_writer(
+    serde_json::to_writer_pretty(
         app_spec_file,
         &SpecFile {
             name: name.to_string(),
