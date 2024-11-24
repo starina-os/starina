@@ -43,9 +43,6 @@ fn process_received_message<M: MessageDeserialize>(
     msgbuffer: &mut MessageBuffer,
     msginfo: MessageInfo,
 ) -> Result<M::Reader<'_>, MessageInfo> {
-    // FIXME: Due to a possibly false-positive borrow check issue, we can't
-    //        use `buffer` anymore in the Option::ok_or_else below. This is a
-    //        naive workaround.
     let mut handles: InlinedVec<_, MESSAGE_HANDLES_MAX_COUNT> = InlinedVec::new();
     for i in 0..msginfo.num_handles() {
         let handle_id = msgbuffer.handle_id(i);
