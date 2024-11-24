@@ -33,14 +33,14 @@ pub enum Error {
 pub enum Event<'a, Ctx, M: MessageDeserialize> {
     /// A received message.
     Message {
-        /// The channel where the message is received.
-        sender: &'a mut ChannelSender,
         /// The per-object state associated with the channel object.
         ctx: &'a mut Ctx,
-        /// The handle ID of the channel.
-        handle_id: HandleId,
         /// The received message.
         message: M::Reader<'a>,
+        /// The channel where the message is received.
+        sender: &'a mut ChannelSender,
+        /// The handle ID of the channel.
+        handle_id: HandleId,
     },
     /// A received hardware interrupts.
     Interrupt {
