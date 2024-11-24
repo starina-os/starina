@@ -12,7 +12,7 @@ use starina_autogen::idl::echo::PingReply;
 use starina_autogen::idl::Message;
 
 #[derive(Debug)]
-pub enum Context {
+enum Context {
     Startup,
     Client,
 }
