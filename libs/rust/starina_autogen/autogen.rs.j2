@@ -42,7 +42,7 @@ pub mod idl {
 
         {% for m in interface.messages %}
             #[repr(C)]
-            #[derive(Debug)]
+            #[derive(Debug, PartialEq, Eq)]
             pub struct {{ m.name }} {
                 {%- for f in m.fields %}
                 {%- if f.is_handle %}

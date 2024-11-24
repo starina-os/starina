@@ -1,0 +1,14 @@
+{
+  "name": "test",
+  "kind": "app/v0",
+  "spec": {
+    "depends": [
+      {
+        "name": "echo",
+        "type": "service",
+        "interface": "echo"
+      }
+    ],
+    "provides": []
+  }
+}

@@ -8,6 +8,7 @@ use starina_api::environ::Environ;
 use starina_api::mainloop::Event;
 use starina_api::mainloop::Mainloop;
 use starina_api::prelude::*;
+use starina_autogen::idl::echo::OhSnapError;
 use starina_autogen::idl::echo::PingReply;
 use starina_autogen::idl::Message;
 
@@ -41,10 +42,19 @@ pub fn main(mut env: Environ) {
                 sender,
                 ..
             } => {
-                let reply = PingReply { value: m.value };
-                if let Err(err) = sender.send(reply) {
-                    debug_warn!("failed to reply: {:?}", err);
-                }
+                sender.reply(PingReply { value: m.value }).unwrap();
+            }
+            Event::Message {
+                ctx: Context::Client,
+                message: Message::PleaseFail(_),
+                sender,
+                ..
+            } => {
+                sender
+                    .reply(OhSnapError {
+                        message: "oh snap".try_into().unwrap(),
+                    })
+                    .unwrap();
             }
             ev => {
                 warn!("unhandled event: {:?}", ev);

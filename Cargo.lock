@@ -748,6 +748,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "test"
+version = "0.0.0"
+dependencies = [
+ "starina_api",
+ "starina_autogen",
+]
+
+[[package]]
 name = "thiserror"
 version = "1.0.67"
 source = "registry+https://github.com/rust-lang/crates.io-index"

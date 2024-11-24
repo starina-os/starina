@@ -287,10 +287,14 @@ impl ChannelSender {
         self.ch.send(msg)
     }
 
-    pub fn reply<M: MessageSerialize>(&self, msg: M) {
+    pub fn reply<M: MessageSerialize>(&self, msg: M) -> Result<(), FtlError> {
         if let Err(err) = self.send(msg) {
             debug_warn!("failed to reply: {:?}", err);
+            // TODO: If it's peer's fault (e.g. queue is full), close the channel w/o error.
+            return Err(err);
         }
+
+        Ok(())
     }
 
     pub fn send_with_buffer<M: MessageSerialize>(
