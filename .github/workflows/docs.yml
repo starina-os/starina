@@ -84,8 +84,9 @@ jobs:
       run: npm install -g vercel
 
     - name: Deploy to Vercel
+      # Disable clean URLs to make links in rustdoc pages work.
       run: |
-        echo '{"cleanUrls": true}' > vercel.json
+        echo '{"cleanUrls": false}' > vercel.json
         vercel --prod . -t "$VERCEL_TOKEN"
       working-directory: docs
       env:
