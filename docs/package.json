@@ -1,6 +1,0 @@
-{
-  "private": true,
-  "devDependencies": {
-    "vitepress": "1"
-  }
-}
