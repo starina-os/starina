@@ -8,4 +8,4 @@ authors = ["Seiya Nuta <nuta@seiya.me>"]
 edition = "2021"
 
 [workspace.dependencies]
-starina = { path = "libs/rust/starina_api" }
+starina = { path = "libs/rust/starina" }

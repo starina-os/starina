@@ -10,3 +10,4 @@ name = "itest"
 path = "main.rs"
 
 [dependencies]
+starina = { workspace = true }
