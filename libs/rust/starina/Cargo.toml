@@ -1,12 +1,7 @@
 [package]
-name = "hello"
+name = "starina"
 version = { workspace = true }
 authors = { workspace = true }
 edition = { workspace = true }
 
-[[bin]]
-name = "hello"
-path = "main.rs"
-
 [dependencies]
-starina_api = { workspace = true }

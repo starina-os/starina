@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["kernel", "boot/*", "libs/rust/*", "apps/*", "cli"]
+members = ["apps/*/*", "libs/rust/*"]
 
 [workspace.package]
 version = "0.0.0"
@@ -8,35 +8,4 @@ authors = ["Seiya Nuta <nuta@seiya.me>"]
 edition = "2021"
 
 [workspace.dependencies]
-arrayvec = { version = "0", default-features = false }
-hashbrown = "0"
-spin = "0"
-linked_list_allocator = "0"
-serde = { version = "1", default-features = false }
-serde_json = { version = "1", default-features = false, features = ["alloc"] }
-fdt-rs = { version = "0", default-features = false }
-smoltcp = { version = "0", default-features = false }
-httparse = { version = "1", default-features = false }
-
-anyhow = "1"
-quote = "1"
-syn = "2"
-proc-macro2 = "1"
-proc-macro-error = "1"
-clap = "4"
-minijinja = "2"
-bytes = "1"
-tempfile = "3"
-walkdir = "2"
-regex = "1"
-
-starina_kernel = { path = "kernel" }
-starina_types = { path = "libs/rust/starina_types" }
-starina_api = { path = "libs/rust/starina_api" }
-starina_utils = { path = "libs/rust/starina_utils" }
-starina_inlinedvec = { path = "libs/rust/inlinedvec" }
-starina_bump_allocator = { path = "libs/rust/bump_allocator" }
-starina_elf = { path = "libs/rust/elf" }
-starina_virtio = { path = "libs/rust/virtio" }
-starina_driver_utils = { path = "libs/rust/starina_driver_utils" }
-starina_autogen = { path = "libs/rust/starina_autogen" }
+starina = { path = "libs/rust/starina_api" }

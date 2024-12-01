@@ -1,8 +1,0 @@
-{
-  "name": "hello",
-  "kind": "app/v0",
-  "spec": {
-    "depends": [],
-    "provides": []
-  }
-}

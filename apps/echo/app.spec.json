@@ -1,8 +1,0 @@
-{
-  "name": "echo",
-  "kind": "app/v0",
-  "spec": {
-    "depends": [],
-    "provides": ["echo"]
-  }
-}
