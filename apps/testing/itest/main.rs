@@ -11,8 +11,8 @@ pub enum FtlError {
     NoHandle = 1,
 }
 
-pub type VsyscallEntry = extern "C" fn(isize, isize, isize, isize, isize, isize) -> isize;
-static mut VSYSCALL_ENTRY: *const VsyscallEntry = core::ptr::null();
+// pub type VsyscallEntry = extern "C" fn(isize, isize, isize, isize, isize, isize) -> isize;
+// static mut VSYSCALL_ENTRY: *const VsyscallEntry = core::ptr::null();
 
 pub fn syscall(
     n: SyscallNumber,
@@ -24,17 +24,18 @@ pub fn syscall(
 ) -> Result<isize, FtlError> {
     use core::arch::asm;
 
-    let mut rax: isize = unsafe { VSYSCALL_ENTRY as isize };
+    // let mut rax: isize = unsafe { VSYSCALL_ENTRY as isize };
+    let mut rax: isize;
     unsafe {
         asm!(
-            "call rax",
+            "call gs:[0]",
             in("rdi") rdi,
             in("rsi") rsi,
             in("rdx") rdx,
             in("rcx") rcx,
             in("r8") r8,
             in("r9") n as isize,
-            inout("rax") rax,
+            out("rax") rax,
             options(nostack),
             clobber_abi("C"),
         );
@@ -151,21 +152,21 @@ impl MessageBuffer {
     }
 }
 
-extern "C" {
-    fn sys_channel_send(handle: HandleId, info: MessageInfo, m: *const u8) -> Result<(), FtlError>;
-}
-// fn sys_channel_send(handle: HandleId, info: MessageInfo, m: *const u8) -> Result<(), FtlError> {
-//     syscall(
-//         SyscallNumber::ChannelSend,
-//         handle.0 as isize,
-//         info.0 as isize,
-//         m as isize,
-//         0,
-//         0,
-//     )?;
-
-//     Ok(())
+// extern "C" {
+//     fn sys_channel_send(handle: HandleId, info: MessageInfo, m: *const u8) -> Result<(), FtlError>;
 // }
+fn sys_channel_send(handle: HandleId, info: MessageInfo, m: *const u8) -> Result<(), FtlError> {
+    syscall(
+        SyscallNumber::ChannelSend,
+        handle.0 as isize,
+        info.0 as isize,
+        m as isize,
+        0,
+        0,
+    )?;
+
+    Ok(())
+}
 
 pub struct Channel {
     handle: OwnedHandle,
