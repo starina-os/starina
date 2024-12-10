@@ -8,6 +8,7 @@ use starina::arch::syscall;
 use starina::error::ErrorCode;
 use starina::handle::HandleId;
 use starina::handle::OwnedHandle;
+use starina::message::MessageBuffer;
 use starina::println;
 use starina::syscall::SyscallNumber;
 
@@ -135,19 +136,6 @@ impl<'a> MessageBody for TcpWrite<'a> {
         let info = MessageInfo::new(0, 2 as u16 + len as u16, 0);
         core::mem::forget(self);
         Ok(info)
-    }
-}
-
-#[repr(C)]
-pub struct MessageBuffer {
-    pub data: [u8; 2047],
-    pad: u8,
-}
-
-impl MessageBuffer {
-    pub fn new() -> MessageBuffer {
-        let mut uninit = unsafe { core::mem::MaybeUninit::<MessageBuffer>::uninit().assume_init() };
-        uninit
     }
 }
 
