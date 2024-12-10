@@ -64,4 +64,9 @@ version = "0.0.0"
 dependencies = [
  "linked_list_allocator",
  "spin",
+ "starina_types",
 ]
+
+[[package]]
+name = "starina_types"
+version = "0.0.0"

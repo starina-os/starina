@@ -1,5 +1,5 @@
 [package]
-name = "starina"
+name = "starina_types"
 version = { workspace = true }
 authors = { workspace = true }
 edition = { workspace = true }
@@ -8,6 +8,3 @@ edition = { workspace = true }
 path = "lib.rs"
 
 [dependencies]
-starina_types = { workspace = true }
-spin = { workspace = true }
-linked_list_allocator = { workspace = true }

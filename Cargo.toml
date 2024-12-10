@@ -9,6 +9,7 @@ edition = "2021"
 
 [workspace.dependencies]
 starina = { path = "libs/rust/starina" }
+starina_types = { path = "libs/rust/types" }
 
 spin = "0"
 linked_list_allocator = "0"

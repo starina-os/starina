@@ -1,6 +1,5 @@
 #![no_std]
 #![no_main]
-#![feature(core_intrinsics)]
 #![allow(unused)]
 
 use core::convert::TryInto;
@@ -213,7 +212,7 @@ pub struct TcpWrite<'a> {
 impl<'a> MessageBody for TcpWrite<'a> {
     fn serialize(mut self, msgbuffer: &mut MessageBuffer) -> Result<MessageInfo, TooManyBytesError> {
         let len = self.data.len();
-        if core::intrinsics::unlikely(len > 512) {
+        if (len > 512) {
           return Err(TooManyBytesError);
         }
 
