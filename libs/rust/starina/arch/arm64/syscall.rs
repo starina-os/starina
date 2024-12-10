@@ -1,4 +1,4 @@
-use core::arch::{asm};
+use core::arch::asm;
 
 use starina_types::error::ErrorCode;
 use starina_types::syscall::SyscallNumber;
@@ -44,9 +44,7 @@ pub fn syscall(
     }
 
     if ret < 0 {
-        let err = unsafe {
-            core::mem::transmute::<i8, ErrorCode>(ret as i8)
-        };
+        let err = unsafe { core::mem::transmute::<i8, ErrorCode>(ret as i8) };
 
         return Err(err);
     }

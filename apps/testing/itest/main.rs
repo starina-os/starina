@@ -3,6 +3,7 @@
 #![allow(unused)]
 
 use core::convert::TryInto;
+
 use starina::println;
 
 #[repr(isize)]
@@ -40,12 +41,7 @@ fn fast_memcpy(src: *const u8, dst: *mut u8, len: usize) {
     // }
 }
 
-pub fn syscall(
-    n: SyscallNumber,
-    rdi: isize,
-    rsi: isize,
-    rdx: isize,
-) -> Result<isize, FtlError> {
+pub fn syscall(n: SyscallNumber, rdi: isize, rsi: isize, rdx: isize) -> Result<isize, FtlError> {
     use core::arch::asm;
 
     // let mut rax: isize = unsafe { VSYSCALL_ENTRY as isize };
@@ -82,11 +78,7 @@ pub fn syscall(
     }
 }
 
-pub fn syscall2(
-    n: SyscallNumber,
-    rdi: isize,
-    rsi: isize,
-) -> Result<isize, FtlError> {
+pub fn syscall2(n: SyscallNumber, rdi: isize, rsi: isize) -> Result<isize, FtlError> {
     use core::arch::asm;
 
     // let mut rax: isize = unsafe { VSYSCALL_ENTRY as isize };
@@ -129,7 +121,6 @@ pub struct HandleId(i32);
 #[derive(PartialEq, Eq)]
 #[repr(transparent)]
 pub struct OwnedHandle(HandleId);
-
 
 #[repr(C)]
 #[derive(Debug)]
@@ -184,13 +175,17 @@ pub struct PingRaw {
 }
 
 impl MessageBody for Ping {
-    fn serialize(mut self, msgbuffer: &mut MessageBuffer) -> Result<MessageInfo, TooManyBytesError> {
+    fn serialize(
+        mut self,
+        msgbuffer: &mut MessageBuffer,
+    ) -> Result<MessageInfo, TooManyBytesError> {
         let info = MessageInfo::new(0, core::mem::size_of::<PingRaw>() as u16, 0);
 
         unsafe {
-            core::ptr::write(msgbuffer.data.as_mut_ptr() as *mut PingRaw, PingRaw {
-                value: self.value
-            })
+            core::ptr::write(
+                msgbuffer.data.as_mut_ptr() as *mut PingRaw,
+                PingRaw { value: self.value },
+            )
         }
 
         core::mem::forget(self);
@@ -210,12 +205,14 @@ pub struct TcpWrite<'a> {
 }
 
 impl<'a> MessageBody for TcpWrite<'a> {
-    fn serialize(mut self, msgbuffer: &mut MessageBuffer) -> Result<MessageInfo, TooManyBytesError> {
+    fn serialize(
+        mut self,
+        msgbuffer: &mut MessageBuffer,
+    ) -> Result<MessageInfo, TooManyBytesError> {
         let len = self.data.len();
         if (len > 512) {
-          return Err(TooManyBytesError);
+            return Err(TooManyBytesError);
         }
-
 
         unsafe {
             let ptr = msgbuffer.data.as_mut_ptr() as *mut TcpWriteRaw;
@@ -259,11 +256,7 @@ fn sys_channel_send(handle: HandleId, info: MessageInfo, m: *const u8) -> Result
 }
 
 fn sys_channel_recv(handle: HandleId, m: *mut u8) -> Result<MessageInfo, FtlError> {
-    let ret = syscall2(
-        SyscallNumber::ChannelRecv,
-        handle.0 as isize,
-        m as isize,
-    )?;
+    let ret = syscall2(SyscallNumber::ChannelRecv, handle.0 as isize, m as isize)?;
 
     Ok(MessageInfo(ret as u32))
 }
@@ -279,14 +272,15 @@ pub struct Channel {
 
 impl Channel {
     #[inline]
-    pub fn send<M: MessageBody>(&self, msgbuffer: &mut MessageBuffer, message: M) -> Result<(), SendError> {
+    pub fn send<M: MessageBody>(
+        &self,
+        msgbuffer: &mut MessageBuffer,
+        message: M,
+    ) -> Result<(), SendError> {
         let msginfo = message.serialize(msgbuffer).map_err(SendError::Serialize)?;
         unsafe {
-            sys_channel_send(
-                self.handle.0,
-                msginfo,
-                msgbuffer.data.as_ptr(),
-            ).map_err(SendError::Syscall)?;
+            sys_channel_send(self.handle.0, msginfo, msgbuffer.data.as_ptr())
+                .map_err(SendError::Syscall)?;
         }
 
         Ok(())
@@ -294,12 +288,7 @@ impl Channel {
 
     #[inline]
     pub fn recv(&self, msgbuffer: &mut MessageBuffer) -> Result<MessageInfo, FtlError> {
-        unsafe {
-            sys_channel_recv(
-                self.handle.0,
-                msgbuffer.data.as_mut_ptr(),
-            )
-        }
+        unsafe { sys_channel_recv(self.handle.0, msgbuffer.data.as_mut_ptr()) }
     }
 }
 
@@ -315,15 +304,17 @@ impl Channel {
 //     Ok(())
 // }
 
-pub fn send_tcp_write(msgbuffer: &mut MessageBuffer, bytes: &[u8], handle_id: i32) -> Result<(), SendError> {
+pub fn send_tcp_write(
+    msgbuffer: &mut MessageBuffer,
+    bytes: &[u8],
+    handle_id: i32,
+) -> Result<(), SendError> {
     let ch = Channel {
         handle: OwnedHandle(HandleId(handle_id)),
     };
 
     let mut msgbuffer = MessageBuffer::new();
-    ch.send(&mut msgbuffer, TcpWrite {
-        data: bytes,
-    })?;
+    ch.send(&mut msgbuffer, TcpWrite { data: bytes })?;
 
     Ok(())
 }
@@ -332,7 +323,6 @@ pub enum Message<'a> {
     TcpWrite(TcpWrite<'a>),
     Ping(Ping),
 }
-
 
 #[derive(Debug, Clone, Copy)]
 #[repr(transparent)]
@@ -361,7 +351,10 @@ impl MessageInfo {
 
 #[no_mangle]
 #[inline(never)]
-pub fn mainloop<'a>(ch: Channel, msgbuffer: &'a mut MessageBuffer) -> Result<Message<'a>, FtlError> {
+pub fn mainloop<'a>(
+    ch: Channel,
+    msgbuffer: &'a mut MessageBuffer,
+) -> Result<Message<'a>, FtlError> {
     let info = ch.recv(msgbuffer)?;
     let m = match info.all() {
         567 => {
@@ -384,7 +377,12 @@ pub fn mainloop<'a>(ch: Channel, msgbuffer: &'a mut MessageBuffer) -> Result<Mes
 
                 let raw = msgbuffer.data.as_ptr() as *const TcpWriteRaw;
                 Message::TcpWrite(TcpWrite {
-                    data: unsafe { core::slice::from_raw_parts((*raw).data.data.as_ptr(), info.len() as usize - 2) }
+                    data: unsafe {
+                        core::slice::from_raw_parts(
+                            (*raw).data.data.as_ptr(),
+                            info.len() as usize - 2,
+                        )
+                    },
                 })
             } else {
                 return Err(FtlError::Unknown);
@@ -404,5 +402,6 @@ pub fn main(buf: &[u8]) {
             handle: OwnedHandle(HandleId(0x1234)),
         },
         &mut msgbuffer,
-    ).unwrap();
+    )
+    .unwrap();
 }

@@ -8,7 +8,6 @@ extern "Rust" {
 
 #[no_mangle]
 pub unsafe extern "C" fn start_rust() {
-
     allocator::init();
 
     main(Environ);
