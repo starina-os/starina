@@ -8,3 +8,5 @@ edition = { workspace = true }
 path = "lib.rs"
 
 [dependencies]
+spin = { workspace = true }
+linked_list_allocator = { workspace = true }

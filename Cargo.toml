@@ -9,3 +9,6 @@ edition = "2021"
 
 [workspace.dependencies]
 starina = { path = "libs/rust/starina" }
+
+spin = "0"
+linked_list_allocator = "0"
