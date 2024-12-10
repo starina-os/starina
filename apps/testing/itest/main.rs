@@ -157,7 +157,7 @@ fn sys_channel_send(handle: HandleId, info: MessageInfo, m: *const u8) -> Result
 
 fn sys_channel_recv(handle: HandleId, m: *mut u8) -> Result<MessageInfo, ErrorCode> {
     let ret = syscall(
-        SyscallNumber::ChannelSend,
+        SyscallNumber::ChannelRecv,
         handle.as_i32() as usize,
         m as usize,
         0,
@@ -221,6 +221,7 @@ pub fn send_tcp_write(
     Ok(())
 }
 
+#[derive(Debug)]
 pub enum Message<'a> {
     TcpWrite(TcpWrite<'a>),
     Ping(Ping),
@@ -258,37 +259,37 @@ pub fn mainloop<'a>(
     msgbuffer: &'a mut MessageBuffer,
 ) -> Result<Message<'a>, ErrorCode> {
     let info = ch.recv(msgbuffer)?;
-    let m = match info.all() {
+    let m = match info.id_and_num_handles_bits() {
         567 => {
             let raw = msgbuffer.data.as_ptr() as *const PingRaw;
             Message::Ping(Ping {
                 value: unsafe { (*raw).value },
             })
         }
-        456 => {
+        456 if info.len() != 32 => {
             let raw = msgbuffer.data.as_ptr() as *const PingRaw;
             Message::Ping(Ping {
                 value: unsafe { (*raw).value },
             })
         }
         _ => {
-            if info.id_and_num_handles_bits() == 0x7890000 {
-                if info.len() < 512 {
-                    return Err(ErrorCode::Foo);
-                }
+            // if info.id_and_num_handles_bits() == 0x7890000 {
+            //     if info.len() < 512 {
+            //         return Err(ErrorCode::Foo);
+            //     }
 
-                let raw = msgbuffer.data.as_ptr() as *const TcpWriteRaw;
-                Message::TcpWrite(TcpWrite {
-                    data: unsafe {
-                        core::slice::from_raw_parts(
-                            (*raw).data.data.as_ptr(),
-                            info.len() as usize - 2,
-                        )
-                    },
-                })
-            } else {
+            //     let raw = msgbuffer.data.as_ptr() as *const TcpWriteRaw;
+            //     Message::TcpWrite(TcpWrite {
+            //         data: unsafe {
+            //             core::slice::from_raw_parts(
+            //                 (*raw).data.data.as_ptr(),
+            //                 info.len() as usize - 2,
+            //             )
+            //         },
+            //     })
+            // } else {
+                // }
                 return Err(ErrorCode::Foo);
-            }
         }
     };
 
@@ -299,16 +300,29 @@ pub fn mainloop<'a>(
 pub fn main(buf: &[u8]) {
     let mut msgbuffer = MessageBuffer::new();
     // send_tcp_write(&mut msgbuffer, buf, 0x1234).unwrap();
-    let mut ch = Channel {
-        handle: OwnedHandle::from_raw(HandleId::from_raw(0x1234)),
-    };
-    send_ping(&mut ch, &mut msgbuffer).unwrap();
+    // let mut ch = Channel {
+    //     handle: OwnedHandle::from_raw(HandleId::from_raw(0x1234)),
+    // };
+    // send_ping(&mut ch, &mut msgbuffer).unwrap();
 
-    // mainloop(
-    //     Channel {
-    //         handle: OwnedHandle::from(HandleId(0x1234)),
-    //     },
-    //     &mut msgbuffer,
-    // )
-    // .unwrap();
+    let m = mainloop(
+        Channel {
+            handle: OwnedHandle::from_raw(HandleId::from_raw(0x1234)),
+        },
+        &mut msgbuffer,
+    )
+    .unwrap();
+    println!("{:?}", m);
 }
+
+
+// pub trait Handler: Sync {
+//     fn handle_ping(&self, ctx: MessageCtx, value: u32) {}
+//     fn handle_tcp_write(&self, ctx: MessageCtx, data: &[u8]) {}
+// }
+
+// pub struct ServerHandler {}
+
+// pub fn main2() {
+//     let handler = ServerHandler {};
+// }

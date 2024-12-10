@@ -8,5 +8,6 @@ pub struct VsyscallPage {
 pub enum SyscallNumber {
     ConsoleWrite,
     ChannelSend,
+    ChannelRecv,
     HandleClose,
 }
