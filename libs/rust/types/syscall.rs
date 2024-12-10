@@ -6,5 +6,7 @@ pub struct VsyscallPage {
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum SyscallNumber {
+    ConsoleWrite,
     ChannelSend,
+    HandleClose,
 }

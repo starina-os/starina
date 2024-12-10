@@ -4,21 +4,12 @@
 
 use core::convert::TryInto;
 
+use starina::arch::syscall;
+use starina::error::ErrorCode;
+use starina::handle::HandleId;
+use starina::handle::OwnedHandle;
 use starina::println;
-
-#[repr(isize)]
-pub enum SyscallNumber {
-    ChannelSend = 1,
-    ChannelRecv = 2,
-}
-
-#[derive(Debug)]
-#[repr(isize)]
-pub enum FtlError {
-    NoHandle = 101,
-    TooLong = 102,
-    Unknown = 103,
-}
+use starina::syscall::SyscallNumber;
 
 // pub type VsyscallEntry = extern "C" fn(isize, isize, isize, isize, isize, isize) -> isize;
 // static mut VSYSCALL_ENTRY: *const VsyscallEntry = core::ptr::null();
@@ -40,87 +31,6 @@ fn fast_memcpy(src: *const u8, dst: *mut u8, len: usize) {
     //     );
     // }
 }
-
-pub fn syscall(n: SyscallNumber, rdi: isize, rsi: isize, rdx: isize) -> Result<isize, FtlError> {
-    use core::arch::asm;
-
-    // let mut rax: isize = unsafe { VSYSCALL_ENTRY as isize };
-    let mut rax: isize;
-    unsafe {
-        struct ThreadLocalStorage {
-            entry: fn(isize, isize, isize, isize, isize, isize) -> isize,
-        }
-
-        let mut tls: *const ThreadLocalStorage;
-        // from thread-local storage in TPIDR_EL0
-        asm!(
-            "mrs {tls}, tpidr_el0",
-            tls = out(reg) tls,
-            options(nostack),
-        );
-
-        asm!(
-            "blr {entry}",
-            inout("x0") rdi => rax,
-            in("x1") rsi,
-            in("x2") rdx,
-            in("x3") n as isize,
-            entry = in(reg) (*tls).entry,
-            options(nostack),
-            clobber_abi("C"),
-        );
-    }
-
-    if rax < 0 {
-        unsafe { Err(core::mem::transmute::<isize, FtlError>(rax)) }
-    } else {
-        Ok(rax)
-    }
-}
-
-pub fn syscall2(n: SyscallNumber, rdi: isize, rsi: isize) -> Result<isize, FtlError> {
-    use core::arch::asm;
-
-    // let mut rax: isize = unsafe { VSYSCALL_ENTRY as isize };
-    let mut rax: isize;
-    unsafe {
-        struct ThreadLocalStorage {
-            entry: fn(isize, isize, isize, isize, isize, isize) -> isize,
-        }
-
-        let mut tls: *const ThreadLocalStorage;
-        // from thread-local storage in TPIDR_EL0
-        asm!(
-            "mrs {tls}, tpidr_el0",
-            tls = out(reg) tls,
-            options(nostack),
-        );
-
-        asm!(
-            "blr {entry}",
-            inout("x0") rdi => rax,
-            in("x1") rsi,
-            in("x3") n as isize,
-            entry = in(reg) (*tls).entry,
-            options(nostack),
-            clobber_abi("C"),
-        );
-    }
-
-    if rax < 0 {
-        unsafe { Err(core::mem::transmute::<isize, FtlError>(rax)) }
-    } else {
-        Ok(rax)
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[repr(transparent)]
-pub struct HandleId(i32);
-
-#[derive(PartialEq, Eq)]
-#[repr(transparent)]
-pub struct OwnedHandle(HandleId);
 
 #[repr(C)]
 #[derive(Debug)]
@@ -242,28 +152,37 @@ impl MessageBuffer {
 }
 
 // extern "C" {
-//     fn sys_channel_send(handle: HandleId, info: MessageInfo, m: *const u8) -> Result<(), FtlError>;
+//     fn sys_channel_send(handle: HandleId, info: MessageInfo, m: *const u8) -> Result<(), ErrorCode>;
 // }
-fn sys_channel_send(handle: HandleId, info: MessageInfo, m: *const u8) -> Result<(), FtlError> {
+fn sys_channel_send(handle: HandleId, info: MessageInfo, m: *const u8) -> Result<(), ErrorCode> {
     syscall(
         SyscallNumber::ChannelSend,
-        handle.0 as isize,
-        info.0 as isize,
-        m as isize,
+        handle.as_i32() as usize,
+        info.0 as usize,
+        m as usize,
+        0,
+        0,
     )?;
 
     Ok(())
 }
 
-fn sys_channel_recv(handle: HandleId, m: *mut u8) -> Result<MessageInfo, FtlError> {
-    let ret = syscall2(SyscallNumber::ChannelRecv, handle.0 as isize, m as isize)?;
+fn sys_channel_recv(handle: HandleId, m: *mut u8) -> Result<MessageInfo, ErrorCode> {
+    let ret = syscall(
+        SyscallNumber::ChannelSend,
+        handle.as_i32() as usize,
+        m as usize,
+        0,
+        0,
+        0,
+    )?;
 
     Ok(MessageInfo(ret as u32))
 }
 #[derive(Debug)]
 pub enum SendError {
     Serialize(TooManyBytesError),
-    Syscall(FtlError),
+    Syscall(ErrorCode),
 }
 
 pub struct Channel {
@@ -279,7 +198,7 @@ impl Channel {
     ) -> Result<(), SendError> {
         let msginfo = message.serialize(msgbuffer).map_err(SendError::Serialize)?;
         unsafe {
-            sys_channel_send(self.handle.0, msginfo, msgbuffer.data.as_ptr())
+            sys_channel_send(self.handle.id(), msginfo, msgbuffer.data.as_ptr())
                 .map_err(SendError::Syscall)?;
         }
 
@@ -287,22 +206,17 @@ impl Channel {
     }
 
     #[inline]
-    pub fn recv(&self, msgbuffer: &mut MessageBuffer) -> Result<MessageInfo, FtlError> {
-        unsafe { sys_channel_recv(self.handle.0, msgbuffer.data.as_mut_ptr()) }
+    pub fn recv(&self, msgbuffer: &mut MessageBuffer) -> Result<MessageInfo, ErrorCode> {
+        unsafe { sys_channel_recv(self.handle.id(), msgbuffer.data.as_mut_ptr()) }
     }
 }
 
-// pub fn send_ping(handle_id: i32,  msgbuffer: &mut MessageBuffer) -> Result<(), SendError> {
-//     let ch = Channel {
-//         handle: OwnedHandle(HandleId(handle_id)),
-//     };
+#[inline(never)]
+pub fn send_ping(ch: &mut Channel, msgbuffer: &mut MessageBuffer) -> Result<(), SendError> {
+    ch.send(msgbuffer, Ping { value: 42 })?;
 
-//     ch.send(msgbuffer, Ping {
-//         value: 42,
-//     })?;
-
-//     Ok(())
-// }
+    Ok(())
+}
 
 pub fn send_tcp_write(
     msgbuffer: &mut MessageBuffer,
@@ -310,7 +224,7 @@ pub fn send_tcp_write(
     handle_id: i32,
 ) -> Result<(), SendError> {
     let ch = Channel {
-        handle: OwnedHandle(HandleId(handle_id)),
+        handle: OwnedHandle::from_raw(HandleId::from_raw(handle_id)),
     };
 
     let mut msgbuffer = MessageBuffer::new();
@@ -354,7 +268,7 @@ impl MessageInfo {
 pub fn mainloop<'a>(
     ch: Channel,
     msgbuffer: &'a mut MessageBuffer,
-) -> Result<Message<'a>, FtlError> {
+) -> Result<Message<'a>, ErrorCode> {
     let info = ch.recv(msgbuffer)?;
     let m = match info.all() {
         567 => {
@@ -372,7 +286,7 @@ pub fn mainloop<'a>(
         _ => {
             if info.id_and_num_handles_bits() == 0x7890000 {
                 if info.len() < 512 {
-                    return Err(FtlError::TooLong);
+                    return Err(ErrorCode::Foo);
                 }
 
                 let raw = msgbuffer.data.as_ptr() as *const TcpWriteRaw;
@@ -385,7 +299,7 @@ pub fn mainloop<'a>(
                     },
                 })
             } else {
-                return Err(FtlError::Unknown);
+                return Err(ErrorCode::Foo);
             }
         }
     };
@@ -397,11 +311,16 @@ pub fn mainloop<'a>(
 pub fn main(buf: &[u8]) {
     let mut msgbuffer = MessageBuffer::new();
     // send_tcp_write(&mut msgbuffer, buf, 0x1234).unwrap();
-    mainloop(
-        Channel {
-            handle: OwnedHandle(HandleId(0x1234)),
-        },
-        &mut msgbuffer,
-    )
-    .unwrap();
+    let mut ch = Channel {
+        handle: OwnedHandle::from_raw(HandleId::from_raw(0x1234)),
+    };
+    send_ping(&mut ch, &mut msgbuffer).unwrap();
+
+    // mainloop(
+    //     Channel {
+    //         handle: OwnedHandle::from(HandleId(0x1234)),
+    //     },
+    //     &mut msgbuffer,
+    // )
+    // .unwrap();
 }

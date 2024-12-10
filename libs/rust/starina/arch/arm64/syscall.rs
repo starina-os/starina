@@ -4,6 +4,7 @@ use starina_types::error::ErrorCode;
 use starina_types::syscall::SyscallNumber;
 use starina_types::syscall::VsyscallPage;
 
+#[inline]
 fn vsyscall_page() -> &'static VsyscallPage {
     let ptr: *const VsyscallPage;
     unsafe {
@@ -15,7 +16,7 @@ fn vsyscall_page() -> &'static VsyscallPage {
         );
     }
 
-    // SAFETY: VsyscallPage always exists.
+    // SAFETY: The vsyscall page always exists.
     unsafe { &*ptr }
 }
 
@@ -45,7 +46,6 @@ pub fn syscall(
 
     if ret < 0 {
         let err = unsafe { core::mem::transmute::<i8, ErrorCode>(ret as i8) };
-
         return Err(err);
     }
 
