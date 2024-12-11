@@ -100,3 +100,10 @@ dependencies = [
 [[package]]
 name = "starina_types"
 version = "0.0.0"
+
+[[package]]
+name = "tcpip"
+version = "0.0.0"
+dependencies = [
+ "starina",
+]

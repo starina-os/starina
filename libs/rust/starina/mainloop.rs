@@ -23,7 +23,6 @@ pub enum Error {
 
 /// Events that applications need to handle.
 #[derive(Debug)]
-#[non_exhaustive]
 pub enum Event<'a, Ctx> {
     /// An error while waiting for or reading an event.
     Error(Error),
@@ -60,6 +59,10 @@ pub struct Mainloop<Ctx> {
 }
 
 impl<Ctx> Mainloop<Ctx> {
+    pub fn new() -> Result<Mainloop<Ctx>, Error> {
+        todo!()
+    }
+
     /// Waits for the next event. Blocks until an event is available.
     pub fn next(&mut self) -> Event<'_, Ctx> {
         let (poll_ev, handle_id) = match self.poll.wait() {
