@@ -2,6 +2,8 @@
 #![no_main]
 #![allow(unused)]
 
+use core::cell::RefCell;
+
 use starina::{info, mainloop::{Event, Mainloop}};
 
 #[derive(Debug)]
@@ -12,8 +14,8 @@ enum Context {
 #[no_mangle]
 pub fn main() {
     let mut mainloop = Mainloop::<Context>::new().unwrap();
-    loop {
-        let ev = mainloop.next();
+    let refcell = RefCell::new(0);
+    mainloop.run(|ev| {
         match ev {
             Event::Message { ctx, message, sender, .. } => {
                 match ctx {
@@ -26,5 +28,5 @@ pub fn main() {
                 panic!("err: {:?}", err);
             }
         }
-    }
+    });
 }

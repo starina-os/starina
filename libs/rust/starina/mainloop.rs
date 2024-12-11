@@ -92,4 +92,11 @@ impl<Ctx> Mainloop<Ctx> {
 
         todo!("unhandled poll event: {:?}", poll_ev);
     }
+
+    pub fn run<F>(mut self, f: F) where F: Fn(Event<'_, Ctx>) + Send {
+        loop {
+            let ev = self.next();
+            f(ev);
+        }
+    }
 }
