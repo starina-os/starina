@@ -11,3 +11,4 @@ path = "lib.rs"
 starina_types = { workspace = true }
 spin = { workspace = true }
 linked_list_allocator = { workspace = true }
+hashbrown = { workspace = true }

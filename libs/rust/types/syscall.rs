@@ -10,4 +10,5 @@ pub enum SyscallNumber {
     ChannelSend,
     ChannelRecv,
     HandleClose,
+    PollWait,
 }

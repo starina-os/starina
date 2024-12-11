@@ -13,5 +13,9 @@ pub mod arch;
 pub mod handle;
 pub mod syscall;
 pub mod message;
+pub mod mainloop;
+pub mod channel;
+pub mod collections;
+pub mod poll;
 
 pub use starina_types::error;

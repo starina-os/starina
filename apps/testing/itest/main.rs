@@ -254,19 +254,19 @@ impl MessageInfo {
 
 #[no_mangle]
 #[inline(never)]
-pub fn mainloop<'a>(
+pub fn mainloop2<'a>(
     ch: Channel,
     msgbuffer: &'a mut MessageBuffer,
 ) -> Result<Message<'a>, ErrorCode> {
     let info = ch.recv(msgbuffer)?;
     let m = match info.id_and_num_handles_bits() {
-        567 => {
+        0x7890000 => {
             let raw = msgbuffer.data.as_ptr() as *const PingRaw;
             Message::Ping(Ping {
                 value: unsafe { (*raw).value },
             })
         }
-        456 if info.len() != 32 => {
+        0x7900000 if info.len() != 32 => {
             let raw = msgbuffer.data.as_ptr() as *const PingRaw;
             Message::Ping(Ping {
                 value: unsafe { (*raw).value },
@@ -305,7 +305,7 @@ pub fn main(buf: &[u8]) {
     // };
     // send_ping(&mut ch, &mut msgbuffer).unwrap();
 
-    let m = mainloop(
+    let m = mainloop2(
         Channel {
             handle: OwnedHandle::from_raw(HandleId::from_raw(0x1234)),
         },
