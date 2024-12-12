@@ -4,11 +4,14 @@
 
 use core::cell::RefCell;
 
-use starina::{info, mainloop::{Event, Mainloop}};
+use starina::info;
+use starina::mainloop::Event;
+use starina::mainloop::Mainloop;
 
 #[derive(Debug)]
 enum Context {
     Control,
+    TcpConn,
 }
 
 #[no_mangle]
@@ -17,13 +20,12 @@ pub fn main() {
     let refcell = RefCell::new(0);
     mainloop.run(|ev| {
         match ev {
-            Event::Message { ctx, message, sender, .. } => {
-                match ctx {
-                    Context::Control => {
-                        info!("message: {:?}", message);
-                    }
-                }
-            }
+            Event::Message {
+                ctx,
+                message,
+                sender,
+                ..
+            } => {}
             Event::Error(err) => {
                 panic!("err: {:?}", err);
             }

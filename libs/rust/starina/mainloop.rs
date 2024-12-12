@@ -1,22 +1,21 @@
 use hashbrown::HashMap;
-use starina_types::{error::ErrorCode, handle::HandleId, message::MessageBuffer, poll::PollEvent};
+use starina_types::error::ErrorCode;
+use starina_types::handle::HandleId;
+use starina_types::message::Message;
+use starina_types::message::MessageBuffer;
+use starina_types::poll::PollEvent;
 
-use crate::{channel::{ChannelReceiver, ChannelSender}, poll::Poll};
-
-#[derive(Debug)]
-pub enum Message<'a> {
-    /// A message that contains a string.
-    String(&'a str),
-    /// A message that contains a byte array.
-    Bytes(&'a [u8]),
-}
+use crate::channel::ChannelReceiver;
+use crate::channel::ChannelSender;
+use crate::channel::RecvError;
+use crate::poll::Poll;
 
 #[derive(Debug)]
 pub enum Error {
     /// An error while waiting for or reading an event.
     PollWait(ErrorCode),
     /// An error while receiving a message from a channel.
-    ChannelRecv(ErrorCode),
+    ChannelRecv(RecvError),
     /// The channel receive operation would block.
     ChannelRecvWouldBlock,
 }
@@ -93,7 +92,10 @@ impl<Ctx> Mainloop<Ctx> {
         todo!("unhandled poll event: {:?}", poll_ev);
     }
 
-    pub fn run<F>(mut self, f: F) where F: Fn(Event<'_, Ctx>) + Send {
+    pub fn run<F>(mut self, f: F)
+    where
+        F: Fn(Event<'_, Ctx>) + Send,
+    {
         loop {
             let ev = self.next();
             f(ev);

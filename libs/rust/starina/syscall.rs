@@ -1,5 +1,8 @@
 use starina_types::error::ErrorCode;
-use starina_types::handle::{HandleId, HandleIdWithBits};
+use starina_types::handle::HandleId;
+use starina_types::handle::HandleIdWithBits;
+use starina_types::message::MessageBuffer;
+use starina_types::message::MessageInfo;
 pub use starina_types::syscall::SyscallNumber;
 
 use crate::arch;
@@ -16,27 +19,28 @@ fn syscall2(n: SyscallNumber, arg1: usize, arg2: usize) -> Result<isize, ErrorCo
 
 /// Write a string to the debug console.
 pub fn console_write(s: &[u8]) -> Result<(), ErrorCode> {
-    let _ = syscall2(
-        SyscallNumber::ConsoleWrite,
-        s.as_ptr() as usize,
-        s.len(),
-    )?;
+    let _ = syscall2(SyscallNumber::ConsoleWrite, s.as_ptr() as usize, s.len())?;
     Ok(())
 }
 
 /// Closes a handle.
 pub fn handle_close(handle: HandleId) -> Result<(), ErrorCode> {
-    let _ = syscall1(
-        SyscallNumber::HandleClose,
-        handle.as_i32() as usize,
-
-
-
-
-    )?;
+    let _ = syscall1(SyscallNumber::HandleClose, handle.as_i32() as usize)?;
     Ok(())
 }
 
+/// Tries to receive a message from a channel. Non-blocking.
+pub fn channel_try_recv(
+    handle: HandleId,
+    msgbuffer: *mut MessageBuffer,
+) -> Result<MessageInfo, ErrorCode> {
+    let ret = syscall2(
+        SyscallNumber::ChannelTryRecv,
+        handle.as_i32() as usize,
+        msgbuffer as usize,
+    )?;
+    Ok(MessageInfo::from_raw(ret as u32))
+}
 
 /// Waits for an event on a poll object. Blocking.
 pub fn poll_wait(poll: HandleId) -> Result<HandleIdWithBits, ErrorCode> {

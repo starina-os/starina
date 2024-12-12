@@ -9,6 +9,7 @@ pub enum SyscallNumber {
     ConsoleWrite,
     ChannelSend,
     ChannelRecv,
+    ChannelTryRecv,
     HandleClose,
     PollWait,
 }

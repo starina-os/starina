@@ -10,12 +10,12 @@ mod start;
 
 pub mod allocator;
 pub mod arch;
-pub mod handle;
-pub mod syscall;
-pub mod message;
-pub mod mainloop;
 pub mod channel;
 pub mod collections;
+pub mod handle;
+pub mod mainloop;
+pub mod message;
 pub mod poll;
+pub mod syscall;
 
 pub use starina_types::error;

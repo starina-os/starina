@@ -1,4 +1,5 @@
-use core::ops::{ BitAnd, BitOr};
+use core::ops::BitAnd;
+use core::ops::BitOr;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 #[repr(transparent)]

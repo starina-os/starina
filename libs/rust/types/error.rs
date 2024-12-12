@@ -2,4 +2,5 @@
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum ErrorCode {
     Foo,
+    WouldBlock,
 }

@@ -69,10 +69,6 @@ pub struct TooManyBytesError;
 //     }
 // }
 
-pub trait MessageBody {
-    fn serialize(self, msgbuffer: &mut MessageBuffer) -> Result<MessageInfo, TooManyBytesError>;
-}
-
 #[repr(C)]
 #[derive(Debug)]
 pub struct Ping {
@@ -288,8 +284,8 @@ pub fn mainloop2<'a>(
             //         },
             //     })
             // } else {
-                // }
-                return Err(ErrorCode::Foo);
+            // }
+            return Err(ErrorCode::Foo);
         }
     };
 
@@ -314,7 +310,6 @@ pub fn main(buf: &[u8]) {
     .unwrap();
     println!("{:?}", m);
 }
-
 
 // pub trait Handler: Sync {
 //     fn handle_ping(&self, ctx: MessageCtx, value: u32) {}
