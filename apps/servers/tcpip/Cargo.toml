@@ -11,3 +11,4 @@ path = "main.rs"
 
 [dependencies]
 starina = { workspace = true }
+starina_types = { workspace = true }

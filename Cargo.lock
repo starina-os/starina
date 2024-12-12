@@ -106,4 +106,5 @@ name = "tcpip"
 version = "0.0.0"
 dependencies = [
  "starina",
+ "starina_types",
 ]

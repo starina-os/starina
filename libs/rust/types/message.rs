@@ -17,12 +17,12 @@ pub struct PingRaw {
 #[repr(C)]
 #[derive(Debug)]
 pub struct Ping {
-    value0: u32,
-    value1: u32,
-    value2: u32,
-    value3: u32,
-    value4: u32,
-    value5: u32,
+    pub value0: u32,
+    pub value1: u32,
+    pub value2: u32,
+    pub value3: u32,
+    pub value4: u32,
+    pub value5: u32,
 }
 
 #[derive(Debug)]
