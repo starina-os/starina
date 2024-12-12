@@ -3,17 +3,54 @@ use core::mem::MaybeUninit;
 use crate::error::ErrorCode;
 
 
+#[repr(C)]
+#[derive(Debug)]
+pub struct PingRaw {
+    value0: u32,
+    value1: u32,
+    value2: u32,
+    value3: u32,
+    value4: u32,
+    value5: u32,
+}
+
+#[repr(C)]
+#[derive(Debug)]
+pub struct Ping {
+    value0: u32,
+    value1: u32,
+    value2: u32,
+    value3: u32,
+    value4: u32,
+    value5: u32,
+}
+
 #[derive(Debug)]
 pub enum Message<'a> {
     /// A message that contains a string.
     String(&'a str),
     /// A message that contains a byte array.
-    Bytes(&'a [u8]),
+    Ping(Ping),
 }
 
 impl<'a> Deserialize for Message<'a> {
-    fn deserialize(msgbuffer: &MessageBuffer) -> Result<Self, ErrorCode> {
-        todo!()
+    fn deserialize(msginfo: MessageInfo, msgbuffer: &MessageBuffer) -> Result<Self, ErrorCode> {
+        let m = match msginfo.all() {
+            0x7890000 => {
+                let raw = msgbuffer.data.as_ptr() as *const PingRaw;
+                Message::Ping(Ping {
+                    value0: unsafe { (*raw).value0 },
+                    value1: unsafe { (*raw).value1 },
+                    value2: unsafe { (*raw).value2 },
+                    value3: unsafe { (*raw).value3 },
+                    value4: unsafe { (*raw).value4 },
+                    value5: unsafe { (*raw).value5 },
+                })
+            }
+            _ => { return Err(ErrorCode::Foo)},
+        };
+
+        Ok(m)
     }
 }
 
@@ -66,7 +103,7 @@ impl MessageBuffer {
 }
 
 pub trait Deserialize: Sized {
-    fn deserialize(msgbuffer: &MessageBuffer) -> Result<Self, ErrorCode>;
+    fn deserialize(msginfo: MessageInfo, msgbuffer: &MessageBuffer) -> Result<Self, ErrorCode>;
 }
 
 pub trait Serialize {
