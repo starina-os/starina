@@ -39,7 +39,7 @@ impl Channel {
             Err(err) => return Err(RecvError::Syscall(err)),
         };
 
-        let msg = M::deserialize(buffer).map_err(RecvError::Deserialize)?;
+        let msg = M::deserialize(msginfo, buffer).map_err(RecvError::Deserialize)?;
         Ok(Some(msg))
     }
 }
