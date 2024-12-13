@@ -11,6 +11,14 @@ pub struct Poll {
 }
 
 impl Poll {
+    /// Creates a new poll object.
+    pub fn new() -> Result<Poll, ErrorCode> {
+        let handle = syscall::poll_create()?;
+        Ok(Poll {
+            handle: OwnedHandle::from_raw(handle),
+        })
+    }
+
     /// Waits for an event. This is a blocking call.
     pub fn wait(&self) -> Result<(PollEvent, HandleId), ErrorCode> {
         let ret = syscall::poll_wait(self.handle.id())?;

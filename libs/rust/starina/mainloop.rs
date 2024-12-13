@@ -12,6 +12,8 @@ use crate::poll::Poll;
 
 #[derive(Debug)]
 pub enum Error {
+
+    PollCreate(ErrorCode),
     /// An error while waiting for or reading an event.
     PollWait(ErrorCode),
     /// An error while receiving a message from a channel.
@@ -59,7 +61,12 @@ pub struct Mainloop<Ctx> {
 
 impl<Ctx> Mainloop<Ctx> {
     pub fn new() -> Result<Mainloop<Ctx>, Error> {
-        todo!()
+        let poll = Poll::new().map_err(Error::PollCreate)?;
+        Ok(Mainloop {
+            poll,
+            msgbuffer: MessageBuffer::new(),
+            objects: HashMap::new(),
+        })
     }
 
     /// Waits for the next event. Blocks until an event is available.

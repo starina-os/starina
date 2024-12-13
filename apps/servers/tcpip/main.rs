@@ -17,8 +17,9 @@ enum Context {
 }
 
 global_asm!(r#"
-.global use_it:
+.global use_it
 use_it:
+    msr tpidr_el0, x0
     ret
 "#);
 

@@ -8,6 +8,11 @@ pub use starina_types::syscall::SyscallNumber;
 use crate::arch;
 
 #[inline]
+fn syscall0(n: SyscallNumber) -> Result<isize, ErrorCode> {
+    arch::syscall(n, 0, 0, 0, 0, 0)
+}
+
+#[inline]
 fn syscall1(n: SyscallNumber, arg1: usize) -> Result<isize, ErrorCode> {
     arch::syscall(n, arg1, 0, 0, 0, 0)
 }
@@ -40,6 +45,13 @@ pub fn channel_try_recv(
         msgbuffer as usize,
     )?;
     Ok(MessageInfo::from_raw(ret as u32))
+}
+
+/// Creates a poll object.
+pub fn poll_create() -> Result<HandleId, ErrorCode> {
+    let ret = syscall0(SyscallNumber::PollCreate)?;
+    let handle_id = HandleId::from_raw(ret as i32); // FIXME:
+    Ok(handle_id)
 }
 
 /// Waits for an event on a poll object. Blocking.
