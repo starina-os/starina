@@ -1,0 +1,14 @@
+[package]
+name = "starina_cli"
+version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
+
+[[bin]]
+name = "starina"
+path = "main.rs"
+
+[dependencies]
+anyhow = { workspace = true }
+clap = { workspace = true, features = ["derive"] }
+tokio = { workspace = true, features = ["full"] }
