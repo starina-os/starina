@@ -1,7 +1,3 @@
-//! Cargo's dep-info file parser.
-//!
-//! <https://doc.rust-lang.org/cargo/reference/build-cache.html#dep-info-files>
-
 use std::path::Path;
 
 #[derive(Debug)]
@@ -9,6 +5,9 @@ pub enum Error {
     DelimiterNotFound,
 }
 
+/// Cargo's dep-info file parser.
+///
+/// <https://doc.rust-lang.org/cargo/reference/build-cache.html#dep-info-files>
 pub struct DepInfoParser<'a> {
     prerequisites: Vec<&'a Path>,
 }
