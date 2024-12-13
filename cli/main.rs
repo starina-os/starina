@@ -1,6 +1,7 @@
 use clap::Parser;
 
 mod commands;
+mod minimake;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
