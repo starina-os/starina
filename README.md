@@ -12,8 +12,9 @@ The utltimate goal of this project is to create a production-ready OS to be a go
 
 ## Roadmap
 
-- [x] Prototyping an microkernel-based OS in Rust ([https://starina.dev](https://starina.dev) is served by Starina on Linux/QEMU hypervisor!).
-- [ ] Redesign the OS based on lessons learned (work in progress to be done by Feb).
+- [x] Prototyping an microkernel-based OS in Rust - [https://starina.dev](https://starina.dev) is served by Starina on Linux/QEMU hypervisor!
+- [x] Redesign the OS based on lessons learned.
+- [ ] Rewrite the version 2 (work in progress).
 - [ ] WSL2-like but faster and more seamless Linux compatibility layer.
 - [ ] Make it production-ready.
 
