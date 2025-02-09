@@ -109,16 +109,6 @@ macro_rules! trace {
 macro_rules! oops {
     ($($args:tt)*) => {{
         $crate::println!($($args)*);
-        let mut i = 0;
-        $crate::arch::backtrace(|addr| {
-            if cfg!(target_pointer_width = "64") {
-                $crate::println!("  #{} at {:016x}", i, addr);
-            } else {
-                $crate::println!("  #{} at {:08x}", i, addr);
-            }
-
-            i += 1;
-        });
     }};
 }
 

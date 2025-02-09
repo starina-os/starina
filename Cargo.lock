@@ -14,6 +14,7 @@ name = "kernel"
 version = "0.0.0"
 dependencies = [
  "ktest",
+ "starina",
 ]
 
 [[package]]

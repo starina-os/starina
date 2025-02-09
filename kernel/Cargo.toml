@@ -10,3 +10,4 @@ path = "lib.rs"
 
 [dependencies]
 ktest = { workspace = true }
+starina = { workspace = true }
