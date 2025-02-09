@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["boot/*", "kernel", "libs/*", "apps/*"]
+members = ["boot/*", "kernel", "libs/rust/*", "apps/tests/ktest"]
 
 [workspace.package]
 version = "0.0.0"
@@ -10,3 +10,5 @@ edition = "2021"
 [workspace.dependencies]
 kernel = { path = "kernel" }
 starina = { path = "libs/rust/starina" }
+
+ktest = { path = "apps/tests/ktest" }
