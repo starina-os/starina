@@ -1,0 +1,13 @@
+[package]
+name = "boot_riscv64"
+publish = false
+version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
+
+[[bin]]
+name = "boot_riscv64"
+path = "main.rs"
+
+[dependencies]
+kernel = { workspace = true }

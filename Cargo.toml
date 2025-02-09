@@ -1,0 +1,11 @@
+[workspace]
+resolver = "2"
+members = ["boot/*"]
+
+[workspace.package]
+version = "0.0.0"
+authors = ["Seiya Nuta <nuta@seiya.me>"]
+edition = "2021"
+
+[workspace.dependencies]
+kernel = { path = "kernel" }
