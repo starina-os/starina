@@ -12,6 +12,9 @@ dependencies = [
 [[package]]
 name = "kernel"
 version = "0.0.0"
+dependencies = [
+ "ktest",
+]
 
 [[package]]
 name = "ktest"
