@@ -9,3 +9,4 @@ edition = { workspace = true }
 path = "lib.rs"
 
 [dependencies]
+starina = { workspace = true }
