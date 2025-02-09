@@ -10,13 +10,12 @@ The utltimate goal of this project is to create a production-ready OS to be a go
 - **Simplicity over perfection:** Emphasize a straightforward design which covers the most common use cases. Make it work first, then make it better.
 - **Incrementally adoptable:** Facilitate easy adoption of Starina by providing a seamless integration with existing systems.
 
-## Roadmap
+## Roadmap for 2025
 
 - [x] Prototyping an microkernel-based OS in Rust - [https://starina.dev](https://starina.dev) is served by Starina on Linux/QEMU hypervisor!
 - [x] Redesign the OS based on lessons learned.
 - [ ] Rewrite the version 2 (work in progress).
-- [ ] WSL2-like but faster and more seamless Linux compatibility layer.
-- [ ] Make it production-ready.
+- [ ] WSL2-like Linux compatibility layer, but more seamless and (hopefully) faster.
 
 ## Is it Linux or POSIX compatible?
 
