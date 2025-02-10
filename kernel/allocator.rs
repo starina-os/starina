@@ -4,7 +4,8 @@ use core::num::NonZeroUsize;
 
 use crate::spinlock::SpinLock;
 
-#[global_allocator]
+#[cfg_attr(target_os = "none", global_allocator)]
+#[cfg_attr(not(target_os = "none"), allow(unused))]
 pub static GLOBAL_ALLOCATOR: GlobalAllocator = GlobalAllocator::new();
 
 /// The default in-kernel memory allocator.
@@ -66,16 +67,6 @@ const fn align_down(value: usize, align: usize) -> usize {
 ///
 /// Typically, this allocator is used for allocating memory in initialization
 /// phase such that the allocated memory is never freed.
-///
-/// # Examples
-///
-/// ```
-/// use bump_allocator::BumpAllocator;
-///
-/// let mut allocator = BumpAllocator::new();
-/// allocator.add_region(0x20000 /* base */, 0x1000 /* len */);
-/// let addr1 = allocator.allocate(0x100 /* size */, 0x100 /* align */);
-/// ```
 pub struct BumpAllocator {
     top: usize,
     bottom: usize,

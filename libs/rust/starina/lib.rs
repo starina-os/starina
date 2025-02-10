@@ -1,4 +1,5 @@
 #![no_std]
+#![cfg_attr(test, feature(test))]
 
 pub trait Worker {
     type Context: 'static;

@@ -1,4 +1,8 @@
+use alloc::boxed::Box;
+use alloc::vec::Vec;
+
 use crate::arch::halt;
+use crate::spinlock::SpinLock;
 
 pub struct App2;
 impl starina::Worker for App2 {
@@ -27,6 +31,40 @@ impl<W: starina::Worker> Instance<W> {
 impl<W: starina::Worker> DynWorker for Instance<W> {
     fn dyn_call(&self) {
         self.worker.call(&self.ctx);
+    }
+}
+
+#[repr(C)]
+struct RawBuffer {
+    data: [u8; 4096],
+}
+pub struct OwnedBuffer(*mut RawBuffer);
+impl Drop for OwnedBuffer {
+    fn drop(&mut self) {
+        GLOBAL_POOL.lock().free(self.0);
+    }
+}
+
+pub struct OwnedBufferPool {
+    buffers: Vec<*mut RawBuffer>,
+}
+unsafe impl Sync for OwnedBufferPool {}
+
+static GLOBAL_POOL: SpinLock<OwnedBufferPool> = SpinLock::new(OwnedBufferPool {
+    buffers: Vec::new(),
+});
+impl OwnedBufferPool {
+    fn free(&mut self, buffer: *mut RawBuffer) {
+        self.buffers.push(buffer);
+    }
+    fn alloc(&mut self) -> OwnedBuffer {
+        match self.buffers.pop() {
+            Some(buffer) => OwnedBuffer(buffer),
+            None => {
+                let uninit = unsafe { core::mem::uninitialized() };
+                OwnedBuffer(Box::into_raw(Box::new(uninit)))
+            }
+        }
     }
 }
 
