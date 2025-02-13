@@ -13,7 +13,7 @@
     "linker": "rust-lld",
     "pre-link-args": {
         "ld.lld": [
-            "--script=boot/riscv64/riscv64-qemu-virt.ld",
+            "--script=boot/riscv64/kernel.ld",
             "-Map",
             "starina.map"
         ]
