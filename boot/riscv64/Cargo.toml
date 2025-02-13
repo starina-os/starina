@@ -8,6 +8,7 @@ edition = { workspace = true }
 [[bin]]
 name = "boot_riscv64"
 path = "main.rs"
+test = false          # Because this is arch-specific.
 
 [dependencies]
 kernel = { workspace = true }
