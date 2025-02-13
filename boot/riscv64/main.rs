@@ -1,4 +1,4 @@
-#![no_std]
+#![cfg_attr(target_os = "none", no_std)]
 #![no_main]
 #![cfg(target_arch = "riscv64")]
 
