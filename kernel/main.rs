@@ -36,15 +36,5 @@ pub fn boot(bootinfo: BootInfo) -> ! {
         GLOBAL_ALLOCATOR.add_region(free_ram.addr, free_ram.size);
     }
 
-    {
-        use alloc::vec::Vec;
-
-        let mut v = Vec::new();
-        v.push(1);
-        v.push(2);
-        v.push(3);
-        println!("v: {:?}", v);
-    }
-
     arch::halt();
 }
