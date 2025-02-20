@@ -4,8 +4,8 @@ set -eux
 cargo build \
   -Z build-std=core,alloc \
   -Z build-std-features=compiler-builtins-mem \
-  --target boot/riscv64/kernel.json \
-  --manifest-path boot/riscv64/Cargo.toml
+  --target kernel/arch/riscv64/kernel.json \
+  --manifest-path kernel/Cargo.toml
 
 qemu-system-riscv64 -machine virt -m 256 -bios default \
   -kernel target/kernel/debug/boot_riscv64 \

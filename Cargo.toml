@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["boot/*", "kernel", "libs/rust/*", "apps/tests/ktest"]
+members = ["kernel", "libs/rust/*", "apps/tests/ktest"]
 
 [workspace.package]
 version = "0.0.0"

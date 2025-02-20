@@ -1,3 +1,17 @@
+#![cfg_attr(target_os = "none", no_std)]
+#![cfg_attr(test, feature(test))]
+#![no_main]
+
+extern crate alloc;
+
+#[macro_use]
+mod print;
+
+mod allocator;
+mod arch;
+mod panic;
+mod spinlock;
+
 use alloc::boxed::Box;
 use alloc::vec::Vec;
 

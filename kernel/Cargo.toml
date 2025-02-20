@@ -5,8 +5,9 @@ version = { workspace = true }
 authors = { workspace = true }
 edition = { workspace = true }
 
-[lib]
-path = "lib.rs"
+[[bin]]
+name = "kernel"
+path = "main.rs"
 
 [dependencies]
 ktest = { workspace = true }
