@@ -113,24 +113,6 @@ impl BumpAllocator {
         // SAFETY: `self.top` is checked to be larger than `self.bottom`.
         unsafe { Some(NonZeroUsize::new_unchecked(self.top)) }
     }
-
-    /// Allocates all remaining memory with the given `align` bytes alignment.
-    ///
-    /// If any memory is allocated, returns the beginning address and the size
-    /// of the allocated memory.
-    #[track_caller]
-    pub fn allocate_all(&mut self, align: usize) -> Option<(NonZeroUsize, usize)> {
-        self.top = align_down(self.top, align);
-        if self.top < self.bottom {
-            return None;
-        }
-
-        let size = self.top - self.bottom;
-        self.top = self.bottom;
-
-        // SAFETY: `self.bottom` is checked to be non-zero.
-        unsafe { Some((NonZeroUsize::new_unchecked(self.bottom), size)) }
-    }
 }
 
 #[cfg(test)]

@@ -1,10 +1,9 @@
 #![cfg_attr(target_os = "none", no_std)]
+#![cfg_attr(target_os = "none", no_main)]
 #![cfg_attr(test, feature(test))]
-#![no_main]
 
 use allocator::GLOBAL_ALLOCATOR;
 use arrayvec::ArrayVec;
-use starina::address::PAddr;
 
 extern crate alloc;
 
