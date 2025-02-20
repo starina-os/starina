@@ -8,6 +8,6 @@ cargo build \
   --manifest-path kernel/Cargo.toml
 
 qemu-system-riscv64 -machine virt -m 256 -bios default \
-  -kernel target/kernel/debug/boot_riscv64 \
+  -kernel target/kernel/debug/kernel \
   -nographic -serial mon:stdio --no-reboot \
   -d cpu_reset,unimp,guest_errors,int -D qemu.log

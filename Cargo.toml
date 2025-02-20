@@ -8,6 +8,8 @@ authors = ["Seiya Nuta <nuta@seiya.me>"]
 edition = "2021"
 
 [workspace.dependencies]
+arrayvec = { version = "0.7.6", default-features = false }
+
 kernel = { path = "kernel" }
 starina = { path = "libs/rust/starina" }
 

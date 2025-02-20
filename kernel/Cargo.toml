@@ -12,3 +12,4 @@ path = "main.rs"
 [dependencies]
 ktest = { workspace = true }
 starina = { workspace = true }
+arrayvec = { workspace = true }
