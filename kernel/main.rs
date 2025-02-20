@@ -37,3 +37,8 @@ pub fn boot(bootinfo: BootInfo) -> ! {
 
     arch::halt();
 }
+
+#[cfg(not(target_os = "none"))]
+fn main() {
+    unreachable!("added to make rust-analyzer happy");
+}
