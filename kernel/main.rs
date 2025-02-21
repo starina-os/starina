@@ -25,7 +25,7 @@ pub struct BootInfo {
 }
 
 pub fn boot(bootinfo: BootInfo) -> ! {
-    info!("\nBooting Starina...");
+    info!("Booting Starina...");
     for free_ram in bootinfo.free_rams {
         debug!(
             "Free RAM: {:x} ({} MB)",
