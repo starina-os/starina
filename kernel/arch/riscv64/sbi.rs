@@ -4,7 +4,7 @@ use core::arch::asm;
 type c_long = i64;
 
 pub enum Error {
-    Unknown(c_long),
+    Unknown(#[allow(unused)] c_long),
 }
 
 /// See <https://github.com/riscv-non-isa/riscv-sbi-doc/blob/master/src/binary-encoding.adoc>
