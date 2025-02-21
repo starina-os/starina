@@ -1,0 +1,30 @@
+{
+    "arch": "riscv64",
+    "code-model": "medium",
+    "cpu": "generic-rv64",
+    "os": "none",
+    "crt-objects-fallback": "false",
+    "data-layout": "e-m:e-p:64:64-i64:64-i128:128-n32:64-S128",
+    "eh-frame-header": false,
+    "frame-pointer": "always",
+    "emit-debug-gdb-scripts": false,
+    "features": "+m,+a,+f,+d,+c",
+    "linker-flavor": "ld.lld",
+    "linker": "rust-lld",
+    "pre-link-args": {
+        "ld.lld": [
+            "--script=kernel/arch/riscv64/kernel.ld",
+            "-Map",
+            "starina.map"
+        ]
+    },
+    "llvm-abiname": "lp64d",
+    "llvm-target": "riscv64",
+    "max-atomic-width": 64,
+    "panic-strategy": "abort",
+    "relocation-model": "static",
+    "supported-sanitizers": [
+        "kernel-address"
+    ],
+    "target-pointer-width": "64"
+}

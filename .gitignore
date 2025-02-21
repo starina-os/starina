@@ -1,11 +1,9 @@
 /target
 /build
-/buildconfig.mk
 *.DS_Store
 *.img
 *.tmp
 *.log
 *.elf
-*.pe
 *.map
 *.pcap

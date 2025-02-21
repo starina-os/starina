@@ -1,0 +1,9 @@
+[package]
+name = "starina"
+publish = false
+version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
+
+[lib]
+path = "lib.rs"
