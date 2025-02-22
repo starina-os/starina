@@ -7,15 +7,14 @@ use arrayvec::ArrayVec;
 use alloc::vec::Vec;
 use alloc::boxed::Box;
 use starina::worker::Worker;
+use starina::{debug, info};
 
 extern crate alloc;
-
-#[macro_use]
-mod print;
 
 mod allocator;
 mod arch;
 mod panic;
+mod syscall;
 mod spinlock;
 
 pub struct FreeRam {

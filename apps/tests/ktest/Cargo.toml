@@ -8,5 +8,8 @@ edition = { workspace = true }
 [lib]
 path = "lib.rs"
 
+[features]
+kernel = ["starina/kernel"]
+
 [dependencies]
 starina = { workspace = true }

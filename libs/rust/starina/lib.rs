@@ -3,3 +3,5 @@
 
 pub mod worker;
 pub mod address;
+pub mod syscall;
+pub mod log;

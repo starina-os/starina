@@ -10,7 +10,7 @@ name = "kernel"
 path = "main.rs"
 
 [dependencies]
-starina = { workspace = true }
+starina = { workspace = true, features = ["kernel"] }
 arrayvec = { workspace = true }
 
 ktest = { workspace = true }
