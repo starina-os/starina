@@ -12,3 +12,5 @@ arrayvec = { version = "0.7.6", default-features = false }
 
 kernel = { path = "kernel" }
 starina = { path = "libs/rust/starina" }
+
+ktest = { path = "apps/tests/ktest" }

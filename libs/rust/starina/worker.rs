@@ -1,3 +1,3 @@
 pub trait Worker {
-    fn init() -> Self;
+    fn init() -> Self where Self: Sized;
 }

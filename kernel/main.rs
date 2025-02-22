@@ -4,6 +4,9 @@
 
 use allocator::GLOBAL_ALLOCATOR;
 use arrayvec::ArrayVec;
+use alloc::vec::Vec;
+use alloc::boxed::Box;
+use starina::worker::Worker;
 
 extern crate alloc;
 
@@ -34,6 +37,9 @@ pub fn boot(bootinfo: BootInfo) -> ! {
         );
         GLOBAL_ALLOCATOR.add_region(free_ram.addr, free_ram.size);
     }
+
+    let mut workers: Vec<Box<dyn Worker>> = Vec::new();
+    workers.push(Box::new(ktest::App::init()));
 
     arch::halt();
 }
