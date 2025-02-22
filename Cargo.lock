@@ -17,5 +17,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "ktest"
+version = "0.0.0"
+dependencies = [
+ "starina",
+]
+
+[[package]]
 name = "starina"
 version = "0.0.0"
