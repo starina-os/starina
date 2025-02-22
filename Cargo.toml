@@ -5,7 +5,7 @@ members = ["kernel", "libs/rust/*", "apps/tests/ktest"]
 [workspace.package]
 version = "0.0.0"
 authors = ["Seiya Nuta <nuta@seiya.me>"]
-edition = "2021"
+edition = "2024"
 
 [workspace.dependencies]
 arrayvec = { version = "0.7.6", default-features = false }

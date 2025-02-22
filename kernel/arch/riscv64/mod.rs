@@ -24,14 +24,14 @@ pub fn console_write(bytes: &[u8]) {
     }
 }
 
-extern "C" {
+unsafe extern "C" {
     static __bss: u8;
     static __bss_end: u8;
     static __free_ram: u8;
     static __free_ram_end: u8;
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 unsafe extern "C" fn riscv64_boot(_hartid: u64, _dtb_addr: u64) -> ! {
     let bss_start = &raw const __bss as usize;
     let bss_end = &raw const __bss_end as usize;

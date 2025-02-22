@@ -21,11 +21,14 @@ unsafe fn sbi_call(
 ) -> Result<c_long, Error> {
     let error: c_long;
     let retval: c_long;
-    asm!(
-        "ecall",
-        inout("a0") a0 => error, inout("a1") a1 => retval, in("a2") a2,
-        in("a3") a3, in("a4") a4, in("a5") a5, in("a6") fid, in("a7") eid,
-    );
+
+    unsafe {
+        asm!(
+            "ecall",
+            inout("a0") a0 => error, inout("a1") a1 => retval, in("a2") a2,
+            in("a3") a3, in("a4") a4, in("a5") a5, in("a6") fid, in("a7") eid,
+        );
+    }
 
     if error == 0 {
         Ok(retval)
