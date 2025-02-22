@@ -4,15 +4,17 @@
 
 use allocator::GLOBAL_ALLOCATOR;
 use arrayvec::ArrayVec;
+use alloc::vec::Vec;
+use alloc::boxed::Box;
+use starina::worker::App;
+use starina::{debug, info};
 
 extern crate alloc;
-
-#[macro_use]
-mod print;
 
 mod allocator;
 mod arch;
 mod panic;
+mod syscall;
 mod spinlock;
 
 pub struct FreeRam {
@@ -34,6 +36,9 @@ pub fn boot(bootinfo: BootInfo) -> ! {
         );
         GLOBAL_ALLOCATOR.add_region(free_ram.addr, free_ram.size);
     }
+
+    let mut apps: Vec<Box<dyn App>> = Vec::new();
+    apps.push(Box::new(ktest::Main::init()));
 
     arch::halt();
 }

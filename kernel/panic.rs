@@ -2,6 +2,9 @@ use core::panic::PanicInfo;
 use core::sync::atomic::AtomicU8;
 use core::sync::atomic::Ordering;
 
+use starina::error;
+use starina::println;
+
 use crate::arch;
 
 /// Panic counter. Every time the kernel panics, this counter is incremented.
@@ -17,7 +20,7 @@ fn panic(info: &PanicInfo) -> ! {
         0 => {
             // First panic: Try whatever we can do including complicated stuff
             // which may panic again.
-            println!("kernel panic: {}", info);
+            error!("kernel panic: {}", info);
             arch::halt();
         }
         1 => {

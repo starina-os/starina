@@ -13,6 +13,14 @@ name = "kernel"
 version = "0.0.0"
 dependencies = [
  "arrayvec",
+ "ktest",
+ "starina",
+]
+
+[[package]]
+name = "ktest"
+version = "0.0.0"
+dependencies = [
  "starina",
 ]
 
