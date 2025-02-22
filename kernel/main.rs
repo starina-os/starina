@@ -6,7 +6,7 @@ use allocator::GLOBAL_ALLOCATOR;
 use arrayvec::ArrayVec;
 use alloc::vec::Vec;
 use alloc::boxed::Box;
-use starina::worker::App;
+use starina::app::App;
 use starina::{debug, info};
 
 extern crate alloc;
