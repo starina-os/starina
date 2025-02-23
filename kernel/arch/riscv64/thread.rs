@@ -91,6 +91,9 @@ pub extern "C" fn enter_kernelland(
     unsafe {
         naked_asm!(
             r#"
+                // Disable interrupts in kernel.
+                csrci sstatus, 1 << 1
+
                 csrrw tp, sscratch, tp
                 ld t0, {context_offset}(tp) // Load CpuVar.arch.context
 
@@ -120,12 +123,10 @@ pub extern "C" fn enter_kernelland(
                 csrrw t1, sscratch, tp
                 sd t1, {tp_offset}(t0)
 
-                // Save t0 temporarily as it will be used later.
-                mv s0, t0
-
                 ld sp, {kernel_sp_offset}(tp)
 
                 // Handle the system call.
+                mv a0, t0
                 j {syscall_handler}
             "#,
             context_offset = const offset_of!(crate::arch::CpuVar, context),
@@ -147,18 +148,36 @@ pub extern "C" fn enter_kernelland(
             s9_offset = const offset_of!(Context, s9),
             s10_offset = const offset_of!(Context, s10),
             s11_offset = const offset_of!(Context, s11),
-            syscall_handler = sym crate::syscall::syscall_handler,
+
+
+            syscall_handler = sym syscall_handler_trampoline,
+            // syscall_handler = sym crate::syscall::syscall_handler,
         )
     }
 }
 
+#[unsafe(no_mangle)]
+fn syscall_handler_trampoline(context: *mut Context) {
+    // trace!(
+    //     "syscall: pc={:x}, sp={:x}, ra={:x}, a0={:x}",
+    //     unsafe { (*context).sepc },
+    //     unsafe { (*context).sp },
+    //     unsafe { (*context).ra },
+    //     unsafe { (*context).a0 }
+    // );
+
+    crate::syscall::syscall_handler(0);
+}
+
 pub fn enter_userland(thread: *mut crate::arch::Thread) -> ! {
     let context: *mut Context = unsafe { &mut (*thread).context as *mut _ };
-    trace!(
-        "pc={:x}, sp={:x}",
-        unsafe { (*thread).context.sepc },
-        unsafe { (*thread).context.sp }
-    );
+    // trace!(
+    //     "enter: pc={:x}, sp={:x}, ra={:x}, a0={:x}",
+    //     unsafe { (*context).sepc },
+    //     unsafe { (*context).sp },
+    //     unsafe { (*context).ra },
+    //     unsafe { (*context).a0 }
+    // );
 
     let mut sstatus: u64;
     unsafe {

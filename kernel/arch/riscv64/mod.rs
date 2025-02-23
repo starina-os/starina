@@ -67,3 +67,9 @@ unsafe extern "C" fn riscv64_boot(hartid: u64, _dtb_addr: u64) -> ! {
 
     crate::boot(BootInfo { cpu_id, free_rams });
 }
+
+pub fn percpu_init() {
+    unsafe {
+        asm!("csrw sscratch, tp");
+    }
+}

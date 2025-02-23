@@ -48,6 +48,7 @@ pub fn boot(bootinfo: BootInfo) -> ! {
     }
 
     cpuvar::percpu_init(bootinfo.cpu_id);
+    arch::percpu_init();
 
     fn entrypoint(app: *const Arc<dyn App>) {
         let app = unsafe { &*app };
