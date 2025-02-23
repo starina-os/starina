@@ -20,15 +20,10 @@ pub extern "C" fn syscall_handler(
     a3: usize,
     a4: usize,
     a5: usize,
-) {
+) -> ! {
     trace!(
         "syscall_handler: a0={:x}, a1={:x}, a2={:x}, a3={:x}, a4={:x}, a5={:x}",
-        a0,
-        a1,
-        a2,
-        a3,
-        a4,
-        a5
+        a0, a1, a2, a3, a4, a5
     );
     switch_thread();
 }
