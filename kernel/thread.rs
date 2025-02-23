@@ -27,6 +27,18 @@ impl Thread {
         })
     }
 
+    pub fn new_inkernel(pc: usize, arg: usize) -> SharedRef<Thread> {
+        let thread = SharedRef::new(Thread {
+            mutable: SpinLock::new(Mutable {
+                state: State::Runnable,
+            }),
+            arch: arch::Thread::new_inkernel(pc, arg),
+        });
+
+        GLOBAL_SCHEDULER.push(thread.clone());
+        thread
+    }
+
     pub fn is_runnable(&self) -> bool {
         matches!(self.mutable.lock().state, State::Runnable)
     }

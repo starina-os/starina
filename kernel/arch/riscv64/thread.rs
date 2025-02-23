@@ -50,6 +50,22 @@ impl Thread {
             context: Default::default(),
         }
     }
+
+    pub fn new_inkernel(pc: usize, arg: usize) -> Thread {
+        let mut sstatus: u64;
+        unsafe {
+            core::arch::asm!("csrr {}, sstatus", out(reg) sstatus);
+        }
+
+        Thread {
+            context: Context {
+                sepc: pc.try_into().unwrap(),
+                sstatus,
+                a0: arg.try_into().unwrap(),
+                ..Default::default()
+            },
+        }
+    }
 }
 
 pub fn resume_thread(thread: *mut crate::arch::Thread) -> ! {

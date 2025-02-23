@@ -13,6 +13,7 @@ use alloc::vec::Vec;
 use allocator::GLOBAL_ALLOCATOR;
 use arrayvec::ArrayVec;
 use cpuvar::CpuId;
+use scheduler::GLOBAL_SCHEDULER;
 use starina::app::App;
 
 mod allocator;
@@ -50,6 +51,8 @@ pub fn boot(bootinfo: BootInfo) -> ! {
 
     let mut apps: Vec<Box<dyn App>> = Vec::new();
     apps.push(Box::new(ktest::Main::init()));
+    let t = thread::Thread::new(apps);
+    GLOBAL_SCHEDULER.push(t);
 
     thread::switch_thread();
 }
