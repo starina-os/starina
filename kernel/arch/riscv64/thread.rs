@@ -101,11 +101,11 @@ pub fn resume_thread(thread: *mut crate::arch::Thread) -> ! {
             csrw sepc, a1
             ld a1, {sstatus_offset}(a0)
 
-            // Restore general-purpose registers except tp.
+            // Restore general-purpose registers.
             ld ra, {ra_offset}(a0)
             ld sp, {sp_offset}(a0)
             ld gp, {gp_offset}(a0)
-            ld tp, {tp_offset}(a0)
+            // ld tp, {tp_offset}(a0) FIXME: for usermode
             ld t0, {t0_offset}(a0)
             ld t1, {t1_offset}(a0)
             ld t2, {t2_offset}(a0)
