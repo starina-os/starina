@@ -57,7 +57,7 @@ impl Thread {
     }
 
     pub fn new_inkernel(pc: usize, arg: usize) -> Thread {
-        let stack_size = 256 * 1024;
+        let stack_size = 1024 * 1024;
         let stack =
             unsafe { GLOBAL_ALLOCATOR.alloc(Layout::from_size_align(stack_size, 16).unwrap()) };
         let sp = stack as u64 + stack_size as u64;
@@ -158,27 +158,11 @@ pub extern "C" fn enter_kernelland(
 
 #[unsafe(no_mangle)]
 fn syscall_handler_trampoline(context: *mut Context) {
-    // trace!(
-    //     "syscall: pc={:x}, sp={:x}, ra={:x}, a0={:x}",
-    //     unsafe { (*context).sepc },
-    //     unsafe { (*context).sp },
-    //     unsafe { (*context).ra },
-    //     unsafe { (*context).a0 }
-    // );
-
     crate::syscall::syscall_handler(0);
 }
 
 pub fn enter_userland(thread: *mut crate::arch::Thread) -> ! {
     let context: *mut Context = unsafe { &mut (*thread).context as *mut _ };
-    // trace!(
-    //     "enter: pc={:x}, sp={:x}, ra={:x}, a0={:x}",
-    //     unsafe { (*context).sepc },
-    //     unsafe { (*context).sp },
-    //     unsafe { (*context).ra },
-    //     unsafe { (*context).a0 }
-    // );
-
     let mut sstatus: u64;
     unsafe {
         asm!("csrr {0}, sstatus", out(reg) sstatus);

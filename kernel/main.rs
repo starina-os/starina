@@ -15,6 +15,7 @@ use arrayvec::ArrayVec;
 use cpuvar::CpuId;
 use scheduler::GLOBAL_SCHEDULER;
 use starina::app::App;
+use starina::syscall::thread_yield;
 
 mod allocator;
 mod arch;
@@ -55,7 +56,8 @@ pub fn boot(bootinfo: BootInfo) -> ! {
         info!("Starting app...");
         for i in 0.. {
             info!("heartbeat: {}", i);
-            app.heartbeat();
+            // app.heartbeat();
+            thread_yield();
             for _ in 0..1000000 {}
         }
     }
