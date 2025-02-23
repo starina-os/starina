@@ -19,7 +19,8 @@ pub use cpuvar::get_cpuvar;
 pub use cpuvar::set_cpuvar;
 pub use idle::idle;
 pub use thread::Thread;
-pub use thread::resume_thread;
+pub use thread::enter_kernelland;
+pub use thread::enter_userland;
 
 pub const NUM_CPUS_MAX: usize = 4;
 

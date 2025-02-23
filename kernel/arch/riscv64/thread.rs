@@ -1,6 +1,7 @@
 use core::alloc::GlobalAlloc;
 use core::alloc::Layout;
 use core::arch::asm;
+use core::arch::naked_asm;
 use core::mem::offset_of;
 
 use crate::allocator::GLOBAL_ALLOCATOR;
@@ -78,7 +79,80 @@ impl Thread {
     }
 }
 
-pub fn resume_thread(thread: *mut crate::arch::Thread) -> ! {
+#[naked]
+pub extern "C" fn enter_kernelland(
+    _a0: isize,
+    _a1: isize,
+    _a2: isize,
+    _a3: isize,
+    _a4: isize,
+    _a5: isize,
+) -> isize {
+    unsafe {
+        naked_asm!(
+            r#"
+                csrrw tp, sscratch, tp
+                ld t0, {context_offset}(tp) // Load CpuVar.arch.context
+
+                // Save general-purpose registers.
+                sd sp, {sp_offset}(t0)
+                sd gp, {gp_offset}(t0)
+                sd s0, {s0_offset}(t0)
+                sd s1, {s1_offset}(t0)
+                sd s2, {s2_offset}(t0)
+                sd s3, {s3_offset}(t0)
+                sd s4, {s4_offset}(t0)
+                sd s5, {s5_offset}(t0)
+                sd s6, {s6_offset}(t0)
+                sd s7, {s7_offset}(t0)
+                sd s8, {s8_offset}(t0)
+                sd s9, {s9_offset}(t0)
+                sd s10, {s10_offset}(t0)
+                sd s11, {s11_offset}(t0)
+                sd ra, {sepc_offset}(t0)
+
+                // Save sstatus.
+                csrr t1, sstatus
+                sd t1, {sstatus_offset}(t0)
+
+                // Read the original tp temporarily saved in sscratch, and
+                // restore the original sscratch value.
+                csrrw t1, sscratch, tp
+                sd t1, {tp_offset}(t0)
+
+                // Save t0 temporarily as it will be used later.
+                mv s0, t0
+
+                ld sp, {kernel_sp_offset}(tp)
+
+                // Handle the system call.
+                j {syscall_handler}
+            "#,
+            context_offset = const offset_of!(crate::arch::CpuVar, context),
+            kernel_sp_offset = const offset_of!(crate::arch::CpuVar, kernel_sp),
+            sepc_offset = const offset_of!(Context, sepc),
+            sstatus_offset = const offset_of!(Context, sstatus),
+            sp_offset = const offset_of!(Context, sp),
+            gp_offset = const offset_of!(Context, gp),
+            tp_offset = const offset_of!(Context, tp),
+            s0_offset = const offset_of!(Context, s0),
+            s1_offset = const offset_of!(Context, s1),
+            s2_offset = const offset_of!(Context, s2),
+            s3_offset = const offset_of!(Context, s3),
+            s4_offset = const offset_of!(Context, s4),
+            s5_offset = const offset_of!(Context, s5),
+            s6_offset = const offset_of!(Context, s6),
+            s7_offset = const offset_of!(Context, s7),
+            s8_offset = const offset_of!(Context, s8),
+            s9_offset = const offset_of!(Context, s9),
+            s10_offset = const offset_of!(Context, s10),
+            s11_offset = const offset_of!(Context, s11),
+            syscall_handler = sym crate::syscall::syscall_handler,
+        )
+    }
+}
+
+pub fn enter_userland(thread: *mut crate::arch::Thread) -> ! {
     let context: *mut Context = unsafe { &mut (*thread).context as *mut _ };
     trace!(
         "pc={:x}, sp={:x}",
@@ -105,7 +179,7 @@ pub fn resume_thread(thread: *mut crate::arch::Thread) -> ! {
             ld ra, {ra_offset}(a0)
             ld sp, {sp_offset}(a0)
             ld gp, {gp_offset}(a0)
-            // ld tp, {tp_offset}(a0) FIXME: for usermode
+            ld tp, {tp_offset}(a0)
             ld t0, {t0_offset}(a0)
             ld t1, {t1_offset}(a0)
             ld t2, {t2_offset}(a0)

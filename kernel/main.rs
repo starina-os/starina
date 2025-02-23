@@ -1,6 +1,7 @@
 #![cfg_attr(target_os = "none", no_std)]
 #![cfg_attr(target_os = "none", no_main)]
 #![cfg_attr(test, feature(test))]
+#![feature(naked_functions)]
 
 #[macro_use]
 extern crate starina;
@@ -49,9 +50,11 @@ pub fn boot(bootinfo: BootInfo) -> ! {
     cpuvar::percpu_init(bootinfo.cpu_id);
 
     fn entrypoint(app: *const Arc<dyn App>) {
+        let app = unsafe { &*app };
         info!("Starting app...");
         for i in 0.. {
-            info!("App: {}", i);
+            info!("heartbeat: {}", i);
+            app.heartbeat();
             for _ in 0..1000000 {}
         }
     }

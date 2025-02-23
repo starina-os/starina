@@ -6,7 +6,6 @@ use crate::thread::Thread;
 
 pub struct CpuVar {
     pub(super) context: *mut Context,
-    pub(super) s0_scratch: u64,
     pub(super) kernel_sp: u64,
 }
 
@@ -19,7 +18,6 @@ impl CpuVar {
         let sp_top = &raw const __boot_stack_top as u64;
         Self {
             context: &raw const idle_thread.arch().context as *mut _,
-            s0_scratch: 0,
             kernel_sp: sp_top,
         }
     }

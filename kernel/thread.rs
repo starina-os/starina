@@ -1,46 +1,25 @@
 use crate::arch;
 use crate::refcount::SharedRef;
 use crate::scheduler::GLOBAL_SCHEDULER;
-use crate::spinlock::SpinLock;
-
-enum State {
-    Blocked,
-    Runnable,
-}
-
-struct Mutable {
-    state: State,
-}
 
 pub struct Thread {
-    mutable: SpinLock<Mutable>,
     arch: arch::Thread,
 }
 
 impl Thread {
     pub fn new_idle() -> SharedRef<Thread> {
         SharedRef::new(Thread {
-            mutable: SpinLock::new(Mutable {
-                state: State::Runnable,
-            }),
             arch: arch::Thread::new_idle(),
         })
     }
 
     pub fn new_inkernel(pc: usize, arg: usize) -> SharedRef<Thread> {
         let thread = SharedRef::new(Thread {
-            mutable: SpinLock::new(Mutable {
-                state: State::Runnable,
-            }),
             arch: arch::Thread::new_inkernel(pc, arg),
         });
 
         GLOBAL_SCHEDULER.push(thread.clone());
         thread
-    }
-
-    pub fn is_runnable(&self) -> bool {
-        matches!(self.mutable.lock().state, State::Runnable)
     }
 
     pub const fn arch(&self) -> &arch::Thread {
@@ -63,7 +42,7 @@ pub fn switch_thread() -> ! {
 
         // Preemptive scheduling: push the current thread back to the
         // runqueue if it's still runnable.
-        let thread_to_enqueue = if current_thread.is_runnable() && !in_idle {
+        let thread_to_enqueue = if !in_idle {
             Some(current_thread.clone())
         } else {
             None
@@ -88,6 +67,6 @@ pub fn switch_thread() -> ! {
         // Execute the pending continuation if any.
         let arch_thread: *mut arch::Thread = current_thread.arch() as *const _ as *mut _;
         drop(current_thread);
-        arch::resume_thread(arch_thread);
+        arch::enter_userland(arch_thread);
     }
 }
