@@ -9,14 +9,16 @@ use crate::FreeRam;
 
 global_asm!(include_str!("boot.S"));
 
-mod sbi;
 mod cpuvar;
-mod thread;
 mod idle;
+mod sbi;
+mod thread;
 
+pub use cpuvar::get_cpuvar;
+pub use cpuvar::set_cpuvar;
+pub use cpuvar::CpuVar;
 pub use idle::idle;
 pub use thread::Thread;
-pub use cpuvar::{CpuVar, get_cpuvar,set_cpuvar};
 
 pub const NUM_CPUS_MAX: usize = 4;
 

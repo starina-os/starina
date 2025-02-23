@@ -1,6 +1,9 @@
-use crate::{arch, refcount::SharedRef, scheduler::GLOBAL_SCHEDULER, spinlock::SpinLock};
+use crate::arch;
+use crate::refcount::SharedRef;
+use crate::scheduler::GLOBAL_SCHEDULER;
+use crate::spinlock::SpinLock;
 
-enum State  {
+enum State {
     Blocked,
     Runnable,
 }

@@ -7,22 +7,23 @@ extern crate starina;
 
 extern crate alloc;
 
+use alloc::boxed::Box;
+use alloc::vec::Vec;
+
 use allocator::GLOBAL_ALLOCATOR;
 use arrayvec::ArrayVec;
-use alloc::vec::Vec;
-use alloc::boxed::Box;
 use cpuvar::CpuId;
 use starina::app::App;
 
-mod scheduler;
-mod cpuvar;
 mod allocator;
 mod arch;
+mod cpuvar;
 mod panic;
-mod syscall;
-mod spinlock;
-mod thread;
 mod refcount;
+mod scheduler;
+mod spinlock;
+mod syscall;
+mod thread;
 
 pub struct FreeRam {
     addr: *mut u8,

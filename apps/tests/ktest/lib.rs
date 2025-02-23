@@ -1,5 +1,6 @@
 #![no_std]
-use starina::{info, app::App};
+use starina::app::App;
+use starina::info;
 
 pub struct Main {}
 
