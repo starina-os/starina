@@ -8,6 +8,7 @@ extern crate starina;
 
 extern crate alloc;
 
+use alloc::boxed::Box;
 use alloc::sync::Arc;
 
 use allocator::GLOBAL_ALLOCATOR;
@@ -51,22 +52,20 @@ pub fn boot(bootinfo: BootInfo) -> ! {
     cpuvar::percpu_init(bootinfo.cpu_id);
     arch::percpu_init();
 
-    fn entrypoint(app: *const Arc<dyn App>) {
+    fn entrypoint(app: *const ktest::Main) {
         let app = unsafe { &*app };
         info!("Starting app...");
         for i in 0.. {
             info!("heartbeat: {}", i);
-            // app.heartbeat();
+            app.heartbeat();
             thread_yield();
             for _ in 0..1000000 {}
         }
     }
 
-    let ktest_app: Arc<dyn App> = Arc::new(ktest::Main::init());
-    unsafe {
-        Arc::increment_strong_count(&ktest_app);
-    }
-    let t = thread::Thread::new_inkernel(entrypoint as usize, &ktest_app as *const _ as usize);
+    let ktest_app: *const ktest::Main = Box::leak(Box::new(ktest::Main::init()));
+    let arg = ktest_app as usize;
+    let t = thread::Thread::new_inkernel(entrypoint as usize, arg);
     GLOBAL_SCHEDULER.push(t);
 
     thread::switch_thread();
