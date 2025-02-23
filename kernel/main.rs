@@ -1,21 +1,30 @@
 #![cfg_attr(target_os = "none", no_std)]
 #![cfg_attr(target_os = "none", no_main)]
 #![cfg_attr(test, feature(test))]
+#![feature(naked_functions)]
 
-use allocator::GLOBAL_ALLOCATOR;
-use arrayvec::ArrayVec;
-use alloc::vec::Vec;
-use alloc::boxed::Box;
-use starina::app::App;
-use starina::{debug, info};
+#[macro_use]
+extern crate starina;
 
 extern crate alloc;
 
+use alloc::boxed::Box;
+
+use allocator::GLOBAL_ALLOCATOR;
+use arrayvec::ArrayVec;
+use cpuvar::CpuId;
+use scheduler::GLOBAL_SCHEDULER;
+use starina::app::App;
+
 mod allocator;
 mod arch;
+mod cpuvar;
 mod panic;
-mod syscall;
+mod refcount;
+mod scheduler;
 mod spinlock;
+mod syscall;
+mod thread;
 
 pub struct FreeRam {
     addr: *mut u8,
@@ -23,6 +32,7 @@ pub struct FreeRam {
 }
 
 pub struct BootInfo {
+    cpu_id: CpuId,
     free_rams: ArrayVec<FreeRam, 8>,
 }
 
@@ -37,10 +47,24 @@ pub fn boot(bootinfo: BootInfo) -> ! {
         GLOBAL_ALLOCATOR.add_region(free_ram.addr, free_ram.size);
     }
 
-    let mut apps: Vec<Box<dyn App>> = Vec::new();
-    apps.push(Box::new(ktest::Main::init()));
+    cpuvar::percpu_init(bootinfo.cpu_id);
+    arch::percpu_init();
 
-    arch::halt();
+    fn entrypoint(app: *mut ktest::Main) {
+        let app = unsafe { &mut *app };
+        info!("Starting app...");
+        for _ in 0.. {
+            app.tick();
+            for _ in 0..1000000 {}
+        }
+    }
+
+    let ktest_app: *const ktest::Main = Box::leak(Box::new(ktest::Main::init()));
+    let arg = ktest_app as usize;
+    let t = thread::Thread::new_inkernel(entrypoint as usize, arg);
+    GLOBAL_SCHEDULER.push(t);
+
+    thread::switch_thread();
 }
 
 #[cfg(not(target_os = "none"))]
