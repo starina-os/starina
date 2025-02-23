@@ -126,7 +126,6 @@ pub extern "C" fn enter_kernelland(
                 ld sp, {kernel_sp_offset}(tp)
 
                 // Handle the system call.
-                mv a0, t0
                 j {syscall_handler}
             "#,
             context_offset = const offset_of!(crate::arch::CpuVar, context),
@@ -148,17 +147,9 @@ pub extern "C" fn enter_kernelland(
             s9_offset = const offset_of!(Context, s9),
             s10_offset = const offset_of!(Context, s10),
             s11_offset = const offset_of!(Context, s11),
-
-
-            syscall_handler = sym syscall_handler_trampoline,
-            // syscall_handler = sym crate::syscall::syscall_handler,
+            syscall_handler = sym crate::syscall::syscall_handler,
         )
     }
-}
-
-#[unsafe(no_mangle)]
-fn syscall_handler_trampoline(context: *mut Context) {
-    crate::syscall::syscall_handler(0);
 }
 
 pub fn enter_userland(thread: *mut crate::arch::Thread) -> ! {

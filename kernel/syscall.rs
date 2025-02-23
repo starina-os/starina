@@ -13,7 +13,7 @@ fn thread_yield_trampoline() {
     enter_kernelland(123, 0, 0, 0, 0, 0);
 }
 
-pub fn syscall_handler(a0: usize) {
+pub extern "C" fn syscall_handler(a0: usize) {
     println!("syscall_handler: a0={}", a0);
     switch_thread();
 }
