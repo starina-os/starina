@@ -75,7 +75,6 @@ pub fn switch_thread() -> ! {
 
         // Execute the pending continuation if any.
         let arch_thread: *mut arch::Thread = current_thread.arch() as *const _ as *mut _;
-
-        panic!("switching to {:#x?}", arch_thread);
+        arch::resume_thread(arch_thread);
     }
 }
