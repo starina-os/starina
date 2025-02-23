@@ -2,20 +2,27 @@
 #![cfg_attr(target_os = "none", no_main)]
 #![cfg_attr(test, feature(test))]
 
+#[macro_use]
+extern crate starina;
+
+extern crate alloc;
+
 use allocator::GLOBAL_ALLOCATOR;
 use arrayvec::ArrayVec;
 use alloc::vec::Vec;
 use alloc::boxed::Box;
+use cpuvar::CpuId;
 use starina::app::App;
-use starina::{debug, info};
 
-extern crate alloc;
-
+mod scheduler;
+mod cpuvar;
 mod allocator;
 mod arch;
 mod panic;
 mod syscall;
 mod spinlock;
+mod thread;
+mod refcount;
 
 pub struct FreeRam {
     addr: *mut u8,
@@ -23,6 +30,7 @@ pub struct FreeRam {
 }
 
 pub struct BootInfo {
+    cpu_id: CpuId,
     free_rams: ArrayVec<FreeRam, 8>,
 }
 
@@ -37,10 +45,12 @@ pub fn boot(bootinfo: BootInfo) -> ! {
         GLOBAL_ALLOCATOR.add_region(free_ram.addr, free_ram.size);
     }
 
+    cpuvar::percpu_init(bootinfo.cpu_id);
+
     let mut apps: Vec<Box<dyn App>> = Vec::new();
     apps.push(Box::new(ktest::Main::init()));
 
-    arch::halt();
+    thread::switch_thread();
 }
 
 #[cfg(not(target_os = "none"))]

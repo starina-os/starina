@@ -3,12 +3,22 @@ use core::arch::global_asm;
 
 use arrayvec::ArrayVec;
 
+use crate::cpuvar::CpuId;
 use crate::BootInfo;
 use crate::FreeRam;
 
 global_asm!(include_str!("boot.S"));
 
 mod sbi;
+mod cpuvar;
+mod thread;
+mod idle;
+
+pub use idle::idle;
+pub use thread::Thread;
+pub use cpuvar::{CpuVar, get_cpuvar,set_cpuvar};
+
+pub const NUM_CPUS_MAX: usize = 4;
 
 pub fn halt() -> ! {
     loop {
@@ -32,7 +42,7 @@ unsafe extern "C" {
 }
 
 #[unsafe(no_mangle)]
-unsafe extern "C" fn riscv64_boot(_hartid: u64, _dtb_addr: u64) -> ! {
+unsafe extern "C" fn riscv64_boot(hartid: u64, _dtb_addr: u64) -> ! {
     let bss_start = &raw const __bss as usize;
     let bss_end = &raw const __bss_end as usize;
     let free_ram = &raw const __free_ram as usize;
@@ -43,11 +53,13 @@ unsafe extern "C" fn riscv64_boot(_hartid: u64, _dtb_addr: u64) -> ! {
         core::ptr::write_bytes(bss_start as *mut u8, 0, bss_end - bss_start);
     }
 
+    let cpu_id = CpuId::new(hartid.try_into().unwrap());
+
     let mut free_rams = ArrayVec::new();
     free_rams.push(FreeRam {
         addr: free_ram as *mut u8,
         size: free_ram_end - free_ram,
     });
 
-    crate::boot(BootInfo { free_rams });
+    crate::boot(BootInfo { cpu_id, free_rams });
 }
