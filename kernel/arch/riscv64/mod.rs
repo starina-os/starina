@@ -3,9 +3,9 @@ use core::arch::global_asm;
 
 use arrayvec::ArrayVec;
 
-use crate::cpuvar::CpuId;
 use crate::BootInfo;
 use crate::FreeRam;
+use crate::cpuvar::CpuId;
 
 global_asm!(include_str!("boot.S"));
 
@@ -14,9 +14,9 @@ mod idle;
 mod sbi;
 mod thread;
 
+pub use cpuvar::CpuVar;
 pub use cpuvar::get_cpuvar;
 pub use cpuvar::set_cpuvar;
-pub use cpuvar::CpuVar;
 pub use idle::idle;
 pub use thread::Thread;
 
