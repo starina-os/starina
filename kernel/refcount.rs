@@ -1,7 +1,6 @@
 //! Reference counting.
 
 use alloc::boxed::Box;
-use core::any::Any;
 use core::fmt;
 use core::mem;
 use core::ops::Deref;
@@ -62,21 +61,6 @@ impl<T: ?Sized> SharedRef<T> {
         //         The compiler will guarantee `&RefCounted<T>` can't outlive
         //         `self`.
         unsafe { self.ptr.as_ref() }
-    }
-}
-
-impl SharedRef<dyn Any + Sync + Send> {
-    pub fn downcast<T>(self) -> Result<SharedRef<T>, Self>
-    where
-        T: Any + Sync + Send,
-    {
-        if <dyn Any>::is::<T>(&self) {
-            Ok(SharedRef {
-                ptr: self.ptr.cast(),
-            })
-        } else {
-            Err(self)
-        }
     }
 }
 

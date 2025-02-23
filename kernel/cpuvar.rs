@@ -1,5 +1,4 @@
 //! Per-CPU variables.
-use core::cell::Ref;
 use core::cell::RefCell;
 use core::fmt;
 
@@ -46,10 +45,6 @@ pub struct CpuVar {
 // SAFETY: `CpuVar` is a per-CPU storage. Will never be shared between CPUs
 //         and thus won't be accessed at once.
 unsafe impl Sync for CpuVar {}
-
-pub fn current_thread() -> Ref<'static, SharedRef<Thread>> {
-    arch::get_cpuvar().current_thread.borrow()
-}
 
 static CPUVARS: SpinLock<ArrayVec<CpuVar, { arch::NUM_CPUS_MAX }>> =
     SpinLock::new(ArrayVec::new_const());
