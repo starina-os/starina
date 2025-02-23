@@ -8,6 +8,7 @@ extern crate starina;
 extern crate alloc;
 
 use alloc::boxed::Box;
+use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use allocator::GLOBAL_ALLOCATOR;
@@ -49,9 +50,19 @@ pub fn boot(bootinfo: BootInfo) -> ! {
 
     cpuvar::percpu_init(bootinfo.cpu_id);
 
-    let mut apps: Vec<Box<dyn App>> = Vec::new();
-    apps.push(Box::new(ktest::Main::init()));
-    let t = thread::Thread::new(apps);
+    fn entrypoint(app: *const Arc<dyn App>) {
+        info!("Starting app...");
+        for i in 0.. {
+            info!("App: {}", i);
+            for _ in 0..10000000 {}
+        }
+    }
+
+    let ktest_app: Arc<dyn App> = Arc::new(ktest::Main::init());
+    unsafe {
+        Arc::increment_strong_count(&ktest_app);
+    }
+    let t = thread::Thread::new_inkernel(entrypoint as usize, &ktest_app as *const _ as usize);
     GLOBAL_SCHEDULER.push(t);
 
     thread::switch_thread();

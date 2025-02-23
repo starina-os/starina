@@ -1,5 +1,9 @@
+use core::alloc::GlobalAlloc;
+use core::alloc::Layout;
 use core::arch::asm;
 use core::mem::offset_of;
+
+use crate::allocator::GLOBAL_ALLOCATOR;
 
 /// Context of a thread.
 #[derive(Debug, Default)]
@@ -52,6 +56,11 @@ impl Thread {
     }
 
     pub fn new_inkernel(pc: usize, arg: usize) -> Thread {
+        let stack_size = 256 * 1024;
+        let stack =
+            unsafe { GLOBAL_ALLOCATOR.alloc(Layout::from_size_align(stack_size, 16).unwrap()) };
+        let sp = stack as u64 + stack_size as u64;
+
         let mut sstatus: u64;
         unsafe {
             core::arch::asm!("csrr {}, sstatus", out(reg) sstatus);
@@ -62,6 +71,7 @@ impl Thread {
                 sepc: pc.try_into().unwrap(),
                 sstatus,
                 a0: arg.try_into().unwrap(),
+                sp,
                 ..Default::default()
             },
         }
