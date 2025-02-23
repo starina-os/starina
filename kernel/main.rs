@@ -7,9 +7,7 @@ extern crate starina;
 
 extern crate alloc;
 
-use alloc::boxed::Box;
 use alloc::sync::Arc;
-use alloc::vec::Vec;
 
 use allocator::GLOBAL_ALLOCATOR;
 use arrayvec::ArrayVec;
