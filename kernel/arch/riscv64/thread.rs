@@ -80,6 +80,19 @@ impl Thread {
 
 pub fn resume_thread(thread: *mut crate::arch::Thread) -> ! {
     let context: *mut Context = unsafe { &mut (*thread).context as *mut _ };
+    trace!(
+        "pc={:x}, sp={:x}",
+        unsafe { (*thread).context.sepc },
+        unsafe { (*thread).context.sp }
+    );
+
+    let mut sstatus: u64;
+    unsafe {
+        asm!("csrr {0}, sstatus", out(reg) sstatus);
+        sstatus |= 1 << 8; // Set SPP to go back to kernel mode
+        asm!("csrw sstatus, {0}", in(reg) sstatus);
+    }
+
     unsafe {
         asm!(r#"
             sd a0, {context_offset}(tp) // Update CpuVar.arch.context

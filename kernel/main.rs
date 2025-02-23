@@ -54,7 +54,7 @@ pub fn boot(bootinfo: BootInfo) -> ! {
         info!("Starting app...");
         for i in 0.. {
             info!("App: {}", i);
-            for _ in 0..10000000 {}
+            for _ in 0..1000000 {}
         }
     }
 
