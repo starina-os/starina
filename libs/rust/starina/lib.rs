@@ -3,6 +3,8 @@
 
 pub mod address;
 pub mod app;
+pub mod error;
 pub mod handle;
 pub mod log;
+pub mod message;
 pub mod syscall;

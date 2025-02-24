@@ -2,6 +2,7 @@
 #![cfg_attr(target_os = "none", no_main)]
 #![cfg_attr(test, feature(test))]
 #![feature(naked_functions)]
+#![feature(arbitrary_self_types)]
 
 #[macro_use]
 extern crate starina;
@@ -18,6 +19,7 @@ use starina::app::App;
 
 mod allocator;
 mod arch;
+mod channel;
 mod cpuvar;
 mod handle;
 mod panic;

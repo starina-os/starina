@@ -30,6 +30,10 @@ impl Thread {
     pub const fn arch(&self) -> &arch::Thread {
         &self.arch
     }
+
+    pub fn process(&self) -> &SharedRef<Process> {
+        &self.process
+    }
 }
 
 /// Switches to the thread execution: save the current thread, picks the next
