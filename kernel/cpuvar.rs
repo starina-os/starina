@@ -10,6 +10,8 @@ use crate::spinlock::SpinLock;
 use crate::thread::Thread;
 
 /// CPU identifier.
+///
+/// Do not confuse with CPUID instruction in x64!
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct CpuId(pub u8);
 
@@ -46,24 +48,30 @@ pub struct CpuVar {
 //         and thus won't be accessed at once.
 unsafe impl Sync for CpuVar {}
 
+// Note: SpinLock is to serialize its initialization. Once initialized, it's
+//       safe to access `CpuVar` without holding the lock because it's a
+//       per-CPU storage. We still need a RefCell in mutable fields though.
 static CPUVARS: SpinLock<ArrayVec<CpuVar, { arch::NUM_CPUS_MAX }>> =
     SpinLock::new(ArrayVec::new_const());
 
 /// Initializes Per-CPU variables for the current CPU.
 pub fn percpu_init(cpu_id: CpuId) {
-    // Initialize CpuVar slots until the CPU.
     let mut cpuvars = CPUVARS.lock();
-    for _ in 0..=cpu_id.as_usize() {
-        let idle_thread = Thread::new_idle();
-        let cpuvar = CpuVar {
-            arch: arch::CpuVar::new(&idle_thread),
-            cpu_id,
-            current_thread: RefCell::new(idle_thread.clone()),
-            idle_thread,
-        };
+    let index = cpu_id.as_usize();
+    if cpuvars.len() <= index {
+        // Initialize CpuVar slots until the CPU.
+        for _ in 0..=index {
+            let idle_thread = Thread::new_idle();
+            let cpuvar = CpuVar {
+                arch: arch::CpuVar::new(&idle_thread),
+                cpu_id,
+                current_thread: RefCell::new(idle_thread.clone()),
+                idle_thread,
+            };
 
-        if cpuvars.try_push(cpuvar).is_err() {
-            panic!("too many CPUs");
+            if cpuvars.try_push(cpuvar).is_err() {
+                panic!("too many CPUs");
+            }
         }
     }
 
