@@ -101,7 +101,7 @@ impl Channel {
                 let handle = our_handles.remove(handle_id).unwrap();
 
                 // SAFETY: unwrap() won't panic because `handles` should have
-                //         enough capacity up to MESSAGE_HANDLES_MAX_COUNT.
+                //         enough capacity up to MESSAGE_NUM_HANDLES_MAX.
                 moved_handles.try_push(handle).unwrap();
             }
         }

@@ -41,6 +41,11 @@ impl HandleTable {
         Ok(handle_id)
     }
 
+    pub fn is_movable(&self, handle: HandleId) -> bool {
+        // Does the handle exist?
+        self.handles.get(&handle).is_some()
+    }
+
     pub fn get(&self, handle: HandleId) -> Option<&AnyHandle> {
         self.handles.get(&handle)
     }
