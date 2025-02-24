@@ -1,21 +1,26 @@
 use crate::arch;
+use crate::process::KERNEL_PROCESS;
+use crate::process::Process;
 use crate::refcount::SharedRef;
 use crate::scheduler::GLOBAL_SCHEDULER;
 
 pub struct Thread {
     arch: arch::Thread,
+    process: SharedRef<Process>,
 }
 
 impl Thread {
     pub fn new_idle() -> SharedRef<Thread> {
         SharedRef::new(Thread {
             arch: arch::Thread::new_idle(),
+            process: KERNEL_PROCESS.clone(),
         })
     }
 
     pub fn new_inkernel(pc: usize, arg: usize) -> SharedRef<Thread> {
         let thread = SharedRef::new(Thread {
             arch: arch::Thread::new_inkernel(pc, arg),
+            process: KERNEL_PROCESS.clone(),
         });
 
         GLOBAL_SCHEDULER.push(thread.clone());

@@ -9,9 +9,18 @@ use core::sync::atomic;
 use core::sync::atomic::AtomicUsize;
 use core::sync::atomic::Ordering;
 
-struct RefCounted<T: ?Sized> {
+pub struct RefCounted<T: ?Sized> {
     counter: AtomicUsize,
     value: T,
+}
+
+impl<T> RefCounted<T> {
+    pub const fn new(value: T) -> Self {
+        Self {
+            counter: AtomicUsize::new(1),
+            value,
+        }
+    }
 }
 
 /// A reference-counted object.
@@ -38,13 +47,22 @@ pub struct SharedRef<T: ?Sized> {
 impl<T> SharedRef<T> {
     /// Creates a new reference-counted object.
     pub fn new(value: T) -> Self {
-        let ptr = Box::leak(Box::new(RefCounted {
-            counter: AtomicUsize::new(1),
-            value,
-        }));
+        let ptr = Box::leak(Box::new(RefCounted::new(value)));
 
         Self {
             // SAFETY: Box always returns a valid non-null pointer.
+            ptr: unsafe { NonNull::new_unchecked(ptr) },
+        }
+    }
+
+    /// Creates a new reference-counted object from a static reference.
+    ///
+    /// # Safety
+    ///
+    /// The created object must not be dropped for the lifetime of the program.
+    pub const unsafe fn new_static(inner: &'static RefCounted<T>) -> Self {
+        let ptr = inner as *const RefCounted<T> as *mut RefCounted<T>;
+        Self {
             ptr: unsafe { NonNull::new_unchecked(ptr) },
         }
     }
