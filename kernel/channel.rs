@@ -110,16 +110,15 @@ impl Channel {
         let data_len = msginfo.data_len();
         let data = msgbuffer.read_from_user_to_vec::<u8>(offset, data_len);
 
-        let entry = MessageEntry {
-            msginfo,
-            data,
-            handles: moved_handles,
-        };
-
+        // Enqueue the message to the peer's queue.
         let mutable = self.mutable.lock();
         let peer_ch = mutable.peer.as_ref().ok_or(ErrorCode::NoPeer)?;
         let mut peer_mutable = peer_ch.mutable.lock();
-        peer_mutable.queue.push_back(entry);
+        peer_mutable.queue.push_back(MessageEntry {
+            msginfo,
+            data,
+            handles: moved_handles,
+        });
 
         Ok(())
     }
