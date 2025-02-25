@@ -16,6 +16,6 @@ impl MessageInfo {
     }
 
     pub fn num_handles(self) -> usize {
-        (self.0 >> 16) as usize
+        ((self.0 >> 16) & 0b11) as usize
     }
 }

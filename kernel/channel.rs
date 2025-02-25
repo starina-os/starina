@@ -97,7 +97,7 @@ impl Channel {
             // Second loop: Remove handles from the current process.
             for i in 0..num_handles {
                 // Note: Don't read the handle from the buffer again - user
-                //       might have changed it (intentinally or not).
+                //       might have changed it.
                 let handle_id = handle_ids[i];
 
                 // SAFETY: unwrap() won't panic because we've checked the handle
