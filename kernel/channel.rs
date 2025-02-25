@@ -83,7 +83,7 @@ impl Channel {
             let mut handle_ids: ArrayVec<HandleId, MESSAGE_NUM_HANDLES_MAX> = ArrayVec::new();
             for i in 0..num_handles {
                 let handle_id =
-                    handles.read(current_process.isolation(), i * size_of::<HandleId>());
+                    handles.read(current_process.isolation(), i * size_of::<HandleId>())?;
 
                 // SAFETY: unwrap() won't panic because it should have enough
                 //         capacity up to MESSAGE_HANDLES_MAX_COUNT.
@@ -111,7 +111,7 @@ impl Channel {
         }
 
         // Copy message data into the kernel memory.
-        let data = msgbuffer.read_to_vec(current_process.isolation(), 0, msginfo.data_len());
+        let data = msgbuffer.read_to_vec(current_process.isolation(), 0, msginfo.data_len())?;
 
         // Enqueue the message to the peer's queue.
         let mutable = self.mutable.lock();
@@ -149,13 +149,13 @@ impl Channel {
         for any_handle in entry.handles.drain(..) {
             // TODO: Define the expected behavior when it fails to add a handle.
             let handle_id = handle_table.insert(any_handle)?;
-            msgbuffer.write(process.isolation(), offset, handle_id);
+            msgbuffer.write(process.isolation(), offset, handle_id)?;
             offset += size_of::<HandleId>();
         }
 
         // Copy message data into the buffer.
         let data_len = entry.msginfo.data_len();
-        msgbuffer.write(process.isolation(), offset, &entry.data[0..data_len]);
+        msgbuffer.write(process.isolation(), offset, &entry.data[0..data_len])?;
 
         Ok(entry.msginfo)
     }
