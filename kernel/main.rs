@@ -13,6 +13,7 @@ use alloc::boxed::Box;
 
 use allocator::GLOBAL_ALLOCATOR;
 use arrayvec::ArrayVec;
+use channel::Channel;
 use cpuvar::CpuId;
 use scheduler::GLOBAL_SCHEDULER;
 use starina::app::App;
@@ -64,10 +65,16 @@ pub fn boot(bootinfo: BootInfo) -> ! {
         }
     }
 
-    let ktest_app: *const ktest::Main = Box::leak(Box::new(ktest::Main::init()));
-    let arg = ktest_app as usize;
-    let t = thread::Thread::new_inkernel(entrypoint as usize, arg);
-    GLOBAL_SCHEDULER.push(t);
+    let (ch1, ch2) = Channel::new().unwrap();
+
+    GLOBAL_SCHEDULER.push(thread::Thread::new_inkernel(
+        entrypoint as usize,
+        Box::leak(Box::new(ktest::Main::init())) as *const _ as usize,
+    ));
+    GLOBAL_SCHEDULER.push(thread::Thread::new_inkernel(
+        entrypoint as usize,
+        Box::leak(Box::new(ktest::Main::init())) as *const _ as usize,
+    ));
 
     thread::switch_thread();
 }
