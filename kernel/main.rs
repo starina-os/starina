@@ -22,6 +22,7 @@ mod arch;
 mod channel;
 mod cpuvar;
 mod handle;
+mod isolation;
 mod panic;
 mod process;
 mod refcount;

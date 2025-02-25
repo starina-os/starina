@@ -10,6 +10,7 @@ use starina::message::MessageInfo;
 
 use crate::cpuvar::current_thread;
 use crate::handle::AnyHandle;
+use crate::isolation::IsolationHeap;
 use crate::process::Process;
 use crate::refcount::SharedRef;
 use crate::spinlock::SpinLock;
@@ -57,7 +58,7 @@ impl Channel {
         Ok((ch0, ch1))
     }
 
-    pub fn send(&self, msginfo: MessageInfo, msgbuffer: UAddr) -> Result<(), ErrorCode> {
+    pub fn send(&self, msginfo: MessageInfo, msgbuffer: IsolationHeap) -> Result<(), ErrorCode> {
         let mut offset = 0;
 
         // Move handles.
@@ -67,9 +68,9 @@ impl Channel {
         // in the message entry.
         let num_handles = msginfo.num_handles();
         let mut moved_handles = ArrayVec::new();
+        let current_thread = current_thread();
+        let current_process = current_thread.process();
         if num_handles > 0 {
-            let current_thread = current_thread();
-
             // Note: Don't release this lock until we've moved all handles
             //       to guarantee that the second loop never fails.
             let mut our_handles = current_thread.process().handles().lock();
@@ -78,7 +79,7 @@ impl Channel {
             //             not too many ones.
             let mut handle_ids: ArrayVec<HandleId, MESSAGE_NUM_HANDLES_MAX> = ArrayVec::new();
             for _ in 0..num_handles {
-                let handle_id = msgbuffer.read_from_user_at(offset);
+                let handle_id = msgbuffer.read(current_process.isolation(), offset);
                 offset += size_of::<HandleId>();
 
                 // SAFETY: unwrap() won't panic because it should have enough
@@ -107,8 +108,7 @@ impl Channel {
         }
 
         // Copy message data into the kernel memory.
-        let data_len = msginfo.data_len();
-        let data = msgbuffer.read_from_user_to_vec::<u8>(offset, data_len);
+        let data = msgbuffer.read_to_vec(current_process.isolation(), offset, msginfo.data_len());
 
         // Enqueue the message to the peer's queue.
         let mutable = self.mutable.lock();
@@ -125,7 +125,7 @@ impl Channel {
 
     pub fn recv(
         self: &SharedRef<Channel>,
-        msgbuffer: UAddr,
+        msgbuffer: IsolationHeap,
         process: &SharedRef<Process>,
     ) -> Result<MessageInfo, ErrorCode> {
         let mut entry = {
@@ -146,13 +146,13 @@ impl Channel {
         for any_handle in entry.handles.drain(..) {
             // TODO: Define the expected behavior when it fails to add a handle.
             let handle_id = handle_table.insert(any_handle)?;
-            msgbuffer.write_to_user_at(offset, handle_id);
+            msgbuffer.write(process.isolation(), offset, handle_id);
             offset += size_of::<HandleId>();
         }
 
         // Copy message data into the buffer.
         let data_len = entry.msginfo.data_len();
-        msgbuffer.write_to_user_at_slice(offset, &entry.data[0..data_len]);
+        msgbuffer.write(process.isolation(), offset, &entry.data[0..data_len]);
 
         Ok(entry.msginfo)
     }
