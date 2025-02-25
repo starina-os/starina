@@ -1,36 +1,53 @@
 use alloc::vec::Vec;
 
+use starina::error::ErrorCode;
+
 pub enum Isolation {
     InKernel,
 }
 
-pub struct IsolationHeap {
-    ptr: usize,
-    len: usize,
+pub enum IsolationHeap {
+    InKernel { ptr: usize, len: usize },
 }
 
 impl IsolationHeap {
-    pub fn write<T>(&mut self, isolation: &Isolation, offset: usize, value: T) {
-        assert!(matches!(isolation, Isolation::InKernel));
+    pub fn write<T>(
+        &mut self,
+        isolation: &Isolation,
+        offset: usize,
+        value: T,
+    ) -> Result<(), ErrorCode> {
+        let IsolationHeap::InKernel { ptr, .. } = self;
+        // TODO: size check
+        // TODO: wraparound check
+        // TODO: alignment check
+        let raw_ptr = *ptr + offset;
 
-        let ptr = self.ptr + offset;
         unsafe {
-            core::ptr::write(ptr as *mut T, value);
+            core::ptr::write(raw_ptr as *mut T, value);
         }
+
+        Ok(())
     }
 
-    pub fn read_to_vec(&self, isolation: &Isolation, offset: usize, len: usize) -> Vec<u8> {
-        assert!(matches!(isolation, Isolation::InKernel));
+    pub fn read_to_vec(
+        &self,
+        isolation: &Isolation,
+        offset: usize,
+        len: usize,
+    ) -> Result<Vec<u8>, ErrorCode> {
+        let IsolationHeap::InKernel { ptr, .. } = self;
+        let raw_ptr = *ptr + offset;
 
-        let ptr = self.ptr + offset;
-        let slice = unsafe { core::slice::from_raw_parts(ptr as *const u8, len) };
-        slice.to_vec()
+        let slice = unsafe { core::slice::from_raw_parts(raw_ptr as *const u8, len) };
+        Ok(Vec::from(slice))
     }
 
-    pub fn read<T>(&self, isolation: &Isolation, offset: usize) -> T {
+    pub fn read<T>(&self, isolation: &Isolation, offset: usize) -> Result<T, ErrorCode> {
+        let IsolationHeap::InKernel { ptr, .. } = self;
         assert!(matches!(isolation, Isolation::InKernel));
 
-        let ptr = self.ptr + offset;
-        unsafe { core::ptr::read(ptr as *const T) }
+        let raw_ptr = *ptr + offset;
+        unsafe { Ok(core::ptr::read(raw_ptr as *const T)) }
     }
 }
