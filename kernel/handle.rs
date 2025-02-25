@@ -4,6 +4,7 @@ use starina::error::ErrorCode;
 use starina::handle::HandleId;
 use starina::handle::HandleRights;
 
+use crate::channel::Channel;
 use crate::refcount::SharedRef;
 
 const NUM_HANDLES_MAX: usize = 128;
@@ -15,7 +16,9 @@ pub struct Handle<T: ?Sized> {
     rights: HandleRights,
 }
 
-pub enum AnyHandle {}
+pub enum AnyHandle {
+    Channel(SharedRef<Channel>),
+}
 
 pub struct HandleTable {
     handles: BTreeMap<HandleId, AnyHandle>,

@@ -128,7 +128,7 @@ impl Channel {
 
     pub fn recv(
         self: &SharedRef<Channel>,
-        msgbuffer: IsolationHeap,
+        mut msgbuffer: IsolationHeap,
         process: &SharedRef<Process>,
     ) -> Result<MessageInfo, ErrorCode> {
         let mut entry = {
