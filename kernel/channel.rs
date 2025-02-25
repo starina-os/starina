@@ -58,9 +58,12 @@ impl Channel {
         Ok((ch0, ch1))
     }
 
-    pub fn send(&self, msginfo: MessageInfo, msgbuffer: IsolationHeap) -> Result<(), ErrorCode> {
-        let mut offset = 0;
-
+    pub fn send(
+        &self,
+        msginfo: MessageInfo,
+        msgbuffer: IsolationHeap,
+        handles: IsolationHeap,
+    ) -> Result<(), ErrorCode> {
         // Move handles.
         //
         // In this phase, since we don't know the receiver process, we don't
@@ -78,9 +81,9 @@ impl Channel {
             // First loop: make sure moving handles won't fail and there are
             //             not too many ones.
             let mut handle_ids: ArrayVec<HandleId, MESSAGE_NUM_HANDLES_MAX> = ArrayVec::new();
-            for _ in 0..num_handles {
-                let handle_id = msgbuffer.read(current_process.isolation(), offset);
-                offset += size_of::<HandleId>();
+            for i in 0..num_handles {
+                let handle_id =
+                    handles.read(current_process.isolation(), i * size_of::<HandleId>());
 
                 // SAFETY: unwrap() won't panic because it should have enough
                 //         capacity up to MESSAGE_HANDLES_MAX_COUNT.
@@ -108,7 +111,7 @@ impl Channel {
         }
 
         // Copy message data into the kernel memory.
-        let data = msgbuffer.read_to_vec(current_process.isolation(), offset, msginfo.data_len());
+        let data = msgbuffer.read_to_vec(current_process.isolation(), 0, msginfo.data_len());
 
         // Enqueue the message to the peer's queue.
         let mutable = self.mutable.lock();
