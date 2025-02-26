@@ -61,8 +61,8 @@ impl Channel {
     pub fn send(
         &self,
         msginfo: MessageInfo,
-        msgbuffer: IsolationHeap,
-        handles: IsolationHeap,
+        msgbuffer: &IsolationHeap,
+        handles: &IsolationHeap,
     ) -> Result<(), ErrorCode> {
         // Move handles.
         //
@@ -128,9 +128,11 @@ impl Channel {
 
     pub fn recv(
         self: &SharedRef<Channel>,
-        mut msgbuffer: IsolationHeap,
-        process: &SharedRef<Process>,
+        msgbuffer: &mut IsolationHeap,
+        handles: &mut IsolationHeap,
     ) -> Result<MessageInfo, ErrorCode> {
+        let current_thread = current_thread();
+        let current_process = current_thread.process();
         let mut entry = {
             let mut mutable = self.mutable.lock();
             let entry = match mutable.queue.pop_front() {
@@ -144,18 +146,23 @@ impl Channel {
         };
 
         // Install handles into the current (receiver) process.
-        let mut handle_table = process.handles().lock();
-        let mut offset = 0;
-        for any_handle in entry.handles.drain(..) {
+        let mut handle_table = current_process.handles().lock();
+        for (i, any_handle) in entry.handles.drain(..).enumerate() {
             // TODO: Define the expected behavior when it fails to add a handle.
             let handle_id = handle_table.insert(any_handle)?;
-            msgbuffer.write(process.isolation(), offset, handle_id)?;
-            offset += size_of::<HandleId>();
+            handles.write(
+                current_process.isolation(),
+                i * size_of::<HandleId>(),
+                handle_id,
+            )?;
         }
 
         // Copy message data into the buffer.
-        let data_len = entry.msginfo.data_len();
-        msgbuffer.write(process.isolation(), offset, &entry.data[0..data_len])?;
+        msgbuffer.write_bytes(
+            current_process.isolation(),
+            0,
+            &entry.data[0..entry.msginfo.data_len()],
+        )?;
 
         Ok(entry.msginfo)
     }

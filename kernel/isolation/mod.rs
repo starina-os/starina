@@ -30,6 +30,20 @@ impl IsolationHeap {
         Ok(())
     }
 
+    pub fn write_bytes(
+        &mut self,
+        isolation: &Isolation,
+        offset: usize,
+        slice: &[u8],
+    ) -> Result<(), ErrorCode> {
+        let IsolationHeap::InKernel { ptr, .. } = self;
+        let raw_ptr = *ptr + offset;
+        unsafe {
+            core::ptr::copy(slice.as_ptr(), raw_ptr as *mut u8, slice.len());
+        }
+        Ok(())
+    }
+
     pub fn read_to_vec(
         &self,
         isolation: &Isolation,
