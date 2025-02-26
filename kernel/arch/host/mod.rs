@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::io::Write;
 
 pub fn percpu_init() {
@@ -36,11 +37,11 @@ pub struct Thread {}
 
 impl Thread {
     pub fn new_inkernel(pc: usize, arg: usize) -> Thread {
-        todo!()
+        Thread {}
     }
 
     pub fn new_idle() -> Thread {
-        todo!()
+        Thread {}
     }
 }
 
@@ -50,14 +51,25 @@ pub struct CpuVar {}
 
 impl CpuVar {
     pub fn new(idle_thread: &crate::refcount::SharedRef<crate::thread::Thread>) -> Self {
-        todo!()
+        CpuVar {}
     }
 }
 
+thread_local! {
+    static CPUVAR: RefCell<*mut crate::cpuvar::CpuVar> =
+        RefCell::new(std::ptr::null_mut())
+    ;
+}
+
 pub fn set_cpuvar(cpuvar: *mut crate::cpuvar::CpuVar) {
-    todo!()
+    CPUVAR.with_borrow_mut(|cpuvar_ref| {
+        *cpuvar_ref = cpuvar;
+    });
 }
 
 pub fn get_cpuvar() -> &'static crate::cpuvar::CpuVar {
-    todo!()
+    CPUVAR.with_borrow(|cpuvar_ref| {
+        debug_assert!(!cpuvar_ref.is_null());
+        unsafe { &**cpuvar_ref }
+    })
 }

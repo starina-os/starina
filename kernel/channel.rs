@@ -12,7 +12,6 @@ use crate::cpuvar::current_thread;
 use crate::handle::AnyHandle;
 use crate::isolation::IsolationHeap;
 use crate::isolation::IsolationHeapMut;
-use crate::process::Process;
 use crate::refcount::SharedRef;
 use crate::spinlock::SpinLock;
 
@@ -166,5 +165,60 @@ impl Channel {
 impl fmt::Debug for Channel {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Channel")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use core::cell::RefCell;
+
+    use super::*;
+    use crate::arch::set_cpuvar;
+    use crate::cpuvar::CpuId;
+    use crate::isolation::IsolationHeap;
+    use crate::isolation::IsolationHeapMut;
+    use crate::thread::Thread;
+
+    #[test]
+    fn test_send_and_recv() {
+        let idle_thread = Thread::new_idle();
+        let thread = Thread::new_inkernel(0, 0);
+        set_cpuvar(Box::leak(Box::new(crate::cpuvar::CpuVar {
+            arch: crate::arch::CpuVar::new(&thread),
+            cpu_id: CpuId::new(0),
+            current_thread: RefCell::new(thread.clone()),
+            idle_thread,
+        })));
+
+        let (ch1, ch2) = Channel::new().unwrap();
+        let send_buf = b"BEEP BEEP BEEP\0\0";
+        let send_heap = IsolationHeap::InKernel {
+            ptr: send_buf.as_ptr(),
+            len: send_buf.len(),
+        };
+        let handles_heap = IsolationHeap::InKernel {
+            ptr: core::ptr::null_mut(),
+            len: 0,
+        };
+        info!("Sending message...");
+        ch1.send(
+            MessageInfo::new(0, send_buf.len().try_into().unwrap(), 0),
+            &send_heap,
+            &handles_heap,
+        )
+        .unwrap();
+
+        let mut recv_buf = [0u8; 16];
+        let mut recv_heap = IsolationHeapMut::InKernel {
+            ptr: recv_buf.as_mut_ptr(),
+            len: recv_buf.len(),
+        };
+        let mut handles_heap = IsolationHeapMut::InKernel {
+            ptr: core::ptr::null_mut(),
+            len: 0,
+        };
+        ch2.recv(&mut recv_heap, &mut handles_heap).unwrap();
+
+        assert_eq!(&recv_buf, send_buf);
     }
 }
