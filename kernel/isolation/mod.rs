@@ -20,14 +20,15 @@ impl IsolationHeap {
         offset: usize,
         len: usize,
     ) -> Result<Vec<u8>, ErrorCode> {
+        assert!(matches!(isolation, Isolation::InKernel));
         let IsolationHeap::InKernel { ptr, .. } = self;
         let slice = unsafe { core::slice::from_raw_parts(ptr.add(offset), len) };
         Ok(Vec::from(slice))
     }
 
     pub fn read<T: Copy>(&self, isolation: &Isolation, offset: usize) -> Result<T, ErrorCode> {
-        let IsolationHeap::InKernel { ptr, .. } = self;
         assert!(matches!(isolation, Isolation::InKernel));
+        let IsolationHeap::InKernel { ptr, .. } = self;
         unsafe { Ok(core::ptr::read(ptr.add(offset) as *const T)) }
     }
 }
@@ -39,6 +40,7 @@ impl IsolationHeapMut {
         offset: usize,
         value: T,
     ) -> Result<(), ErrorCode> {
+        assert!(matches!(isolation, Isolation::InKernel));
         let IsolationHeapMut::InKernel { ptr, .. } = self;
         // TODO: size check
         // TODO: wraparound check
@@ -56,6 +58,7 @@ impl IsolationHeapMut {
         offset: usize,
         slice: &[u8],
     ) -> Result<(), ErrorCode> {
+        assert!(matches!(isolation, Isolation::InKernel));
         let IsolationHeapMut::InKernel { ptr, .. } = self;
         unsafe {
             core::ptr::copy(slice.as_ptr(), ptr.add(offset), slice.len());

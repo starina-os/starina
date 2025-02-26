@@ -72,7 +72,7 @@ pub fn boot(bootinfo: BootInfo) -> ! {
         ptr: send_buf.as_ptr(),
         len: send_buf.len(),
     };
-    let mut handles_heap = isolation::IsolationHeap::InKernel {
+    let handles_heap = isolation::IsolationHeap::InKernel {
         ptr: core::ptr::null_mut(),
         len: 0,
     };
