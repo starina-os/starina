@@ -69,7 +69,7 @@ pub fn boot(bootinfo: BootInfo) -> ! {
     let (ch1, ch2) = Channel::new().unwrap();
     let send_buf = b"BEEP BEEP BEEP";
     let send_heap = isolation::IsolationHeap::InKernel {
-        ptr: send_buf.as_ptr() as usize,
+        ptr: send_buf.as_mut_ptr(),
         len: send_buf.len(),
     };
     let mut handles_heap = isolation::IsolationHeap::InKernel { ptr: 0, len: 0 };
@@ -83,7 +83,7 @@ pub fn boot(bootinfo: BootInfo) -> ! {
 
     let mut recv_buf = [0u8; 16];
     let mut recv_heap = isolation::IsolationHeap::InKernel {
-        ptr: recv_buf.as_ptr() as usize,
+        ptr: recv_buf.as_mut_ptr(),
         len: recv_buf.len(),
     };
     ch2.recv(&mut recv_heap, &mut handles_heap).unwrap();

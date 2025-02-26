@@ -7,11 +7,11 @@ pub enum Isolation {
 }
 
 pub enum IsolationHeap {
-    InKernel { ptr: usize, len: usize },
+    InKernel { ptr: *mut u8, len: usize },
 }
 
 impl IsolationHeap {
-    pub fn write<T>(
+    pub fn write<T: Copy>(
         &mut self,
         isolation: &Isolation,
         offset: usize,
@@ -21,10 +21,8 @@ impl IsolationHeap {
         // TODO: size check
         // TODO: wraparound check
         // TODO: alignment check
-        let raw_ptr = *ptr + offset;
-
         unsafe {
-            core::ptr::write(raw_ptr as *mut T, value);
+            core::ptr::write(ptr.add(offset) as *mut T, value);
         }
 
         Ok(())
@@ -37,9 +35,8 @@ impl IsolationHeap {
         slice: &[u8],
     ) -> Result<(), ErrorCode> {
         let IsolationHeap::InKernel { ptr, .. } = self;
-        let raw_ptr = *ptr + offset;
         unsafe {
-            core::ptr::copy(slice.as_ptr(), raw_ptr as *mut u8, slice.len());
+            core::ptr::copy(slice.as_ptr(), ptr.add(offset), slice.len());
         }
         Ok(())
     }
@@ -51,17 +48,13 @@ impl IsolationHeap {
         len: usize,
     ) -> Result<Vec<u8>, ErrorCode> {
         let IsolationHeap::InKernel { ptr, .. } = self;
-        let raw_ptr = *ptr + offset;
-
-        let slice = unsafe { core::slice::from_raw_parts(raw_ptr as *const u8, len) };
+        let slice = unsafe { core::slice::from_raw_parts(ptr.add(offset), len) };
         Ok(Vec::from(slice))
     }
 
-    pub fn read<T>(&self, isolation: &Isolation, offset: usize) -> Result<T, ErrorCode> {
+    pub fn read<T: Copy>(&self, isolation: &Isolation, offset: usize) -> Result<T, ErrorCode> {
         let IsolationHeap::InKernel { ptr, .. } = self;
         assert!(matches!(isolation, Isolation::InKernel));
-
-        let raw_ptr = *ptr + offset;
-        unsafe { Ok(core::ptr::read(raw_ptr as *const T)) }
+        unsafe { Ok(core::ptr::read(ptr.add(offset) as *const T)) }
     }
 }
