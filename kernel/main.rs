@@ -2,24 +2,24 @@
 #![cfg_attr(target_os = "none", no_main)]
 #![cfg_attr(test, feature(test))]
 #![feature(naked_functions)]
+#![feature(arbitrary_self_types)]
 
 #[macro_use]
 extern crate starina;
 
 extern crate alloc;
 
-use alloc::boxed::Box;
-
 use allocator::GLOBAL_ALLOCATOR;
 use arrayvec::ArrayVec;
 use cpuvar::CpuId;
-use scheduler::GLOBAL_SCHEDULER;
 use starina::app::App;
 
 mod allocator;
 mod arch;
+mod channel;
 mod cpuvar;
 mod handle;
+mod isolation;
 mod panic;
 mod process;
 mod refcount;
@@ -61,10 +61,14 @@ pub fn boot(bootinfo: BootInfo) -> ! {
         }
     }
 
-    let ktest_app: *const ktest::Main = Box::leak(Box::new(ktest::Main::init()));
-    let arg = ktest_app as usize;
-    let t = thread::Thread::new_inkernel(entrypoint as usize, arg);
-    GLOBAL_SCHEDULER.push(t);
+    // GLOBAL_SCHEDULER.push(thread::Thread::new_inkernel(
+    //     entrypoint as usize,
+    //     Box::leak(Box::new(ktest::Main::init())) as *const _ as usize,
+    // ));
+    // GLOBAL_SCHEDULER.push(thread::Thread::new_inkernel(
+    //     entrypoint as usize,
+    //     Box::leak(Box::new(ktest::Main::init())) as *const _ as usize,
+    // ));
 
     thread::switch_thread();
 }
