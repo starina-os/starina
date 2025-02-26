@@ -136,14 +136,8 @@ impl Channel {
         let current_process = current_thread.process();
         let mut entry = {
             let mut mutable = self.mutable.lock();
-            let entry = match mutable.queue.pop_front() {
-                Some(entry) => entry,
-                None => {
-                    return Err(ErrorCode::Empty);
-                }
-            };
-
-            entry
+            // TODO: Return ErrorCode::PeerClosed instead if the peer is closed.
+            mutable.queue.pop_front().ok_or(ErrorCode::Empty)?
         };
 
         // Install handles into the current (receiver) process.
