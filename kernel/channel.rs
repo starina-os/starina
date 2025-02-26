@@ -5,8 +5,8 @@ use core::fmt;
 use arrayvec::ArrayVec;
 use starina::error::ErrorCode;
 use starina::handle::HandleId;
-use starina::message::MESSAGE_NUM_HANDLES_MAX;
 use starina::message::MessageInfo;
+use starina::message::MESSAGE_NUM_HANDLES_MAX;
 
 use crate::cpuvar::current_thread;
 use crate::handle::AnyHandle;

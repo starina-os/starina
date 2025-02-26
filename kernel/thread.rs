@@ -1,6 +1,6 @@
 use crate::arch;
-use crate::process::KERNEL_PROCESS;
 use crate::process::Process;
+use crate::process::KERNEL_PROCESS;
 use crate::refcount::SharedRef;
 use crate::scheduler::GLOBAL_SCHEDULER;
 
