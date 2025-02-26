@@ -11,6 +11,7 @@ use starina::message::MessageInfo;
 use crate::cpuvar::current_thread;
 use crate::handle::AnyHandle;
 use crate::isolation::IsolationHeap;
+use crate::isolation::IsolationHeapMut;
 use crate::process::Process;
 use crate::refcount::SharedRef;
 use crate::spinlock::SpinLock;
@@ -128,8 +129,8 @@ impl Channel {
 
     pub fn recv(
         self: &SharedRef<Channel>,
-        msgbuffer: &mut IsolationHeap,
-        handles: &mut IsolationHeap,
+        msgbuffer: &mut IsolationHeapMut,
+        handles: &mut IsolationHeapMut,
     ) -> Result<MessageInfo, ErrorCode> {
         let current_thread = current_thread();
         let current_process = current_thread.process();

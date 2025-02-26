@@ -67,12 +67,15 @@ pub fn boot(bootinfo: BootInfo) -> ! {
     }
 
     let (ch1, ch2) = Channel::new().unwrap();
-    let send_buf = b"BEEP BEEP BEEP";
+    let send_buf = b"BEEP BEEP BEEP\0";
     let send_heap = isolation::IsolationHeap::InKernel {
-        ptr: send_buf.as_mut_ptr(),
+        ptr: send_buf.as_ptr(),
         len: send_buf.len(),
     };
-    let mut handles_heap = isolation::IsolationHeap::InKernel { ptr: 0, len: 0 };
+    let mut handles_heap = isolation::IsolationHeap::InKernel {
+        ptr: core::ptr::null_mut(),
+        len: 0,
+    };
     info!("Sending message...");
     ch1.send(
         MessageInfo::new(0, send_buf.len().try_into().unwrap(), 0),
@@ -82,13 +85,21 @@ pub fn boot(bootinfo: BootInfo) -> ! {
     .unwrap();
 
     let mut recv_buf = [0u8; 16];
-    let mut recv_heap = isolation::IsolationHeap::InKernel {
+    let mut recv_heap = isolation::IsolationHeapMut::InKernel {
         ptr: recv_buf.as_mut_ptr(),
         len: recv_buf.len(),
     };
+    let mut handles_heap = isolation::IsolationHeapMut::InKernel {
+        ptr: core::ptr::null_mut(),
+        len: 0,
+    };
     ch2.recv(&mut recv_heap, &mut handles_heap).unwrap();
     // hexdump of recv_buf
-    println!("received");
+    println!(
+        "received: {}",
+        /* as str */
+        core::str::from_utf8(&recv_buf[..recv_buf.iter().position(|&x| x == 0).unwrap()]).unwrap()
+    );
     for i in 0..recv_buf.len() {
         print!("{:02x} ", recv_buf[i]);
     }
