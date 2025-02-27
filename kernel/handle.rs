@@ -17,7 +17,7 @@ pub struct Handle<T: ?Sized> {
 }
 
 pub enum AnyHandle {
-    Channel(SharedRef<Channel>),
+    Channel(Handle<Channel>),
 }
 
 pub struct HandleTable {

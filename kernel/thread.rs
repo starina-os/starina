@@ -34,6 +34,14 @@ impl Thread {
     pub fn process(&self) -> &SharedRef<Process> {
         &self.process
     }
+
+    pub fn wake(self: &SharedRef<Self>) {
+        GLOBAL_SCHEDULER.push(self.clone());
+    }
+
+    pub fn sleep_current() -> ! {
+        todo!()
+    }
 }
 
 /// Switches to the thread execution: save the current thread, picks the next
