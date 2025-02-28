@@ -160,6 +160,9 @@ impl Channel {
             let entry = match mutable.queue.pop_front() {
                 Some(entry) => entry,
                 None => {
+                    // Check if the peer is still connected only if the queue is
+                    // empty. This is to allow the peer to close the channel before
+                    // waiting for us to read all messages.
                     return if mutable.peer.is_some() {
                         // We have no message to read *for now*. The peer might
                         // send a message later.
