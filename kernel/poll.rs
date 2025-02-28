@@ -14,7 +14,6 @@ use crate::thread::Thread;
 pub struct Listener {
     mutable: SharedRef<SpinLock<Mutable>>,
     id: HandleId,
-    handle: AnyHandle,
 }
 
 impl Listener {
@@ -31,12 +30,12 @@ impl Drop for Listener {
     fn drop(&mut self) {
         let mut mutable = self.mutable.lock();
         let listeners = mutable.items.get_mut(&self.id).unwrap();
-        listeners.retain(|l| core::ptr::eq(l, self));
+        listeners.retain(|l| !SharedRef::ptr_eq_self(l, self));
     }
 }
 
 pub struct ListenerSet {
-    listeners: Vec<Listener>,
+    listeners: Vec<SharedRef<Listener>>,
 }
 
 impl ListenerSet {
@@ -45,10 +44,14 @@ impl ListenerSet {
             listener.mark_ready();
         }
     }
+
+    pub fn add_listener(&mut self, listener: SharedRef<Listener>) {
+        self.listeners.push(listener);
+    }
 }
 
 struct Mutable {
-    items: BTreeMap<HandleId, Vec<Listener>>,
+    items: BTreeMap<HandleId, Vec<SharedRef<Listener>>>,
     ready: VecDeque<HandleId>,
     waiters: Vec<SharedRef<Thread>>,
 }
@@ -58,21 +61,34 @@ pub struct Poll {
 }
 
 impl Poll {
+    pub fn new() -> SharedRef<Poll> {
+        SharedRef::new(Poll {
+            mutable: SharedRef::new(SpinLock::new(Mutable {
+                items: BTreeMap::new(),
+                ready: VecDeque::new(),
+                waiters: Vec::new(),
+            })),
+        })
+    }
+
     pub fn add(&self, handle: AnyHandle, id: HandleId) -> Result<(), ErrorCode> {
         let mut mutable = self.mutable.lock();
         if mutable.items.contains_key(&id) {
             return Err(ErrorCode::AlreadyExists);
         }
 
+        let listener = SharedRef::new(Listener {
+            mutable: self.mutable.clone(),
+            id,
+        });
+
+        handle.listeners_mut().add_listener(listener.clone());
+
         mutable
             .items
             .entry(id)
             .or_insert_with(Vec::new)
-            .push(Listener {
-                mutable: self.mutable.clone(),
-                handle,
-                id,
-            });
+            .push(listener);
 
         if let Some(waiter) = mutable.waiters.pop() {
             waiter.wake();

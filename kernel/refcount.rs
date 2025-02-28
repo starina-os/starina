@@ -70,6 +70,12 @@ impl<T> SharedRef<T> {
     pub fn ptr_eq(a: &SharedRef<T>, b: &SharedRef<T>) -> bool {
         a.ptr == b.ptr
     }
+
+    pub fn ptr_eq_self(a: &SharedRef<T>, this: &T) -> bool {
+        let this_ptr: *const T = this;
+        let inner_ptr: *const T = &a.inner().value;
+        core::ptr::eq(this_ptr, inner_ptr)
+    }
 }
 
 impl<T: ?Sized> SharedRef<T> {
