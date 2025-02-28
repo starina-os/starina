@@ -157,8 +157,20 @@ impl Channel {
         let current_process = current_thread.process();
         let mut entry = {
             let mut mutable = self.mutable.lock();
-            // TODO: Return ErrorCode::PeerClosed instead if the peer is closed.
-            let entry = mutable.queue.pop_front().ok_or(ErrorCode::Empty)?;
+            let entry = match mutable.queue.pop_front() {
+                Some(entry) => entry,
+                None => {
+                    if mutable.peer.is_none() {
+                        // We'll never receive a message anymore. Tell the caller
+                        // that you're done.
+                        return Err(ErrorCode::NoPeer);
+                    } else {
+                        // We have no message to read *for now*. The peer might
+                        // send a message later.
+                        return Err(ErrorCode::Empty);
+                    }
+                }
+            };
 
             if !mutable.queue.is_empty() {
                 // There are more messages in the queue. Mark this channel as
