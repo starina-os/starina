@@ -160,8 +160,9 @@ impl Channel {
             // TODO: Return ErrorCode::PeerClosed instead if the peer is closed.
             let entry = mutable.queue.pop_front().ok_or(ErrorCode::Empty)?;
 
-            // Keep the channel readable if there are more messages (so-called level-triggered).
             if !mutable.queue.is_empty() {
+                // There are more messages in the queue. Mark this channel as
+                // still readable.
                 mutable.listeners.mark_ready(Readiness::READABLE);
             }
 

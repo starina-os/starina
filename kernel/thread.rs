@@ -59,10 +59,10 @@ pub fn switch_thread() -> ! {
 
         // Preemptive scheduling: push the current thread back to the
         // runqueue if it's still runnable.
-        let thread_to_enqueue = if !in_idle {
-            Some(current_thread.clone())
-        } else {
+        let thread_to_enqueue = if in_idle {
             None
+        } else {
+            Some(current_thread.clone())
         };
 
         // Get the next thread to run. If the runqueue is empty, run the
