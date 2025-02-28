@@ -4,6 +4,7 @@ use alloc::vec::Vec;
 
 use starina::error::ErrorCode;
 use starina::handle::HandleId;
+use starina::poll::Readiness;
 
 use crate::cpuvar::current_thread;
 use crate::handle::AnyHandle;
@@ -14,14 +15,24 @@ use crate::thread::Thread;
 pub struct Listener {
     mutable: SharedRef<SpinLock<Mutable>>,
     id: HandleId,
+    interests: Readiness,
 }
 
 impl Listener {
-    pub fn mark_ready(&self) {
+    pub fn mark_ready(&self, readiness: Readiness) {
         let mut mutable = self.mutable.lock();
         mutable.ready.push_back(self.id);
-        if let Some(waiter) = mutable.waiters.pop() {
-            waiter.wake();
+
+        // If the event is what we listen for, wake up a single thread. We have't
+        // yet encountered a case where multiple processes are listening for the
+        // same object, so it's totally fine.
+        //
+        // IDEA: Should we wake up the most-recently-added thread? It's not fair,
+        //       but it might perform better if its working set is in the cache.
+        if self.interests.contains(readiness) {
+            if let Some(waiter) = mutable.waiters.pop_front() {
+                waiter.wake();
+            }
         }
     }
 }
@@ -39,9 +50,15 @@ pub struct ListenerSet {
 }
 
 impl ListenerSet {
-    pub fn mark_ready(&self) {
+    pub fn new() -> ListenerSet {
+        ListenerSet {
+            listeners: Vec::new(),
+        }
+    }
+
+    pub fn mark_ready(&self, readiness: Readiness) {
         for listener in &self.listeners {
-            listener.mark_ready();
+            listener.mark_ready(readiness);
         }
     }
 
@@ -53,7 +70,7 @@ impl ListenerSet {
 struct Mutable {
     items: BTreeMap<HandleId, Vec<SharedRef<Listener>>>,
     ready: VecDeque<HandleId>,
-    waiters: Vec<SharedRef<Thread>>,
+    waiters: VecDeque<SharedRef<Thread>>,
 }
 
 pub struct Poll {
@@ -66,12 +83,17 @@ impl Poll {
             mutable: SharedRef::new(SpinLock::new(Mutable {
                 items: BTreeMap::new(),
                 ready: VecDeque::new(),
-                waiters: Vec::new(),
+                waiters: VecDeque::new(),
             })),
         })
     }
 
-    pub fn add(&self, handle: AnyHandle, id: HandleId) -> Result<(), ErrorCode> {
+    pub fn add(
+        &self,
+        handle: AnyHandle,
+        id: HandleId,
+        interests: Readiness,
+    ) -> Result<(), ErrorCode> {
         let mut mutable = self.mutable.lock();
         if mutable.items.contains_key(&id) {
             return Err(ErrorCode::AlreadyExists);
@@ -79,6 +101,7 @@ impl Poll {
 
         let listener = SharedRef::new(Listener {
             mutable: self.mutable.clone(),
+            interests,
             id,
         });
 
@@ -90,7 +113,7 @@ impl Poll {
             .or_insert_with(Vec::new)
             .push(listener);
 
-        if let Some(waiter) = mutable.waiters.pop() {
+        if let Some(waiter) = mutable.waiters.pop_front() {
             waiter.wake();
         } else {
             // No threads are ready to receive the event. Deliver it later once
@@ -107,7 +130,7 @@ impl Poll {
             return Ok(id);
         }
 
-        mutable.waiters.push(current_thread().clone());
+        mutable.waiters.push_back(current_thread().clone());
         drop(mutable);
         Thread::sleep_current();
     }

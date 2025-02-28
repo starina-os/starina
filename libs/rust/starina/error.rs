@@ -6,4 +6,5 @@ pub enum ErrorCode {
     HandleNotMovable,
     NoPeer,
     Empty,
+    Full,
 }
