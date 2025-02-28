@@ -20,16 +20,35 @@ pub struct Listener {
 impl Listener {
     pub fn mark_ready(&self) {
         let mut mutable = self.mutable.lock();
+        mutable.ready.push_back(self.id);
         if let Some(waiter) = mutable.waiters.pop() {
             waiter.wake();
-        } else {
-            mutable.ready.push_back(self.id);
+        }
+    }
+}
+
+impl Drop for Listener {
+    fn drop(&mut self) {
+        let mut mutable = self.mutable.lock();
+        let listeners = mutable.items.get_mut(&self.id).unwrap();
+        listeners.retain(|l| core::ptr::eq(l, self));
+    }
+}
+
+pub struct ListenerSet {
+    listeners: Vec<Listener>,
+}
+
+impl ListenerSet {
+    pub fn mark_ready(&self) {
+        for listener in &self.listeners {
+            listener.mark_ready();
         }
     }
 }
 
 struct Mutable {
-    items: BTreeMap<HandleId, Listener>,
+    items: BTreeMap<HandleId, Vec<Listener>>,
     ready: VecDeque<HandleId>,
     waiters: Vec<SharedRef<Thread>>,
 }
@@ -45,14 +64,15 @@ impl Poll {
             return Err(ErrorCode::AlreadyExists);
         }
 
-        mutable.items.insert(
-            id,
-            Listener {
+        mutable
+            .items
+            .entry(id)
+            .or_insert_with(Vec::new)
+            .push(Listener {
                 mutable: self.mutable.clone(),
                 handle,
                 id,
-            },
-        );
+            });
 
         if let Some(waiter) = mutable.waiters.pop() {
             waiter.wake();
