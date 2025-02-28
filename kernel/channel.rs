@@ -160,15 +160,15 @@ impl Channel {
             let entry = match mutable.queue.pop_front() {
                 Some(entry) => entry,
                 None => {
-                    if mutable.peer.is_none() {
-                        // We'll never receive a message anymore. Tell the caller
-                        // that you're done.
-                        return Err(ErrorCode::NoPeer);
-                    } else {
+                    return if mutable.peer.is_some() {
                         // We have no message to read *for now*. The peer might
                         // send a message later.
-                        return Err(ErrorCode::Empty);
-                    }
+                        Err(ErrorCode::Empty)
+                    } else {
+                        // We'll never receive a message anymore. Tell the caller
+                        // that you're done.
+                        Err(ErrorCode::NoPeer)
+                    };
                 }
             };
 
