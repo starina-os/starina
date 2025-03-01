@@ -7,7 +7,6 @@ use starina::handle::HandleId;
 use starina::handle::HandleRights;
 use starina::poll::Readiness;
 
-use crate::channel::Channel;
 use crate::poll::Listener;
 use crate::refcount::SharedRef;
 

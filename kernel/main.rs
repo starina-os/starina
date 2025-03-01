@@ -5,6 +5,7 @@
 #![feature(arbitrary_self_types)]
 #![feature(coerce_unsized)]
 #![feature(unsize)]
+#![allow(unused)]
 
 #[macro_use]
 extern crate starina;
