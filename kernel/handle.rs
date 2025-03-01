@@ -41,9 +41,9 @@ impl<T: Handleable + ?Sized> Clone for Handle<T> {
 pub struct AnyHandle(Handle<dyn Handleable>);
 
 impl AnyHandle {
-    pub fn from_channel(h: Handle<Channel>) -> Self {
+    pub fn new<T: Handleable>(h: Handle<T>) -> AnyHandle {
         Self(Handle {
-            object: h.object,
+            object: h.object, // upcasting happens here (thanks to CoerceUnsized)
             rights: h.rights,
         })
     }
