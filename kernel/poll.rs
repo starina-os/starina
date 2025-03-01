@@ -12,6 +12,7 @@ use crate::handle::AnyHandle;
 use crate::refcount::SharedRef;
 use crate::spinlock::SpinLock;
 use crate::thread::Thread;
+use crate::thread::ThreadState;
 
 pub struct Listener {
     poll: SharedRef<Poll>,
@@ -124,7 +125,7 @@ impl Poll {
         Ok(())
     }
 
-    pub fn wait(&self) -> Result<(HandleId, Readiness), ErrorCode> {
+    pub fn try_wait(self: &SharedRef<Poll>) -> Option<Result<(HandleId, Readiness), ErrorCode>> {
         let mut mutable = self.mutable.lock();
 
         // Check if there are any ready events.
@@ -133,18 +134,22 @@ impl Poll {
             debug_assert!(deleted);
 
             let Some(handle) = mutable.handles.get_mut(&id) else {
-                // The listenee was removed from the poll. Try the next one.
+                // The handle was removed from the poll. Try the next one.
                 continue;
             };
 
             let readiness = handle.readiness();
-            return Ok((id, readiness));
+            return Some(Ok((id, readiness)));
         }
 
-        // No events are ready. Block the current thread and wait for an event.
-        mutable.waiters.push_back(current_thread().clone());
-        drop(mutable);
-        Thread::sleep_current();
+        // No events are ready. Block the current thread.
+        //
+        // WARNING: Thread::switch will never return. Clean up all resources
+        //          before calling it!
+        let current_thread = current_thread();
+        mutable.waiters.push_back(current_thread.clone());
+        current_thread.set_state(ThreadState::BlockedByPoll(self.clone()));
+        None
     }
 }
 

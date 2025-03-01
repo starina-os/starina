@@ -1,25 +1,50 @@
 use crate::arch;
+use crate::poll::Poll;
 use crate::process::KERNEL_PROCESS;
 use crate::process::Process;
 use crate::refcount::SharedRef;
 use crate::scheduler::GLOBAL_SCHEDULER;
+use crate::spinlock::SpinLock;
+
+pub enum ThreadState {
+    Runnable,
+    EnterUserlandWith { retval: usize },
+    BlockedByPoll(SharedRef<Poll>),
+}
+
+struct Mutable {
+    state: ThreadState,
+    arch: arch::Thread,
+}
+
+impl Mutable {
+    unsafe fn arch_thread_ptr(&self) -> *mut arch::Thread {
+        &raw const self.arch as *mut _
+    }
+}
 
 pub struct Thread {
-    arch: arch::Thread,
+    mutable: SpinLock<Mutable>,
     process: SharedRef<Process>,
 }
 
 impl Thread {
     pub fn new_idle() -> SharedRef<Thread> {
         SharedRef::new(Thread {
-            arch: arch::Thread::new_idle(),
+            mutable: SpinLock::new(Mutable {
+                state: ThreadState::Runnable,
+                arch: arch::Thread::new_idle(),
+            }),
             process: KERNEL_PROCESS.clone(),
         })
     }
 
     pub fn new_inkernel(pc: usize, arg: usize) -> SharedRef<Thread> {
         let thread = SharedRef::new(Thread {
-            arch: arch::Thread::new_inkernel(pc, arg),
+            mutable: SpinLock::new(Mutable {
+                state: ThreadState::Runnable, // TODO: Mark as blocked by default.
+                arch: arch::Thread::new_inkernel(pc, arg),
+            }),
             process: KERNEL_PROCESS.clone(),
         });
 
@@ -27,8 +52,9 @@ impl Thread {
         thread
     }
 
-    pub const fn arch(&self) -> &arch::Thread {
-        &self.arch
+    pub unsafe fn arch_thread_ptr(&self) -> *mut arch::Thread {
+        let mutable = self.mutable.lock();
+        unsafe { mutable.arch_thread_ptr() }
     }
 
     pub fn process(&self) -> &SharedRef<Process> {
@@ -39,15 +65,15 @@ impl Thread {
         GLOBAL_SCHEDULER.push(self.clone());
     }
 
-    pub fn sleep_current() -> ! {
-        todo!()
+    pub fn set_state(&self, new_state: ThreadState) {
+        self.mutable.lock().state = new_state;
     }
 }
 
 /// Switches to the thread execution: save the current thread, picks the next
 /// thread to run, and restores the next thread's context.
 pub fn switch_thread() -> ! {
-    loop {
+    'next_thread: loop {
         let (mut current_thread, in_idle) = {
             // Borrow the cpvuar inside a brace not to forget to drop it.
             let cpuvar = arch::get_cpuvar();
@@ -78,11 +104,34 @@ pub fn switch_thread() -> ! {
         // Make the next thread the current thread.
         *current_thread = next;
 
+        // Continue the thread's work depending on its state.
+        let arch_thread = {
+            let mut mutable = next.mutable.lock();
+            match mutable.state {
+                ThreadState::Runnable => {
+                    // Nothing to do. Just continue running the thread in the userspace.
+                    unsafe { mutable.arch_thread_ptr() }
+                }
+                ThreadState::EnterUserlandWith { retval } => {
+                    //
+                    unsafe { mutable.arch_thread_ptr() }
+                }
+                ThreadState::BlockedByPoll(poll) => {
+                    if let Some(result) = poll.try_wait() {
+                        mutable.state = ThreadState::EnterUserlandWith {
+                            retval: result.into(),
+                        };
+                    }
+
+                    continue 'next_thread;
+                }
+            }
+        };
+
         // TODO: Switch to the new thread's address space.sstatus,a1
         // current_thread.process.vmspace().switch();
 
         // Execute the pending continuation if any.
-        let arch_thread: *mut arch::Thread = current_thread.arch() as *const _ as *mut _;
         drop(current_thread);
         arch::enter_userland(arch_thread);
     }
