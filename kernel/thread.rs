@@ -106,22 +106,23 @@ pub fn switch_thread() -> ! {
 
         // Continue the thread's work depending on its state.
         let arch_thread = {
-            let mut mutable = next.mutable.lock();
-            match mutable.state {
+            let mut next_mutable = next.mutable.lock();
+            match next_mutable.state {
                 ThreadState::Runnable => {
                     // Nothing to do. Just continue running the thread in the userspace.
-                    unsafe { mutable.arch_thread_ptr() }
+                    unsafe { next_mutable.arch_thread_ptr() }
                 }
                 ThreadState::EnterUserlandWith { retval } => unsafe {
-                    let arch = mutable.arch_thread_ptr();
+                    let arch = next_mutable.arch_thread_ptr();
                     (*arch).set_retval(retval);
                     arch
                 },
                 ThreadState::BlockedByPoll(poll) => {
                     if let Some(result) = poll.try_wait() {
-                        mutable.state = ThreadState::EnterUserlandWith {
+                        next_mutable.state = ThreadState::EnterUserlandWith {
                             retval: result.into(),
                         };
+                        GLOBAL_SCHEDULER.push(next.clone());
                     }
 
                     continue 'next_thread;
