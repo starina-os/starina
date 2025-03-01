@@ -3,6 +3,8 @@
 #![cfg_attr(test, feature(test))]
 #![feature(naked_functions)]
 #![feature(arbitrary_self_types)]
+#![feature(coerce_unsized)]
+#![feature(unsize)]
 
 #[macro_use]
 extern crate starina;

@@ -41,6 +41,13 @@ impl<T: Handleable + ?Sized> Clone for Handle<T> {
 pub struct AnyHandle(Handle<dyn Handleable>);
 
 impl AnyHandle {
+    pub fn from_channel(h: Handle<Channel>) -> Self {
+        Self(Handle {
+            object: h.object,
+            rights: h.rights,
+        })
+    }
+
     pub fn downcast<T: Handleable>(self) -> Option<Handle<T>> {
         let object = self.0.object.downcast().ok()?;
         let rights = self.0.rights;
