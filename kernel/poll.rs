@@ -9,6 +9,7 @@ use starina::poll::Readiness;
 
 use crate::cpuvar::current_thread;
 use crate::handle::AnyHandle;
+use crate::handle::Handleable;
 use crate::refcount::SharedRef;
 use crate::spinlock::SpinLock;
 use crate::syscall::RetVal;
@@ -151,6 +152,14 @@ impl Poll {
         mutable.waiters.push_back(current_thread.clone());
         current_thread.set_state(ThreadState::BlockedByPoll(self.clone()));
         None
+    }
+}
+
+impl Handleable for Poll {
+    fn add_listener(&self, listener: Listener) {}
+    fn remove_listener(&self, poll: &Poll) {}
+    fn readiness(&self) -> Readiness {
+        Readiness::new()
     }
 }
 

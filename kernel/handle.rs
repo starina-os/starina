@@ -20,11 +20,21 @@ pub struct Handle<T: Handleable + ?Sized> {
     rights: HandleRights,
 }
 
-impl<T: Handleable + ?Sized> Deref for Handle<T> {
-    type Target = T;
+impl<T: Handleable + ?Sized> Handle<T> {
+    pub fn into_object(self) -> SharedRef<T> {
+        self.object
+    }
 
-    fn deref(&self) -> &T {
-        &*self.object
+    pub fn is_capable(&self, required: HandleRights) -> bool {
+        self.rights.is_capable(required)
+    }
+}
+
+impl<T: Handleable + ?Sized> Deref for Handle<T> {
+    type Target = SharedRef<T>;
+
+    fn deref(&self) -> &SharedRef<T> {
+        &self.object
     }
 }
 
@@ -59,7 +69,7 @@ impl Deref for AnyHandle {
     type Target = dyn Handleable;
 
     fn deref(&self) -> &Self::Target {
-        &*self.0
+        &**self.0
     }
 }
 pub trait Handleable: Any + Send + Sync {
@@ -97,8 +107,15 @@ impl HandleTable {
         self.handles.get(&handle).is_some()
     }
 
-    pub fn get(&self, handle: HandleId) -> Option<&AnyHandle> {
-        self.handles.get(&handle)
+    pub fn get<T: Handleable>(&self, handle: HandleId) -> Result<Handle<T>, ErrorCode> {
+        let any_handle = self
+            .handles
+            .get(&handle)
+            .cloned()
+            .ok_or(ErrorCode::NotFound)?;
+
+        let handle = any_handle.downcast().ok_or(ErrorCode::UnexpectedType)?;
+        Ok(handle)
     }
 
     pub fn remove(&mut self, handle: HandleId) -> Option<AnyHandle> {
