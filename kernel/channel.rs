@@ -145,7 +145,7 @@ impl Channel {
         });
 
         // So the peer has at least one message to read. Wake up a listener if any.
-        peer_mutable.listeners.mark_ready(Readiness::READABLE);
+        peer_mutable.listeners.notify_all(Readiness::READABLE);
 
         Ok(())
     }
@@ -180,7 +180,7 @@ impl Channel {
             if !mutable.queue.is_empty() {
                 // There are more messages in the queue. Mark this channel as
                 // still readable.
-                mutable.listeners.mark_ready(Readiness::READABLE);
+                mutable.listeners.notify_all(Readiness::READABLE);
             }
 
             if let Some(peer) = &mutable.peer {
@@ -189,7 +189,7 @@ impl Channel {
                 peer.mutable
                     .lock()
                     .listeners
-                    .mark_ready(Readiness::WRITABLE);
+                    .notify_all(Readiness::WRITABLE);
             }
 
             entry
@@ -219,7 +219,7 @@ impl Channel {
 }
 
 impl Handleable for Channel {
-    fn add_listener(&self, listener: SharedRef<Listener>) {
+    fn add_listener(&self, listener: Listener) {
         self.mutable.lock().listeners.add_listener(listener);
     }
 

@@ -20,7 +20,7 @@ pub struct Listener {
 }
 
 impl Listener {
-    pub fn mark_ready(&self, readiness: Readiness) {
+    pub fn notify(&self, readiness: Readiness) {
         let mut mutable = self.mutable.lock();
         if !mutable.ready_set.contains(&self.id) {
             mutable.ready_queue.push_back(self.id);
@@ -41,24 +41,8 @@ impl Listener {
     }
 }
 
-impl Drop for Listener {
-    fn drop(&mut self) {
-        let mut mutable = self.mutable.lock();
-        let listenee = mutable.listenees.get_mut(&self.id).unwrap();
-
-        // Remove the listener from the listenee.
-        let mut new_listeners = Vec::with_capacity(listenee.listeners.len() - 1);
-        for listener in &listenee.listeners {
-            if !SharedRef::ptr_eq_self(listener, self) {
-                new_listeners.push(listener.clone());
-            }
-        }
-        listenee.listeners = new_listeners;
-    }
-}
-
 pub struct ListenerSet {
-    listeners: Vec<SharedRef<Listener>>,
+    listeners: Vec<Listener>,
 }
 
 impl ListenerSet {
@@ -68,20 +52,19 @@ impl ListenerSet {
         }
     }
 
-    pub fn mark_ready(&self, readiness: Readiness) {
+    pub fn notify_all(&self, readiness: Readiness) {
         for listener in &self.listeners {
-            listener.mark_ready(readiness);
+            listener.notify(readiness);
         }
     }
 
-    pub fn add_listener(&mut self, listener: SharedRef<Listener>) {
+    pub fn add_listener(&mut self, listener: Listener) {
         self.listeners.push(listener);
     }
 }
 
 struct Listenee {
     handle: AnyHandle,
-    listeners: Vec<SharedRef<Listener>>,
 }
 
 struct Mutable {
@@ -118,26 +101,14 @@ impl Poll {
             return Err(ErrorCode::AlreadyExists);
         }
 
-        let listener = SharedRef::new(Listener {
+        // Add the listener to the listenee object.
+        handle.add_listener(Listener {
             mutable: self.mutable.clone(),
             interests,
             id,
         });
 
-        // Add the listener to the listenee object.
-        handle.add_listener(listener.clone());
-
-        // Add the listenee to the poll.
-        mutable
-            .listenees
-            .entry(id)
-            .or_insert(Listenee {
-                handle,
-                listeners: Vec::new(),
-            })
-            .listeners
-            .push(listener);
-
+        // Are there any waiters waiting for an event?
         if let Some(waiter) = mutable.waiters.pop_front() {
             waiter.wake();
         } else {
@@ -157,7 +128,8 @@ impl Poll {
 
         // Check if there are any ready events.
         while let Some(id) = mutable.ready_queue.pop_front() {
-            let _ = mutable.ready_set.remove(&id);
+            let deleted = mutable.ready_set.remove(&id);
+            debug_assert!(deleted);
 
             let listenee = match mutable.listenees.get_mut(&id) {
                 Some(listenee) => listenee,

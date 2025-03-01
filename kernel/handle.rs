@@ -62,7 +62,7 @@ impl Deref for AnyHandle {
     }
 }
 pub trait Handleable: Any + Send + Sync {
-    fn add_listener(&self, listener: SharedRef<Listener>);
+    fn add_listener(&self, listener: Listener);
     fn readiness(&self) -> Readiness;
 }
 
