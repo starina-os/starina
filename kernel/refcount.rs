@@ -145,7 +145,9 @@ where
     }
 }
 
-impl SharedRef<dyn Any + Sync + Send> {
+pub trait Downcastable: Any + Sync + Send {}
+
+impl SharedRef<dyn Downcastable> {
     pub fn downcast<T>(self) -> Result<SharedRef<T>, Self>
     where
         T: Any + Sync + Send,
