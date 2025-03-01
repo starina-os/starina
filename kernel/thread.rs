@@ -121,17 +121,25 @@ pub fn switch_thread() -> ! {
             match &next_mutable.state {
                 ThreadState::BlockedByPoll(poll) => {
                     if let Some(result) = poll.try_wait() {
+                        // We've got an event. Make the thread runnable again
+                        // with the system call's return value.
                         next_mutable.state = ThreadState::Runnable(Some(result.into()));
                         GLOBAL_SCHEDULER.push(next.clone());
+                    } else {
+                        // The thread is still blocked. We'll retry when the
+                        // poll wakes us up again...
                     }
 
                     continue 'next_thread;
                 }
                 ThreadState::Runnable(retval) => unsafe {
                     let arch = next_mutable.arch_thread_ptr();
+
+                    // If we're returning from a system call, set the return value.
                     if let Some(retval) = retval {
                         (*arch).set_retval(*retval);
                     }
+
                     arch
                 },
             }
