@@ -6,6 +6,7 @@
 #![feature(coerce_unsized)]
 #![feature(unsize)]
 #![allow(unused)]
+#![feature(map_try_insert)]
 
 #[macro_use]
 extern crate starina;

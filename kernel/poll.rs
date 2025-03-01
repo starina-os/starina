@@ -98,11 +98,11 @@ impl Poll {
         interests: Readiness,
     ) -> Result<(), ErrorCode> {
         let mut mutable = self.mutable.lock();
-        if mutable.handles.contains_key(&id) {
+        if mutable.handles.try_insert(id, handle.clone()).is_err() {
             return Err(ErrorCode::AlreadyExists);
         }
 
-        // Add the listener to the listenee object.
+        // Add the listener to the listener object.
         handle.add_listener(Listener {
             poll: self.clone(),
             interests,
@@ -132,12 +132,9 @@ impl Poll {
             let deleted = mutable.ready_set.remove(&id);
             debug_assert!(deleted);
 
-            let handle = match mutable.handles.get_mut(&id) {
-                Some(listenee) => listenee,
-                None => {
-                    // The listenee was removed from the poll. Try the next one.
-                    continue;
-                }
+            let Some(handle) = mutable.handles.get_mut(&id) else {
+                // The listenee was removed from the poll. Try the next one.
+                continue;
             };
 
             let readiness = handle.readiness();
