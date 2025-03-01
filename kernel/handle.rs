@@ -6,7 +6,6 @@ use starina::handle::HandleId;
 use starina::handle::HandleRights;
 use starina::poll::Readiness;
 
-use crate::channel::Channel;
 use crate::poll::Listener;
 use crate::refcount::SharedRef;
 
@@ -27,7 +26,7 @@ impl<T> Deref for Handle<T> {
     }
 }
 
-impl<T> Clone for Handle<T> {
+impl<T: ?Sized> Clone for Handle<T> {
     fn clone(&self) -> Self {
         Handle {
             object: self.object.clone(),
@@ -37,22 +36,11 @@ impl<T> Clone for Handle<T> {
 }
 
 #[derive(Clone)]
-pub enum AnyHandle {
-    Channel(Handle<Channel>),
-}
+pub struct AnyHandle(Handle<dyn Handleable>);
 
-impl AnyHandle {
-    pub fn add_listener(&self, listener: SharedRef<Listener>) {
-        match self {
-            AnyHandle::Channel(ch) => {
-                ch.add_listener(listener);
-            }
-        }
-    }
-
-    pub fn readiness(&self) -> Readiness {
-        todo!()
-    }
+pub trait Handleable {
+    fn add_listener(&self, listener: SharedRef<Listener>);
+    fn readiness(&self) -> Readiness;
 }
 
 pub struct HandleTable {

@@ -11,6 +11,7 @@ use starina::poll::Readiness;
 
 use crate::cpuvar::current_thread;
 use crate::handle::AnyHandle;
+use crate::handle::Handleable;
 use crate::isolation::IsolationHeap;
 use crate::isolation::IsolationHeapMut;
 use crate::poll::Listener;
@@ -216,9 +217,28 @@ impl Channel {
 
         Ok(entry.msginfo)
     }
+}
 
-    pub fn add_listener(&self, listener: SharedRef<Listener>) {
+impl Handleable for Channel {
+    fn add_listener(&self, listener: SharedRef<Listener>) {
         self.mutable.lock().listeners.add_listener(listener);
+    }
+
+    fn readiness(&self) -> Readiness {
+        let mut readiness = Readiness::new();
+        let mutable = self.mutable.lock();
+        if !mutable.queue.is_empty() {
+            readiness |= Readiness::READABLE;
+        }
+
+        if let Some(peer) = mutable.peer {
+            let peer_mutable = peer.mutable.lock();
+            if peer_mutable.queue.len() < MESSAGE_QUEUE_MAX_LEN {
+                readiness |= Readiness::WRITABLE;
+            }
+        }
+
+        readiness
     }
 }
 

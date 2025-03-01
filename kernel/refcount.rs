@@ -107,7 +107,7 @@ impl<T: ?Sized> Drop for SharedRef<T> {
     }
 }
 
-impl<T> Clone for SharedRef<T> {
+impl<T: ?Sized> Clone for SharedRef<T> {
     fn clone(&self) -> Self {
         // Increment the reference count.
         //
