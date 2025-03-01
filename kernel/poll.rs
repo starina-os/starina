@@ -11,6 +11,7 @@ use crate::cpuvar::current_thread;
 use crate::handle::AnyHandle;
 use crate::refcount::SharedRef;
 use crate::spinlock::SpinLock;
+use crate::syscall::RetVal;
 use crate::thread::Thread;
 use crate::thread::ThreadState;
 

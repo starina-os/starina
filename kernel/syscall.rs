@@ -1,3 +1,6 @@
+use starina::error::ErrorCode;
+use starina::handle::HandleId;
+use starina::poll::Readiness;
 use starina::syscall::InKernelSyscallTable;
 
 use crate::arch::enter_kernelland;
@@ -11,6 +14,25 @@ static INKERNEL_SYSCALL_TABLE: InKernelSyscallTable = InKernelSyscallTable {
 
 fn thread_yield_trampoline() {
     enter_kernelland(123, 0, 0, 0, 0, 0);
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct RetVal(isize);
+
+impl RetVal {
+    pub const fn new(value: isize) -> RetVal {
+        RetVal(value)
+    }
+
+    pub fn as_isize(&self) -> isize {
+        self.0
+    }
+}
+
+impl From<Result<(HandleId, Readiness), ErrorCode>> for RetVal {
+    fn from(value: Result<(HandleId, Readiness), ErrorCode>) -> Self {
+        todo!()
+    }
 }
 
 pub extern "C" fn syscall_handler(

@@ -5,10 +5,11 @@ use crate::process::Process;
 use crate::refcount::SharedRef;
 use crate::scheduler::GLOBAL_SCHEDULER;
 use crate::spinlock::SpinLock;
+use crate::syscall::RetVal;
 
 pub enum ThreadState {
     Runnable,
-    EnterUserlandWith { retval: usize },
+    ResumeWith(RetVal),
     BlockedByPoll(SharedRef<Poll>),
 }
 
@@ -65,8 +66,14 @@ impl Thread {
         GLOBAL_SCHEDULER.push(self.clone());
     }
 
-    pub fn set_state(&self, new_state: ThreadState) {
-        self.mutable.lock().state = new_state;
+    pub fn set_state(self: &SharedRef<Thread>, new_state: ThreadState) {
+        let mut mutable = self.mutable.lock();
+        debug_assert!(
+            core::mem::discriminant(&mutable.state) != core::mem::discriminant(&new_state)
+        );
+
+        mutable.state = new_state;
+        GLOBAL_SCHEDULER.push(self.clone());
     }
 }
 
@@ -101,27 +108,22 @@ pub fn switch_thread() -> ! {
             }
         };
 
-        // Make the next thread the current thread.
-        *current_thread = next;
-
         // Continue the thread's work depending on its state.
         let arch_thread = {
             let mut next_mutable = next.mutable.lock();
-            match next_mutable.state {
+            match &next_mutable.state {
                 ThreadState::Runnable => {
                     // Nothing to do. Just continue running the thread in the userspace.
                     unsafe { next_mutable.arch_thread_ptr() }
                 }
-                ThreadState::EnterUserlandWith { retval } => unsafe {
+                ThreadState::ResumeWith(retval) => unsafe {
                     let arch = next_mutable.arch_thread_ptr();
-                    (*arch).set_retval(retval);
+                    (*arch).set_retval(*retval);
                     arch
                 },
                 ThreadState::BlockedByPoll(poll) => {
                     if let Some(result) = poll.try_wait() {
-                        next_mutable.state = ThreadState::EnterUserlandWith {
-                            retval: result.into(),
-                        };
+                        next_mutable.state = ThreadState::ResumeWith(result.into());
                         GLOBAL_SCHEDULER.push(next.clone());
                     }
 
@@ -129,6 +131,9 @@ pub fn switch_thread() -> ! {
                 }
             }
         };
+
+        // Make the next thread the current thread.
+        *current_thread = next;
 
         // TODO: Switch to the new thread's address space.sstatus,a1
         // current_thread.process.vmspace().switch();
