@@ -115,17 +115,10 @@ pub fn switch_thread() -> ! {
             }
         };
 
-        // Continue the thread's work depending on its state.
+        // Try unblocking the next thread.
         let arch_thread = {
             let mut next_mutable = next.mutable.lock();
             match &next_mutable.state {
-                ThreadState::Runnable(retval) => unsafe {
-                    let arch = next_mutable.arch_thread_ptr();
-                    if let Some(retval) = retval {
-                        (*arch).set_retval(*retval);
-                    }
-                    arch
-                },
                 ThreadState::BlockedByPoll(poll) => {
                     if let Some(result) = poll.try_wait() {
                         next_mutable.state = ThreadState::Runnable(Some(result.into()));
@@ -134,6 +127,13 @@ pub fn switch_thread() -> ! {
 
                     continue 'next_thread;
                 }
+                ThreadState::Runnable(retval) => unsafe {
+                    let arch = next_mutable.arch_thread_ptr();
+                    if let Some(retval) = retval {
+                        (*arch).set_retval(*retval);
+                    }
+                    arch
+                },
             }
         };
 
