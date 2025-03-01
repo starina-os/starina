@@ -68,8 +68,9 @@ impl Thread {
 
     pub fn set_state(self: &SharedRef<Thread>, new_state: ThreadState) {
         let mut mutable = self.mutable.lock();
-        debug_assert!(
-            core::mem::discriminant(&mutable.state) != core::mem::discriminant(&new_state)
+        debug_assert_ne!(
+            core::mem::discriminant(&mutable.state),
+            core::mem::discriminant(&new_state)
         );
 
         mutable.state = new_state;
