@@ -1,6 +1,7 @@
 //! Reference counting.
 
 use alloc::boxed::Box;
+use core::any::Any;
 use core::fmt;
 use core::mem;
 use core::ops::Deref;
@@ -141,6 +142,21 @@ where
         f.debug_tuple("SharedRef")
             .field(&self.inner().value)
             .finish()
+    }
+}
+
+impl SharedRef<dyn Any + Sync + Send> {
+    pub fn downcast<T>(self) -> Result<SharedRef<T>, Self>
+    where
+        T: Any + Sync + Send,
+    {
+        if <dyn Any>::is::<T>(&self) {
+            Ok(SharedRef {
+                ptr: self.ptr.cast(),
+            })
+        } else {
+            Err(self)
+        }
     }
 }
 

@@ -1,4 +1,5 @@
 use alloc::collections::btree_map::BTreeMap;
+use core::any::Any;
 use core::ops::Deref;
 
 use starina::error::ErrorCode;
@@ -38,6 +39,14 @@ impl<T: Handleable + ?Sized> Clone for Handle<T> {
 #[derive(Clone)]
 pub struct AnyHandle(Handle<dyn Handleable>);
 
+impl AnyHandle {
+    pub fn downcast<T: Handleable>(self) -> Option<Handle<T>> {
+        let object = self.0.object.downcast()?;
+        let rights = self.0.rights;
+        Some(Handle { object, rights })
+    }
+}
+
 impl Deref for AnyHandle {
     type Target = dyn Handleable;
 
@@ -45,7 +54,7 @@ impl Deref for AnyHandle {
         &*self.0
     }
 }
-pub trait Handleable: Send + Sync {
+pub trait Handleable: Any + Send + Sync {
     fn add_listener(&self, listener: SharedRef<Listener>);
     fn readiness(&self) -> Readiness;
 }
