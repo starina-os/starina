@@ -8,8 +8,7 @@ use crate::spinlock::SpinLock;
 use crate::syscall::RetVal;
 
 pub enum ThreadState {
-    Runnable,
-    ResumeWith(RetVal),
+    Runnable(Option<RetVal>),
     BlockedByPoll(SharedRef<Poll>),
 }
 
@@ -33,7 +32,7 @@ impl Thread {
     pub fn new_idle() -> SharedRef<Thread> {
         SharedRef::new(Thread {
             mutable: SpinLock::new(Mutable {
-                state: ThreadState::Runnable,
+                state: ThreadState::Runnable(None),
                 arch: arch::Thread::new_idle(),
             }),
             process: KERNEL_PROCESS.clone(),
@@ -43,7 +42,7 @@ impl Thread {
     pub fn new_inkernel(pc: usize, arg: usize) -> SharedRef<Thread> {
         let thread = SharedRef::new(Thread {
             mutable: SpinLock::new(Mutable {
-                state: ThreadState::Runnable, // TODO: Mark as blocked by default.
+                state: ThreadState::Runnable(None), // TODO: Mark as blocked by default.
                 arch: arch::Thread::new_inkernel(pc, arg),
             }),
             process: KERNEL_PROCESS.clone(),
@@ -68,13 +67,20 @@ impl Thread {
 
     pub fn set_state(self: &SharedRef<Thread>, new_state: ThreadState) {
         let mut mutable = self.mutable.lock();
+
+        // We should never change the state to the same state.
         debug_assert_ne!(
             core::mem::discriminant(&mutable.state),
             core::mem::discriminant(&new_state)
         );
 
+        // Update the thread's state.
         mutable.state = new_state;
-        GLOBAL_SCHEDULER.push(self.clone());
+
+        // If the thread is now runnable, push it to the scheduler.
+        if matches!(mutable.state, ThreadState::Runnable(_)) {
+            GLOBAL_SCHEDULER.push(self.clone());
+        }
     }
 }
 
@@ -113,18 +119,16 @@ pub fn switch_thread() -> ! {
         let arch_thread = {
             let mut next_mutable = next.mutable.lock();
             match &next_mutable.state {
-                ThreadState::Runnable => {
-                    // Nothing to do. Just continue running the thread in the userspace.
-                    unsafe { next_mutable.arch_thread_ptr() }
-                }
-                ThreadState::ResumeWith(retval) => unsafe {
+                ThreadState::Runnable(retval) => unsafe {
                     let arch = next_mutable.arch_thread_ptr();
-                    (*arch).set_retval(*retval);
+                    if let Some(retval) = retval {
+                        (*arch).set_retval(*retval);
+                    }
                     arch
                 },
                 ThreadState::BlockedByPoll(poll) => {
                     if let Some(result) = poll.try_wait() {
-                        next_mutable.state = ThreadState::ResumeWith(result.into());
+                        next_mutable.state = ThreadState::Runnable(Some(result.into()));
                         GLOBAL_SCHEDULER.push(next.clone());
                     }
 
