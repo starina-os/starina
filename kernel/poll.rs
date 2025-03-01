@@ -14,14 +14,14 @@ use crate::spinlock::SpinLock;
 use crate::thread::Thread;
 
 pub struct Listener {
-    mutable: SharedRef<SpinLock<Mutable>>,
+    poll: SharedRef<Poll>,
     id: HandleId,
     interests: Readiness,
 }
 
 impl Listener {
     pub fn notify(&self, readiness: Readiness) {
-        let mut mutable = self.mutable.lock();
+        let mut mutable = self.poll.mutable.lock();
         if !mutable.ready_set.contains(&self.id) {
             mutable.ready_queue.push_back(self.id);
             mutable.ready_set.insert(self.id);
@@ -61,14 +61,15 @@ impl ListenerSet {
     pub fn add_listener(&mut self, listener: Listener) {
         self.listeners.push(listener);
     }
-}
 
-struct Listenee {
-    handle: AnyHandle,
+    pub fn remove_listener(&mut self, poll: &Poll) {
+        self.listeners
+            .retain(|listener| SharedRef::ptr_eq_self(&listener.poll, poll));
+    }
 }
 
 struct Mutable {
-    listenees: BTreeMap<HandleId, Listenee>,
+    handles: BTreeMap<HandleId, AnyHandle>,
     ready_queue: VecDeque<HandleId>,
     ready_set: BTreeSet<HandleId>,
     waiters: VecDeque<SharedRef<Thread>>,
@@ -82,7 +83,7 @@ impl Poll {
     pub fn new() -> SharedRef<Poll> {
         SharedRef::new(Poll {
             mutable: SharedRef::new(SpinLock::new(Mutable {
-                listenees: BTreeMap::new(),
+                handles: BTreeMap::new(),
                 ready_queue: VecDeque::new(),
                 ready_set: BTreeSet::new(),
                 waiters: VecDeque::new(),
@@ -91,19 +92,19 @@ impl Poll {
     }
 
     pub fn add(
-        &self,
+        self: &SharedRef<Poll>,
         handle: AnyHandle,
         id: HandleId,
         interests: Readiness,
     ) -> Result<(), ErrorCode> {
         let mut mutable = self.mutable.lock();
-        if mutable.listenees.contains_key(&id) {
+        if mutable.handles.contains_key(&id) {
             return Err(ErrorCode::AlreadyExists);
         }
 
         // Add the listener to the listenee object.
         handle.add_listener(Listener {
-            mutable: self.mutable.clone(),
+            poll: self.clone(),
             interests,
             id,
         });
@@ -131,7 +132,7 @@ impl Poll {
             let deleted = mutable.ready_set.remove(&id);
             debug_assert!(deleted);
 
-            let listenee = match mutable.listenees.get_mut(&id) {
+            let handle = match mutable.handles.get_mut(&id) {
                 Some(listenee) => listenee,
                 None => {
                     // The listenee was removed from the poll. Try the next one.
@@ -139,7 +140,7 @@ impl Poll {
                 }
             };
 
-            let readiness = listenee.handle.readiness();
+            let readiness = handle.readiness();
             return Ok((id, readiness));
         }
 
@@ -147,5 +148,19 @@ impl Poll {
         mutable.waiters.push_back(current_thread().clone());
         drop(mutable);
         Thread::sleep_current();
+    }
+}
+
+impl Drop for Poll {
+    fn drop(&mut self) {
+        let mut mutable = self.mutable.lock();
+        for waiter in mutable.waiters.drain(..) {
+            todo!("wake up the waiter and let it know that the poll is closed");
+            // waiter.wake(Continuation::FailedWith(ErrorCode::Closed));
+        }
+
+        for handle in mutable.handles.values() {
+            handle.remove_listener(self);
+        }
     }
 }

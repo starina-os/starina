@@ -8,6 +8,7 @@ use starina::handle::HandleRights;
 use starina::poll::Readiness;
 
 use crate::poll::Listener;
+use crate::poll::Poll;
 use crate::refcount::SharedRef;
 
 const NUM_HANDLES_MAX: usize = 128;
@@ -63,6 +64,7 @@ impl Deref for AnyHandle {
 }
 pub trait Handleable: Any + Send + Sync {
     fn add_listener(&self, listener: Listener);
+    fn remove_listener(&self, poll: &Poll);
     fn readiness(&self) -> Readiness;
 }
 

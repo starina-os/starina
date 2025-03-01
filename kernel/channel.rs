@@ -223,6 +223,10 @@ impl Handleable for Channel {
         self.mutable.lock().listeners.add_listener(listener);
     }
 
+    fn remove_listener(&self, poll: &crate::poll::Poll) {
+        self.mutable.lock().listeners.remove_listener(poll);
+    }
+
     fn readiness(&self) -> Readiness {
         let mut readiness = Readiness::new();
         let mutable = self.mutable.lock();
