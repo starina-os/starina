@@ -2,6 +2,7 @@ use alloc::collections::btree_map::BTreeMap;
 use alloc::collections::btree_set::BTreeSet;
 use alloc::collections::vec_deque::VecDeque;
 use alloc::vec::Vec;
+use core::hash::Hash;
 
 use starina::error::ErrorCode;
 use starina::handle::HandleId;
@@ -16,6 +17,41 @@ use crate::syscall::RetVal;
 use crate::thread::Thread;
 use crate::thread::ThreadState;
 
+struct UniqueQueue<T> {
+    queue: VecDeque<T>,
+    set: BTreeSet<T>,
+}
+
+impl<T> UniqueQueue<T> {
+    pub const fn new() -> UniqueQueue<T> {
+        UniqueQueue {
+            queue: VecDeque::new(),
+            set: BTreeSet::new(),
+        }
+    }
+}
+
+impl<T: Eq + Ord + Copy + Hash> UniqueQueue<T> {
+    pub fn enqueue(&mut self, value: T) {
+        if self.set.contains(&value) {
+            return;
+        }
+
+        self.queue.push_back(value);
+        self.set.insert(value);
+    }
+
+    pub fn pop(&mut self) -> Option<T> {
+        let value = self.queue.pop_front();
+        if let Some(value) = &value {
+            let deleted = self.set.remove(value);
+            debug_assert!(deleted);
+        }
+
+        value
+    }
+}
+
 pub struct Listener {
     poll: SharedRef<Poll>,
     id: HandleId,
@@ -25,10 +61,7 @@ pub struct Listener {
 impl Listener {
     pub fn notify(&self, readiness: Readiness) {
         let mut mutable = self.poll.mutable.lock();
-        if !mutable.ready_set.contains(&self.id) {
-            mutable.ready_queue.push_back(self.id);
-            mutable.ready_set.insert(self.id);
-        }
+        mutable.ready_handles.enqueue(self.id);
 
         // If the event is what we listen for, wake up a single thread. We haven't
         // yet encountered a case where multiple processes are listening for the
@@ -73,8 +106,7 @@ impl ListenerSet {
 
 struct Mutable {
     handles: BTreeMap<HandleId, AnyHandle>,
-    ready_queue: VecDeque<HandleId>,
-    ready_set: BTreeSet<HandleId>,
+    ready_handles: UniqueQueue<HandleId>,
     waiters: VecDeque<SharedRef<Thread>>,
 }
 
@@ -87,8 +119,7 @@ impl Poll {
         SharedRef::new(Poll {
             mutable: SharedRef::new(SpinLock::new(Mutable {
                 handles: BTreeMap::new(),
-                ready_queue: VecDeque::new(),
-                ready_set: BTreeSet::new(),
+                ready_handles: UniqueQueue::new(),
                 waiters: VecDeque::new(),
             })),
         })
@@ -114,16 +145,16 @@ impl Poll {
 
         mutable.handles.insert(id, handle.clone());
 
+        let readiness = handle.readiness()?;
+
+        // TODO: Check if we're interested in the event.
         // Are there any waiters waiting for an event?
         if let Some(waiter) = mutable.waiters.pop_front() {
             waiter.wake();
         } else {
             // No threads are ready to receive the event. Deliver it later once
             // a thread enters the wait state.
-            if !mutable.ready_set.contains(&id) {
-                mutable.ready_queue.push_back(id);
-                mutable.ready_set.insert(id);
-            }
+            mutable.ready_handles.enqueue(id);
         }
 
         Ok(())
@@ -133,17 +164,18 @@ impl Poll {
         let mut mutable = self.mutable.lock();
 
         // Check if there are any ready events.
-        while let Some(id) = mutable.ready_queue.pop_front() {
-            let deleted = mutable.ready_set.remove(&id);
-            debug_assert!(deleted);
-
+        while let Some(id) = mutable.ready_handles.pop() {
             let Some(handle) = mutable.handles.get_mut(&id) else {
                 // The handle was removed from the poll. Try the next one.
                 continue;
             };
 
-            let readiness = handle.readiness();
-            return Some(Ok((id, readiness)));
+            // TODO: Check if we're interested in the event.
+
+            return Some(match handle.readiness() {
+                Ok(readiness) => Ok((id, readiness)),
+                Err(err) => Err(err),
+            });
         }
 
         // No events are ready. Block the current thread.
@@ -166,8 +198,8 @@ impl Handleable for Poll {
         Err(ErrorCode::NotSupported)
     }
 
-    fn readiness(&self) -> Readiness {
-        Readiness::new()
+    fn readiness(&self) -> Result<Readiness, ErrorCode> {
+        Err(ErrorCode::NotSupported)
     }
 }
 

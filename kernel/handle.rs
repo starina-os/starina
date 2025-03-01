@@ -75,7 +75,7 @@ impl Deref for AnyHandle {
 pub trait Handleable: Any + Send + Sync {
     fn add_listener(&self, listener: Listener) -> Result<(), ErrorCode>;
     fn remove_listener(&self, poll: &Poll) -> Result<(), ErrorCode>;
-    fn readiness(&self) -> Readiness;
+    fn readiness(&self) -> Result<Readiness, ErrorCode>;
 }
 
 pub struct HandleTable {
@@ -103,8 +103,8 @@ impl HandleTable {
     }
 
     pub fn is_movable(&self, handle: HandleId) -> bool {
-        // Does the handle exist?
-        self.handles.get(&handle).is_some()
+        let exists = self.handles.get(&handle).is_some();
+        exists
     }
 
     pub fn get<T: Handleable>(&self, handle: HandleId) -> Result<Handle<T>, ErrorCode> {

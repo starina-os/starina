@@ -229,7 +229,7 @@ impl Handleable for Channel {
         Ok(())
     }
 
-    fn readiness(&self) -> Readiness {
+    fn readiness(&self) -> Result<Readiness, ErrorCode> {
         let mut readiness = Readiness::new();
         let mutable = self.mutable.lock();
         if !mutable.queue.is_empty() {
@@ -243,7 +243,7 @@ impl Handleable for Channel {
             }
         }
 
-        readiness
+        Ok(readiness)
     }
 }
 
