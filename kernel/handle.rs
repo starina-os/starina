@@ -1,4 +1,5 @@
 use alloc::collections::btree_map::BTreeMap;
+use core::ops::Deref;
 
 use starina::error::ErrorCode;
 use starina::handle::HandleId;
@@ -6,9 +7,8 @@ use starina::handle::HandleRights;
 use starina::poll::Readiness;
 
 use crate::channel::Channel;
-use crate::poll::ListenerSet;
+use crate::poll::Listener;
 use crate::refcount::SharedRef;
-use crate::spinlock::SpinLockGuard;
 
 const NUM_HANDLES_MAX: usize = 128;
 
@@ -17,6 +17,14 @@ const NUM_HANDLES_MAX: usize = 128;
 pub struct Handle<T: ?Sized> {
     object: SharedRef<T>,
     rights: HandleRights,
+}
+
+impl<T> Deref for Handle<T> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        &self.object
+    }
 }
 
 impl<T> Clone for Handle<T> {
@@ -34,8 +42,12 @@ pub enum AnyHandle {
 }
 
 impl AnyHandle {
-    pub fn listeners_mut(&self) -> SpinLockGuard<'_, ListenerSet> {
-        todo!()
+    pub fn add_listener(&self, listener: SharedRef<Listener>) {
+        match self {
+            AnyHandle::Channel(ch) => {
+                ch.add_listener(listener);
+            }
+        }
     }
 
     pub fn readiness(&self) -> Readiness {

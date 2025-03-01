@@ -124,8 +124,10 @@ impl Poll {
             id,
         });
 
-        handle.listeners_mut().add_listener(listener.clone());
+        // Add the listener to the listenee object.
+        handle.add_listener(listener.clone());
 
+        // Add the listenee to the poll.
         mutable
             .listenees
             .entry(id)
@@ -153,6 +155,7 @@ impl Poll {
     pub fn wait(&self) -> Result<(HandleId, Readiness), ErrorCode> {
         let mut mutable = self.mutable.lock();
 
+        // Check if there are any ready events.
         while let Some(id) = mutable.ready_queue.pop_front() {
             let _ = mutable.ready_set.remove(&id);
 
@@ -168,6 +171,7 @@ impl Poll {
             return Ok((id, readiness));
         }
 
+        // No events are ready. Block the current thread and wait for an event.
         mutable.waiters.push_back(current_thread().clone());
         drop(mutable);
         Thread::sleep_current();

@@ -13,9 +13,11 @@ use crate::cpuvar::current_thread;
 use crate::handle::AnyHandle;
 use crate::isolation::IsolationHeap;
 use crate::isolation::IsolationHeapMut;
+use crate::poll::Listener;
 use crate::poll::ListenerSet;
 use crate::refcount::SharedRef;
 use crate::spinlock::SpinLock;
+use crate::spinlock::SpinLockGuard;
 
 pub const MESSAGE_QUEUE_MAX_LEN: usize = 128;
 
@@ -213,6 +215,10 @@ impl Channel {
         )?;
 
         Ok(entry.msginfo)
+    }
+
+    pub fn add_listener(&self, listener: SharedRef<Listener>) {
+        self.mutable.lock().listeners.add_listener(listener);
     }
 }
 
