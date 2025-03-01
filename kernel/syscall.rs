@@ -46,6 +46,10 @@ fn poll_add(
     let handles = current.process().handles().lock();
     let poll = handles.get::<Poll>(poll)?;
 
+    if !poll.is_capable(HandleRights::WRITE) {
+        return Err(ErrorCode::NotAllowed);
+    }
+
     Ok(())
 }
 
@@ -78,7 +82,10 @@ impl RetVal {
     }
 }
 
-impl<T: Into<RetVal>> From<Result<T, ErrorCode>> for RetVal {
+impl<T> From<Result<T, ErrorCode>> for RetVal
+where
+    T: Into<RetVal>,
+{
     fn from(value: Result<T, ErrorCode>) -> Self {
         match value {
             Ok(value) => value.into(),
