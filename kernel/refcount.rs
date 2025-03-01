@@ -10,6 +10,8 @@ use core::sync::atomic;
 use core::sync::atomic::AtomicUsize;
 use core::sync::atomic::Ordering;
 
+use crate::handle::Handleable;
+
 pub struct RefCounted<T: ?Sized> {
     counter: AtomicUsize,
     value: T,
@@ -145,12 +147,10 @@ where
     }
 }
 
-pub trait Downcastable: Any + Sync + Send {}
-
-impl SharedRef<dyn Downcastable> {
+impl SharedRef<dyn Handleable> {
     pub fn downcast<T>(self) -> Result<SharedRef<T>, Self>
     where
-        T: Any + Sync + Send,
+        T: Handleable,
     {
         if <dyn Any>::is::<T>(&self) {
             Ok(SharedRef {
