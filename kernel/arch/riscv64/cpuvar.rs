@@ -17,7 +17,7 @@ impl CpuVar {
 
         let sp_top = &raw const __boot_stack_top as u64;
         Self {
-            context: &raw const idle_thread.arch().context as *mut _,
+            context: unsafe { &raw mut (*idle_thread.arch_thread_ptr()).context },
             kernel_sp: sp_top,
         }
     }

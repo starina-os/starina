@@ -5,6 +5,7 @@ use core::arch::naked_asm;
 use core::mem::offset_of;
 
 use crate::allocator::GLOBAL_ALLOCATOR;
+use crate::syscall::RetVal;
 
 /// Context of a thread.
 #[derive(Debug, Default)]
@@ -76,6 +77,10 @@ impl Thread {
                 ..Default::default()
             },
         }
+    }
+
+    pub fn set_retval(&mut self, retval: RetVal) {
+        self.context.a0 = retval.as_isize() as u64;
     }
 }
 

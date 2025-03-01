@@ -3,6 +3,9 @@
 #![cfg_attr(test, feature(test))]
 #![feature(naked_functions)]
 #![feature(arbitrary_self_types)]
+#![feature(coerce_unsized)]
+#![feature(unsize)]
+#![allow(unused)]
 
 #[macro_use]
 extern crate starina;
@@ -21,6 +24,7 @@ mod cpuvar;
 mod handle;
 mod isolation;
 mod panic;
+mod poll;
 mod process;
 mod refcount;
 mod scheduler;

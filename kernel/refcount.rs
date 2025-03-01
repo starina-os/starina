@@ -1,13 +1,18 @@
 //! Reference counting.
 
 use alloc::boxed::Box;
+use core::any::Any;
 use core::fmt;
+use core::marker::Unsize;
 use core::mem;
+use core::ops::CoerceUnsized;
 use core::ops::Deref;
 use core::ptr::NonNull;
 use core::sync::atomic;
 use core::sync::atomic::AtomicUsize;
 use core::sync::atomic::Ordering;
+
+use crate::handle::Handleable;
 
 pub struct RefCounted<T: ?Sized> {
     counter: AtomicUsize,
@@ -70,6 +75,12 @@ impl<T> SharedRef<T> {
     pub fn ptr_eq(a: &SharedRef<T>, b: &SharedRef<T>) -> bool {
         a.ptr == b.ptr
     }
+
+    pub fn ptr_eq_self(a: &SharedRef<T>, this: &T) -> bool {
+        let this_ptr: *const T = this;
+        let inner_ptr: *const T = &a.inner().value;
+        core::ptr::eq(this_ptr, inner_ptr)
+    }
 }
 
 impl<T: ?Sized> SharedRef<T> {
@@ -101,7 +112,7 @@ impl<T: ?Sized> Drop for SharedRef<T> {
     }
 }
 
-impl<T> Clone for SharedRef<T> {
+impl<T: ?Sized> Clone for SharedRef<T> {
     fn clone(&self) -> Self {
         // Increment the reference count.
         //
@@ -119,7 +130,7 @@ impl<T> Clone for SharedRef<T> {
     }
 }
 
-impl<T> Deref for SharedRef<T> {
+impl<T: ?Sized> Deref for SharedRef<T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -138,5 +149,22 @@ where
     }
 }
 
-unsafe impl<T: Sync> Sync for SharedRef<T> {}
-unsafe impl<T: Send> Send for SharedRef<T> {}
+impl SharedRef<dyn Handleable> {
+    pub fn downcast<T>(self) -> Result<SharedRef<T>, Self>
+    where
+        T: Handleable,
+    {
+        if <dyn Any>::is::<T>(&self) {
+            Ok(SharedRef {
+                ptr: self.ptr.cast(),
+            })
+        } else {
+            Err(self)
+        }
+    }
+}
+
+unsafe impl<T: Sync + Send + ?Sized> Sync for SharedRef<T> {}
+unsafe impl<T: Sync + Send + ?Sized> Send for SharedRef<T> {}
+
+impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<SharedRef<U>> for SharedRef<T> {}
