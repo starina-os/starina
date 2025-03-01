@@ -49,8 +49,13 @@ pub struct CpuVar {
 //         and thus won't be accessed at once.
 unsafe impl Sync for CpuVar {}
 
-// FIXME:
-unsafe impl Send for CpuVar {}
+/// A dirty workaround to make `CpuVar` Send-able only when initializing it.
+/// This is because in `percpu_init`, we'll initialize cpu vars for other
+/// CPUs too.
+#[repr(transparent)]
+struct CpuVarInit(CpuVar);
+
+unsafe impl Send for CpuVarInit {}
 
 pub fn current_thread() -> Ref<'static, SharedRef<Thread>> {
     arch::get_cpuvar().current_thread.borrow()
@@ -59,7 +64,7 @@ pub fn current_thread() -> Ref<'static, SharedRef<Thread>> {
 // Note: SpinLock is to serialize its initialization. Once initialized, it's
 //       safe to access `CpuVar` without holding the lock because it's a
 //       per-CPU storage. We still need a RefCell in mutable fields though.
-static CPUVARS: SpinLock<ArrayVec<CpuVar, { arch::NUM_CPUS_MAX }>> =
+static CPUVARS: SpinLock<ArrayVec<CpuVarInit, { arch::NUM_CPUS_MAX }>> =
     SpinLock::new(ArrayVec::new_const());
 
 /// Initializes Per-CPU variables for the current CPU.
@@ -77,11 +82,11 @@ pub fn percpu_init(cpu_id: CpuId) {
                 idle_thread,
             };
 
-            if cpuvars.try_push(cpuvar).is_err() {
+            if cpuvars.try_push(CpuVarInit(cpuvar)).is_err() {
                 panic!("too many CPUs");
             }
         }
     }
 
-    arch::set_cpuvar(&mut cpuvars[cpu_id.as_usize()] as *mut CpuVar);
+    arch::set_cpuvar(&mut cpuvars[cpu_id.as_usize()].0 as *mut CpuVar);
 }
