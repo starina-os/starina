@@ -49,6 +49,9 @@ pub struct CpuVar {
 //         and thus won't be accessed at once.
 unsafe impl Sync for CpuVar {}
 
+// FIXME:
+unsafe impl Send for CpuVar {}
+
 pub fn current_thread() -> Ref<'static, SharedRef<Thread>> {
     arch::get_cpuvar().current_thread.borrow()
 }

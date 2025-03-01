@@ -13,20 +13,20 @@ const NUM_HANDLES_MAX: usize = 128;
 
 /// Handle, a reference-counted pointer to a kernel object with allowed
 /// operations on it, aka *"capability"*.
-pub struct Handle<T: ?Sized> {
+pub struct Handle<T: Handleable + ?Sized> {
     object: SharedRef<T>,
     rights: HandleRights,
 }
 
-impl<T> Deref for Handle<T> {
+impl<T: Handleable + ?Sized> Deref for Handle<T> {
     type Target = T;
 
     fn deref(&self) -> &T {
-        &self.object
+        &*self.object
     }
 }
 
-impl<T: ?Sized> Clone for Handle<T> {
+impl<T: Handleable + ?Sized> Clone for Handle<T> {
     fn clone(&self) -> Self {
         Handle {
             object: self.object.clone(),
@@ -38,7 +38,14 @@ impl<T: ?Sized> Clone for Handle<T> {
 #[derive(Clone)]
 pub struct AnyHandle(Handle<dyn Handleable>);
 
-pub trait Handleable {
+impl Deref for AnyHandle {
+    type Target = dyn Handleable;
+
+    fn deref(&self) -> &Self::Target {
+        &*self.0
+    }
+}
+pub trait Handleable: Send + Sync {
     fn add_listener(&self, listener: SharedRef<Listener>);
     fn readiness(&self) -> Readiness;
 }

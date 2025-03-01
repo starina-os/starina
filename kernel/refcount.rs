@@ -125,7 +125,7 @@ impl<T: ?Sized> Clone for SharedRef<T> {
     }
 }
 
-impl<T> Deref for SharedRef<T> {
+impl<T: ?Sized> Deref for SharedRef<T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -144,5 +144,5 @@ where
     }
 }
 
-unsafe impl<T: Sync> Sync for SharedRef<T> {}
-unsafe impl<T: Send> Send for SharedRef<T> {}
+unsafe impl<T: Sync + Send + ?Sized> Sync for SharedRef<T> {}
+unsafe impl<T: Sync + Send + ?Sized> Send for SharedRef<T> {}

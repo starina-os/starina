@@ -18,7 +18,6 @@ use crate::poll::Listener;
 use crate::poll::ListenerSet;
 use crate::refcount::SharedRef;
 use crate::spinlock::SpinLock;
-use crate::spinlock::SpinLockGuard;
 
 pub const MESSAGE_QUEUE_MAX_LEN: usize = 128;
 
@@ -231,7 +230,7 @@ impl Handleable for Channel {
             readiness |= Readiness::READABLE;
         }
 
-        if let Some(peer) = mutable.peer {
+        if let Some(peer) = mutable.peer.as_ref() {
             let peer_mutable = peer.mutable.lock();
             if peer_mutable.queue.len() < MESSAGE_QUEUE_MAX_LEN {
                 readiness |= Readiness::WRITABLE;

@@ -69,7 +69,7 @@ impl<T> DerefMut for SpinLockGuard<'_, T> {
     }
 }
 
-unsafe impl<T: ?Sized + Sync> Sync for SpinLock<T> {}
+unsafe impl<T: ?Sized + Send> Sync for SpinLock<T> {}
 unsafe impl<T: ?Sized + Send> Send for SpinLock<T> {}
 
 unsafe impl<T: ?Sized + Sync> Sync for SpinLockGuard<'_, T> {}
