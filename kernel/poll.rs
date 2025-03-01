@@ -1,4 +1,5 @@
 use alloc::collections::btree_map::BTreeMap;
+use alloc::collections::btree_set::BTreeSet;
 use alloc::collections::vec_deque::VecDeque;
 use alloc::vec::Vec;
 
@@ -21,9 +22,12 @@ pub struct Listener {
 impl Listener {
     pub fn mark_ready(&self, readiness: Readiness) {
         let mut mutable = self.mutable.lock();
-        mutable.ready.push_back(self.id);
+        if !mutable.ready_set.contains(&self.id) {
+            mutable.ready_queue.push_back(self.id);
+            mutable.ready_set.insert(self.id);
+        }
 
-        // If the event is what we listen for, wake up a single thread. We have't
+        // If the event is what we listen for, wake up a single thread. We haven't
         // yet encountered a case where multiple processes are listening for the
         // same object, so it's totally fine.
         //
@@ -40,8 +44,16 @@ impl Listener {
 impl Drop for Listener {
     fn drop(&mut self) {
         let mut mutable = self.mutable.lock();
-        let listeners = mutable.items.get_mut(&self.id).unwrap();
-        listeners.retain(|l| !SharedRef::ptr_eq_self(l, self));
+        let listenee = mutable.listenees.get_mut(&self.id).unwrap();
+
+        // Remove the listener from the listenee.
+        let mut new_listeners = Vec::with_capacity(listenee.listeners.len() - 1);
+        for listener in &listenee.listeners {
+            if !SharedRef::ptr_eq_self(listener, self) {
+                new_listeners.push(listener.clone());
+            }
+        }
+        listenee.listeners = new_listeners;
     }
 }
 
@@ -67,9 +79,15 @@ impl ListenerSet {
     }
 }
 
+struct Listenee {
+    handle: AnyHandle,
+    listeners: Vec<SharedRef<Listener>>,
+}
+
 struct Mutable {
-    items: BTreeMap<HandleId, Vec<SharedRef<Listener>>>,
-    ready: VecDeque<HandleId>,
+    listenees: BTreeMap<HandleId, Listenee>,
+    ready_queue: VecDeque<HandleId>,
+    ready_set: BTreeSet<HandleId>,
     waiters: VecDeque<SharedRef<Thread>>,
 }
 
@@ -81,8 +99,9 @@ impl Poll {
     pub fn new() -> SharedRef<Poll> {
         SharedRef::new(Poll {
             mutable: SharedRef::new(SpinLock::new(Mutable {
-                items: BTreeMap::new(),
-                ready: VecDeque::new(),
+                listenees: BTreeMap::new(),
+                ready_queue: VecDeque::new(),
+                ready_set: BTreeSet::new(),
                 waiters: VecDeque::new(),
             })),
         })
@@ -95,7 +114,7 @@ impl Poll {
         interests: Readiness,
     ) -> Result<(), ErrorCode> {
         let mut mutable = self.mutable.lock();
-        if mutable.items.contains_key(&id) {
+        if mutable.listenees.contains_key(&id) {
             return Err(ErrorCode::AlreadyExists);
         }
 
@@ -108,9 +127,13 @@ impl Poll {
         handle.listeners_mut().add_listener(listener.clone());
 
         mutable
-            .items
+            .listenees
             .entry(id)
-            .or_insert_with(Vec::new)
+            .or_insert(Listenee {
+                handle,
+                listeners: Vec::new(),
+            })
+            .listeners
             .push(listener);
 
         if let Some(waiter) = mutable.waiters.pop_front() {
@@ -118,16 +141,31 @@ impl Poll {
         } else {
             // No threads are ready to receive the event. Deliver it later once
             // a thread enters the wait state.
-            mutable.ready.push_back(id);
+            if !mutable.ready_set.contains(&id) {
+                mutable.ready_queue.push_back(id);
+                mutable.ready_set.insert(id);
+            }
         }
 
         Ok(())
     }
 
-    pub fn wait(&self) -> Result<HandleId, ErrorCode> {
+    pub fn wait(&self) -> Result<(HandleId, Readiness), ErrorCode> {
         let mut mutable = self.mutable.lock();
-        if let Some(id) = mutable.ready.pop_front() {
-            return Ok(id);
+
+        while let Some(id) = mutable.ready_queue.pop_front() {
+            let _ = mutable.ready_set.remove(&id);
+
+            let listenee = match mutable.listenees.get_mut(&id) {
+                Some(listenee) => listenee,
+                None => {
+                    // The listenee was removed from the poll. Try the next one.
+                    continue;
+                }
+            };
+
+            let readiness = listenee.handle.readiness();
+            return Ok((id, readiness));
         }
 
         mutable.waiters.push_back(current_thread().clone());

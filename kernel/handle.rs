@@ -3,6 +3,7 @@ use alloc::collections::btree_map::BTreeMap;
 use starina::error::ErrorCode;
 use starina::handle::HandleId;
 use starina::handle::HandleRights;
+use starina::poll::Readiness;
 
 use crate::channel::Channel;
 use crate::poll::ListenerSet;
@@ -18,12 +19,26 @@ pub struct Handle<T: ?Sized> {
     rights: HandleRights,
 }
 
+impl<T> Clone for Handle<T> {
+    fn clone(&self) -> Self {
+        Handle {
+            object: self.object.clone(),
+            rights: self.rights,
+        }
+    }
+}
+
+#[derive(Clone)]
 pub enum AnyHandle {
     Channel(Handle<Channel>),
 }
 
 impl AnyHandle {
     pub fn listeners_mut(&self) -> SpinLockGuard<'_, ListenerSet> {
+        todo!()
+    }
+
+    pub fn readiness(&self) -> Readiness {
         todo!()
     }
 }
