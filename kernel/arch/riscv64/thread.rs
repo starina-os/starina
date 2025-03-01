@@ -77,6 +77,10 @@ impl Thread {
             },
         }
     }
+
+    pub fn set_retval(&mut self, retval: usize) {
+        self.context.a0 = retval.try_into().unwrap();
+    }
 }
 
 #[naked]

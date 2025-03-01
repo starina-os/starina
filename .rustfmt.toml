@@ -1,4 +1,4 @@
-edition = "2021"
+edition = "2024"
 
 # My personal preferences. Don't even try to convince me ;)
 force_multiline_blocks = true

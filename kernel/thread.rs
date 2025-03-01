@@ -112,10 +112,11 @@ pub fn switch_thread() -> ! {
                     // Nothing to do. Just continue running the thread in the userspace.
                     unsafe { mutable.arch_thread_ptr() }
                 }
-                ThreadState::EnterUserlandWith { retval } => {
-                    //
-                    unsafe { mutable.arch_thread_ptr() }
-                }
+                ThreadState::EnterUserlandWith { retval } => unsafe {
+                    let arch = mutable.arch_thread_ptr();
+                    (*arch).set_retval(retval);
+                    arch
+                },
                 ThreadState::BlockedByPoll(poll) => {
                     if let Some(result) = poll.try_wait() {
                         mutable.state = ThreadState::EnterUserlandWith {
