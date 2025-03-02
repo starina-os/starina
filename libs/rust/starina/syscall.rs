@@ -4,6 +4,7 @@ use crate::poll::Readiness;
 
 pub struct InKernelSyscallTable {
     pub console_write: fn(&[u8]),
+    pub poll_create: fn() -> Result<HandleId, ErrorCode>,
     pub poll_add: fn(
         HandleId, /* poll */
         HandleId, /* object */
@@ -26,6 +27,11 @@ pub fn console_write(s: &[u8]) {
 #[cfg(feature = "in-kernel")]
 pub fn thread_yield() {
     (INKERNEL_SYSCALL_TABLE.thread_yield)();
+}
+
+#[cfg(feature = "in-kernel")]
+pub fn poll_create() -> Result<HandleId, ErrorCode> {
+    (INKERNEL_SYSCALL_TABLE.poll_create)()
 }
 
 #[cfg(feature = "in-kernel")]

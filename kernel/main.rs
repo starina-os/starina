@@ -67,10 +67,16 @@ pub fn boot(bootinfo: BootInfo) -> ! {
         }
     }
 
-    // GLOBAL_SCHEDULER.push(thread::Thread::new_inkernel(
-    //     entrypoint as usize,
-    //     Box::leak(Box::new(ktest::Main::init())) as *const _ as usize,
-    // ));
+    use alloc::boxed::Box;
+
+    use scheduler::GLOBAL_SCHEDULER;
+    GLOBAL_SCHEDULER.push(
+        thread::Thread::new_inkernel(
+            entrypoint as usize,
+            Box::leak(Box::new(ktest::Main::init())) as *const _ as usize,
+        )
+        .unwrap(),
+    );
     // GLOBAL_SCHEDULER.push(thread::Thread::new_inkernel(
     //     entrypoint as usize,
     //     Box::leak(Box::new(ktest::Main::init())) as *const _ as usize,

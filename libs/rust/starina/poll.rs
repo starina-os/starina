@@ -1,3 +1,5 @@
+use core::fmt;
+use core::fmt::Write;
 use core::ops::BitAnd;
 use core::ops::BitAndAssign;
 use core::ops::BitOr;
@@ -18,6 +20,22 @@ impl Readiness {
 
     pub fn contains(&self, other: Readiness) -> bool {
         self.0 & other.0 != 0
+    }
+}
+
+impl fmt::Debug for Readiness {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.contains(Readiness::CLOSED) {
+            f.write_char('C')?;
+        }
+        if self.contains(Readiness::READABLE) {
+            f.write_char('R')?;
+        }
+        if self.contains(Readiness::WRITABLE) {
+            f.write_char('W')?;
+        }
+
+        Ok(())
     }
 }
 

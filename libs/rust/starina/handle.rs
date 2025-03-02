@@ -1,3 +1,5 @@
+use core::ops::BitOr;
+
 /// A handle ID.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct HandleId(i32);
@@ -20,5 +22,13 @@ impl HandleRights {
 
     pub fn is_capable(&self, required: HandleRights) -> bool {
         self.0 & required.0 == required.0
+    }
+}
+
+impl BitOr for HandleRights {
+    type Output = Self;
+
+    fn bitor(self, rhs: Self) -> Self {
+        HandleRights(self.0 | rhs.0)
     }
 }

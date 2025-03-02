@@ -6,6 +6,7 @@ use starina::syscall::InKernelSyscallTable;
 
 use crate::arch::enter_kernelland;
 use crate::cpuvar::current_thread;
+use crate::handle::Handle;
 use crate::poll::Poll;
 use crate::refcount::SharedRef;
 use crate::thread::Thread;
@@ -16,6 +17,7 @@ use crate::thread::switch_thread;
 static INKERNEL_SYSCALL_TABLE: InKernelSyscallTable = InKernelSyscallTable {
     console_write: crate::arch::console_write,
     thread_yield: thread_yield_trampoline,
+    poll_create: poll_create_trampoline,
     poll_add: poll_add_trampoline,
     poll_wait: poll_wait_trampoline,
 };
@@ -26,13 +28,38 @@ fn thread_yield_trampoline() {
     enter_kernelland(123, 0, 0, 0, 0, 0);
 }
 
+fn kernel_scope<F, R>(f: F) -> R
+where
+    F: FnOnce() -> R,
+{
+    unsafe {
+        use core::arch::asm;
+        asm!("csrrw tp, sscratch, tp");
+        let ret = f();
+        asm!("csrrw tp, sscratch, tp");
+        ret
+    }
+}
+
+fn poll_create_trampoline() -> Result<HandleId, ErrorCode> {
+    kernel_scope(|| {
+        let mut poll = Poll::new()?;
+        let handle = Handle::new(poll, HandleRights::POLL | HandleRights::WRITE);
+        let current_thread = current_thread();
+        let poll_id = current_thread.process().handles().lock().insert(handle)?;
+        Ok(poll_id)
+    })
+}
+
 fn poll_add_trampoline(
     poll: HandleId,
     object: HandleId,
     interests: Readiness,
 ) -> Result<(), ErrorCode> {
-    let current_thread = current_thread();
-    poll_add(&current_thread, poll, object, interests)
+    kernel_scope(|| {
+        let current_thread = current_thread();
+        poll_add(&current_thread, poll, object, interests)
+    })
 }
 
 fn poll_add(
