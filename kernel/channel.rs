@@ -291,7 +291,6 @@ mod tests {
             ptr: core::ptr::null_mut(),
             len: 0,
         };
-        info!("Sending message...");
         ch1.send(
             MessageInfo::new(0, send_buf.len().try_into().unwrap(), 0),
             &send_heap,
