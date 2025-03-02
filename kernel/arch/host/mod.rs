@@ -1,6 +1,8 @@
 use std::cell::RefCell;
 use std::io::Write;
 
+use crate::syscall::RetVal;
+
 pub fn percpu_init() {
     todo!()
 }
@@ -42,6 +44,10 @@ impl Thread {
 
     pub fn new_idle() -> Thread {
         Thread {}
+    }
+
+    pub fn set_retval(&mut self, retval: RetVal) {
+        todo!()
     }
 }
 

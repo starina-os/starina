@@ -272,8 +272,8 @@ mod tests {
 
     #[test]
     fn test_send_and_recv() {
-        let idle_thread = Thread::new_idle();
-        let thread = Thread::new_inkernel(0, 0);
+        let idle_thread = Thread::new_idle().unwrap();
+        let thread = Thread::new_inkernel(0, 0).unwrap();
         set_cpuvar(Box::leak(Box::new(crate::cpuvar::CpuVar {
             arch: crate::arch::CpuVar::new(&thread),
             cpu_id: CpuId::new(0),
