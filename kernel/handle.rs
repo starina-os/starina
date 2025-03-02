@@ -9,7 +9,7 @@ use starina::poll::Readiness;
 use crate::poll::Listener;
 use crate::poll::Poll;
 use crate::refcount::SharedRef;
-use crate::utils::FxHashMap;
+use crate::utils::ConstHashMap;
 
 const NUM_HANDLES_MAX: usize = 128;
 
@@ -79,14 +79,14 @@ pub trait Handleable: Any + Send + Sync {
 }
 
 pub struct HandleTable {
-    handles: FxHashMap<HandleId, AnyHandle>,
+    handles: ConstHashMap<HandleId, AnyHandle>,
     next_id: i32,
 }
 
 impl HandleTable {
     pub const fn new() -> HandleTable {
         HandleTable {
-            handles: FxHashMap::new(),
+            handles: ConstHashMap::new(),
             next_id: 1,
         }
     }
