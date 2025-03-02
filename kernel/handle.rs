@@ -9,7 +9,7 @@ use starina::poll::Readiness;
 use crate::poll::Listener;
 use crate::poll::Poll;
 use crate::refcount::SharedRef;
-use crate::utils::FxHashMap;
+use crate::utils::fxhashmap::FxHashMap;
 
 const NUM_HANDLES_MAX: usize = 128;
 

@@ -14,7 +14,7 @@ use crate::refcount::SharedRef;
 use crate::spinlock::SpinLock;
 use crate::thread::Thread;
 use crate::thread::ThreadState;
-use crate::utils::FxHashMap;
+use crate::utils::fxhashmap::FxHashMap;
 
 struct UniqueQueue<T> {
     queue: VecDeque<T>,
