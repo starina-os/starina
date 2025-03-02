@@ -57,10 +57,10 @@ impl Channel {
     pub fn new() -> Result<(SharedRef<Channel>, SharedRef<Channel>), ErrorCode> {
         let ch0 = SharedRef::new(Channel {
             mutable: SpinLock::new(Mutable::new()),
-        });
+        })?;
         let ch1 = SharedRef::new(Channel {
             mutable: SpinLock::new(Mutable::new()),
-        });
+        })?;
 
         // TODO: Can we avoid this mutate-after-construct?
         ch0.mutable.lock().peer = Some(ch1.clone());
@@ -91,6 +91,12 @@ impl Channel {
         // Check if the peer's queue is full.
         if peer_mutable.queue.len() >= MESSAGE_QUEUE_MAX_LEN {
             return Err(ErrorCode::Full);
+        }
+
+        // Allocate space for the message in the peer's queue so that
+        // `VecDeque::push_back` won't panic.
+        if peer_mutable.queue.try_reserve_exact(1).is_err() {
+            return Err(ErrorCode::OutOfMemory);
         }
 
         // Move handles.
@@ -220,7 +226,7 @@ impl Channel {
 
 impl Handleable for Channel {
     fn add_listener(&self, listener: Listener) -> Result<(), ErrorCode> {
-        self.mutable.lock().listeners.add_listener(listener);
+        self.mutable.lock().listeners.add_listener(listener)?;
         Ok(())
     }
 

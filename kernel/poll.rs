@@ -1,9 +1,8 @@
-use alloc::collections::btree_map::BTreeMap;
-use alloc::collections::btree_set::BTreeSet;
 use alloc::collections::vec_deque::VecDeque;
 use alloc::vec::Vec;
 use core::hash::Hash;
 
+use hashbrown::HashSet;
 use starina::error::ErrorCode;
 use starina::handle::HandleId;
 use starina::poll::Readiness;
@@ -13,32 +12,40 @@ use crate::handle::AnyHandle;
 use crate::handle::Handleable;
 use crate::refcount::SharedRef;
 use crate::spinlock::SpinLock;
-use crate::syscall::RetVal;
 use crate::thread::Thread;
 use crate::thread::ThreadState;
+use crate::utils::FxHashMap;
 
 struct UniqueQueue<T> {
     queue: VecDeque<T>,
-    set: BTreeSet<T>,
+    set: HashSet<T>,
 }
 
 impl<T> UniqueQueue<T> {
-    pub const fn new() -> UniqueQueue<T> {
+    pub fn new() -> UniqueQueue<T> {
         UniqueQueue {
             queue: VecDeque::new(),
-            set: BTreeSet::new(),
+            set: HashSet::new(),
         }
     }
 }
 
 impl<T: Eq + Ord + Copy + Hash> UniqueQueue<T> {
-    pub fn enqueue(&mut self, value: T) {
+    pub fn enqueue(&mut self, value: T) -> Result<(), ErrorCode> {
         if self.set.contains(&value) {
-            return;
+            return Ok(());
         }
+
+        self.queue
+            .try_reserve(1)
+            .map_err(|_| ErrorCode::OutOfMemory)?;
+        self.set
+            .try_reserve(1)
+            .map_err(|_| ErrorCode::OutOfMemory)?;
 
         self.queue.push_back(value);
         self.set.insert(value);
+        Ok(())
     }
 
     pub fn pop(&mut self) -> Option<T> {
@@ -61,7 +68,10 @@ pub struct Listener {
 impl Listener {
     pub fn notify(&self, readiness: Readiness) {
         let mut mutable = self.poll.mutable.lock();
-        mutable.ready_handles.enqueue(self.id);
+        if mutable.ready_handles.enqueue(self.id).is_err() {
+            debug_warn!("failed to notify listener due to out-of-memory");
+            return;
+        }
 
         // If the event is what we listen for, wake up a single thread. We haven't
         // yet encountered a case where multiple processes are listening for the
@@ -94,8 +104,13 @@ impl ListenerSet {
         }
     }
 
-    pub fn add_listener(&mut self, listener: Listener) {
+    pub fn add_listener(&mut self, listener: Listener) -> Result<(), ErrorCode> {
+        self.listeners
+            .try_reserve(1)
+            .map_err(|_| ErrorCode::OutOfMemory)?;
+
         self.listeners.push(listener);
+        Ok(())
     }
 
     pub fn remove_listener(&mut self, poll: &Poll) {
@@ -105,7 +120,7 @@ impl ListenerSet {
 }
 
 struct Mutable {
-    handles: BTreeMap<HandleId, AnyHandle>,
+    handles: FxHashMap<HandleId, AnyHandle>,
     ready_handles: UniqueQueue<HandleId>,
     waiters: VecDeque<SharedRef<Thread>>,
 }
@@ -115,14 +130,15 @@ pub struct Poll {
 }
 
 impl Poll {
-    pub fn new() -> SharedRef<Poll> {
-        SharedRef::new(Poll {
-            mutable: SharedRef::new(SpinLock::new(Mutable {
-                handles: BTreeMap::new(),
-                ready_handles: UniqueQueue::new(),
-                waiters: VecDeque::new(),
-            })),
-        })
+    pub fn new() -> Result<SharedRef<Poll>, ErrorCode> {
+        let mutable = SharedRef::new(SpinLock::new(Mutable {
+            handles: FxHashMap::new(),
+            ready_handles: UniqueQueue::new(),
+            waiters: VecDeque::new(),
+        }))?;
+
+        let poll = SharedRef::new(Poll { mutable })?;
+        Ok(poll)
     }
 
     pub fn add(
@@ -143,6 +159,11 @@ impl Poll {
             id,
         })?;
 
+        mutable
+            .handles
+            .try_reserve(1)
+            .map_err(|_| ErrorCode::OutOfMemory)?;
+
         mutable.handles.insert(id, handle.clone());
 
         let readiness = handle.readiness()?;
@@ -154,7 +175,9 @@ impl Poll {
         } else {
             // No threads are ready to receive the event. Deliver it later once
             // a thread enters the wait state.
-            mutable.ready_handles.enqueue(id);
+            if mutable.ready_handles.enqueue(id).is_err() {
+                debug_warn!("failed to enqueue a ready handle due to out-of-memory");
+            }
         }
 
         Ok(())
@@ -183,6 +206,11 @@ impl Poll {
         // WARNING: Thread::switch will never return. Clean up all resources
         //          before calling it!
         let current_thread = current_thread();
+
+        if mutable.waiters.try_reserve(1).is_err() {
+            return Some(Err(ErrorCode::OutOfMemory));
+        }
+
         mutable.waiters.push_back(current_thread.clone());
         current_thread.set_state(ThreadState::BlockedByPoll(self.clone()));
         None

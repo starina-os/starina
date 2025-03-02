@@ -12,5 +12,7 @@ path = "main.rs"
 [dependencies]
 starina = { workspace = true, features = ["in-kernel"] }
 arrayvec = { workspace = true }
+hashbrown = { workspace = true }
+rustc-hash = { workspace = true }
 
 ktest = { workspace = true }

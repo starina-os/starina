@@ -23,7 +23,13 @@ impl IsolationHeap {
         assert!(matches!(isolation, Isolation::InKernel));
         let IsolationHeap::InKernel { ptr, .. } = self;
         let slice = unsafe { core::slice::from_raw_parts(ptr.add(offset), len) };
-        Ok(Vec::from(slice))
+
+        let mut buf = Vec::new();
+        buf.try_reserve_exact(len)
+            .map_err(|_| ErrorCode::OutOfMemory)?;
+        buf.extend_from_slice(slice);
+
+        Ok(buf)
     }
 
     pub fn read<T: Copy>(&self, isolation: &Isolation, offset: usize) -> Result<T, ErrorCode> {

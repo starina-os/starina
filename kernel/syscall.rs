@@ -1,5 +1,3 @@
-use core::ops::Deref;
-
 use starina::error::ErrorCode;
 use starina::handle::HandleId;
 use starina::handle::HandleRights;

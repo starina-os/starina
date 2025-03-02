@@ -1,5 +1,7 @@
 use alloc::collections::VecDeque;
 
+use starina::error::ErrorCode;
+
 use crate::refcount::SharedRef;
 use crate::spinlock::SpinLock;
 use crate::thread::Thread;
@@ -18,7 +20,20 @@ impl Scheduler {
     }
 
     pub fn push(&self, new_thread: SharedRef<Thread>) {
+        // SAFETY: This should not panic because we've already reserved the
+        //         capacity in `try_reserve`.
         self.runqueue.lock().push_back(new_thread);
+    }
+
+    pub fn try_reserve_cap(&self, new_cap: usize) -> Result<(), ErrorCode> {
+        let mut runqueue = self.runqueue.lock();
+        if let Some(additional) = new_cap.checked_sub(runqueue.capacity()) {
+            runqueue
+                .try_reserve(additional)
+                .map_err(|_| ErrorCode::OutOfMemory)?;
+        }
+
+        Ok(())
     }
 
     pub fn schedule(

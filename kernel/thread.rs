@@ -1,3 +1,8 @@
+use core::sync::atomic::AtomicUsize;
+use core::sync::atomic::Ordering;
+
+use starina::error::ErrorCode;
+
 use crate::arch;
 use crate::poll::Poll;
 use crate::process::KERNEL_PROCESS;
@@ -6,6 +11,8 @@ use crate::refcount::SharedRef;
 use crate::scheduler::GLOBAL_SCHEDULER;
 use crate::spinlock::SpinLock;
 use crate::syscall::RetVal;
+
+static NUM_THREADS: AtomicUsize = AtomicUsize::new(0);
 
 pub enum ThreadState {
     Runnable(Option<RetVal>),
@@ -29,7 +36,7 @@ pub struct Thread {
 }
 
 impl Thread {
-    pub fn new_idle() -> SharedRef<Thread> {
+    pub fn new_idle() -> Result<SharedRef<Thread>, ErrorCode> {
         SharedRef::new(Thread {
             mutable: SpinLock::new(Mutable {
                 state: ThreadState::Runnable(None),
@@ -39,17 +46,20 @@ impl Thread {
         })
     }
 
-    pub fn new_inkernel(pc: usize, arg: usize) -> SharedRef<Thread> {
+    pub fn new_inkernel(pc: usize, arg: usize) -> Result<SharedRef<Thread>, ErrorCode> {
         let thread = SharedRef::new(Thread {
             mutable: SpinLock::new(Mutable {
                 state: ThreadState::Runnable(None), // TODO: Mark as blocked by default.
                 arch: arch::Thread::new_inkernel(pc, arg),
             }),
             process: KERNEL_PROCESS.clone(),
-        });
+        })?;
+
+        let old_num_threads = NUM_THREADS.fetch_add(1, Ordering::Relaxed);
+        GLOBAL_SCHEDULER.try_reserve_cap(old_num_threads + 1)?;
 
         GLOBAL_SCHEDULER.push(thread.clone());
-        thread
+        Ok(thread)
     }
 
     pub unsafe fn arch_thread_ptr(&self) -> *mut arch::Thread {
@@ -81,6 +91,12 @@ impl Thread {
         if matches!(mutable.state, ThreadState::Runnable(_)) {
             GLOBAL_SCHEDULER.push(self.clone());
         }
+    }
+}
+
+impl Drop for Thread {
+    fn drop(&mut self) {
+        NUM_THREADS.fetch_sub(1, Ordering::Relaxed);
     }
 }
 

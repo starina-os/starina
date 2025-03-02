@@ -74,7 +74,7 @@ pub fn percpu_init(cpu_id: CpuId) {
     if cpuvars.len() <= index {
         // Initialize CpuVar slots until the CPU.
         for _ in 0..=index {
-            let idle_thread = Thread::new_idle();
+            let idle_thread = Thread::new_idle().expect("failed to create an idle thread");
             let cpuvar = CpuVar {
                 arch: arch::CpuVar::new(&idle_thread),
                 cpu_id,

@@ -12,6 +12,8 @@ use core::sync::atomic;
 use core::sync::atomic::AtomicUsize;
 use core::sync::atomic::Ordering;
 
+use starina::error::ErrorCode;
+
 use crate::handle::Handleable;
 
 pub struct RefCounted<T: ?Sized> {
@@ -51,13 +53,14 @@ pub struct SharedRef<T: ?Sized> {
 
 impl<T> SharedRef<T> {
     /// Creates a new reference-counted object.
-    pub fn new(value: T) -> Self {
-        let ptr = Box::leak(Box::new(RefCounted::new(value)));
+    pub fn new(value: T) -> Result<Self, ErrorCode> {
+        let boxed = Box::try_new(RefCounted::new(value)).map_err(|_| ErrorCode::OutOfMemory)?;
+        let ptr = Box::leak(boxed);
 
-        Self {
+        Ok(Self {
             // SAFETY: Box always returns a valid non-null pointer.
             ptr: unsafe { NonNull::new_unchecked(ptr) },
-        }
+        })
     }
 
     /// Creates a new reference-counted object from a static reference.

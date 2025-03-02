@@ -2,7 +2,6 @@
 use core::fmt;
 
 use crate::handle::HandleTable;
-use crate::handle::Handleable;
 use crate::isolation::Isolation;
 use crate::refcount::RefCounted;
 use crate::refcount::SharedRef;

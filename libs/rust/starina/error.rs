@@ -9,6 +9,7 @@ pub enum ErrorCode {
     TooManyHandles,
     HandleNotMovable,
     NoPeer,
+    OutOfMemory,
     Empty,
     Full,
 }

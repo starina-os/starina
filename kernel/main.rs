@@ -5,6 +5,7 @@
 #![feature(arbitrary_self_types)]
 #![feature(coerce_unsized)]
 #![feature(unsize)]
+#![feature(allocator_api)]
 #![allow(unused)]
 
 #[macro_use]
@@ -31,6 +32,7 @@ mod scheduler;
 mod spinlock;
 mod syscall;
 mod thread;
+mod utils;
 
 pub struct FreeRam {
     addr: *mut u8,
