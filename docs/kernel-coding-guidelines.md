@@ -8,11 +8,15 @@ Unlike traditional operating systems, Starina kernel uses a single stack per CPU
 
 ## APIs
 
-| std equivalent | kernel alternative | Remarks |
+| `libstd` equivalent | Kernel alternative | Remarks |
 |----------------|--------------------|----|
-| `HashMap` | `crate::utils::ConstHashMap` | If you want to intiialize a `HashMap` in a `const fn`. |
-| `Arc` | `crate::refcount::SharedRef` |
+| `HashMap` | `crate::utils::FxHashMap` | If you want to intiialize a `HashMap` in a `const fn`. |
+| `Arc` | `crate::refcount::SharedRef` | |
+| `Mutex` | `crate::spinlock::SpinLock` | |
+| `thread_local` | `CpuVar` | A CPU-local variable, which is similar to `thread_local` in the userspace. |
 
 ## Rules
 
-- Avoid memory allocation panics. Use `try_reserve` before adding a new element to a collection such as a `Vec`.
+- Avoid `panic`s. If you use `unwrap`, describe why you think it never fails.
+- Handle allocation failures in collections (e.g. `Vec`). Use `try_reserve` before adding a new element to a collection.
+

@@ -4,17 +4,17 @@ use core::ops::DerefMut;
 use hashbrown::HashMap;
 use rustc_hash::FxBuildHasher;
 
-// FIXME: Use a DOS-resistant, but const-initializable hasher.
-pub struct ConstHashMap<K, V>(HashMap<K, V, FxBuildHasher>);
+// FIXME: Make this DOS-resistant. We might need to implement a RNG first.
+pub struct FxHashMap<K, V>(HashMap<K, V, FxBuildHasher>);
 
-impl<K, V> ConstHashMap<K, V> {
+impl<K, V> FxHashMap<K, V> {
     pub const fn new() -> Self {
         let inner = HashMap::with_hasher(FxBuildHasher);
         Self(inner)
     }
 }
 
-impl<K, V> Deref for ConstHashMap<K, V> {
+impl<K, V> Deref for FxHashMap<K, V> {
     type Target = HashMap<K, V, FxBuildHasher>;
 
     fn deref(&self) -> &HashMap<K, V, FxBuildHasher> {
@@ -22,7 +22,7 @@ impl<K, V> Deref for ConstHashMap<K, V> {
     }
 }
 
-impl<K, V> DerefMut for ConstHashMap<K, V> {
+impl<K, V> DerefMut for FxHashMap<K, V> {
     fn deref_mut(&mut self) -> &mut HashMap<K, V, FxBuildHasher> {
         &mut self.0
     }

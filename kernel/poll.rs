@@ -14,7 +14,7 @@ use crate::refcount::SharedRef;
 use crate::spinlock::SpinLock;
 use crate::thread::Thread;
 use crate::thread::ThreadState;
-use crate::utils::ConstHashMap;
+use crate::utils::FxHashMap;
 
 struct UniqueQueue<T> {
     queue: VecDeque<T>,
@@ -120,7 +120,7 @@ impl ListenerSet {
 }
 
 struct Mutable {
-    handles: ConstHashMap<HandleId, AnyHandle>,
+    handles: FxHashMap<HandleId, AnyHandle>,
     ready_handles: UniqueQueue<HandleId>,
     waiters: VecDeque<SharedRef<Thread>>,
 }
@@ -132,7 +132,7 @@ pub struct Poll {
 impl Poll {
     pub fn new() -> Result<SharedRef<Poll>, ErrorCode> {
         let mutable = SharedRef::new(SpinLock::new(Mutable {
-            handles: ConstHashMap::new(),
+            handles: FxHashMap::new(),
             ready_handles: UniqueQueue::new(),
             waiters: VecDeque::new(),
         }))?;
