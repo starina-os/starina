@@ -135,7 +135,7 @@ impl Channel {
 
                 // SAFETY: unwrap() won't panic because we've checked the handle
                 //         is movable in the previous loop.
-                let handle = our_handles.remove(handle_id).unwrap();
+                let handle = our_handles.take(handle_id).unwrap();
 
                 // SAFETY: unwrap() won't panic because `handles` should have
                 //         enough capacity up to MESSAGE_NUM_HANDLES_MAX.
@@ -225,6 +225,13 @@ impl Channel {
 }
 
 impl Handleable for Channel {
+    fn close(&self) {
+        let mut mutable = self.mutable.lock();
+        if let Some(peer) = &mutable.peer {
+            peer.mutable.lock().peer = None;
+        }
+    }
+
     fn add_listener(&self, listener: Listener) -> Result<(), ErrorCode> {
         self.mutable.lock().listeners.add_listener(listener)?;
         Ok(())

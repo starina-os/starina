@@ -218,6 +218,10 @@ impl Poll {
 }
 
 impl Handleable for Poll {
+    fn close(&self) {
+        // Nothing to do.
+    }
+
     fn add_listener(&self, listener: Listener) -> Result<(), ErrorCode> {
         Err(ErrorCode::NotSupported)
     }
