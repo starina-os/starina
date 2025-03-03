@@ -1,4 +1,5 @@
 use crate::handle::Handleable;
+use crate::poll::Readiness;
 use crate::poll::userspace::Poll;
 
 pub trait App: Send + Sync {
@@ -18,7 +19,11 @@ impl Dispatcher {
         Self { poll }
     }
 
-    pub fn pause_reading(&self, handle: &impl Handleable) {
+    pub fn enable_interests(&self, handle: &impl Handleable, interests: Readiness) {
+        todo!()
+    }
+
+    pub fn disable_interests(&self, handle: &impl Handleable, interests: Readiness) {
         todo!()
     }
 }
