@@ -1,3 +1,4 @@
+use crate::poll::Poll;
 use crate::syscall;
 
 pub trait App: Send + Sync {
@@ -7,8 +8,6 @@ pub trait App: Send + Sync {
 
     fn tick(&mut self);
 }
-
-struct Poll;
 
 pub struct Dispatcher {
     poll: Poll,
@@ -21,9 +20,9 @@ impl Dispatcher {
 }
 
 pub fn app_loop(app: impl App) {
-    let poll = syscall::poll_create().unwrap();
-    let dispatcher = Dispatcher::new(todo!());
+    let poll = Poll::create().unwrap();
+    let dispatcher = Dispatcher::new(poll);
     loop {
-        let ev = syscall::poll_wait(poll).unwrap();
+        // let ev = syscall::poll_wait(poll).unwrap();
     }
 }
