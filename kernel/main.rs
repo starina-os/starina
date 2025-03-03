@@ -16,7 +16,9 @@ extern crate alloc;
 use allocator::GLOBAL_ALLOCATOR;
 use arrayvec::ArrayVec;
 use cpuvar::CpuId;
+use poll::Poll;
 use starina::app::App;
+use starina::syscall::poll_wait;
 
 mod allocator;
 mod arch;
