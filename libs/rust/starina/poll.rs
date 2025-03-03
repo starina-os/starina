@@ -5,10 +5,6 @@ use core::ops::BitAndAssign;
 use core::ops::BitOr;
 use core::ops::BitOrAssign;
 
-use crate::error::ErrorCode;
-use crate::handle::OwnedHandle;
-use crate::syscall;
-
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct Readiness(i8);
@@ -72,12 +68,34 @@ impl BitAndAssign for Readiness {
 }
 
 #[cfg(feature = "userspace")]
-pub struct Poll(OwnedHandle);
+pub mod userspace {
+    use super::Readiness;
+    use crate::error::ErrorCode;
+    use crate::handle::HandleId;
+    use crate::handle::Handleable;
+    use crate::handle::OwnedHandle;
+    use crate::syscall;
 
-#[cfg(feature = "userspace")]
-impl Poll {
-    pub fn create() -> Result<Self, ErrorCode> {
-        let poll = syscall::poll_create()?;
-        Ok(Self(OwnedHandle::from_raw(poll)))
+    pub struct Poll(OwnedHandle);
+
+    impl Poll {
+        pub fn create() -> Result<Self, ErrorCode> {
+            let poll = syscall::poll_create()?;
+            Ok(Self(OwnedHandle::from_raw(poll)))
+        }
+
+        pub fn add(&self, object: HandleId, interests: Readiness) -> Result<(), ErrorCode> {
+            syscall::poll_add(self.0.id(), object, interests)
+        }
+
+        pub fn wait(&self) -> Result<(HandleId, Readiness), ErrorCode> {
+            syscall::poll_wait(self.0.id())
+        }
+    }
+
+    impl Handleable for Poll {
+        fn handle_id(&self) -> HandleId {
+            self.0.id()
+        }
     }
 }

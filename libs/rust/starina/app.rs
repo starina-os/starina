@@ -1,4 +1,5 @@
-use crate::poll::Poll;
+use crate::handle::Handleable;
+use crate::poll::userspace::Poll;
 use crate::syscall;
 
 pub trait App: Send + Sync {
@@ -16,6 +17,10 @@ pub struct Dispatcher {
 impl Dispatcher {
     pub fn new(poll: Poll) -> Self {
         Self { poll }
+    }
+
+    pub fn pause_reading(&self, handle: &impl Handleable) {
+        todo!()
     }
 }
 
