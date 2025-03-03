@@ -28,3 +28,8 @@ impl App for Main {
         thread_yield();
     }
 }
+
+// TODO: Remove this.
+pub fn app_main() {
+    starina::app::app_loop(Main::init());
+}

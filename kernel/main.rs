@@ -60,29 +60,8 @@ pub fn boot(bootinfo: BootInfo) -> ! {
     cpuvar::percpu_init(bootinfo.cpu_id);
     arch::percpu_init();
 
-    fn entrypoint(app: *mut ktest::Main) {
-        let app = unsafe { &mut *app };
-        info!("Starting app...");
-        for _ in 0.. {
-            app.tick();
-            for _ in 0..1000000 {}
-        }
-    }
-
-    use alloc::boxed::Box;
-
     use scheduler::GLOBAL_SCHEDULER;
-    GLOBAL_SCHEDULER.push(
-        thread::Thread::new_inkernel(
-            entrypoint as usize,
-            Box::leak(Box::new(ktest::Main::init())) as *const _ as usize,
-        )
-        .unwrap(),
-    );
-    // GLOBAL_SCHEDULER.push(thread::Thread::new_inkernel(
-    //     entrypoint as usize,
-    //     Box::leak(Box::new(ktest::Main::init())) as *const _ as usize,
-    // ));
+    GLOBAL_SCHEDULER.push(thread::Thread::new_inkernel(ktest::app_main as usize, 0).unwrap());
 
     thread::switch_thread();
 }
