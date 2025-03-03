@@ -1,7 +1,5 @@
 use core::ops::BitOr;
 
-use crate::syscall;
-
 /// A handle ID.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct HandleId(i32);

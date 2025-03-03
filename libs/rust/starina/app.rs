@@ -1,6 +1,5 @@
 use crate::handle::Handleable;
 use crate::poll::userspace::Poll;
-use crate::syscall;
 
 pub trait App: Send + Sync {
     fn init() -> Self
