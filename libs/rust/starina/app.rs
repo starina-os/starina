@@ -1,4 +1,3 @@
-use crate::handle::HandleRights;
 use crate::syscall;
 
 pub trait App: Send + Sync {

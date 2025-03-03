@@ -1,5 +1,7 @@
 use core::ops::BitOr;
 
+use crate::syscall;
+
 /// A handle ID.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct HandleId(i32);
@@ -30,5 +32,20 @@ impl BitOr for HandleRights {
 
     fn bitor(self, rhs: Self) -> Self {
         HandleRights(self.0 | rhs.0)
+    }
+}
+
+#[cfg(feature = "userspace")]
+pub struct OwnedHandle(HandleId);
+
+impl OwnedHandle {
+    pub const fn from_raw(raw: HandleId) -> Self {
+        Self(raw)
+    }
+}
+
+impl Drop for OwnedHandle {
+    fn drop(&mut self) {
+        todo!(); // FIXME:
     }
 }

@@ -9,4 +9,6 @@ edition = { workspace = true }
 path = "lib.rs"
 
 [features]
+default = ["userspace"]
 in-kernel = []
+userspace = []

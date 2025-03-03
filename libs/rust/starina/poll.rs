@@ -5,6 +5,10 @@ use core::ops::BitAndAssign;
 use core::ops::BitOr;
 use core::ops::BitOrAssign;
 
+use crate::error::ErrorCode;
+use crate::handle::OwnedHandle;
+use crate::syscall;
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct Readiness(i8);
@@ -64,5 +68,16 @@ impl BitOrAssign for Readiness {
 impl BitAndAssign for Readiness {
     fn bitand_assign(&mut self, rhs: Self) {
         self.0 &= rhs.0;
+    }
+}
+
+#[cfg(feature = "userspace")]
+pub struct Poll(OwnedHandle);
+
+#[cfg(feature = "userspace")]
+impl Poll {
+    pub fn create() -> Result<Self, ErrorCode> {
+        let poll = syscall::poll_create()?;
+        Ok(Self(OwnedHandle::from_raw(poll)))
     }
 }
