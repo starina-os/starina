@@ -8,6 +8,10 @@ edition = { workspace = true }
 [lib]
 path = "lib.rs"
 
+[dependencies]
+hashbrown = { workspace = true }
+spin = { workspace = true }
+
 [features]
 default = ["userspace"]
 in-kernel = []

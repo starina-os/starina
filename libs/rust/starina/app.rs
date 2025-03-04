@@ -1,4 +1,10 @@
+use hashbrown::HashMap;
+
+use crate::channel::userspace::Channel;
+use crate::error::ErrorCode;
+use crate::handle::HandleId;
 use crate::handle::Handleable;
+use crate::handle::OwnedHandle;
 use crate::poll::Readiness;
 use crate::poll::userspace::Poll;
 
@@ -10,28 +16,72 @@ pub trait App: Send + Sync {
     fn tick(&mut self);
 }
 
+pub enum Object {
+    Channel(Channel),
+}
+
 pub struct Dispatcher {
     poll: Poll,
+    objects: spin::Mutex<HashMap<HandleId, Object>>,
 }
 
 impl Dispatcher {
     pub fn new(poll: Poll) -> Self {
-        Self { poll }
+        Self {
+            poll,
+            objects: spin::Mutex::new(HashMap::new()),
+        }
     }
 
-    pub fn enable_interests(&self, handle: &impl Handleable, interests: Readiness) {
+    pub fn add_channel(&self, channel: Channel) -> Result<(), ErrorCode> {
+        self.poll.add(channel.handle_id(), Readiness::WRITABLE)?;
+        self.objects
+            .lock()
+            .insert(channel.handle_id(), Object::Channel(channel));
+
+        Ok(())
+    }
+
+    /// Enables `READABLE` interest. This is the counterpart of `disable_incoming`,
+    /// when the app is now ready to process more data from the object.
+    pub fn enable_incoming(&self, handle: &impl Handleable) -> Result<(), ErrorCode> {
         todo!()
     }
 
-    pub fn disable_interests(&self, handle: &impl Handleable, interests: Readiness) {
+    /// Disables `READABLE` interest. This is called when the app is not ready to process
+    /// more data from the object (i.e. backpressure).
+    pub fn disable_incoming(&self, handle: &impl Handleable) -> Result<(), ErrorCode> {
         todo!()
+    }
+
+    /// Edge-triggered.
+    pub fn watch_writable(&self, handle: &impl Handleable) -> Result<(), ErrorCode> {
+        todo!()
+    }
+
+    fn wait_and_dispatch(&self, app: &impl App) -> Result<(), ErrorCode> {
+        let (handle, readiness) = self.poll.wait()?;
+
+        let objects = self.objects.lock();
+        let object = objects.get(&handle).expect("object not found");
+
+        match object {
+            Object::Channel(channel) => {
+                // TODO:
+            }
+        }
+        Ok(())
     }
 }
 
 pub fn app_loop(app: impl App) {
     let poll = Poll::create().unwrap();
     let dispatcher = Dispatcher::new(poll);
+
+    let ch = Channel::from_handle(OwnedHandle::from_raw(HandleId::from_raw(1)));
+    dispatcher.add_channel(ch).unwrap();
+
     loop {
-        // let ev = syscall::poll_wait(poll).unwrap();
+        dispatcher.wait_and_dispatch(&app).unwrap();
     }
 }
