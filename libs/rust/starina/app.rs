@@ -59,18 +59,20 @@ impl Dispatcher {
         todo!()
     }
 
-    fn wait_and_dispatch(&self, app: &impl App) -> Result<(), ErrorCode> {
-        let (handle, readiness) = self.poll.wait()?;
+    fn wait_and_dispatch(&self, app: &impl App) {
+        let (handle, readiness) = self.poll.wait().unwrap();
 
         let objects = self.objects.lock();
         let object = objects.get(&handle).expect("object not found");
 
         match object {
             Object::Channel(channel) => {
-                // TODO:
+                if readiness.contains(Readiness::WRITABLE) {
+                    // TODO:
+                    let msg = channel.recv().unwrap();
+                }
             }
         }
-        Ok(())
     }
 }
 
@@ -82,6 +84,6 @@ pub fn app_loop(app: impl App) {
     dispatcher.add_channel(ch).unwrap();
 
     loop {
-        dispatcher.wait_and_dispatch(&app).unwrap();
+        dispatcher.wait_and_dispatch(&app);
     }
 }
