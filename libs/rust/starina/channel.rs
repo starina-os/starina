@@ -28,8 +28,10 @@ pub mod userspace {
         pub handles: [HandleId; MESSAGE_NUM_HANDLES_MAX],
     }
 
+    // TODO: Make this thread local.
     static GLOBAL_BUFFER_POOL: spin::Mutex<Vec<Box<RawMessageBuffer>>> =
         spin::Mutex::new(Vec::new());
+    const BUFFER_POOL_SIZE_MAX: usize = 16;
 
     pub struct MessageBuffer {
         buffer: *mut RawMessageBuffer,
@@ -52,8 +54,10 @@ pub mod userspace {
 
     impl Drop for MessageBuffer {
         fn drop(&mut self) {
-            unsafe {
-                GLOBAL_BUFFER_POOL.lock().push(Box::from_raw(self.buffer));
+            let buffer = unsafe { Box::from_raw(self.buffer) };
+            let mut pool = GLOBAL_BUFFER_POOL.lock();
+            if pool.len() < BUFFER_POOL_SIZE_MAX {
+                pool.push(buffer);
             }
         }
     }
