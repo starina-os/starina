@@ -1,10 +1,12 @@
 use starina::error::ErrorCode;
 use starina::handle::HandleId;
 use starina::handle::HandleRights;
+use starina::message::MessageInfo;
 use starina::poll::Readiness;
 use starina::syscall::InKernelSyscallTable;
 
 use crate::arch::enter_kernelland;
+use crate::channel::Channel;
 use crate::cpuvar::current_thread;
 use crate::handle::Handle;
 use crate::poll::Poll;
@@ -20,6 +22,7 @@ static INKERNEL_SYSCALL_TABLE: InKernelSyscallTable = InKernelSyscallTable {
     poll_create: poll_create_trampoline,
     poll_add: poll_add_trampoline,
     poll_wait: poll_wait_trampoline,
+    channel_recv: channel_recv_trampoline,
 };
 
 type SyscallResult = Result<ThreadState, ErrorCode>;
@@ -77,6 +80,7 @@ fn poll_add(
         return Err(ErrorCode::NotAllowed);
     }
 
+    todo!();
     Ok(())
 }
 
@@ -94,6 +98,34 @@ fn poll_wait(current: &SharedRef<Thread>, poll: HandleId) -> SyscallResult {
     }
 
     Ok(ThreadState::BlockedByPoll(poll.into_object()))
+}
+
+fn channel_recv_trampoline(
+    handle: HandleId,
+    data: *mut u8,
+    handles: *mut HandleId,
+) -> Result<MessageInfo, ErrorCode> {
+    kernel_scope(|| {
+        let current_thread = current_thread();
+        channel_recv(&current_thread, handle, data, handles)
+    })
+}
+
+fn channel_recv(
+    current: &SharedRef<Thread>,
+    handle: HandleId,
+    data: *mut u8,
+    handles: *mut HandleId,
+) -> Result<MessageInfo, ErrorCode> {
+    let handles = current.process().handles().lock();
+    let ch = handles.get::<Channel>(handle)?;
+
+    if !ch.is_capable(HandleRights::READ) {
+        return Err(ErrorCode::NotAllowed);
+    }
+
+    let msginfo = ch.recv(todo!(), todo!())?;
+    Ok(msginfo)
 }
 
 #[derive(Debug, Clone, Copy)]
