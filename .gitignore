@@ -1,5 +1,6 @@
 /target
 /build
+.gdb_history
 *.DS_Store
 *.img
 *.tmp
