@@ -24,6 +24,14 @@ pub mod userspace {
             Self(handle)
         }
 
+        pub fn send(&self, writer: impl MessageWriter) -> Result<(), ErrorCode> {
+            let mut buffer = OwnedMessageBuffer::alloc();
+            writer.write(&mut buffer)?;
+
+            syscall::channel_send(self.0.id(), buffer.data.as_ptr(), buffer.handles.as_ptr())?;
+            Ok(())
+        }
+
         pub fn recv(&self) -> Result<AnyMessage, ErrorCode> {
             let mut buffer = OwnedMessageBuffer::alloc();
             let data_ptr = buffer.data.as_mut_ptr();
@@ -50,6 +58,18 @@ pub mod userspace {
         pub handles: [HandleId; MESSAGE_NUM_HANDLES_MAX],
     }
 
+    impl MessageBuffer {
+        pub const unsafe fn data_as_ref<T>(&self) -> &T {
+            debug_assert!(size_of::<T>() <= MESSAGE_DATA_LEN_MAX);
+            unsafe { &*(self.data.as_ptr() as *const T) }
+        }
+
+        pub const unsafe fn data_as_mut<T>(&mut self) -> &mut T {
+            debug_assert!(size_of::<T>() <= MESSAGE_DATA_LEN_MAX);
+            unsafe { &mut *(self.data.as_mut_ptr() as *mut T) }
+        }
+    }
+
     // TODO: Make this thread local.
     static GLOBAL_BUFFER_POOL: spin::Mutex<Vec<Box<MessageBuffer>>> = spin::Mutex::new(Vec::new());
     const BUFFER_POOL_SIZE_MAX: usize = 16;
@@ -66,11 +86,6 @@ pub mod userspace {
             });
 
             OwnedMessageBuffer(buffer)
-        }
-
-        pub const unsafe fn data_as_ref<T>(&self) -> &T {
-            debug_assert!(size_of::<T>() <= MESSAGE_DATA_LEN_MAX);
-            unsafe { &*(self.0.data.as_ptr() as *const T) }
         }
     }
 
@@ -108,8 +123,14 @@ pub mod userspace {
         }
     }
 
+    pub trait MessageWriter {
+        fn write(&self, buffer: &mut MessageBuffer) -> Result<(), ErrorCode>;
+    }
+
     pub mod message {
         use super::AnyMessage;
+        use super::MessageBuffer;
+        use super::MessageWriter;
         use super::OwnedMessageBuffer;
         use crate::error::ErrorCode;
 
@@ -118,9 +139,24 @@ pub mod userspace {
             value: u32,
         }
 
-        pub struct Ping(OwnedMessageBuffer);
+        pub struct PingWriter {
+            pub value: u32,
+        }
 
-        impl Ping {
+        impl MessageWriter for PingWriter {
+            fn write(&self, buffer: &mut MessageBuffer) -> Result<(), ErrorCode> {
+                let raw = RawPing { value: self.value };
+                unsafe {
+                    core::ptr::write(buffer.data_as_mut::<RawPing>(), raw);
+                }
+
+                Ok(())
+            }
+        }
+
+        pub struct PingReader(OwnedMessageBuffer);
+
+        impl PingReader {
             pub fn new(buffer: OwnedMessageBuffer) -> Self {
                 Self(buffer)
             }
@@ -130,7 +166,7 @@ pub mod userspace {
             }
         }
 
-        impl TryFrom<AnyMessage> for Ping {
+        impl TryFrom<AnyMessage> for PingReader {
             type Error = ErrorCode;
 
             fn try_from(msg: AnyMessage) -> Result<Self, Self::Error> {

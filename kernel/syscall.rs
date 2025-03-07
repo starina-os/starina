@@ -22,6 +22,7 @@ static INKERNEL_SYSCALL_TABLE: InKernelSyscallTable = InKernelSyscallTable {
     poll_create: poll_create_trampoline,
     poll_add: poll_add_trampoline,
     poll_wait: poll_wait_trampoline,
+    channel_send: channel_send_trampoline,
     channel_recv: channel_recv_trampoline,
 };
 
@@ -98,6 +99,35 @@ fn poll_wait(current: &SharedRef<Thread>, poll: HandleId) -> SyscallResult {
     }
 
     Ok(ThreadState::BlockedByPoll(poll.into_object()))
+}
+
+fn channel_send_trampoline(
+    handle: HandleId,
+    data: *const u8,
+    handles: *const HandleId,
+) -> Result<(), ErrorCode> {
+    kernel_scope(|| {
+        let current_thread = current_thread();
+        channel_send(&current_thread, handle, data, handles)
+    })
+}
+
+fn channel_send(
+    current: &SharedRef<Thread>,
+    handle: HandleId,
+    data: *const u8,
+    handles: *const HandleId,
+) -> Result<(), ErrorCode> {
+    kernel_scope(|| {
+        let handles = current.process().handles().lock();
+        let ch = handles.get::<Channel>(handle)?;
+
+        if !ch.is_capable(HandleRights::WRITE) {
+            return Err(ErrorCode::NotAllowed);
+        }
+
+        ch.send(todo!(), todo!(), todo!())
+    })
 }
 
 fn channel_recv_trampoline(

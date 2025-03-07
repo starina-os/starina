@@ -2,7 +2,8 @@
 use starina::app::App;
 use starina::app::Dispatcher;
 use starina::channel::userspace::Channel;
-use starina::channel::userspace::message::Ping;
+use starina::channel::userspace::message::PingReader;
+use starina::channel::userspace::message::PingWriter;
 use starina::info;
 
 pub struct Main {}
@@ -14,9 +15,12 @@ impl App for Main {
         Main {}
     }
 
-    fn on_ping(&self, ch: &Channel, ping: Ping) {
+    fn on_ping(&self, ch: &Channel, ping: PingReader) {
         info!("ktest: ping={}", ping.value());
-        todo!()
+        ch.send(PingWriter {
+            value: ping.value() + 1,
+        })
+        .unwrap();
     }
 }
 
