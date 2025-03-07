@@ -4,6 +4,7 @@ pub enum ErrorCode {
     NotSupported,
     NotAllowed,
     NotFound,
+    InvalidMessageKind,
     UnexpectedType,
     AlreadyExists,
     TooManyHandles,

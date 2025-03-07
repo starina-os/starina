@@ -3,6 +3,9 @@ pub mod userspace {
     use alloc::boxed::Box;
     use alloc::vec::Vec;
     use core::mem::MaybeUninit;
+    use core::mem::size_of;
+    use core::ops::Deref;
+    use core::ops::DerefMut;
     use core::ptr::NonNull;
 
     use crate::error::ErrorCode;
@@ -22,11 +25,9 @@ pub mod userspace {
         }
 
         pub fn recv(&self) -> Result<AnyMessage, ErrorCode> {
-            let buffer = MessageBuffer::alloc();
-            let buffer_ptr: *mut MaybeUninit<MessageBuffer> = buffer.as_ptr();
-            let buffer_ptr = unsafe { (*buffer_ptr).as_mut_ptr() };
-            let data_ptr = unsafe { &mut (*buffer_ptr).data };
-            let handles_ptr = unsafe { &mut (*buffer_ptr).handles };
+            let mut buffer = OwnedMessageBuffer::alloc();
+            let data_ptr = buffer.data.as_mut_ptr();
+            let handles_ptr = buffer.handles.as_mut_ptr();
             let msginfo = syscall::channel_recv(
                 self.0.id(),
                 data_ptr as *mut u8,
@@ -44,43 +45,101 @@ pub mod userspace {
         }
     }
 
-    struct MessageBuffer {
+    pub struct MessageBuffer {
         pub data: [u8; MESSAGE_DATA_LEN_MAX],
         pub handles: [HandleId; MESSAGE_NUM_HANDLES_MAX],
     }
 
     // TODO: Make this thread local.
-    static GLOBAL_BUFFER_POOL: spin::Mutex<Vec<Box<MaybeUninit<MessageBuffer>>>> =
-        spin::Mutex::new(Vec::new());
+    static GLOBAL_BUFFER_POOL: spin::Mutex<Vec<Box<MessageBuffer>>> = spin::Mutex::new(Vec::new());
     const BUFFER_POOL_SIZE_MAX: usize = 16;
 
-    impl MessageBuffer {
-        pub fn alloc() -> NonNull<MaybeUninit<MessageBuffer>> {
-            if let Some(buffer) = GLOBAL_BUFFER_POOL.lock().pop() {
-                unsafe { NonNull::new_unchecked(Box::into_raw(buffer)) }
-            } else {
-                unsafe { NonNull::new_unchecked(Box::into_raw(Box::new(MaybeUninit::uninit()))) }
-            }
+    pub struct OwnedMessageBuffer(Box<MessageBuffer>);
+    impl OwnedMessageBuffer {
+        pub fn alloc() -> Self {
+            let buffer = GLOBAL_BUFFER_POOL.lock().pop().unwrap_or_else(|| {
+                // TODO: Use `MaybeUninit` to unnecesarily zero-fill the buffer.
+                Box::new(MessageBuffer {
+                    handles: [HandleId::from_raw(0); MESSAGE_NUM_HANDLES_MAX],
+                    data: [0; MESSAGE_DATA_LEN_MAX],
+                })
+            });
+
+            OwnedMessageBuffer(buffer)
+        }
+
+        pub const unsafe fn data_as_ref<T>(&self) -> &T {
+            debug_assert!(size_of::<T>() <= MESSAGE_DATA_LEN_MAX);
+            unsafe { &*(self.0.data.as_ptr() as *const T) }
         }
     }
 
+    impl Deref for OwnedMessageBuffer {
+        type Target = MessageBuffer;
+
+        fn deref(&self) -> &Self::Target {
+            &self.0
+        }
+    }
+
+    impl DerefMut for OwnedMessageBuffer {
+        fn deref_mut(&mut self) -> &mut Self::Target {
+            &mut self.0
+        }
+    }
+
+    impl Drop for OwnedMessageBuffer {
+        fn drop(&mut self) {
+            todo!("drop handles");
+            // let mut pool = GLOBAL_BUFFER_POOL.lock();
+            // if pool.len() < BUFFER_POOL_SIZE_MAX {
+            //     // add back to pool, and mem::forget
+            // }
+        }
+    }
     pub struct AnyMessage {
         msginfo: MessageInfo,
-        buffer: NonNull<MaybeUninit<MessageBuffer>>,
+        buffer: OwnedMessageBuffer,
     }
 
     impl AnyMessage {
-        unsafe fn new(buffer: NonNull<MaybeUninit<MessageBuffer>>, msginfo: MessageInfo) -> Self {
+        unsafe fn new(buffer: OwnedMessageBuffer, msginfo: MessageInfo) -> Self {
             Self { buffer, msginfo }
         }
     }
 
-    impl Drop for AnyMessage {
-        fn drop(&mut self) {
-            let buffer = unsafe { Box::from_raw(self.buffer.as_ptr()) };
-            let mut pool = GLOBAL_BUFFER_POOL.lock();
-            if pool.len() < BUFFER_POOL_SIZE_MAX {
-                pool.push(buffer);
+    pub mod message {
+        use super::AnyMessage;
+        use super::OwnedMessageBuffer;
+        use crate::error::ErrorCode;
+
+        #[repr(C)]
+        struct RawPing {
+            value: u32,
+        }
+
+        pub struct Ping(OwnedMessageBuffer);
+
+        impl Ping {
+            pub fn new(buffer: OwnedMessageBuffer) -> Self {
+                Self(buffer)
+            }
+
+            pub fn value(&self) -> u32 {
+                unsafe { self.0.data_as_ref::<RawPing>().value }
+            }
+        }
+
+        impl TryFrom<AnyMessage> for Ping {
+            type Error = ErrorCode;
+
+            fn try_from(msg: AnyMessage) -> Result<Self, Self::Error> {
+                if msg.msginfo.kind() != 1 {
+                    return Err(ErrorCode::InvalidMessageKind);
+                }
+
+                let buffer = msg.buffer;
+                Ok(Self(buffer))
             }
         }
     }

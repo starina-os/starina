@@ -1,6 +1,7 @@
 use hashbrown::HashMap;
 
 use crate::channel::userspace::Channel;
+use crate::channel::userspace::message::Ping;
 use crate::error::ErrorCode;
 use crate::handle::HandleId;
 use crate::handle::Handleable;
@@ -13,7 +14,7 @@ pub trait App: Send + Sync {
     where
         Self: Sized;
 
-    fn tick(&mut self);
+    fn on_ping(&self, ping: Ping);
 }
 
 pub enum Object {
@@ -70,6 +71,8 @@ impl Dispatcher {
                 if readiness.contains(Readiness::WRITABLE) {
                     // TODO:
                     let msg = channel.recv().unwrap();
+                    let ping = Ping::try_from(msg).unwrap();
+                    app.on_ping(ping);
                 }
             }
         }

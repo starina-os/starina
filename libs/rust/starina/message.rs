@@ -12,6 +12,10 @@ impl MessageInfo {
         MessageInfo((kind << 18) | ((num_handles as i32) << 16) | (data_len as i32))
     }
 
+    pub fn kind(self) -> usize {
+        (self.0 >> 18) as usize
+    }
+
     pub fn data_len(self) -> usize {
         (self.0 & 0xffff) as usize
     }
