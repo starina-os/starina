@@ -84,9 +84,6 @@ pub fn app_loop<A: App>(ch: Channel) {
     let dispatcher = Dispatcher::new(poll);
     let app = A::init(&dispatcher, ch);
 
-    let ch = Channel::from_handle(OwnedHandle::from_raw(HandleId::from_raw(1)));
-    dispatcher.add_channel(ch).unwrap();
-
     loop {
         dispatcher.wait_and_dispatch(&app);
     }

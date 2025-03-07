@@ -157,7 +157,7 @@ impl SharedRef<dyn Handleable> {
     where
         T: Handleable,
     {
-        if <dyn Any>::is::<T>(&self) {
+        if <dyn Any>::is::<T>(&self.inner().value) {
             Ok(SharedRef {
                 ptr: self.ptr.cast(),
             })

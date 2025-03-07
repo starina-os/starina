@@ -12,6 +12,7 @@ impl App for Main {
     fn init(dispatcher: &Dispatcher, ch: Channel) -> Self {
         info!("Hello from ktest!");
         dispatcher.add_channel(ch).unwrap();
+        info!("added channel");
         Main {}
     }
 

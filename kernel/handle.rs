@@ -118,13 +118,15 @@ impl HandleTable {
         exists
     }
 
-    pub fn get<T: Handleable>(&self, handle: HandleId) -> Result<Handle<T>, ErrorCode> {
-        let any_handle = self
-            .handles
+    pub fn get_any(&self, handle: HandleId) -> Result<AnyHandle, ErrorCode> {
+        self.handles
             .get(&handle)
             .cloned()
-            .ok_or(ErrorCode::NotFound)?;
+            .ok_or(ErrorCode::NotFound)
+    }
 
+    pub fn get<T: Handleable>(&self, handle: HandleId) -> Result<Handle<T>, ErrorCode> {
+        let any_handle = self.get_any(handle)?;
         let handle = any_handle.downcast().ok_or(ErrorCode::UnexpectedType)?;
         Ok(handle)
     }

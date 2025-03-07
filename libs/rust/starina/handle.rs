@@ -9,6 +9,10 @@ impl HandleId {
     pub const fn from_raw(raw: i32) -> HandleId {
         HandleId(raw)
     }
+
+    pub const fn as_raw(&self) -> i32 {
+        self.0
+    }
 }
 
 /// Allowed operations on a handle.
@@ -48,7 +52,7 @@ impl OwnedHandle {
 
 impl Drop for OwnedHandle {
     fn drop(&mut self) {
-        todo!(); // FIXME:
+        warn!("dropping handle {:?}", self.0);
     }
 }
 

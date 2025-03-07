@@ -75,13 +75,18 @@ fn poll_add(
     interests: Readiness,
 ) -> Result<(), ErrorCode> {
     let handles = current.process().handles().lock();
+    println!(
+        "poll_add: poll={:?}, object={:?}, interests={:?}",
+        poll, object, interests
+    );
     let poll = handles.get::<Poll>(poll)?;
+    let object_handle = handles.get_any(object)?;
 
     if !poll.is_capable(HandleRights::WRITE) {
         return Err(ErrorCode::NotAllowed);
     }
 
-    todo!();
+    poll.add(object_handle, object, interests)?;
     Ok(())
 }
 
