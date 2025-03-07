@@ -10,11 +10,11 @@ use crate::poll::Readiness;
 use crate::poll::userspace::Poll;
 
 pub trait App: Send + Sync {
-    fn init() -> Self
+    fn init(dispatcher: &Dispatcher, ch: Channel) -> Self
     where
         Self: Sized;
 
-    fn on_ping(&self, ping: Ping);
+    fn on_ping(&self, ch: &Channel, ping: Ping);
 }
 
 pub enum Object {
@@ -72,16 +72,17 @@ impl Dispatcher {
                     // TODO:
                     let msg = channel.recv().unwrap();
                     let ping = Ping::try_from(msg).unwrap();
-                    app.on_ping(ping);
+                    app.on_ping(channel, ping);
                 }
             }
         }
     }
 }
 
-pub fn app_loop(app: impl App) {
+pub fn app_loop<A: App>(ch: Channel) {
     let poll = Poll::create().unwrap();
     let dispatcher = Dispatcher::new(poll);
+    let app = A::init(&dispatcher, ch);
 
     let ch = Channel::from_handle(OwnedHandle::from_raw(HandleId::from_raw(1)));
     dispatcher.add_channel(ch).unwrap();
