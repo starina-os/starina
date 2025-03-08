@@ -11,6 +11,7 @@ pub struct Main {}
 impl App for Main {
     fn init(dispatcher: &Dispatcher, ch: Channel) -> Self {
         info!("Hello from ktest!");
+        ch.send(PingWriter { value: 0 }).unwrap();
         dispatcher.add_channel(ch).unwrap();
         info!("added channel");
         Main {}

@@ -218,8 +218,9 @@ impl Poll {
                 }
             };
 
-            if listenee.interests.contains(readiness) {
-                return BlockableSyscallResult::Done(Ok((id, readiness)));
+            let interested = listenee.interests & readiness;
+            if !interested.is_empty() {
+                return BlockableSyscallResult::Done(Ok((id, interested)));
             }
         }
 

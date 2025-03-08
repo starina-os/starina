@@ -52,6 +52,14 @@ where
         use core::arch::asm;
         #[cfg(target_arch = "riscv64")]
         asm!("csrrw tp, sscratch, tp");
+        let tp: u64;
+        unsafe {
+            asm!("mv {}, tp", out(reg) tp);
+        }
+        println!("kernel_scope: tp={}", tp);
+        if tp == 0 {
+            loop {}
+        }
         let ret = f();
         #[cfg(target_arch = "riscv64")]
         asm!("csrrw tp, sscratch, tp");
@@ -154,24 +162,22 @@ fn channel_send(
     data: *const u8,
     handles: *const HandleId,
 ) -> Result<(), ErrorCode> {
-    kernel_scope(|| {
-        let handle_table = current.process().handles().lock();
-        let ch = handle_table.get_as_channel(ch)?;
+    let handle_table = current.process().handles().lock();
+    let ch = handle_table.get_as_channel(ch)?;
 
-        if !ch.is_capable(HandleRights::WRITE) {
-            return Err(ErrorCode::NotAllowed);
-        }
+    if !ch.is_capable(HandleRights::WRITE) {
+        return Err(ErrorCode::NotAllowed);
+    }
 
-        let data = IsolationHeap::InKernel {
-            ptr: data as *const u8,
-            len: msginfo.data_len(),
-        };
-        let handles = IsolationHeap::InKernel {
-            ptr: handles as *const u8,
-            len: msginfo.num_handles(),
-        };
-        ch.send(msginfo, &data, &handles)
-    })
+    let data = IsolationHeap::InKernel {
+        ptr: data as *const u8,
+        len: msginfo.data_len(),
+    };
+    let handles = IsolationHeap::InKernel {
+        ptr: handles as *const u8,
+        len: msginfo.num_handles(),
+    };
+    ch.send(msginfo, &data, &handles)
 }
 
 fn channel_recv_trampoline(

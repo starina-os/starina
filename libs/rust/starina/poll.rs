@@ -26,6 +26,10 @@ impl Readiness {
         self.0 as isize
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.0 == 0
+    }
+
     pub fn contains(&self, other: Readiness) -> bool {
         self.0 & other.0 != 0
     }

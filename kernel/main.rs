@@ -82,6 +82,10 @@ pub fn boot(bootinfo: BootInfo) -> ! {
             thread::Thread::new_inkernel(ktest::app_main as usize, ch1_handle.as_raw() as usize)
                 .unwrap(),
         );
+        GLOBAL_SCHEDULER.push(
+            thread::Thread::new_inkernel(ktest::app_main as usize, ch2_handle.as_raw() as usize)
+                .unwrap(),
+        );
     }
 
     thread::switch_thread();
