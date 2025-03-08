@@ -5,7 +5,6 @@ use crate::channel::userspace::message::PingReader;
 use crate::error::ErrorCode;
 use crate::handle::HandleId;
 use crate::handle::Handleable;
-use crate::handle::OwnedHandle;
 use crate::poll::Readiness;
 use crate::poll::userspace::Poll;
 
@@ -43,22 +42,22 @@ impl Dispatcher {
         Ok(())
     }
 
-    /// Enables `READABLE` interest. This is the counterpart of `disable_incoming`,
-    /// when the app is now ready to process more data from the object.
-    pub fn enable_incoming(&self, handle: &impl Handleable) -> Result<(), ErrorCode> {
-        todo!()
-    }
+    // /// Enables `READABLE` interest. This is the counterpart of `disable_incoming`,
+    // /// when the app is now ready to process more data from the object.
+    // pub fn enable_incoming(&self, handle: &impl Handleable) -> Result<(), ErrorCode> {
+    //     todo!()
+    // }
 
-    /// Disables `READABLE` interest. This is called when the app is not ready to process
-    /// more data from the object (i.e. backpressure).
-    pub fn disable_incoming(&self, handle: &impl Handleable) -> Result<(), ErrorCode> {
-        todo!()
-    }
+    // /// Disables `READABLE` interest. This is called when the app is not ready to process
+    // /// more data from the object (i.e. backpressure).
+    // pub fn disable_incoming(&self, handle: &impl Handleable) -> Result<(), ErrorCode> {
+    //     todo!()
+    // }
 
-    /// Edge-triggered.
-    pub fn watch_writable(&self, handle: &impl Handleable) -> Result<(), ErrorCode> {
-        todo!()
-    }
+    // /// Edge-triggered.
+    // pub fn watch_writable(&self, handle: &impl Handleable) -> Result<(), ErrorCode> {
+    //     todo!()
+    // }
 
     fn wait_and_dispatch(&self, app: &impl App) {
         let (handle, readiness) = self.poll.wait().unwrap();

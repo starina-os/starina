@@ -3,6 +3,17 @@ use crate::handle::HandleId;
 use crate::message::MessageInfo;
 use crate::poll::Readiness;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u8)]
+pub enum SyscallNumber {
+    ConsoleWrite = 0,
+    PollCreate = 1,
+    PollAdd = 2,
+    PollWait = 3,
+    ChannelSend = 4,
+    ChannelRecv = 5,
+}
+
 pub struct InKernelSyscallTable {
     pub console_write: fn(&[u8]),
     pub poll_create: fn() -> Result<HandleId, ErrorCode>,

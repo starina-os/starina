@@ -2,11 +2,9 @@
 pub mod userspace {
     use alloc::boxed::Box;
     use alloc::vec::Vec;
-    use core::mem::MaybeUninit;
     use core::mem::size_of;
     use core::ops::Deref;
     use core::ops::DerefMut;
-    use core::ptr::NonNull;
 
     use crate::error::ErrorCode;
     use crate::handle::HandleId;
@@ -72,7 +70,7 @@ pub mod userspace {
 
     // TODO: Make this thread local.
     static GLOBAL_BUFFER_POOL: spin::Mutex<Vec<Box<MessageBuffer>>> = spin::Mutex::new(Vec::new());
-    const BUFFER_POOL_SIZE_MAX: usize = 16;
+    // const BUFFER_POOL_SIZE_MAX: usize = 16;
 
     pub struct OwnedMessageBuffer(Box<MessageBuffer>);
     impl OwnedMessageBuffer {

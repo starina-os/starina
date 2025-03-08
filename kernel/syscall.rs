@@ -1,9 +1,12 @@
+use core::mem::transmute_copy;
+
 use starina::error::ErrorCode;
 use starina::handle::HandleId;
 use starina::handle::HandleRights;
 use starina::message::MessageInfo;
 use starina::poll::Readiness;
 use starina::syscall::InKernelSyscallTable;
+use starina::syscall::SyscallNumber;
 
 use crate::arch::enter_kernelland;
 use crate::channel::Channel;
@@ -91,8 +94,15 @@ fn poll_add(
 }
 
 fn poll_wait_trampoline(poll: HandleId) -> Result<(HandleId, Readiness), ErrorCode> {
-    let result = enter_kernelland(123, 0, 0, 0, 0, 0);
-    todo!()
+    enter_kernelland(
+        poll.as_raw() as isize,
+        0,
+        0,
+        0,
+        0,
+        SyscallNumber::PollWait as isize,
+    )
+    .into()
 }
 
 fn poll_wait(current: &SharedRef<Thread>, poll: HandleId) -> SyscallResult {
@@ -164,6 +174,7 @@ fn channel_recv(
 }
 
 #[derive(Debug, Clone, Copy)]
+#[repr(transparent)]
 pub struct RetVal(isize);
 
 impl RetVal {
@@ -190,26 +201,83 @@ where
 
 impl From<(HandleId, Readiness)> for RetVal {
     fn from(value: (HandleId, Readiness)) -> Self {
-        todo!()
+        let handle_raw = value.0.as_raw() as isize;
+        assert!(handle_raw < 0x10000);
+        let readiness = value.1.as_isize();
+        RetVal((readiness << 24) | handle_raw)
+    }
+}
+
+impl From<ErrorCode> for RetVal {
+    fn from(value: ErrorCode) -> Self {
+        RetVal(value as isize)
+    }
+}
+
+impl<T> From<RetVal> for Result<T, ErrorCode>
+where
+    T: From<RetVal>,
+{
+    fn from(value: RetVal) -> Self {
+        if value.0 >= 0 {
+            let value = value.into();
+            Ok(value)
+        } else {
+            let code = unsafe { core::mem::transmute_copy(&value.0) };
+            Err(code)
+        }
+    }
+}
+
+impl From<RetVal> for (HandleId, Readiness) {
+    fn from(value: RetVal) -> Self {
+        let handle_raw = value.0 & 0x00ff_ffff;
+        let readiness = value.0 >> 24;
+        (
+            HandleId::from_raw(handle_raw as i32),
+            Readiness::from_raw((readiness as i8)),
+        )
+    }
+}
+
+pub fn do_syscall(
+    a0: isize,
+    a1: isize,
+    a2: isize,
+    a3: isize,
+    a4: isize,
+    a5: isize,
+    current: &SharedRef<Thread>,
+) -> SyscallResult {
+    if a5 == SyscallNumber::PollWait as isize {
+        let poll = HandleId::from_raw(a0.try_into().unwrap()); // FIXME:
+        poll_wait(current, poll)
+    } else {
+        warn!("unknown syscall: {}", a5);
+        Err(ErrorCode::InvalidSyscall)
     }
 }
 
 pub extern "C" fn syscall_handler(
-    a0: usize,
-    a1: usize,
-    a2: usize,
-    a3: usize,
-    a4: usize,
-    a5: usize,
+    a0: isize,
+    a1: isize,
+    a2: isize,
+    a3: isize,
+    a4: isize,
+    a5: isize,
 ) -> ! {
     trace!(
         "syscall_handler: a0={:x}, a1={:x}, a2={:x}, a3={:x}, a4={:x}, a5={:x}",
         a0, a1, a2, a3, a4, a5
     );
 
-    // let current_thread = current_thread();
-    // syscall
-    // current_thread.set_state(new_state);
+    let current = current_thread();
+    let result = do_syscall(a0, a1, a2, a3, a4, a5, &current);
+    let state = match result {
+        Ok(state) => state,
+        Err(err) => ThreadState::Runnable(Some(err.into())),
+    };
+    current.set_state(state);
 
     switch_thread();
 }
