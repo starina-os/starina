@@ -278,6 +278,7 @@ pub extern "C" fn syscall_handler(
         Err(err) => ThreadState::Runnable(Some(err.into())),
     };
     current.set_state(state);
+    drop(current);
 
     switch_thread();
 }
