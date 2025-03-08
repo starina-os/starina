@@ -34,7 +34,7 @@ impl Dispatcher {
     }
 
     pub fn add_channel(&self, channel: Channel) -> Result<(), ErrorCode> {
-        self.poll.add(channel.handle_id(), Readiness::WRITABLE)?;
+        self.poll.add(channel.handle_id(), Readiness::READABLE)?;
         self.objects
             .lock()
             .insert(channel.handle_id(), Object::Channel(channel));

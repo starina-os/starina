@@ -121,8 +121,13 @@ impl ListenerSet {
     }
 }
 
+struct Listenee {
+    handle: AnyHandle,
+    interests: Readiness,
+}
+
 struct Mutable {
-    handles: FxHashMap<HandleId, AnyHandle>,
+    listenee: FxHashMap<HandleId, Listenee>,
     ready_handles: UniqueQueue<HandleId>,
     waiters: VecDeque<SharedRef<Thread>>,
 }
@@ -134,7 +139,7 @@ pub struct Poll {
 impl Poll {
     pub fn new() -> Result<SharedRef<Poll>, ErrorCode> {
         let mutable = SharedRef::new(SpinLock::new(Mutable {
-            handles: FxHashMap::new(),
+            listenee: FxHashMap::new(),
             ready_handles: UniqueQueue::new(),
             waiters: VecDeque::new(),
         }))?;
@@ -150,7 +155,7 @@ impl Poll {
         interests: Readiness,
     ) -> Result<(), ErrorCode> {
         let mut mutable = self.mutable.lock();
-        if mutable.handles.contains_key(&id) {
+        if mutable.listenee.contains_key(&id) {
             return Err(ErrorCode::AlreadyExists);
         }
 
@@ -162,23 +167,29 @@ impl Poll {
         })?;
 
         mutable
-            .handles
+            .listenee
             .try_reserve(1)
             .map_err(|_| ErrorCode::OutOfMemory)?;
 
-        mutable.handles.insert(id, handle.clone());
+        mutable.listenee.insert(
+            id,
+            Listenee {
+                handle: handle.clone(),
+                interests,
+            },
+        );
 
         let readiness = handle.readiness()?;
-
-        // TODO: Check if we're interested in the event.
-        // Are there any waiters waiting for an event?
-        if let Some(waiter) = mutable.waiters.pop_front() {
-            waiter.wake();
-        } else {
-            // No threads are ready to receive the event. Deliver it later once
-            // a thread enters the wait state.
-            if mutable.ready_handles.enqueue(id).is_err() {
-                debug_warn!("failed to enqueue a ready handle due to out-of-memory");
+        if readiness.contains(interests) {
+            // Are there any waiters waiting for an event?
+            if let Some(waiter) = mutable.waiters.pop_front() {
+                waiter.wake();
+            } else {
+                // No threads are ready to receive the event. Deliver it later once
+                // a thread enters the wait state.
+                if mutable.ready_handles.enqueue(id).is_err() {
+                    debug_warn!("failed to enqueue a ready handle due to out-of-memory");
+                }
             }
         }
 
@@ -193,16 +204,23 @@ impl Poll {
 
         // Check if there are any ready events.
         while let Some(id) = mutable.ready_handles.pop() {
-            let Some(handle) = mutable.handles.get_mut(&id) else {
+            let Some(listenee) = mutable.listenee.get_mut(&id) else {
                 // The handle was removed from the poll. Try the next one.
                 continue;
             };
 
             // TODO: Check if we're interested in the event.
+            let readiness = match listenee.handle.readiness() {
+                Ok(readiness) => readiness,
+                Err(e) => {
+                    debug_warn!("failed to get readiness for handle: {:?}", e);
+                    return BlockableSyscallResult::Done(Err(e));
+                }
+            };
 
-            return BlockableSyscallResult::Done(
-                handle.readiness().map(|readiness| (id, readiness)),
-            );
+            if listenee.interests.contains(readiness) {
+                return BlockableSyscallResult::Done(Ok((id, readiness)));
+            }
         }
 
         // No events are ready. Block the current thread.
@@ -251,8 +269,8 @@ impl Drop for Poll {
             // waiter.wake(Continuation::FailedWith(ErrorCode::Closed));
         }
 
-        for handle in mutable.handles.values() {
-            handle.remove_listener(self);
+        for listenee in mutable.listenee.values_mut() {
+            listenee.handle.remove_listener(self);
         }
     }
 }
