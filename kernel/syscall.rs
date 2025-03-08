@@ -3,6 +3,8 @@ use core::mem::transmute_copy;
 use starina::error::ErrorCode;
 use starina::handle::HandleId;
 use starina::handle::HandleRights;
+use starina::message::MESSAGE_DATA_LEN_MAX;
+use starina::message::MESSAGE_NUM_HANDLES_MAX;
 use starina::message::MessageInfo;
 use starina::poll::Readiness;
 use starina::syscall::InKernelSyscallTable;
@@ -12,6 +14,8 @@ use crate::arch::enter_kernelland;
 use crate::channel::Channel;
 use crate::cpuvar::current_thread;
 use crate::handle::Handle;
+use crate::isolation::IsolationHeap;
+use crate::isolation::IsolationHeapMut;
 use crate::poll::Poll;
 use crate::refcount::SharedRef;
 use crate::thread::Thread;
@@ -117,31 +121,41 @@ fn poll_wait(current: &SharedRef<Thread>, poll: HandleId) -> SyscallResult {
 }
 
 fn channel_send_trampoline(
-    handle: HandleId,
+    ch: HandleId,
+    msginfo: MessageInfo,
     data: *const u8,
     handles: *const HandleId,
 ) -> Result<(), ErrorCode> {
     kernel_scope(|| {
         let current_thread = current_thread();
-        channel_send(&current_thread, handle, data, handles)
+        channel_send(&current_thread, ch, msginfo, data, handles)
     })
 }
 
 fn channel_send(
     current: &SharedRef<Thread>,
-    handle: HandleId,
+    ch: HandleId,
+    msginfo: MessageInfo,
     data: *const u8,
     handles: *const HandleId,
 ) -> Result<(), ErrorCode> {
     kernel_scope(|| {
-        let handles = current.process().handles().lock();
-        let ch = handles.get::<Channel>(handle)?;
+        let handle_table = current.process().handles().lock();
+        let ch = handle_table.get::<Channel>(ch)?;
 
         if !ch.is_capable(HandleRights::WRITE) {
             return Err(ErrorCode::NotAllowed);
         }
 
-        ch.send(todo!(), todo!(), todo!())
+        let data = IsolationHeap::InKernel {
+            ptr: data as *const u8,
+            len: msginfo.data_len(),
+        };
+        let handles = IsolationHeap::InKernel {
+            ptr: handles as *const u8,
+            len: msginfo.num_handles(),
+        };
+        ch.send(msginfo, &data, &handles)
     })
 }
 
@@ -162,14 +176,22 @@ fn channel_recv(
     data: *mut u8,
     handles: *mut HandleId,
 ) -> Result<MessageInfo, ErrorCode> {
-    let handles = current.process().handles().lock();
-    let ch = handles.get::<Channel>(handle)?;
+    let handle_table = current.process().handles().lock();
+    let ch = handle_table.get::<Channel>(handle)?;
 
     if !ch.is_capable(HandleRights::READ) {
         return Err(ErrorCode::NotAllowed);
     }
 
-    let msginfo = ch.recv(todo!(), todo!())?;
+    let mut data = IsolationHeapMut::InKernel {
+        ptr: data as *mut u8,
+        len: MESSAGE_DATA_LEN_MAX,
+    };
+    let mut handles = IsolationHeapMut::InKernel {
+        ptr: handles as *mut u8,
+        len: MESSAGE_NUM_HANDLES_MAX,
+    };
+    let msginfo = ch.recv(&mut data, &mut handles)?;
     Ok(msginfo)
 }
 

@@ -24,9 +24,14 @@ pub mod userspace {
 
         pub fn send(&self, writer: impl MessageWriter) -> Result<(), ErrorCode> {
             let mut buffer = OwnedMessageBuffer::alloc();
-            writer.write(&mut buffer)?;
+            let msginfo = writer.write(&mut buffer)?;
 
-            syscall::channel_send(self.0.id(), buffer.data.as_ptr(), buffer.handles.as_ptr())?;
+            syscall::channel_send(
+                self.0.id(),
+                msginfo,
+                buffer.data.as_ptr(),
+                buffer.handles.as_ptr(),
+            )?;
             Ok(())
         }
 
@@ -103,7 +108,10 @@ pub mod userspace {
 
     impl Drop for OwnedMessageBuffer {
         fn drop(&mut self) {
-            todo!("drop handles");
+            warn!("OwnedMessageBuffer::drop");
+
+            // TODO: drop handles
+
             // let mut pool = GLOBAL_BUFFER_POOL.lock();
             // if pool.len() < BUFFER_POOL_SIZE_MAX {
             //     // add back to pool, and mem::forget
@@ -122,7 +130,7 @@ pub mod userspace {
     }
 
     pub trait MessageWriter {
-        fn write(&self, buffer: &mut MessageBuffer) -> Result<(), ErrorCode>;
+        fn write(&self, buffer: &mut MessageBuffer) -> Result<MessageInfo, ErrorCode>;
     }
 
     pub mod message {
@@ -131,6 +139,7 @@ pub mod userspace {
         use super::MessageWriter;
         use super::OwnedMessageBuffer;
         use crate::error::ErrorCode;
+        use crate::message::MessageInfo;
 
         #[repr(C)]
         struct RawPing {
@@ -142,13 +151,17 @@ pub mod userspace {
         }
 
         impl MessageWriter for PingWriter {
-            fn write(&self, buffer: &mut MessageBuffer) -> Result<(), ErrorCode> {
+            fn write(&self, buffer: &mut MessageBuffer) -> Result<MessageInfo, ErrorCode> {
                 let raw = RawPing { value: self.value };
                 unsafe {
                     core::ptr::write(buffer.data_as_mut::<RawPing>(), raw);
                 }
 
-                Ok(())
+                Ok(MessageInfo::new(
+                    1,
+                    size_of::<RawPing>().try_into().unwrap(),
+                    0,
+                ))
             }
         }
 
