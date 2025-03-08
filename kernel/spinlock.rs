@@ -24,11 +24,6 @@ impl<T> SpinLock<T> {
 
     #[track_caller]
     pub fn lock(&self) -> SpinLockGuard<T> {
-        println!(
-            "lock: {:x}: {:?}",
-            self as *const _ as usize,
-            Location::caller()
-        );
         if self.lock.load(Ordering::Relaxed) {
             oops!(
                 "spinlock: {:x}: deadlock detected - mutex will never be left locked in single CPU!",

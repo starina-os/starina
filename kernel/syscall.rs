@@ -162,7 +162,7 @@ fn channel_send(
     data: *const u8,
     handles: *const HandleId,
 ) -> Result<(), ErrorCode> {
-    let handle_table = current.process().handles().lock();
+    let mut handle_table = current.process().handles().lock();
     let ch = handle_table.get_as_channel(ch)?;
 
     if !ch.is_capable(HandleRights::WRITE) {
@@ -177,7 +177,7 @@ fn channel_send(
         ptr: handles as *const u8,
         len: msginfo.num_handles(),
     };
-    ch.send(msginfo, &data, &handles)
+    ch.send(&mut handle_table, msginfo, &data, &handles)
 }
 
 fn channel_recv_trampoline(
@@ -197,7 +197,7 @@ fn channel_recv(
     data: *mut u8,
     handles: *mut HandleId,
 ) -> Result<MessageInfo, ErrorCode> {
-    let handle_table = current.process().handles().lock();
+    let mut handle_table = current.process().handles().lock();
     let ch = handle_table.get_as_channel(handle)?;
 
     if !ch.is_capable(HandleRights::READ) {
@@ -212,7 +212,7 @@ fn channel_recv(
         ptr: handles as *mut u8,
         len: MESSAGE_NUM_HANDLES_MAX,
     };
-    let msginfo = ch.recv(&mut data, &mut handles)?;
+    let msginfo = ch.recv(&mut handle_table, &mut data, &mut handles)?;
     Ok(msginfo)
 }
 

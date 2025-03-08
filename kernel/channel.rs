@@ -11,6 +11,7 @@ use starina::poll::Readiness;
 
 use crate::cpuvar::current_thread;
 use crate::handle::AnyHandle;
+use crate::handle::HandleTable;
 use crate::handle::Handleable;
 use crate::isolation::IsolationHeap;
 use crate::isolation::IsolationHeapMut;
@@ -71,17 +72,18 @@ impl Channel {
 
     pub fn send(
         &self,
+        handle_table: &mut HandleTable,
         msginfo: MessageInfo,
         msgbuffer: &IsolationHeap,
         handles: &IsolationHeap,
     ) -> Result<(), ErrorCode> {
         let current_thread = current_thread();
-        let current_process = current_thread.process();
+        let isolation = current_thread.process().isolation();
 
         // Copy message data into the kernel memory. Do this before locking
         // the peer channel for better performance. This memory copy might
         // take a long time.
-        let data = msgbuffer.read_to_vec(current_process.isolation(), 0, msginfo.data_len())?;
+        let data = msgbuffer.read_to_vec(isolation, 0, msginfo.data_len())?;
 
         // Enqueue the message to the peer's queue.
         let mutable = self.mutable.lock();
@@ -109,20 +111,18 @@ impl Channel {
         if num_handles > 0 {
             // Note: Don't release this lock until we've moved all handles
             //       to guarantee that the second loop never fails.
-            let mut our_handles = current_thread.process().handles().lock();
 
             // First loop: make sure moving handles won't fail and there are
             //             not too many ones.
             let mut handle_ids: ArrayVec<HandleId, MESSAGE_NUM_HANDLES_MAX> = ArrayVec::new();
             for i in 0..num_handles {
-                let handle_id =
-                    handles.read(current_process.isolation(), i * size_of::<HandleId>())?;
+                let handle_id = handles.read(isolation, i * size_of::<HandleId>())?;
 
                 // SAFETY: unwrap() won't panic because it should have enough
                 //         capacity up to MESSAGE_HANDLES_MAX_COUNT.
                 handle_ids.try_push(handle_id).unwrap();
 
-                if !our_handles.is_movable(handle_id) {
+                if !handle_table.is_movable(handle_id) {
                     return Err(ErrorCode::HandleNotMovable);
                 }
             }
@@ -135,7 +135,7 @@ impl Channel {
 
                 // SAFETY: unwrap() won't panic because we've checked the handle
                 //         is movable in the previous loop.
-                let handle = our_handles.take(handle_id).unwrap();
+                let handle = handle_table.take(handle_id).unwrap();
 
                 // SAFETY: unwrap() won't panic because `handles` should have
                 //         enough capacity up to MESSAGE_NUM_HANDLES_MAX.
@@ -158,11 +158,12 @@ impl Channel {
 
     pub fn recv(
         self: &SharedRef<Channel>,
+        handle_table: &mut HandleTable,
         msgbuffer: &mut IsolationHeapMut,
         handles: &mut IsolationHeapMut,
     ) -> Result<MessageInfo, ErrorCode> {
         let current_thread = current_thread();
-        let current_process = current_thread.process();
+        let isolation = current_thread.process().isolation();
         let mut entry = {
             let mut mutable = self.mutable.lock();
             let entry = match mutable.queue.pop_front() {
@@ -202,23 +203,14 @@ impl Channel {
         };
 
         // Install handles into the current (receiver) process.
-        let mut handle_table = current_process.handles().lock();
         for (i, any_handle) in entry.handles.drain(..).enumerate() {
             // TODO: Define the expected behavior when it fails to add a handle.
             let handle_id = handle_table.insert(any_handle)?;
-            handles.write(
-                current_process.isolation(),
-                i * size_of::<HandleId>(),
-                handle_id,
-            )?;
+            handles.write(isolation, i * size_of::<HandleId>(), handle_id)?;
         }
 
         // Copy message data into the buffer.
-        msgbuffer.write_bytes(
-            current_process.isolation(),
-            0,
-            &entry.data[0..entry.msginfo.data_len()],
-        )?;
+        msgbuffer.write_bytes(isolation, 0, &entry.data[0..entry.msginfo.data_len()])?;
 
         Ok(entry.msginfo)
     }
