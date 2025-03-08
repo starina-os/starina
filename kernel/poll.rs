@@ -209,7 +209,6 @@ impl Poll {
                 continue;
             };
 
-            // TODO: Check if we're interested in the event.
             let readiness = match listenee.handle.readiness() {
                 Ok(readiness) => readiness,
                 Err(e) => {
