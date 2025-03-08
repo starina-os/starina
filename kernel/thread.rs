@@ -100,21 +100,25 @@ impl Drop for Thread {
 /// thread to run, and restores the next thread's context.
 pub fn switch_thread() -> ! {
     'next_thread: loop {
-        let (mut current_thread, in_idle) = {
+        let (mut current_thread, is_idle, is_runnable) = {
             // Borrow the cpvuar inside a brace not to forget to drop it.
             let cpuvar = arch::get_cpuvar();
 
             let current_thread = cpuvar.current_thread.borrow_mut();
-            let in_idle = SharedRef::ptr_eq(&*current_thread, &cpuvar.idle_thread);
-            (current_thread, in_idle)
+            let is_idle = SharedRef::ptr_eq(&*current_thread, &cpuvar.idle_thread);
+            let is_runnable = matches!(
+                current_thread.mutable.lock().state,
+                ThreadState::Runnable(_)
+            );
+            (current_thread, is_idle, is_runnable)
         };
 
         // Preemptive scheduling: push the current thread back to the
         // runqueue if it's still runnable.
-        let thread_to_enqueue = if in_idle {
-            None
-        } else {
+        let thread_to_enqueue = if is_runnable && !is_idle {
             Some(current_thread.clone())
+        } else {
+            None
         };
 
         // Get the next thread to run. If the runqueue is empty, run the
@@ -143,6 +147,7 @@ pub fn switch_thread() -> ! {
                             // The thread is still blocked. We'll retry when the
                             // poll wakes us up again...
                             next_mutable.state = new_state;
+                            println!("thread is blocked");
                         }
                     }
 
