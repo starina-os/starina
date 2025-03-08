@@ -35,6 +35,11 @@ static INKERNEL_SYSCALL_TABLE: InKernelSyscallTable = InKernelSyscallTable {
 
 type SyscallResult = Result<ThreadState, ErrorCode>;
 
+pub enum BlockableSyscallResult<T: Into<RetVal>> {
+    Blocked(ThreadState),
+    Done(Result<T, ErrorCode>),
+}
+
 fn thread_yield_trampoline() {
     enter_kernelland(123, 0, 0, 0, 0, 0);
 }
@@ -86,7 +91,7 @@ fn poll_add(
         "poll_add: poll={:?}, object={:?}, interests={:?}",
         poll, object, interests
     );
-    let poll = handles.get::<Poll>(poll)?;
+    let poll = handles.get_as_poll(poll)?;
     let object_handle = handles.get_any(object)?;
 
     if !poll.is_capable(HandleRights::WRITE) {
@@ -111,13 +116,23 @@ fn poll_wait_trampoline(poll: HandleId) -> Result<(HandleId, Readiness), ErrorCo
 
 fn poll_wait(current: &SharedRef<Thread>, poll: HandleId) -> SyscallResult {
     let handles = current.process().handles().lock();
-    let poll = handles.get::<Poll>(poll)?;
+    let poll = handles.get_as_poll(poll)?;
 
     if !poll.is_capable(HandleRights::POLL) {
         return Err(ErrorCode::NotAllowed);
     }
 
-    Ok(ThreadState::BlockedByPoll(poll.into_object()))
+    println!("poll_waiting: sref={}", SharedRef::ref_count(&poll));
+
+    let result = match poll.try_wait(current) {
+        BlockableSyscallResult::Done(result) => Ok(ThreadState::Runnable(Some(result.into()))),
+        BlockableSyscallResult::Blocked(state) => {
+            Ok(ThreadState::BlockedByPoll(poll.into_object()))
+        }
+    };
+
+    println!("poll_wait: result={:?}", result);
+    result
 }
 
 fn channel_send_trampoline(
@@ -141,7 +156,7 @@ fn channel_send(
 ) -> Result<(), ErrorCode> {
     kernel_scope(|| {
         let handle_table = current.process().handles().lock();
-        let ch = handle_table.get::<Channel>(ch)?;
+        let ch = handle_table.get_as_channel(ch)?;
 
         if !ch.is_capable(HandleRights::WRITE) {
             return Err(ErrorCode::NotAllowed);
@@ -177,7 +192,7 @@ fn channel_recv(
     handles: *mut HandleId,
 ) -> Result<MessageInfo, ErrorCode> {
     let handle_table = current.process().handles().lock();
-    let ch = handle_table.get::<Channel>(handle)?;
+    let ch = handle_table.get_as_channel(handle)?;
 
     if !ch.is_capable(HandleRights::READ) {
         return Err(ErrorCode::NotAllowed);
@@ -299,6 +314,7 @@ pub extern "C" fn syscall_handler(
         Ok(state) => state,
         Err(err) => ThreadState::Runnable(Some(err.into())),
     };
+    trace!("done, setting state to {:x?}", state);
     current.set_state(state);
     drop(current);
 

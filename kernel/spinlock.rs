@@ -2,6 +2,7 @@
 use core::cell::UnsafeCell;
 use core::ops::Deref;
 use core::ops::DerefMut;
+use core::panic::Location;
 use core::sync::atomic::AtomicBool;
 use core::sync::atomic::Ordering;
 
@@ -21,6 +22,7 @@ impl<T> SpinLock<T> {
         }
     }
 
+    #[track_caller]
     pub fn lock(&self) -> SpinLockGuard<T> {
         if self.lock.load(Ordering::Relaxed) {
             oops!(

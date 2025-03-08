@@ -10,10 +10,12 @@ use crate::process::Process;
 use crate::refcount::SharedRef;
 use crate::scheduler::GLOBAL_SCHEDULER;
 use crate::spinlock::SpinLock;
+use crate::syscall::BlockableSyscallResult;
 use crate::syscall::RetVal;
 
 static NUM_THREADS: AtomicUsize = AtomicUsize::new(0);
 
+#[derive(Debug)]
 pub enum ThreadState {
     Runnable(Option<RetVal>),
     BlockedByPoll(SharedRef<Poll>),
@@ -78,12 +80,6 @@ impl Thread {
     pub fn set_state(self: &SharedRef<Thread>, new_state: ThreadState) {
         let mut mutable = self.mutable.lock();
 
-        // We should never change the state to the same state.
-        debug_assert_ne!(
-            core::mem::discriminant(&mutable.state),
-            core::mem::discriminant(&new_state)
-        );
-
         // Update the thread's state.
         mutable.state = new_state;
 
@@ -136,14 +132,18 @@ pub fn switch_thread() -> ! {
             let mut next_mutable = next.mutable.lock();
             match &next_mutable.state {
                 ThreadState::BlockedByPoll(poll) => {
-                    if let Some(result) = poll.try_wait() {
-                        // We've got an event. Make the thread runnable again
-                        // with the system call's return value.
-                        next_mutable.state = ThreadState::Runnable(Some(result.into()));
-                        GLOBAL_SCHEDULER.push(next.clone());
-                    } else {
-                        // The thread is still blocked. We'll retry when the
-                        // poll wakes us up again...
+                    match poll.try_wait(&next) {
+                        BlockableSyscallResult::Done(result) => {
+                            // We've got an event. Make the thread runnable again
+                            // with the system call's return value.
+                            next_mutable.state = ThreadState::Runnable(Some(result.into()));
+                            GLOBAL_SCHEDULER.push(next.clone());
+                        }
+                        BlockableSyscallResult::Blocked(new_state) => {
+                            // The thread is still blocked. We'll retry when the
+                            // poll wakes us up again...
+                            next_mutable.state = new_state;
+                        }
                     }
 
                     continue 'next_thread;

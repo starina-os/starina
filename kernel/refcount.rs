@@ -84,6 +84,10 @@ impl<T> SharedRef<T> {
         let inner_ptr: *const T = &a.inner().value;
         core::ptr::eq(this_ptr, inner_ptr)
     }
+
+    pub fn ref_count(sref: &SharedRef<T>) -> usize {
+        sref.inner().counter.load(Ordering::Relaxed)
+    }
 }
 
 impl<T: ?Sized> SharedRef<T> {
@@ -97,7 +101,10 @@ impl<T: ?Sized> SharedRef<T> {
 }
 
 impl<T: ?Sized> Drop for SharedRef<T> {
+    #[track_caller]
     fn drop(&mut self) {
+        debug_assert!(self.inner().counter.load(Ordering::Relaxed) > 0);
+
         // Release the reference count.
         if self.inner().counter.fetch_sub(1, Ordering::Release) == 1 {
             // The reference counter reached zero. Free the memory.
@@ -117,6 +124,8 @@ impl<T: ?Sized> Drop for SharedRef<T> {
 
 impl<T: ?Sized> Clone for SharedRef<T> {
     fn clone(&self) -> Self {
+        debug_assert!(self.inner().counter.load(Ordering::Relaxed) > 0);
+
         // Increment the reference count.
         //
         // Theoretically, the counter can overflow, but it's not a problem
@@ -149,21 +158,6 @@ where
         f.debug_tuple("SharedRef")
             .field(&self.inner().value)
             .finish()
-    }
-}
-
-impl SharedRef<dyn Handleable> {
-    pub fn downcast<T>(self) -> Result<SharedRef<T>, Self>
-    where
-        T: Handleable,
-    {
-        if <dyn Any>::is::<T>(&self.inner().value) {
-            Ok(SharedRef {
-                ptr: self.ptr.cast(),
-            })
-        } else {
-            Err(self)
-        }
     }
 }
 

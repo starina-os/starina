@@ -62,7 +62,7 @@ pub fn current_thread() -> Ref<'static, SharedRef<Thread>> {
 }
 
 // Note: SpinLock is to serialize its initialization. Once initialized, it's
-//       safe to access `CpuVar` without holding the lock because it's a
+//       safe to access `CpuVar` without holding the lock bdecause it's a
 //       per-CPU storage. We still need a RefCell in mutable fields though.
 static CPUVARS: SpinLock<ArrayVec<CpuVarInit, { arch::NUM_CPUS_MAX }>> =
     SpinLock::new(ArrayVec::new_const());

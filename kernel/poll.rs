@@ -1,5 +1,6 @@
 use alloc::collections::vec_deque::VecDeque;
 use alloc::vec::Vec;
+use core::fmt;
 use core::hash::Hash;
 
 use hashbrown::HashSet;
@@ -12,6 +13,7 @@ use crate::handle::AnyHandle;
 use crate::handle::Handleable;
 use crate::refcount::SharedRef;
 use crate::spinlock::SpinLock;
+use crate::syscall::BlockableSyscallResult;
 use crate::thread::Thread;
 use crate::thread::ThreadState;
 use crate::utils::fxhashmap::FxHashMap;
@@ -183,7 +185,10 @@ impl Poll {
         Ok(())
     }
 
-    pub fn try_wait(self: &SharedRef<Poll>) -> Option<Result<(HandleId, Readiness), ErrorCode>> {
+    pub fn try_wait(
+        self: &SharedRef<Poll>,
+        current: &SharedRef<Thread>,
+    ) -> BlockableSyscallResult<(HandleId, Readiness)> {
         let mut mutable = self.mutable.lock();
 
         // Check if there are any ready events.
@@ -195,25 +200,22 @@ impl Poll {
 
             // TODO: Check if we're interested in the event.
 
-            return Some(match handle.readiness() {
-                Ok(readiness) => Ok((id, readiness)),
-                Err(err) => Err(err),
-            });
+            return BlockableSyscallResult::Done(
+                handle.readiness().map(|readiness| (id, readiness)),
+            );
         }
 
         // No events are ready. Block the current thread.
         //
         // WARNING: Thread::switch will never return. Clean up all resources
         //          before calling it!
-        let current_thread = current_thread();
 
         if mutable.waiters.try_reserve(1).is_err() {
-            return Some(Err(ErrorCode::OutOfMemory));
+            return BlockableSyscallResult::Done(Err(ErrorCode::OutOfMemory));
         }
 
-        mutable.waiters.push_back(current_thread.clone());
-        current_thread.set_state(ThreadState::BlockedByPoll(self.clone()));
-        None
+        mutable.waiters.push_back(current.clone());
+        BlockableSyscallResult::Blocked(ThreadState::BlockedByPoll(self.clone()))
     }
 }
 
@@ -232,6 +234,12 @@ impl Handleable for Poll {
 
     fn readiness(&self) -> Result<Readiness, ErrorCode> {
         Err(ErrorCode::NotSupported)
+    }
+}
+
+impl fmt::Debug for Poll {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Poll").finish()
     }
 }
 
