@@ -147,7 +147,6 @@ pub fn switch_thread() -> ! {
                             // The thread is still blocked. We'll retry when the
                             // poll wakes us up again...
                             next_mutable.state = new_state;
-                            println!("thread is blocked");
                         }
                     }
 

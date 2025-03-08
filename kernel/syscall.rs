@@ -52,14 +52,6 @@ where
         use core::arch::asm;
         #[cfg(target_arch = "riscv64")]
         asm!("csrrw tp, sscratch, tp");
-        let tp: u64;
-        unsafe {
-            asm!("mv {}, tp", out(reg) tp);
-        }
-        println!("kernel_scope: tp={}", tp);
-        if tp == 0 {
-            loop {}
-        }
         let ret = f();
         #[cfg(target_arch = "riscv64")]
         asm!("csrrw tp, sscratch, tp");
@@ -130,8 +122,6 @@ fn poll_wait(current: &SharedRef<Thread>, poll: HandleId) -> SyscallResult {
         return Err(ErrorCode::NotAllowed);
     }
 
-    println!("poll_waiting: sref={}", SharedRef::ref_count(&poll));
-
     let result = match poll.try_wait(current) {
         BlockableSyscallResult::Done(result) => Ok(ThreadState::Runnable(Some(result.into()))),
         BlockableSyscallResult::Blocked(state) => {
@@ -139,7 +129,6 @@ fn poll_wait(current: &SharedRef<Thread>, poll: HandleId) -> SyscallResult {
         }
     };
 
-    println!("poll_wait: result={:?}", result);
     result
 }
 

@@ -67,7 +67,6 @@ impl Dispatcher {
 
         match object {
             Object::Channel(channel) => {
-                println!("readability: {:?}", readiness);
                 if readiness.contains(Readiness::READABLE) {
                     let msg = channel.recv().unwrap();
                     let ping = PingReader::try_from(msg).unwrap();
