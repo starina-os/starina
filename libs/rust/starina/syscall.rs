@@ -13,6 +13,7 @@ pub enum SyscallNumber {
     ChannelSend = 4,
     ChannelRecv = 5,
     ThreadYield = 6,
+    HandleClose = 7,
 }
 
 pub struct InKernelSyscallTable {
@@ -28,6 +29,7 @@ pub struct InKernelSyscallTable {
         fn(HandleId, MessageInfo, *const u8, *const HandleId) -> Result<(), ErrorCode>,
     pub channel_recv: fn(HandleId, *mut u8, *mut HandleId) -> Result<MessageInfo, ErrorCode>,
     pub thread_yield: fn(),
+    pub handle_close: fn(HandleId) -> Result<(), ErrorCode>,
 }
 
 #[cfg(feature = "in-kernel")]
@@ -77,4 +79,9 @@ pub fn channel_recv(
     handles: *mut HandleId,
 ) -> Result<MessageInfo, ErrorCode> {
     (INKERNEL_SYSCALL_TABLE.channel_recv)(ch, data, handles)
+}
+
+#[cfg(feature = "in-kernel")]
+pub fn handle_close(handle: HandleId) -> Result<(), ErrorCode> {
+    (INKERNEL_SYSCALL_TABLE.handle_close)(handle)
 }

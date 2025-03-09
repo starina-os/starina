@@ -5,6 +5,7 @@ pub mod userspace {
     use core::mem::size_of;
     use core::ops::Deref;
     use core::ops::DerefMut;
+    use core::ptr::NonNull;
 
     use crate::error::ErrorCode;
     use crate::handle::HandleId;
@@ -70,21 +71,32 @@ pub mod userspace {
     }
 
     // TODO: Make this thread local.
-    static GLOBAL_BUFFER_POOL: spin::Mutex<Vec<Box<MessageBuffer>>> = spin::Mutex::new(Vec::new());
-    // const BUFFER_POOL_SIZE_MAX: usize = 16;
+    static GLOBAL_BUFFER_POOL: spin::Mutex<Vec<NonNull<MessageBuffer>>> =
+        spin::Mutex::new(Vec::new());
+    const BUFFER_POOL_SIZE_MAX: usize = 16;
 
     pub struct OwnedMessageBuffer(Box<MessageBuffer>);
     impl OwnedMessageBuffer {
         pub fn alloc() -> Self {
             let buffer = GLOBAL_BUFFER_POOL.lock().pop().unwrap_or_else(|| {
                 // TODO: Use `MaybeUninit` to unnecesarily zero-fill the buffer.
-                Box::new(MessageBuffer {
+                Box::leak(Box::new(MessageBuffer {
                     handles: [HandleId::from_raw(0); MESSAGE_NUM_HANDLES_MAX],
                     data: [0; MESSAGE_DATA_LEN_MAX],
-                })
+                }))
             });
 
             OwnedMessageBuffer(buffer)
+        }
+
+        pub fn take_handle(&mut self, index: usize) -> Option<HandleId> {
+            let handle = self.0.handles[index];
+            if handle.as_raw() == 0 {
+                return None;
+            }
+
+            self.0.handles[index] = HandleId::from_raw(0);
+            Some(handle)
         }
     }
 
@@ -104,12 +116,19 @@ pub mod userspace {
 
     impl Drop for OwnedMessageBuffer {
         fn drop(&mut self) {
-            // TODO: drop handles
+            // Drop handles.
+            for handle in self.0.handles.iter() {
+                if handle.as_raw() != 0 {
+                    if let Err(e) = syscall::handle_close(*handle) {
+                        warn!("failed to close handle: {:?}", e);
+                    }
+                }
+            }
 
-            // let mut pool = GLOBAL_BUFFER_POOL.lock();
-            // if pool.len() < BUFFER_POOL_SIZE_MAX {
-            //     // add back to pool, and mem::forget
-            // }
+            let mut pool = GLOBAL_BUFFER_POOL.lock();
+            if pool.len() < BUFFER_POOL_SIZE_MAX {
+                pool.push(self.0);
+            }
         }
     }
     pub struct AnyMessage {

@@ -29,6 +29,7 @@ static INKERNEL_SYSCALL_TABLE: InKernelSyscallTable = InKernelSyscallTable {
     poll_wait: poll_wait_trampoline,
     channel_send: channel_send_trampoline,
     channel_recv: channel_recv_trampoline,
+    handle_close: handle_close_trampoline,
 };
 
 type SyscallResult = Result<ThreadState, ErrorCode>;
@@ -36,6 +37,17 @@ type SyscallResult = Result<ThreadState, ErrorCode>;
 pub enum BlockableSyscallResult<T: Into<RetVal>> {
     Blocked(ThreadState),
     Done(Result<T, ErrorCode>),
+}
+
+fn handle_close(handle: HandleId) -> Result<(), ErrorCode> {
+    let current_thread = current_thread();
+    let mut handle_table = current_thread.process().handles().lock();
+    handle_table.close(handle)?;
+    Ok(())
+}
+
+fn handle_close_trampoline(handle: HandleId) -> Result<(), ErrorCode> {
+    kernel_scope(|| handle_close(handle))
 }
 
 fn thread_yield_trampoline() {
