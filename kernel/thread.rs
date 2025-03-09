@@ -10,10 +10,12 @@ use crate::process::Process;
 use crate::refcount::SharedRef;
 use crate::scheduler::GLOBAL_SCHEDULER;
 use crate::spinlock::SpinLock;
+use crate::syscall::BlockableSyscallResult;
 use crate::syscall::RetVal;
 
 static NUM_THREADS: AtomicUsize = AtomicUsize::new(0);
 
+#[derive(Debug)]
 pub enum ThreadState {
     Runnable(Option<RetVal>),
     BlockedByPoll(SharedRef<Poll>),
@@ -77,18 +79,13 @@ impl Thread {
 
     pub fn set_state(self: &SharedRef<Thread>, new_state: ThreadState) {
         let mut mutable = self.mutable.lock();
-
-        // We should never change the state to the same state.
-        debug_assert_ne!(
-            core::mem::discriminant(&mutable.state),
-            core::mem::discriminant(&new_state)
-        );
+        let was_blocked = !matches!(mutable.state, ThreadState::Runnable(_));
 
         // Update the thread's state.
         mutable.state = new_state;
 
         // If the thread is now runnable, push it to the scheduler.
-        if matches!(mutable.state, ThreadState::Runnable(_)) {
+        if was_blocked && matches!(mutable.state, ThreadState::Runnable(_)) {
             GLOBAL_SCHEDULER.push(self.clone());
         }
     }
@@ -104,21 +101,25 @@ impl Drop for Thread {
 /// thread to run, and restores the next thread's context.
 pub fn switch_thread() -> ! {
     'next_thread: loop {
-        let (mut current_thread, in_idle) = {
+        let (mut current_thread, is_idle, is_runnable) = {
             // Borrow the cpvuar inside a brace not to forget to drop it.
             let cpuvar = arch::get_cpuvar();
 
             let current_thread = cpuvar.current_thread.borrow_mut();
-            let in_idle = SharedRef::ptr_eq(&*current_thread, &cpuvar.idle_thread);
-            (current_thread, in_idle)
+            let is_idle = SharedRef::ptr_eq(&*current_thread, &cpuvar.idle_thread);
+            let is_runnable = matches!(
+                current_thread.mutable.lock().state,
+                ThreadState::Runnable(_)
+            );
+            (current_thread, is_idle, is_runnable)
         };
 
         // Preemptive scheduling: push the current thread back to the
         // runqueue if it's still runnable.
-        let thread_to_enqueue = if in_idle {
-            None
-        } else {
+        let thread_to_enqueue = if is_runnable && !is_idle {
             Some(current_thread.clone())
+        } else {
+            None
         };
 
         // Get the next thread to run. If the runqueue is empty, run the
@@ -136,14 +137,18 @@ pub fn switch_thread() -> ! {
             let mut next_mutable = next.mutable.lock();
             match &next_mutable.state {
                 ThreadState::BlockedByPoll(poll) => {
-                    if let Some(result) = poll.try_wait() {
-                        // We've got an event. Make the thread runnable again
-                        // with the system call's return value.
-                        next_mutable.state = ThreadState::Runnable(Some(result.into()));
-                        GLOBAL_SCHEDULER.push(next.clone());
-                    } else {
-                        // The thread is still blocked. We'll retry when the
-                        // poll wakes us up again...
+                    match poll.try_wait(&next) {
+                        BlockableSyscallResult::Done(result) => {
+                            // We've got an event. Make the thread runnable again
+                            // with the system call's return value.
+                            next_mutable.state = ThreadState::Runnable(Some(result.into()));
+                            GLOBAL_SCHEDULER.push(next.clone());
+                        }
+                        BlockableSyscallResult::Blocked(new_state) => {
+                            // The thread is still blocked. We'll retry when the
+                            // poll wakes us up again...
+                            next_mutable.state = new_state;
+                        }
                     }
 
                     continue 'next_thread;

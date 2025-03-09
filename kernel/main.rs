@@ -15,8 +15,13 @@ extern crate alloc;
 
 use allocator::GLOBAL_ALLOCATOR;
 use arrayvec::ArrayVec;
+use channel::Channel;
 use cpuvar::CpuId;
+use handle::Handle;
+use poll::Poll;
 use starina::app::App;
+use starina::handle::HandleRights;
+use starina::syscall::poll_wait;
 
 mod allocator;
 mod arch;
@@ -58,23 +63,30 @@ pub fn boot(bootinfo: BootInfo) -> ! {
     cpuvar::percpu_init(bootinfo.cpu_id);
     arch::percpu_init();
 
-    fn entrypoint(app: *mut ktest::Main) {
-        let app = unsafe { &mut *app };
-        info!("Starting app...");
-        for _ in 0.. {
-            app.tick();
-            for _ in 0..1000000 {}
-        }
-    }
+    {
+        use process::KERNEL_PROCESS;
+        use scheduler::GLOBAL_SCHEDULER;
+        let (ch1, ch2) = Channel::new().unwrap();
+        let ch1_handle = KERNEL_PROCESS
+            .handles()
+            .lock()
+            .insert(Handle::new(ch1, HandleRights::READ | HandleRights::WRITE))
+            .unwrap();
+        let ch2_handle = KERNEL_PROCESS
+            .handles()
+            .lock()
+            .insert(Handle::new(ch2, HandleRights::READ | HandleRights::WRITE))
+            .unwrap();
 
-    // GLOBAL_SCHEDULER.push(thread::Thread::new_inkernel(
-    //     entrypoint as usize,
-    //     Box::leak(Box::new(ktest::Main::init())) as *const _ as usize,
-    // ));
-    // GLOBAL_SCHEDULER.push(thread::Thread::new_inkernel(
-    //     entrypoint as usize,
-    //     Box::leak(Box::new(ktest::Main::init())) as *const _ as usize,
-    // ));
+        GLOBAL_SCHEDULER.push(
+            thread::Thread::new_inkernel(ktest::app_main as usize, ch1_handle.as_raw() as usize)
+                .unwrap(),
+        );
+        GLOBAL_SCHEDULER.push(
+            thread::Thread::new_inkernel(ktest::app_main as usize, ch2_handle.as_raw() as usize)
+                .unwrap(),
+        );
+    }
 
     thread::switch_thread();
 }

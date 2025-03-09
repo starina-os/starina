@@ -92,7 +92,7 @@ pub extern "C" fn enter_kernelland(
     _a3: isize,
     _a4: isize,
     _a5: isize,
-) -> isize {
+) -> RetVal {
     unsafe {
         naked_asm!(
             r#"

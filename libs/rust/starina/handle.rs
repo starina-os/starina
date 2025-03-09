@@ -1,3 +1,5 @@
+use core::ops::BitOr;
+
 /// A handle ID.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct HandleId(i32);
@@ -6,6 +8,10 @@ impl HandleId {
     /// Creates a handle ID from a raw integer.
     pub const fn from_raw(raw: i32) -> HandleId {
         HandleId(raw)
+    }
+
+    pub const fn as_raw(&self) -> i32 {
+        self.0
     }
 }
 
@@ -21,4 +27,36 @@ impl HandleRights {
     pub fn is_capable(&self, required: HandleRights) -> bool {
         self.0 & required.0 == required.0
     }
+}
+
+impl BitOr for HandleRights {
+    type Output = Self;
+
+    fn bitor(self, rhs: Self) -> Self {
+        HandleRights(self.0 | rhs.0)
+    }
+}
+
+#[cfg(feature = "userspace")]
+pub struct OwnedHandle(HandleId);
+
+impl OwnedHandle {
+    pub const fn from_raw(raw: HandleId) -> Self {
+        Self(raw)
+    }
+
+    pub fn id(&self) -> HandleId {
+        self.0
+    }
+}
+
+impl Drop for OwnedHandle {
+    fn drop(&mut self) {
+        warn!("dropping handle {:?}", self.0);
+    }
+}
+
+#[cfg(feature = "userspace")]
+pub trait Handleable {
+    fn handle_id(&self) -> HandleId;
 }
