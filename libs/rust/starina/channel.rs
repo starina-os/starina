@@ -1,7 +1,6 @@
 #[cfg(feature = "userspace")]
 pub mod userspace {
     use alloc::boxed::Box;
-    use alloc::vec::Vec;
     use core::mem::size_of;
     use core::ops::Deref;
     use core::ops::DerefMut;
