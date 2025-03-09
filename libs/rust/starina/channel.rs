@@ -104,8 +104,6 @@ pub mod userspace {
 
     impl Drop for OwnedMessageBuffer {
         fn drop(&mut self) {
-            warn!("OwnedMessageBuffer::drop");
-
             // TODO: drop handles
 
             // let mut pool = GLOBAL_BUFFER_POOL.lock();

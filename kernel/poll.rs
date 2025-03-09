@@ -264,7 +264,7 @@ impl Drop for Poll {
     fn drop(&mut self) {
         let mut mutable = self.mutable.lock();
         for waiter in mutable.waiters.drain(..) {
-            todo!("wake up the waiter and let it know that the poll is closed");
+            waiter.set_state(ThreadState::Runnable(Some(ErrorCode::Closed.into())));
         }
 
         for listenee in mutable.listenee.values_mut() {

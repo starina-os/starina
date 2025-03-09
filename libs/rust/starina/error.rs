@@ -14,4 +14,5 @@ pub enum ErrorCode {
     OutOfMemory = -11,
     Empty = -12,
     Full = -13,
+    Closed = -14,
 }

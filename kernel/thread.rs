@@ -169,9 +169,6 @@ pub fn switch_thread() -> ! {
         // Make the next thread the current thread.
         *current_thread = next;
 
-        // TODO: Switch to the new thread's address space.sstatus,a1
-        // current_thread.process.vmspace().switch();
-
         // Execute the pending continuation if any.
         drop(current_thread);
         arch::enter_userland(arch_thread);
