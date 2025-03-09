@@ -5,7 +5,6 @@ pub mod userspace {
     use core::mem::size_of;
     use core::ops::Deref;
     use core::ops::DerefMut;
-    use core::ptr::NonNull;
 
     use crate::error::ErrorCode;
     use crate::handle::HandleId;
@@ -70,20 +69,14 @@ pub mod userspace {
         }
     }
 
-    // TODO: Make this thread local.
-    static GLOBAL_BUFFER_POOL: spin::Mutex<Vec<NonNull<MessageBuffer>>> =
-        spin::Mutex::new(Vec::new());
-    const BUFFER_POOL_SIZE_MAX: usize = 16;
-
     pub struct OwnedMessageBuffer(Box<MessageBuffer>);
     impl OwnedMessageBuffer {
         pub fn alloc() -> Self {
-            let buffer = GLOBAL_BUFFER_POOL.lock().pop().unwrap_or_else(|| {
-                // TODO: Use `MaybeUninit` to unnecesarily zero-fill the buffer.
-                Box::leak(Box::new(MessageBuffer {
-                    handles: [HandleId::from_raw(0); MESSAGE_NUM_HANDLES_MAX],
-                    data: [0; MESSAGE_DATA_LEN_MAX],
-                }))
+            // TODO: Have a thread-local buffer pool.
+            // TODO: Use `MaybeUninit` to unnecesarily zero-fill the buffer.
+            let buffer = Box::new(MessageBuffer {
+                handles: [HandleId::from_raw(0); MESSAGE_NUM_HANDLES_MAX],
+                data: [0; MESSAGE_DATA_LEN_MAX],
             });
 
             OwnedMessageBuffer(buffer)
@@ -123,11 +116,6 @@ pub mod userspace {
                         warn!("failed to close handle: {:?}", e);
                     }
                 }
-            }
-
-            let mut pool = GLOBAL_BUFFER_POOL.lock();
-            if pool.len() < BUFFER_POOL_SIZE_MAX {
-                pool.push(self.0);
             }
         }
     }
