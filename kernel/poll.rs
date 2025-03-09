@@ -8,7 +8,6 @@ use starina::error::ErrorCode;
 use starina::handle::HandleId;
 use starina::poll::Readiness;
 
-use crate::cpuvar::current_thread;
 use crate::handle::AnyHandle;
 use crate::handle::Handleable;
 use crate::refcount::SharedRef;
@@ -242,11 +241,11 @@ impl Handleable for Poll {
         // Nothing to do.
     }
 
-    fn add_listener(&self, listener: Listener) -> Result<(), ErrorCode> {
+    fn add_listener(&self, _listener: Listener) -> Result<(), ErrorCode> {
         Err(ErrorCode::NotSupported)
     }
 
-    fn remove_listener(&self, poll: &Poll) -> Result<(), ErrorCode> {
+    fn remove_listener(&self, _poll: &Poll) -> Result<(), ErrorCode> {
         Err(ErrorCode::NotSupported)
     }
 
@@ -266,11 +265,12 @@ impl Drop for Poll {
         let mut mutable = self.mutable.lock();
         for waiter in mutable.waiters.drain(..) {
             todo!("wake up the waiter and let it know that the poll is closed");
-            // waiter.wake(Continuation::FailedWith(ErrorCode::Closed));
         }
 
         for listenee in mutable.listenee.values_mut() {
-            listenee.handle.remove_listener(self);
+            if let Err(err) = listenee.handle.remove_listener(self) {
+                debug_warn!("failed to remove listener from handle: {:?}", err);
+            }
         }
     }
 }

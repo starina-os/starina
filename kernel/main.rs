@@ -18,10 +18,7 @@ use arrayvec::ArrayVec;
 use channel::Channel;
 use cpuvar::CpuId;
 use handle::Handle;
-use poll::Poll;
-use starina::app::App;
 use starina::handle::HandleRights;
-use starina::syscall::poll_wait;
 
 mod allocator;
 mod arch;

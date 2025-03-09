@@ -9,6 +9,12 @@ use core::ops::BitOrAssign;
 #[repr(transparent)]
 pub struct Readiness(i8);
 
+impl Default for Readiness {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Readiness {
     pub const CLOSED: Readiness = Readiness(1 << 0);
     pub const READABLE: Readiness = Readiness(1 << 1);

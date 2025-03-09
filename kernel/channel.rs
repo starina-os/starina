@@ -218,7 +218,7 @@ impl Channel {
 
 impl Handleable for Channel {
     fn close(&self) {
-        let mut mutable = self.mutable.lock();
+        let mutable = self.mutable.lock();
         if let Some(peer) = &mutable.peer {
             peer.mutable.lock().peer = None;
         }

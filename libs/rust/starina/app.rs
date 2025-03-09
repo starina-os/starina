@@ -7,7 +7,6 @@ use crate::handle::HandleId;
 use crate::handle::Handleable;
 use crate::poll::Readiness;
 use crate::poll::userspace::Poll;
-use crate::syscall::thread_yield;
 
 pub trait App: Send + Sync {
     fn init(dispatcher: &Dispatcher, ch: Channel) -> Self

@@ -47,7 +47,6 @@ where
     F: FnOnce() -> R,
 {
     unsafe {
-        use core::arch::asm;
         #[cfg(target_arch = "riscv64")]
         asm!("csrrw tp, sscratch, tp");
         let ret = f();
@@ -59,7 +58,7 @@ where
 
 fn poll_create_trampoline() -> Result<HandleId, ErrorCode> {
     kernel_scope(|| {
-        let mut poll = Poll::new()?;
+        let poll = Poll::new()?;
         let handle = Handle::new(poll, HandleRights::POLL | HandleRights::WRITE);
         let current_thread = current_thread();
         let poll_id = current_thread.process().handles().lock().insert(handle)?;
@@ -120,14 +119,10 @@ fn poll_wait(current: &SharedRef<Thread>, poll: HandleId) -> SyscallResult {
         return Err(ErrorCode::NotAllowed);
     }
 
-    let result = match poll.try_wait(current) {
+    match poll.try_wait(current) {
         BlockableSyscallResult::Done(result) => Ok(ThreadState::Runnable(Some(result.into()))),
-        BlockableSyscallResult::Blocked(state) => {
-            Ok(ThreadState::BlockedByPoll(poll.into_object()))
-        }
-    };
-
-    result
+        BlockableSyscallResult::Blocked(state) => Ok(state),
+    }
 }
 
 fn channel_send_trampoline(
@@ -157,7 +152,7 @@ fn channel_send(
     }
 
     let data = IsolationHeap::InKernel {
-        ptr: data as *const u8,
+        ptr: data,
         len: msginfo.data_len(),
     };
     let handles = IsolationHeap::InKernel {
@@ -192,7 +187,7 @@ fn channel_recv(
     }
 
     let mut data = IsolationHeapMut::InKernel {
-        ptr: data as *mut u8,
+        ptr: data,
         len: MESSAGE_DATA_LEN_MAX,
     };
     let mut handles = IsolationHeapMut::InKernel {
@@ -265,17 +260,17 @@ impl From<RetVal> for (HandleId, Readiness) {
         let readiness = value.0 >> 24;
         (
             HandleId::from_raw(handle_raw as i32),
-            Readiness::from_raw((readiness as i8)),
+            Readiness::from_raw(readiness as i8),
         )
     }
 }
 
 pub fn do_syscall(
     a0: isize,
-    a1: isize,
-    a2: isize,
-    a3: isize,
-    a4: isize,
+    _a1: isize,
+    _a2: isize,
+    _a3: isize,
+    _a4: isize,
     a5: isize,
     current: &SharedRef<Thread>,
 ) -> SyscallResult {

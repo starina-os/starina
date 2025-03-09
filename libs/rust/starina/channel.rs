@@ -39,11 +39,7 @@ pub mod userspace {
             let mut buffer = OwnedMessageBuffer::alloc();
             let data_ptr = buffer.data.as_mut_ptr();
             let handles_ptr = buffer.handles.as_mut_ptr();
-            let msginfo = syscall::channel_recv(
-                self.0.id(),
-                data_ptr as *mut u8,
-                handles_ptr as *mut HandleId,
-            )?;
+            let msginfo = syscall::channel_recv(self.0.id(), data_ptr, handles_ptr)?;
 
             let msg = unsafe { AnyMessage::new(buffer, msginfo) };
             Ok(msg)
