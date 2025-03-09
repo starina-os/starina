@@ -225,6 +225,13 @@ impl Channel {
 }
 
 impl Handleable for Channel {
+    fn close(&self) {
+        let mut mutable = self.mutable.lock();
+        if let Some(peer) = &mutable.peer {
+            peer.mutable.lock().peer = None;
+        }
+    }
+
     fn add_listener(&self, listener: Listener) -> Result<(), ErrorCode> {
         self.mutable.lock().listeners.add_listener(listener)?;
         Ok(())

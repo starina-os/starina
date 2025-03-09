@@ -73,6 +73,7 @@ impl Deref for AnyHandle {
     }
 }
 pub trait Handleable: Any + Send + Sync {
+    fn close(&self);
     fn add_listener(&self, listener: Listener) -> Result<(), ErrorCode>;
     fn remove_listener(&self, poll: &Poll) -> Result<(), ErrorCode>;
     fn readiness(&self) -> Result<Readiness, ErrorCode>;
@@ -124,5 +125,11 @@ impl HandleTable {
 
     pub fn remove(&mut self, handle: HandleId) -> Option<AnyHandle> {
         self.handles.remove(&handle)
+    }
+
+    pub fn close(&mut self, handle: HandleId) -> Result<(), ErrorCode> {
+        let handle = self.handles.remove(&handle).ok_or(ErrorCode::NotFound)?;
+        handle.close();
+        Ok(())
     }
 }
