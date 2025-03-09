@@ -47,6 +47,7 @@ where
     F: FnOnce() -> R,
 {
     unsafe {
+        use core::arch::asm;
         #[cfg(target_arch = "riscv64")]
         asm!("csrrw tp, sscratch, tp");
         let ret = f();
