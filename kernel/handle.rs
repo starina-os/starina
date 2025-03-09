@@ -6,7 +6,6 @@ use starina::handle::HandleId;
 use starina::handle::HandleRights;
 use starina::poll::Readiness;
 
-use crate::channel::Channel;
 use crate::poll::Listener;
 use crate::poll::Poll;
 use crate::refcount::SharedRef;
@@ -53,67 +52,32 @@ impl<T: Handleable + ?Sized> Clone for Handle<T> {
 }
 
 #[derive(Clone)]
-pub enum AnyHandle {
-    Channel(Handle<Channel>),
-    Poll(Handle<Poll>),
-}
+pub struct AnyHandle(Handle<dyn Handleable>);
 
 impl AnyHandle {
-    pub fn into_channel(self) -> Option<Handle<Channel>> {
-        match self {
-            AnyHandle::Channel(h) => Some(h),
-            _ => None,
-        }
-    }
-
-    pub fn into_poll(self) -> Option<Handle<Poll>> {
-        match self {
-            AnyHandle::Poll(h) => Some(h),
-            _ => None,
-        }
-    }
-
-    pub fn close(&self) {
-        match self {
-            AnyHandle::Channel(h) => h.close(),
-            AnyHandle::Poll(h) => h.close(),
-        }
-    }
-
-    pub fn add_listener(&self, listener: Listener) -> Result<(), ErrorCode> {
-        match self {
-            AnyHandle::Channel(h) => h.add_listener(listener),
-            AnyHandle::Poll(h) => h.add_listener(listener),
-        }
-    }
-
-    pub fn remove_listener(&self, poll: &Poll) -> Result<(), ErrorCode> {
-        match self {
-            AnyHandle::Channel(h) => h.remove_listener(poll),
-            AnyHandle::Poll(h) => h.remove_listener(poll),
-        }
-    }
-
-    pub fn readiness(&self) -> Result<Readiness, ErrorCode> {
-        match self {
-            AnyHandle::Channel(h) => h.readiness(),
-            AnyHandle::Poll(h) => h.readiness(),
-        }
+    pub fn downcast<T: Handleable>(self) -> Option<Handle<T>> {
+        let object = self.0.object.downcast().ok()?;
+        let rights = self.0.rights;
+        Some(Handle { object, rights })
     }
 }
 
-impl From<Handle<Channel>> for AnyHandle {
-    fn from(h: Handle<Channel>) -> Self {
-        AnyHandle::Channel(h)
+impl<T: Handleable> From<Handle<T>> for AnyHandle {
+    fn from(h: Handle<T>) -> AnyHandle {
+        Self(Handle {
+            object: h.object, // upcasting happens here (thanks to CoerceUnsized)
+            rights: h.rights,
+        })
     }
 }
 
-impl From<Handle<Poll>> for AnyHandle {
-    fn from(h: Handle<Poll>) -> Self {
-        AnyHandle::Poll(h)
+impl Deref for AnyHandle {
+    type Target = dyn Handleable;
+
+    fn deref(&self) -> &Self::Target {
+        &**self.0
     }
 }
-
 pub trait Handleable: Any + Send + Sync {
     fn close(&self);
     fn add_listener(&self, listener: Listener) -> Result<(), ErrorCode>;
@@ -161,15 +125,9 @@ impl HandleTable {
             .ok_or(ErrorCode::NotFound)
     }
 
-    pub fn get_as_channel(&self, handle: HandleId) -> Result<Handle<Channel>, ErrorCode> {
+    pub fn get<T: Handleable>(&self, handle: HandleId) -> Result<Handle<T>, ErrorCode> {
         let any_handle = self.get_any(handle)?;
-        let handle = any_handle.into_channel().ok_or(ErrorCode::UnexpectedType)?;
-        Ok(handle)
-    }
-
-    pub fn get_as_poll(&self, handle: HandleId) -> Result<Handle<Poll>, ErrorCode> {
-        let any_handle = self.get_any(handle)?;
-        let handle = any_handle.into_poll().ok_or(ErrorCode::UnexpectedType)?;
+        let handle = any_handle.downcast().ok_or(ErrorCode::UnexpectedType)?;
         Ok(handle)
     }
 

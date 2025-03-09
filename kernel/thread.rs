@@ -79,12 +79,13 @@ impl Thread {
 
     pub fn set_state(self: &SharedRef<Thread>, new_state: ThreadState) {
         let mut mutable = self.mutable.lock();
+        let was_blocked = !matches!(mutable.state, ThreadState::Runnable(_));
 
         // Update the thread's state.
         mutable.state = new_state;
 
         // If the thread is now runnable, push it to the scheduler.
-        if matches!(mutable.state, ThreadState::Runnable(_)) {
+        if was_blocked && matches!(mutable.state, ThreadState::Runnable(_)) {
             GLOBAL_SCHEDULER.push(self.clone());
         }
     }

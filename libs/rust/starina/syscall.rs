@@ -12,6 +12,7 @@ pub enum SyscallNumber {
     PollWait = 3,
     ChannelSend = 4,
     ChannelRecv = 5,
+    ThreadYield = 6,
 }
 
 pub struct InKernelSyscallTable {

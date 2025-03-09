@@ -123,9 +123,8 @@ impl<T: ?Sized> Drop for SharedRef<T> {
 }
 
 impl<T: ?Sized> Clone for SharedRef<T> {
+    #[track_caller]
     fn clone(&self) -> Self {
-        debug_assert!(self.inner().counter.load(Ordering::Relaxed) > 0);
-
         // Increment the reference count.
         //
         // Theoretically, the counter can overflow, but it's not a problem
@@ -158,6 +157,21 @@ where
         f.debug_tuple("SharedRef")
             .field(&self.inner().value)
             .finish()
+    }
+}
+
+impl SharedRef<dyn Handleable> {
+    pub fn downcast<T>(self) -> Result<SharedRef<T>, Self>
+    where
+        T: Handleable,
+    {
+        if <dyn Any>::is::<T>(&self.inner().value) {
+            let ptr = self.ptr.cast();
+            mem::forget(self);
+            Ok(SharedRef { ptr })
+        } else {
+            Err(self)
+        }
     }
 }
 

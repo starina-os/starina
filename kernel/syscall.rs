@@ -41,7 +41,7 @@ pub enum BlockableSyscallResult<T: Into<RetVal>> {
 }
 
 fn thread_yield_trampoline() {
-    enter_kernelland(123, 0, 0, 0, 0, 0);
+    enter_kernelland(0, 0, 0, 0, 0, SyscallNumber::ThreadYield as isize);
 }
 
 fn kernel_scope<F, R>(f: F) -> R
@@ -91,7 +91,7 @@ fn poll_add(
         "poll_add: poll={:?}, object={:?}, interests={:?}",
         poll, object, interests
     );
-    let poll = handles.get_as_poll(poll)?;
+    let poll = handles.get::<Poll>(poll)?;
     let object_handle = handles.get_any(object)?;
 
     if !poll.is_capable(HandleRights::WRITE) {
@@ -116,7 +116,7 @@ fn poll_wait_trampoline(poll: HandleId) -> Result<(HandleId, Readiness), ErrorCo
 
 fn poll_wait(current: &SharedRef<Thread>, poll: HandleId) -> SyscallResult {
     let handles = current.process().handles().lock();
-    let poll = handles.get_as_poll(poll)?;
+    let poll = handles.get::<Poll>(poll)?;
 
     if !poll.is_capable(HandleRights::POLL) {
         return Err(ErrorCode::NotAllowed);
@@ -152,7 +152,7 @@ fn channel_send(
     handles: *const HandleId,
 ) -> Result<(), ErrorCode> {
     let mut handle_table = current.process().handles().lock();
-    let ch = handle_table.get_as_channel(ch)?;
+    let ch = handle_table.get::<Channel>(ch)?;
 
     if !ch.is_capable(HandleRights::WRITE) {
         return Err(ErrorCode::NotAllowed);
@@ -187,7 +187,7 @@ fn channel_recv(
     handles: *mut HandleId,
 ) -> Result<MessageInfo, ErrorCode> {
     let mut handle_table = current.process().handles().lock();
-    let ch = handle_table.get_as_channel(handle)?;
+    let ch = handle_table.get::<Channel>(handle)?;
 
     if !ch.is_capable(HandleRights::READ) {
         return Err(ErrorCode::NotAllowed);
@@ -303,15 +303,15 @@ pub extern "C" fn syscall_handler(
         a0, a1, a2, a3, a4, a5
     );
 
-    let current = current_thread();
-    let result = do_syscall(a0, a1, a2, a3, a4, a5, &current);
-    let state = match result {
-        Ok(state) => state,
-        Err(err) => ThreadState::Runnable(Some(err.into())),
-    };
-    trace!("done, setting state to {:x?}", state);
-    current.set_state(state);
-    drop(current);
+    {
+        let current = current_thread();
+        let result = do_syscall(a0, a1, a2, a3, a4, a5, &current);
+        let state = match result {
+            Ok(state) => state,
+            Err(err) => ThreadState::Runnable(Some(err.into())),
+        };
+        current.set_state(state);
+    }
 
     switch_thread();
 }
