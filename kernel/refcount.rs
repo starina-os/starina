@@ -98,6 +98,8 @@ impl<T: ?Sized> SharedRef<T> {
 
 impl<T: ?Sized> Drop for SharedRef<T> {
     fn drop(&mut self) {
+        debug_assert!(self.inner().counter.load(Ordering::Relaxed) > 0);
+
         // Release the reference count.
         if self.inner().counter.fetch_sub(1, Ordering::Release) == 1 {
             // The reference counter reached zero. Free the memory.
@@ -117,6 +119,8 @@ impl<T: ?Sized> Drop for SharedRef<T> {
 
 impl<T: ?Sized> Clone for SharedRef<T> {
     fn clone(&self) -> Self {
+        debug_assert!(self.inner().counter.load(Ordering::Relaxed) > 0);
+
         // Increment the reference count.
         //
         // Theoretically, the counter can overflow, but it's not a problem
