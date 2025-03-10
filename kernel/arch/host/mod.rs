@@ -3,7 +3,7 @@
 use std::cell::RefCell;
 use std::io::Write;
 
-use crate::syscall::RetVal;
+use starina::syscall::RetVal;
 
 pub fn percpu_init() {
     todo!()

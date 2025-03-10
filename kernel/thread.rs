@@ -2,6 +2,7 @@ use core::sync::atomic::AtomicUsize;
 use core::sync::atomic::Ordering;
 
 use starina::error::ErrorCode;
+use starina::syscall::RetVal;
 
 use crate::arch;
 use crate::poll::Poll;
@@ -11,7 +12,6 @@ use crate::refcount::SharedRef;
 use crate::scheduler::GLOBAL_SCHEDULER;
 use crate::spinlock::SpinLock;
 use crate::syscall::BlockableSyscallResult;
-use crate::syscall::RetVal;
 
 static NUM_THREADS: AtomicUsize = AtomicUsize::new(0);
 

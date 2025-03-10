@@ -4,8 +4,9 @@ use core::arch::asm;
 use core::arch::naked_asm;
 use core::mem::offset_of;
 
+use starina::syscall::RetVal;
+
 use crate::allocator::GLOBAL_ALLOCATOR;
-use crate::syscall::RetVal;
 
 /// Context of a thread.
 #[derive(Debug, Default)]

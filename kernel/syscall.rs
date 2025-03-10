@@ -6,6 +6,7 @@ use starina::message::MESSAGE_NUM_HANDLES_MAX;
 use starina::message::MessageInfo;
 use starina::poll::Readiness;
 use starina::syscall::InKernelSyscallTable;
+use starina::syscall::RetVal;
 use starina::syscall::SyscallNumber;
 
 use crate::arch::enter_kernelland;
@@ -209,73 +210,6 @@ fn channel_recv(
     };
     let msginfo = ch.recv(&mut handle_table, &mut data, &mut handles)?;
     Ok(msginfo)
-}
-
-#[derive(Debug, Clone, Copy)]
-#[repr(transparent)]
-pub struct RetVal(isize);
-
-impl RetVal {
-    pub const fn new(value: isize) -> RetVal {
-        RetVal(value)
-    }
-
-    pub fn as_isize(&self) -> isize {
-        self.0
-    }
-}
-
-impl<T> From<Result<T, ErrorCode>> for RetVal
-where
-    T: Into<RetVal>,
-{
-    fn from(value: Result<T, ErrorCode>) -> Self {
-        match value {
-            Ok(value) => value.into(),
-            Err(err) => RetVal(err as isize),
-        }
-    }
-}
-
-impl From<(HandleId, Readiness)> for RetVal {
-    fn from(value: (HandleId, Readiness)) -> Self {
-        let handle_raw = value.0.as_raw() as isize;
-        assert!(handle_raw < 0x10000);
-        let readiness = value.1.as_isize();
-        RetVal((readiness << 24) | handle_raw)
-    }
-}
-
-impl From<ErrorCode> for RetVal {
-    fn from(value: ErrorCode) -> Self {
-        RetVal(value as isize)
-    }
-}
-
-impl<T> From<RetVal> for Result<T, ErrorCode>
-where
-    T: From<RetVal>,
-{
-    fn from(value: RetVal) -> Self {
-        if value.0 >= 0 {
-            let value = value.into();
-            Ok(value)
-        } else {
-            let code = unsafe { core::mem::transmute_copy(&value.0) };
-            Err(code)
-        }
-    }
-}
-
-impl From<RetVal> for (HandleId, Readiness) {
-    fn from(value: RetVal) -> Self {
-        let handle_raw = value.0 & 0x00ff_ffff;
-        let readiness = value.0 >> 24;
-        (
-            HandleId::from_raw(handle_raw as i32),
-            Readiness::from_raw(readiness as i8),
-        )
-    }
 }
 
 pub fn do_syscall(
