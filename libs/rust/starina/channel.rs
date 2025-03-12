@@ -167,6 +167,82 @@ pub trait MessageWriter {
     fn write(&self, buffer: &mut MessageBuffer) -> Result<MessageInfo, ErrorCode>;
 }
 
+#[repr(u8)]
+pub enum MessageKind {
+    Connect = 1,
+    Open = 3,
+    OpenReply = 4,
+    StreamData = 5,
+    FramedData = 6,
+}
+
+trait Message {
+    fn kind() -> MessageKind;
+    fn parse_unchecked<'a>(buffer: &'a MessageBuffer) -> Self
+    where
+        Self: 'a;
+}
+
+#[repr(C)]
+pub struct RawOpen {
+    path: [u8; 512],
+}
+
+pub struct Open<'a> {
+    pub path: &'a str,
+}
+
+impl Message for Open<'_> {
+    fn kind() -> MessageKind {
+        MessageKind::Open
+    }
+}
+
+pub struct OpenReply {
+    pub ch: HandleId,
+}
+
+pub enum NewAnyMessage<'a> {
+    Open(Open<'a>),
+}
+
+impl<'a> NewAnyMessage<'a> {
+    pub fn parse<'b>(
+        msginfo: MessageInfo,
+        buffer: &'b MessageBuffer,
+    ) -> Result<NewAnyMessage<'b>, ErrorCode> {
+        let kind = msginfo.kind();
+        match kind {
+            0 => {
+                let raw_path = unsafe { &buffer.data_as_ref::<RawOpen>().path };
+                let path =
+                    core::str::from_utf8(raw_path).map_err(|_| ErrorCode::InvalidMessageData)?;
+                Ok(NewAnyMessage::Open(Open { path }))
+            }
+            _ => Err(ErrorCode::InvalidMessageKind),
+        }
+    }
+}
+
+pub struct OwnedMessage<M: Message> {
+    m: AnyMessage,
+    _pd: core::marker::PhantomData<M>,
+}
+
+impl<M: Message> OwnedMessage<M> {
+    pub fn parse_as(msg: AnyMessage) -> Result<Self, ErrorCode> {
+        let msginfo = msg.msginfo;
+        if msginfo.kind() != M::kind() as usize {
+            return Err(ErrorCode::InvalidMessageKind);
+        }
+
+        Ok(Self {
+            m: msg,
+            _pd: core::marker::PhantomData,
+        })
+    }
+}
+
 pub mod message {
     use super::AnyMessage;
     use super::MessageBuffer;
