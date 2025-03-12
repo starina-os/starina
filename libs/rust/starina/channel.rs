@@ -176,11 +176,15 @@ pub enum MessageKind {
     FramedData = 6,
 }
 
-trait Message: Sized {
+trait Message {
     fn kind() -> MessageKind;
 
-    // Return Self directly, but this would require the lifetime to be the same
-    fn parse_unchecked(buffer: &MessageBuffer) -> Self;
+    // Use GAT to allow the implementor to specify the relationship
+    // between the input lifetime and output lifetime
+    fn parse_unchecked<'b>(buffer: &'b MessageBuffer) -> Self::This<'b>;
+
+    // Generic associated type that can vary based on lifetime
+    type This<'b>;
 }
 
 #[repr(C)]
@@ -197,11 +201,14 @@ impl<'a> Message for Open<'a> {
         MessageKind::Open
     }
 
-    fn parse_unchecked(buffer: &MessageBuffer) -> Self {
+    fn parse_unchecked<'b>(buffer: &'b MessageBuffer) -> Self::This<'b> {
         let raw_path = unsafe { &buffer.data_as_ref::<RawOpen>().path };
         let path = core::str::from_utf8(raw_path).unwrap();
         Open { path }
     }
+
+    // Define the associated type with the lifetime parameter
+    type This<'b> = Open<'b>;
 }
 
 pub struct OpenReply {
