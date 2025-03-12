@@ -21,6 +21,10 @@ pub struct Handle<T: Handleable + ?Sized> {
 }
 
 impl<T: Handleable + ?Sized> Handle<T> {
+    pub fn new(object: SharedRef<T>, rights: HandleRights) -> Handle<T> {
+        Handle { object, rights }
+    }
+
     pub fn into_object(self) -> SharedRef<T> {
         self.object
     }
@@ -51,17 +55,19 @@ impl<T: Handleable + ?Sized> Clone for Handle<T> {
 pub struct AnyHandle(Handle<dyn Handleable>);
 
 impl AnyHandle {
-    pub fn new<T: Handleable>(h: Handle<T>) -> AnyHandle {
-        Self(Handle {
-            object: h.object, // upcasting happens here (thanks to CoerceUnsized)
-            rights: h.rights,
-        })
-    }
-
     pub fn downcast<T: Handleable>(self) -> Option<Handle<T>> {
         let object = self.0.object.downcast().ok()?;
         let rights = self.0.rights;
         Some(Handle { object, rights })
+    }
+}
+
+impl<T: Handleable> From<Handle<T>> for AnyHandle {
+    fn from(h: Handle<T>) -> AnyHandle {
+        Self(Handle {
+            object: h.object, // upcasting happens here (thanks to CoerceUnsized)
+            rights: h.rights,
+        })
     }
 }
 
@@ -92,7 +98,7 @@ impl HandleTable {
         }
     }
 
-    pub fn insert(&mut self, object: AnyHandle) -> Result<HandleId, ErrorCode> {
+    pub fn insert<H: Into<AnyHandle>>(&mut self, object: H) -> Result<HandleId, ErrorCode> {
         if self.handles.len() >= NUM_HANDLES_MAX {
             return Err(ErrorCode::TooManyHandles);
         }
@@ -102,7 +108,7 @@ impl HandleTable {
             .map_err(|_| ErrorCode::OutOfMemory)?;
 
         let handle_id = HandleId::from_raw(self.next_id);
-        self.handles.insert(handle_id, object);
+        self.handles.insert(handle_id, object.into());
         self.next_id += 1;
         Ok(handle_id)
     }
@@ -112,18 +118,20 @@ impl HandleTable {
         exists
     }
 
-    pub fn get<T: Handleable>(&self, handle: HandleId) -> Result<Handle<T>, ErrorCode> {
-        let any_handle = self
-            .handles
+    pub fn get_any(&self, handle: HandleId) -> Result<AnyHandle, ErrorCode> {
+        self.handles
             .get(&handle)
             .cloned()
-            .ok_or(ErrorCode::NotFound)?;
+            .ok_or(ErrorCode::NotFound)
+    }
 
+    pub fn get<T: Handleable>(&self, handle: HandleId) -> Result<Handle<T>, ErrorCode> {
+        let any_handle = self.get_any(handle)?;
         let handle = any_handle.downcast().ok_or(ErrorCode::UnexpectedType)?;
         Ok(handle)
     }
 
-    pub fn remove(&mut self, handle: HandleId) -> Option<AnyHandle> {
+    pub fn take(&mut self, handle: HandleId) -> Option<AnyHandle> {
         self.handles.remove(&handle)
     }
 

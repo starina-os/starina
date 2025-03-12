@@ -1,5 +1,9 @@
+#![allow(unused_variables)]
+
 use std::cell::RefCell;
 use std::io::Write;
+
+use starina::syscall::RetVal;
 
 pub fn percpu_init() {
     todo!()
@@ -21,7 +25,7 @@ pub extern "C" fn enter_kernelland(
     _a3: isize,
     _a4: isize,
     _a5: isize,
-) -> isize {
+) -> RetVal {
     todo!()
 }
 
@@ -42,6 +46,10 @@ impl Thread {
 
     pub fn new_idle() -> Thread {
         Thread {}
+    }
+
+    pub fn set_retval(&mut self, retval: RetVal) {
+        todo!()
     }
 }
 

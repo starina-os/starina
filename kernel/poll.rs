@@ -1,5 +1,6 @@
 use alloc::collections::vec_deque::VecDeque;
 use alloc::vec::Vec;
+use core::fmt;
 use core::hash::Hash;
 
 use hashbrown::HashSet;
@@ -7,11 +8,11 @@ use starina::error::ErrorCode;
 use starina::handle::HandleId;
 use starina::poll::Readiness;
 
-use crate::cpuvar::current_thread;
 use crate::handle::AnyHandle;
 use crate::handle::Handleable;
 use crate::refcount::SharedRef;
 use crate::spinlock::SpinLock;
+use crate::syscall::BlockableSyscallResult;
 use crate::thread::Thread;
 use crate::thread::ThreadState;
 use crate::utils::fxhashmap::FxHashMap;
@@ -119,8 +120,13 @@ impl ListenerSet {
     }
 }
 
+struct Listenee {
+    handle: AnyHandle,
+    interests: Readiness,
+}
+
 struct Mutable {
-    handles: FxHashMap<HandleId, AnyHandle>,
+    listenee: FxHashMap<HandleId, Listenee>,
     ready_handles: UniqueQueue<HandleId>,
     waiters: VecDeque<SharedRef<Thread>>,
 }
@@ -132,7 +138,7 @@ pub struct Poll {
 impl Poll {
     pub fn new() -> Result<SharedRef<Poll>, ErrorCode> {
         let mutable = SharedRef::new(SpinLock::new(Mutable {
-            handles: FxHashMap::new(),
+            listenee: FxHashMap::new(),
             ready_handles: UniqueQueue::new(),
             waiters: VecDeque::new(),
         }))?;
@@ -148,7 +154,7 @@ impl Poll {
         interests: Readiness,
     ) -> Result<(), ErrorCode> {
         let mut mutable = self.mutable.lock();
-        if mutable.handles.contains_key(&id) {
+        if mutable.listenee.contains_key(&id) {
             return Err(ErrorCode::AlreadyExists);
         }
 
@@ -160,60 +166,73 @@ impl Poll {
         })?;
 
         mutable
-            .handles
+            .listenee
             .try_reserve(1)
             .map_err(|_| ErrorCode::OutOfMemory)?;
 
-        mutable.handles.insert(id, handle.clone());
+        mutable.listenee.insert(
+            id,
+            Listenee {
+                handle: handle.clone(),
+                interests,
+            },
+        );
 
         let readiness = handle.readiness()?;
-
-        // TODO: Check if we're interested in the event.
-        // Are there any waiters waiting for an event?
-        if let Some(waiter) = mutable.waiters.pop_front() {
-            waiter.wake();
-        } else {
-            // No threads are ready to receive the event. Deliver it later once
-            // a thread enters the wait state.
-            if mutable.ready_handles.enqueue(id).is_err() {
-                debug_warn!("failed to enqueue a ready handle due to out-of-memory");
+        if readiness.contains(interests) {
+            // Are there any waiters waiting for an event?
+            if let Some(waiter) = mutable.waiters.pop_front() {
+                waiter.wake();
+            } else {
+                // No threads are ready to receive the event. Deliver it later once
+                // a thread enters the wait state.
+                if mutable.ready_handles.enqueue(id).is_err() {
+                    debug_warn!("failed to enqueue a ready handle due to out-of-memory");
+                }
             }
         }
 
         Ok(())
     }
 
-    pub fn try_wait(self: &SharedRef<Poll>) -> Option<Result<(HandleId, Readiness), ErrorCode>> {
+    pub fn try_wait(
+        self: &SharedRef<Poll>,
+        current: &SharedRef<Thread>,
+    ) -> BlockableSyscallResult<(HandleId, Readiness)> {
         let mut mutable = self.mutable.lock();
 
         // Check if there are any ready events.
         while let Some(id) = mutable.ready_handles.pop() {
-            let Some(handle) = mutable.handles.get_mut(&id) else {
+            let Some(listenee) = mutable.listenee.get_mut(&id) else {
                 // The handle was removed from the poll. Try the next one.
                 continue;
             };
 
-            // TODO: Check if we're interested in the event.
+            let readiness = match listenee.handle.readiness() {
+                Ok(readiness) => readiness,
+                Err(e) => {
+                    debug_warn!("failed to get readiness for handle: {:?}", e);
+                    return BlockableSyscallResult::Done(Err(e));
+                }
+            };
 
-            return Some(match handle.readiness() {
-                Ok(readiness) => Ok((id, readiness)),
-                Err(err) => Err(err),
-            });
+            let interested = listenee.interests & readiness;
+            if !interested.is_empty() {
+                return BlockableSyscallResult::Done(Ok((id, interested)));
+            }
         }
 
         // No events are ready. Block the current thread.
         //
         // WARNING: Thread::switch will never return. Clean up all resources
         //          before calling it!
-        let current_thread = current_thread();
 
         if mutable.waiters.try_reserve(1).is_err() {
-            return Some(Err(ErrorCode::OutOfMemory));
+            return BlockableSyscallResult::Done(Err(ErrorCode::OutOfMemory));
         }
 
-        mutable.waiters.push_back(current_thread.clone());
-        current_thread.set_state(ThreadState::BlockedByPoll(self.clone()));
-        None
+        mutable.waiters.push_back(current.clone());
+        BlockableSyscallResult::Blocked(ThreadState::BlockedByPoll(self.clone()))
     }
 }
 
@@ -222,11 +241,11 @@ impl Handleable for Poll {
         // Nothing to do.
     }
 
-    fn add_listener(&self, listener: Listener) -> Result<(), ErrorCode> {
+    fn add_listener(&self, _listener: Listener) -> Result<(), ErrorCode> {
         Err(ErrorCode::NotSupported)
     }
 
-    fn remove_listener(&self, poll: &Poll) -> Result<(), ErrorCode> {
+    fn remove_listener(&self, _poll: &Poll) -> Result<(), ErrorCode> {
         Err(ErrorCode::NotSupported)
     }
 
@@ -235,16 +254,23 @@ impl Handleable for Poll {
     }
 }
 
+impl fmt::Debug for Poll {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Poll").finish()
+    }
+}
+
 impl Drop for Poll {
     fn drop(&mut self) {
         let mut mutable = self.mutable.lock();
         for waiter in mutable.waiters.drain(..) {
-            todo!("wake up the waiter and let it know that the poll is closed");
-            // waiter.wake(Continuation::FailedWith(ErrorCode::Closed));
+            waiter.set_state(ThreadState::Runnable(Some(ErrorCode::Closed.into())));
         }
 
-        for handle in mutable.handles.values() {
-            handle.remove_listener(self);
+        for listenee in mutable.listenee.values_mut() {
+            if let Err(err) = listenee.handle.remove_listener(self) {
+                debug_warn!("failed to remove listener from handle: {:?}", err);
+            }
         }
     }
 }
