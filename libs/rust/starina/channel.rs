@@ -178,9 +178,13 @@ pub enum MessageKind {
 
 trait Message {
     fn kind() -> MessageKind;
-    fn parse_unchecked<'a>(buffer: &'a MessageBuffer) -> Self
-    where
-        Self: 'a;
+
+    // Use GAT to allow the implementor to specify the relationship
+    // between the input lifetime and output lifetime
+    fn parse_unchecked<'b>(buffer: &'b MessageBuffer) -> Self::This<'b>;
+
+    // Generic associated type that can vary based on lifetime
+    type This<'b>;
 }
 
 #[repr(C)]
@@ -192,10 +196,19 @@ pub struct Open<'a> {
     pub path: &'a str,
 }
 
-impl Message for Open<'_> {
+impl<'a> Message for Open<'a> {
     fn kind() -> MessageKind {
         MessageKind::Open
     }
+
+    fn parse_unchecked<'b>(buffer: &'b MessageBuffer) -> Self::This<'b> {
+        let raw_path = unsafe { &buffer.data_as_ref::<RawOpen>().path };
+        let path = core::str::from_utf8(raw_path).unwrap();
+        Open { path }
+    }
+
+    // Define the associated type with the lifetime parameter
+    type This<'b> = Open<'b>;
 }
 
 pub struct OpenReply {
