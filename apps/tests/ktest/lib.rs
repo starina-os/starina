@@ -2,10 +2,10 @@
 use starina::app::App;
 use starina::app::Context;
 use starina::app::Dispatcher;
-use starina::channel::userspace::AnyMessage;
-use starina::channel::userspace::Channel;
-use starina::channel::userspace::message::PingReader;
-use starina::channel::userspace::message::PingWriter;
+use starina::channel::AnyMessage;
+use starina::channel::Channel;
+use starina::channel::message::PingReader;
+use starina::channel::message::PingWriter;
 use starina::info;
 
 pub struct Main {}

@@ -15,5 +15,6 @@ spin = "0.9.8"
 
 kernel = { path = "kernel" }
 starina = { path = "libs/rust/starina" }
+starina_types = { path = "libs/rust/starina_types" }
 
 ktest = { path = "apps/tests/ktest" }

@@ -11,8 +11,7 @@ path = "lib.rs"
 [dependencies]
 hashbrown = { workspace = true }
 spin = { workspace = true }
+starina_types = { workspace = true }
 
 [features]
-default = ["userspace"]
 in-kernel = []
-userspace = []

@@ -1,5 +1,5 @@
 [package]
-name = "ktest"
+name = "starina_types"
 publish = false
 version = { workspace = true }
 authors = { workspace = true }
@@ -9,4 +9,5 @@ edition = { workspace = true }
 path = "lib.rs"
 
 [dependencies]
-starina = { workspace = true }
+
+[features]

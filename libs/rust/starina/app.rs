@@ -2,15 +2,15 @@ use alloc::sync::Arc;
 
 use hashbrown::HashMap;
 
-use crate::channel::userspace::AnyMessage;
-use crate::channel::userspace::Channel;
-use crate::channel::userspace::ChannelReceiver;
-use crate::channel::userspace::ChannelSender;
+use crate::channel::AnyMessage;
+use crate::channel::Channel;
+use crate::channel::ChannelReceiver;
+use crate::channel::ChannelSender;
 use crate::error::ErrorCode;
 use crate::handle::HandleId;
 use crate::handle::Handleable;
+use crate::poll::Poll;
 use crate::poll::Readiness;
-use crate::poll::userspace::Poll;
 
 pub trait App: Send + Sync {
     fn init(dispatcher: &Dispatcher, ch: Channel) -> Self

@@ -98,4 +98,9 @@ version = "0.0.0"
 dependencies = [
  "hashbrown",
  "spin",
+ "starina_types",
 ]
+
+[[package]]
+name = "starina_types"
+version = "0.0.0"
