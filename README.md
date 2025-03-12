@@ -33,3 +33,11 @@ This year, we focus on cloud computing domain, where Starina will be used as a t
 ## Is it Linux or POSIX compatible?
 
 No. Starina provides completely original APIs and fresh new development experiences. However, to make it easier to adapt to Starina, We plan to implement a [WSL2-like](https://learn.microsoft.com/en-us/windows/wsl/about#what-is-wsl-2) seamless Linux environment based on real Linux microVM + lightweight integration layer (akin to [LWK](https://en.wikipedia.org/wiki/Lightweight_kernel_operating_system) in [supercomputing](https://link.springer.com/book/10.1007/978-981-13-6624-6)).
+
+## Why Rust?
+
+We (and perhaps you too) love to debate the best text editor and programming language, sometimes very seriously and passionately.
+
+Starina is entirely written in Rust because it is *"C++ with seatbelts"*, which is suitable for building a robust yet high-performance OS. Seatbelts are sometimes annoying indeed, but we know it saved us from countless bugs by enforcing good practices. Notably, I don't need address sanitizer when writing Rust. That's a huge factor for me.
+
+That said, it's crystal clear that Rust (or any other language) is not the best language for everything. That's why Starina is designed to be language-agnostic, and I plan to add seamless support for other languages such as TypeScript. What if you can prototype OS components such as device drivers, as if you are writing a Web app? Isn't that cool?
