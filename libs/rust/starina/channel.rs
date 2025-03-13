@@ -177,14 +177,9 @@ pub enum MessageKind {
 }
 
 trait Message {
+    type This<'a>;
     fn kind() -> MessageKind;
-
-    // Use GAT to allow the implementor to specify the relationship
-    // between the input lifetime and output lifetime
-    fn parse_unchecked<'b>(buffer: &'b MessageBuffer) -> Self::This<'b>;
-
-    // Generic associated type that can vary based on lifetime
-    type This<'b>;
+    fn parse_unchecked(buffer: &MessageBuffer) -> Self::This<'_>;
 }
 
 #[repr(C)]
@@ -196,19 +191,18 @@ pub struct Open<'a> {
     pub path: &'a str,
 }
 
-impl<'a> Message for Open<'a> {
+impl Message for Open<'_> {
+    type This<'a> = Open<'a>;
+
     fn kind() -> MessageKind {
         MessageKind::Open
     }
 
-    fn parse_unchecked<'b>(buffer: &'b MessageBuffer) -> Self::This<'b> {
+    fn parse_unchecked(buffer: &MessageBuffer) -> Self::This<'_> {
         let raw_path = unsafe { &buffer.data_as_ref::<RawOpen>().path };
         let path = core::str::from_utf8(raw_path).unwrap();
         Open { path }
     }
-
-    // Define the associated type with the lifetime parameter
-    type This<'b> = Open<'b>;
 }
 
 pub struct OpenReply {
@@ -227,10 +221,8 @@ impl<'a> NewAnyMessage<'a> {
         let kind = msginfo.kind();
         match kind {
             0 => {
-                let raw_path = unsafe { &buffer.data_as_ref::<RawOpen>().path };
-                let path =
-                    core::str::from_utf8(raw_path).map_err(|_| ErrorCode::InvalidMessageData)?;
-                Ok(NewAnyMessage::Open(Open { path }))
+                let open = Open::parse_unchecked(buffer);
+                Ok(NewAnyMessage::Open(open))
             }
             _ => Err(ErrorCode::InvalidMessageKind),
         }
@@ -243,16 +235,9 @@ pub struct OwnedMessage<M: Message> {
 }
 
 impl<M: Message> OwnedMessage<M> {
-    pub fn parse_as(msg: AnyMessage) -> Result<Self, ErrorCode> {
-        let msginfo = msg.msginfo;
-        if msginfo.kind() != M::kind() as usize {
-            return Err(ErrorCode::InvalidMessageKind);
-        }
-
-        Ok(Self {
-            m: msg,
-            _pd: core::marker::PhantomData,
-        })
+    pub fn parse(&self) -> Result<M::This<'_>, ErrorCode> {
+        let parsed = M::parse_unchecked(&self.m.buffer);
+        Ok(parsed)
     }
 }
 
