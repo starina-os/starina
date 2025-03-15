@@ -58,7 +58,18 @@ pub trait Messageable {
     type This<'a>;
     fn kind() -> MessageKind;
     fn write(self, buffer: &mut MessageBuffer) -> Result<MessageInfo, ErrorCode>;
-    fn is_valid(msginfo: MessageInfo, buffer: &MessageBuffer) -> bool;
+    /// # Safety
+    ///
+    /// This method does not check the message kind. It's caller's
+    /// responsibility to ensure the message kind is correct.
+    unsafe fn is_valid(msginfo: MessageInfo, buffer: &MessageBuffer) -> bool;
+    /// # Safety
+    ///
+    /// This method does not check the validity of the message. It's caller's
+    /// responsibility to make sure:
+    ///
+    /// - The message kind is correct.
+    /// - The validity of the message is checked by `is_valid`.
     unsafe fn cast_unchecked(msginfo: MessageInfo, buffer: &MessageBuffer) -> Self::This<'_>;
 }
 
@@ -80,10 +91,6 @@ impl Messageable for Open<'_> {
     }
 
     fn is_valid(msginfo: MessageInfo, buffer: &MessageBuffer) -> bool {
-        if msginfo.kind() != MessageKind::Open as usize {
-            return false;
-        }
-
         if msginfo.data_len() > URI_LEN_MAX {
             return false;
         }

@@ -80,7 +80,7 @@ impl<M: Messageable> Message<M> {
     }
 }
 
-impl Message<Open<'_>> {
+impl<'a> Message<Open<'a>> {
     pub fn uri(&self) -> &str {
         // SAFETY: The validity of the message is checked in `Message::new`.
         unsafe { Open::cast_unchecked(self.msginfo, &self.buffer).uri }
