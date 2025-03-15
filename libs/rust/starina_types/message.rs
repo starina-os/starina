@@ -1,5 +1,3 @@
-use core::marker::PhantomData;
-
 use crate::error::ErrorCode;
 use crate::handle::HandleId;
 
@@ -118,32 +116,5 @@ impl Messageable for Open<'_> {
             self.uri.len() as u16,
             0,
         ))
-    }
-}
-
-pub struct Message<M: Messageable> {
-    msginfo: MessageInfo,
-    buffer: MessageBuffer,
-    _pd: PhantomData<M>,
-}
-
-impl<M: Messageable> Message<M> {
-    pub fn new(msginfo: MessageInfo, buffer: MessageBuffer) -> Result<Message<M>, ErrorCode> {
-        if !M::is_valid(msginfo, &buffer) {
-            return Err(ErrorCode::InvalidMessage);
-        }
-
-        Ok(Message {
-            msginfo,
-            buffer,
-            _pd: PhantomData,
-        })
-    }
-}
-
-impl Message<Open<'_>> {
-    pub fn path(&self) -> &str {
-        // SAFETY: The validity of the message is checked in `Message::new`.
-        unsafe { Open::cast(self.msginfo, &self.buffer).uri }
     }
 }

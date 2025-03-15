@@ -1,7 +1,9 @@
 use alloc::boxed::Box;
+use core::marker::PhantomData;
 use core::ops::Deref;
 use core::ops::DerefMut;
 
+use starina_types::error::ErrorCode;
 use starina_types::handle::HandleId;
 pub use starina_types::message::*;
 
@@ -58,13 +60,44 @@ impl Drop for OwnedMessageBuffer {
     }
 }
 
-pub struct AnyMessage {
+pub struct Message<M: Messageable> {
     msginfo: MessageInfo,
     buffer: OwnedMessageBuffer,
+    _pd: PhantomData<M>,
+}
+
+impl<M: Messageable> Message<M> {
+    pub fn new(msginfo: MessageInfo, buffer: OwnedMessageBuffer) -> Result<Message<M>, ErrorCode> {
+        if !M::is_valid(msginfo, &buffer) {
+            return Err(ErrorCode::InvalidMessage);
+        }
+
+        Ok(Message {
+            msginfo,
+            buffer,
+            _pd: PhantomData,
+        })
+    }
+}
+
+impl Message<Open<'_>> {
+    pub fn uri(&self) -> &str {
+        // SAFETY: The validity of the message is checked in `Message::new`.
+        unsafe { Open::cast(self.msginfo, &self.buffer).uri }
+    }
+}
+
+pub struct AnyMessage {
+    pub msginfo: MessageInfo,
+    pub buffer: OwnedMessageBuffer,
 }
 
 impl AnyMessage {
     pub unsafe fn new(buffer: OwnedMessageBuffer, msginfo: MessageInfo) -> Self {
         Self { buffer, msginfo }
+    }
+
+    pub fn as_open<'a>(self) -> Result<Message<Open<'a>>, ErrorCode> {
+        Message::new(self.msginfo, self.buffer)
     }
 }

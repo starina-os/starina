@@ -22,12 +22,8 @@ impl Mainloop for App {
     }
 
     fn on_message(&self, ctx: &Context, msg: AnyMessage) {
-        let open = match msg {
-            AnyMessage::Open(open) => open,
-            _ => return,
-        };
-
-        info!("ktest: ch={:?}: open={}", ctx.sender.handle(), open.uri);
+        let open = msg.as_open().unwrap();
+        info!("ktest: ch={:?}: open={}", ctx.sender.handle(), open.uri());
         ctx.sender.send(Open { uri: "pong" }).unwrap();
     }
 }
