@@ -1,3 +1,5 @@
+use core::marker::PhantomData;
+
 use crate::error::ErrorCode;
 use crate::handle::HandleId;
 
@@ -57,9 +59,15 @@ pub enum MessageKind {
 pub trait Messageable {
     type This<'a>;
     fn kind() -> MessageKind;
-    fn is_valid(&self, buffer: &MessageBuffer) -> bool;
-    unsafe fn cast(buffer: &MessageBuffer) -> Self::This<'_>;
-    fn write(&self, buffer: &mut MessageBuffer) -> Result<MessageInfo, ErrorCode>;
+    fn is_valid(msginfo: MessageInfo, buffer: &MessageBuffer) -> bool;
+    unsafe fn cast(msginfo: MessageInfo, buffer: &MessageBuffer) -> Self::This<'_>;
+    fn write(self, buffer: &mut MessageBuffer) -> Result<MessageInfo, ErrorCode>;
+}
+
+pub const URI_LEN_MAX: usize = 1024;
+
+pub struct RawOpen {
+    pub uri: [u8; URI_LEN_MAX],
 }
 
 pub struct Open<'a> {
@@ -73,15 +81,69 @@ impl Messageable for Open<'_> {
         MessageKind::Open
     }
 
-    fn is_valid(&self, buffer: &MessageBuffer) -> bool {
-        todo!()
+    fn is_valid(msginfo: MessageInfo, buffer: &MessageBuffer) -> bool {
+        if msginfo.kind() != MessageKind::Open as usize {
+            return false;
+        }
+
+        if msginfo.data_len() > URI_LEN_MAX {
+            return false;
+        }
+
+        let raw = unsafe { buffer.data_as_ref::<RawOpen>() };
+        if core::str::from_utf8(&raw.uri[..msginfo.data_len()]).is_err() {
+            return false;
+        }
+
+        true
     }
 
-    unsafe fn cast(buffer: &MessageBuffer) -> Self::This<'_> {
-        todo!()
+    unsafe fn cast(msginfo: MessageInfo, buffer: &MessageBuffer) -> Self::This<'_> {
+        unsafe {
+            let raw = buffer.data_as_ref::<RawOpen>();
+            let uri = core::str::from_utf8_unchecked(&raw.uri[..msginfo.data_len()]);
+            Open { uri }
+        }
     }
 
-    fn write(&self, buffer: &mut MessageBuffer) -> Result<MessageInfo, ErrorCode> {
-        todo!()
+    fn write(self, buffer: &mut MessageBuffer) -> Result<MessageInfo, ErrorCode> {
+        let raw = unsafe { buffer.data_as_mut::<RawOpen>() };
+        if self.uri.len() > URI_LEN_MAX {
+            return Err(ErrorCode::TooLongUri);
+        }
+
+        raw.uri[..self.uri.len()].copy_from_slice(self.uri.as_bytes());
+        Ok(MessageInfo::new(
+            MessageKind::Open as i32,
+            self.uri.len() as u16,
+            0,
+        ))
+    }
+}
+
+pub struct Message<M: Messageable> {
+    msginfo: MessageInfo,
+    buffer: MessageBuffer,
+    _pd: PhantomData<M>,
+}
+
+impl<M: Messageable> Message<M> {
+    pub fn new(msginfo: MessageInfo, buffer: MessageBuffer) -> Result<Message<M>, ErrorCode> {
+        if !M::is_valid(msginfo, &buffer) {
+            return Err(ErrorCode::InvalidMessage);
+        }
+
+        Ok(Message {
+            msginfo,
+            buffer,
+            _pd: PhantomData,
+        })
+    }
+}
+
+impl Message<Open<'_>> {
+    pub fn path(&self) -> &str {
+        // SAFETY: The validity of the message is checked in `Message::new`.
+        unsafe { Open::cast(self.msginfo, &self.buffer).uri }
     }
 }
