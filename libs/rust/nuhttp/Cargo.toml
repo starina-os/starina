@@ -10,3 +10,4 @@ path = "lib.rs"
 
 [dependencies]
 hashbrown = { workspace = true }
+serde_json = { version = "1", features = ["preserve_order"] }
