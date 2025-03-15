@@ -1,22 +1,25 @@
 #![no_std]
-use starina::app::App;
+
+pub mod autogen;
+
 use starina::app::Context;
 use starina::app::Dispatcher;
+use starina::app::Mainloop;
 use starina::channel::AnyMessage;
 use starina::channel::Channel;
 use starina::channel::message::PingReader;
 use starina::channel::message::PingWriter;
 use starina::info;
 
-pub struct Main {}
+pub struct App {}
 
-impl App for Main {
+impl Mainloop for App {
     fn init(dispatcher: &Dispatcher, ch: Channel) -> Self {
         info!("Hello from ktest!");
         ch.send(PingWriter { value: 0 }).unwrap();
         dispatcher.add_channel(ch).unwrap();
         info!("added channel");
-        Main {}
+        App {}
     }
 
     fn on_message(&self, ctx: &Context, msg: AnyMessage) {
@@ -28,15 +31,4 @@ impl App for Main {
             })
             .unwrap();
     }
-}
-
-// TODO: Remove this.
-pub fn app_main(handle_id: isize) {
-    use starina::handle::HandleId;
-    use starina::handle::OwnedHandle;
-
-    let handle_id = HandleId::from_raw(handle_id.try_into().unwrap());
-    let handle = OwnedHandle::from_raw(handle_id);
-    let ch = Channel::from_handle(handle);
-    starina::app::app_loop::<Main>(ch);
 }
