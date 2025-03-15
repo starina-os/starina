@@ -1,3 +1,6 @@
+use crate::error::ErrorCode;
+use crate::handle::HandleId;
+
 pub const MESSAGE_NUM_HANDLES_MAX: usize = 3;
 pub const MESSAGE_DATA_LEN_MAX: usize = 4 * 1024;
 
@@ -22,5 +25,63 @@ impl MessageInfo {
 
     pub fn num_handles(self) -> usize {
         ((self.0 >> 16) & 0b11) as usize
+    }
+}
+
+pub struct MessageBuffer {
+    pub data: [u8; MESSAGE_DATA_LEN_MAX],
+    pub handles: [HandleId; MESSAGE_NUM_HANDLES_MAX],
+}
+
+impl MessageBuffer {
+    pub const unsafe fn data_as_ref<T>(&self) -> &T {
+        debug_assert!(size_of::<T>() <= MESSAGE_DATA_LEN_MAX);
+        unsafe { &*(self.data.as_ptr() as *const T) }
+    }
+
+    pub const unsafe fn data_as_mut<T>(&mut self) -> &mut T {
+        debug_assert!(size_of::<T>() <= MESSAGE_DATA_LEN_MAX);
+        unsafe { &mut *(self.data.as_mut_ptr() as *mut T) }
+    }
+}
+
+#[repr(u8)]
+pub enum MessageKind {
+    Connect = 1,
+    Open = 3,
+    OpenReply = 4,
+    StreamData = 5,
+    FramedData = 6,
+}
+
+pub trait Messageable {
+    type This<'a>;
+    fn kind() -> MessageKind;
+    fn is_valid(&self, buffer: &MessageBuffer) -> bool;
+    unsafe fn cast(buffer: &MessageBuffer) -> Self::This<'_>;
+    fn write(&self, buffer: &mut MessageBuffer) -> Result<MessageInfo, ErrorCode>;
+}
+
+pub struct Open<'a> {
+    pub uri: &'a str,
+}
+
+impl Messageable for Open<'_> {
+    type This<'a> = Open<'a>;
+
+    fn kind() -> MessageKind {
+        MessageKind::Open
+    }
+
+    fn is_valid(&self, buffer: &MessageBuffer) -> bool {
+        todo!()
+    }
+
+    unsafe fn cast(buffer: &MessageBuffer) -> Self::This<'_> {
+        todo!()
+    }
+
+    fn write(&self, buffer: &mut MessageBuffer) -> Result<MessageInfo, ErrorCode> {
+        todo!()
     }
 }

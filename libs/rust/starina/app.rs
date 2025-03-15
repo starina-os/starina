@@ -2,13 +2,13 @@ use alloc::sync::Arc;
 
 use hashbrown::HashMap;
 
-use crate::channel::AnyMessage;
 use crate::channel::Channel;
 use crate::channel::ChannelReceiver;
 use crate::channel::ChannelSender;
 use crate::error::ErrorCode;
 use crate::handle::HandleId;
 use crate::handle::Handleable;
+use crate::message::AnyMessage;
 use crate::poll::Poll;
 use crate::poll::Readiness;
 
