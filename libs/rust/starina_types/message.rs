@@ -90,7 +90,7 @@ impl Messageable for Open<'_> {
         MessageKind::Open
     }
 
-    fn is_valid(msginfo: MessageInfo, buffer: &MessageBuffer) -> bool {
+    unsafe fn is_valid(msginfo: MessageInfo, buffer: &MessageBuffer) -> bool {
         if msginfo.data_len() > URI_LEN_MAX {
             return false;
         }

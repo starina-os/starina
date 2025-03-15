@@ -68,7 +68,7 @@ pub struct Message<M: Messageable> {
 
 impl<M: Messageable> Message<M> {
     pub fn new(msginfo: MessageInfo, buffer: OwnedMessageBuffer) -> Result<Message<M>, ErrorCode> {
-        if !M::is_valid(msginfo, &buffer) {
+        if !unsafe { M::is_valid(msginfo, &buffer) } {
             return Err(ErrorCode::InvalidMessage);
         }
 
