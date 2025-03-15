@@ -57,9 +57,9 @@ pub enum MessageKind {
 pub trait Messageable {
     type This<'a>;
     fn kind() -> MessageKind;
-    fn is_valid(msginfo: MessageInfo, buffer: &MessageBuffer) -> bool;
-    unsafe fn cast(msginfo: MessageInfo, buffer: &MessageBuffer) -> Self::This<'_>;
     fn write(self, buffer: &mut MessageBuffer) -> Result<MessageInfo, ErrorCode>;
+    fn is_valid(msginfo: MessageInfo, buffer: &MessageBuffer) -> bool;
+    unsafe fn cast_unchecked(msginfo: MessageInfo, buffer: &MessageBuffer) -> Self::This<'_>;
 }
 
 pub const URI_LEN_MAX: usize = 1024;
@@ -96,7 +96,7 @@ impl Messageable for Open<'_> {
         true
     }
 
-    unsafe fn cast(msginfo: MessageInfo, buffer: &MessageBuffer) -> Self::This<'_> {
+    unsafe fn cast_unchecked(msginfo: MessageInfo, buffer: &MessageBuffer) -> Self::This<'_> {
         unsafe {
             let raw = buffer.data_as_ref::<RawOpen>();
             let uri = core::str::from_utf8_unchecked(&raw.uri[..msginfo.data_len()]);
