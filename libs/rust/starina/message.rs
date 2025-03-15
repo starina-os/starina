@@ -66,15 +66,17 @@ pub struct Message<M: Messageable> {
     _pd: PhantomData<M>,
 }
 
-impl<M: Messageable> Message<M> {
-    pub fn new(msginfo: MessageInfo, buffer: OwnedMessageBuffer) -> Result<Message<M>, ErrorCode> {
-        if !unsafe { M::is_valid(msginfo, &buffer) } {
-            return Err(ErrorCode::InvalidMessage);
+impl<M: Messageable> TryFrom<AnyMessage> for Message<M> {
+    type Error = AnyMessage;
+
+    fn try_from(msg: AnyMessage) -> Result<Self, AnyMessage> {
+        if !unsafe { M::is_valid(msg.msginfo, &msg.buffer) } {
+            return Err(msg);
         }
 
         Ok(Message {
-            msginfo,
-            buffer,
+            msginfo: msg.msginfo,
+            buffer: msg.buffer,
             _pd: PhantomData,
         })
     }
@@ -95,9 +97,5 @@ pub struct AnyMessage {
 impl AnyMessage {
     pub unsafe fn new(buffer: OwnedMessageBuffer, msginfo: MessageInfo) -> Self {
         Self { buffer, msginfo }
-    }
-
-    pub fn as_open<'a>(self) -> Result<Message<Open<'a>>, ErrorCode> {
-        Message::new(self.msginfo, self.buffer)
     }
 }

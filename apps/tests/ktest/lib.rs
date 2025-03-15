@@ -7,7 +7,7 @@ use starina::app::Dispatcher;
 use starina::app::Mainloop;
 use starina::channel::Channel;
 use starina::info;
-use starina::message::AnyMessage;
+use starina::message::Message;
 use starina::message::Open;
 
 pub struct App {}
@@ -21,9 +21,8 @@ impl Mainloop for App {
         App {}
     }
 
-    fn on_message(&self, ctx: &Context, msg: AnyMessage) {
-        let open = msg.as_open().unwrap();
-        info!("ktest: ch={:?}: open={}", ctx.sender.handle(), open.uri());
+    fn on_open(&self, ctx: &Context, msg: Message<Open<'_>>) {
+        info!("ktest: ch={:?}: open={}", ctx.sender.handle(), msg.uri());
         ctx.sender.send(Open { uri: "pong" }).unwrap();
     }
 }

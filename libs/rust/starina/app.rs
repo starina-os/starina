@@ -1,6 +1,8 @@
 use alloc::sync::Arc;
 
 use hashbrown::HashMap;
+use starina_types::message::MessageKind;
+use starina_types::message::Open;
 
 use crate::channel::Channel;
 use crate::channel::ChannelReceiver;
@@ -9,6 +11,7 @@ use crate::error::ErrorCode;
 use crate::handle::HandleId;
 use crate::handle::Handleable;
 use crate::message::AnyMessage;
+use crate::message::Message;
 use crate::poll::Poll;
 use crate::poll::Readiness;
 
@@ -17,7 +20,11 @@ pub trait Mainloop: Send + Sync {
     where
         Self: Sized;
 
-    fn on_message(&self, ctx: &Context, msg: AnyMessage);
+    fn on_open(&self, ctx: &Context, msg: Message<Open<'_>>);
+
+    fn on_unknown_message(&self, ctx: &Context, msg: AnyMessage) {
+        debug_warn!("ignored message: {}", msg.msginfo.kind());
+    }
 }
 
 pub enum Object {
@@ -79,7 +86,18 @@ impl Dispatcher {
                         sender,
                         dispatcher: self,
                     };
-                    app.on_message(&ctx, msg);
+
+                    match msg.msginfo.kind() {
+                        kind @ _ if kind == MessageKind::Open as usize => {
+                            match msg.try_into() {
+                                Ok(msg) => app.on_open(&ctx, msg),
+                                Err(msg) => {
+                                    app.on_unknown_message(&ctx, msg);
+                                }
+                            };
+                        }
+                        _ => panic!("unexpected message kind: {}", msg.msginfo.kind()),
+                    }
                 }
             }
         }
