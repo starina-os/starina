@@ -36,7 +36,11 @@ impl Request {
         self.body.take()
     }
 
-    // pub async fn json<T>(&mut self) -> Result<T, JsonBodyError> {
+    // pub async fn json<T>(&mut self) -> Result<Option<T>, JsonBodyError> {
+    //     todo!()
+    // }
+
+    // pub async fn text(&mut self) -> Result<Option<String>, TextBodyError> {
     //     todo!()
     // }
 }
