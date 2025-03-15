@@ -1,0 +1,12 @@
+[package]
+name = "nuhttp"
+publish = false
+version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
+
+[lib]
+path = "lib.rs"
+
+[dependencies]
+hashbrown = { workspace = true }

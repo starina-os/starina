@@ -72,6 +72,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "nuhttp"
+version = "0.0.0"
+dependencies = [
+ "hashbrown",
+]
+
+[[package]]
 name = "rustc-hash"
 version = "2.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
