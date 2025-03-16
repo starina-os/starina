@@ -4,7 +4,7 @@ use crate::process::KERNEL_PROCESS;
 use crate::scheduler::GLOBAL_SCHEDULER;
 use crate::thread::Thread;
 
-pub struct InKernelApp {
+struct InKernelApp {
     name: &'static str,
     main: fn(vsyscall: *const VsyscallPage),
 }
