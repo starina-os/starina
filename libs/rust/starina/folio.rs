@@ -60,7 +60,6 @@ impl Folio {
 
     pub fn paddr(&self) -> Result<PAddr, ErrorCode> {
         let paddr = syscall::folio_paddr(self.handle.id())?;
-        let paddr = PAddr::new(paddr);
         Ok(paddr)
     }
 }
@@ -90,7 +89,7 @@ impl MappedFolio {
             _folio: Folio {
                 handle: OwnedHandle::from_raw(handle),
             },
-            paddr: PAddr::new(paddr),
+            paddr,
             vaddr,
         })
     }

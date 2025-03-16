@@ -12,7 +12,7 @@ use crate::handle::AnyHandle;
 use crate::handle::Handleable;
 use crate::refcount::SharedRef;
 use crate::spinlock::SpinLock;
-use crate::syscall::BlockableSyscallResult;
+use crate::syscall::SyscallResult;
 use crate::thread::Thread;
 use crate::thread::ThreadState;
 use crate::utils::fxhashmap::FxHashMap;
@@ -195,10 +195,7 @@ impl Poll {
         Ok(())
     }
 
-    pub fn try_wait(
-        self: &SharedRef<Poll>,
-        current: &SharedRef<Thread>,
-    ) -> BlockableSyscallResult<(HandleId, Readiness)> {
+    pub fn try_wait(self: &SharedRef<Poll>, current: &SharedRef<Thread>) -> SyscallResult {
         let mut mutable = self.mutable.lock();
 
         // Check if there are any ready events.
@@ -212,13 +209,13 @@ impl Poll {
                 Ok(readiness) => readiness,
                 Err(e) => {
                     debug_warn!("failed to get readiness for handle: {:?}", e);
-                    return BlockableSyscallResult::Done(Err(e));
+                    return SyscallResult::Err(e);
                 }
             };
 
             let interested = listenee.interests & readiness;
             if !interested.is_empty() {
-                return BlockableSyscallResult::Done(Ok((id, interested)));
+                return SyscallResult::Done((id, interested).into());
             }
         }
 
@@ -228,11 +225,11 @@ impl Poll {
         //          before calling it!
 
         if mutable.waiters.try_reserve(1).is_err() {
-            return BlockableSyscallResult::Done(Err(ErrorCode::OutOfMemory));
+            return SyscallResult::Err(ErrorCode::OutOfMemory);
         }
 
         mutable.waiters.push_back(current.clone());
-        BlockableSyscallResult::Blocked(ThreadState::BlockedByPoll(self.clone()))
+        SyscallResult::Block(ThreadState::BlockedByPoll(self.clone()))
     }
 }
 

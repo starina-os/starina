@@ -1,9 +1,9 @@
-use starina_api::prelude::*;
-use starina_api::types::address::PAddr;
+use starina::address::PAddr;
+use starina::prelude::*;
 
 use super::DeviceType;
-use crate::virtqueue::VirtQueue;
 use crate::VirtioAttachError;
+use crate::virtqueue::VirtQueue;
 
 pub mod mmio;
 

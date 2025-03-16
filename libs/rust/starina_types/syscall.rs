@@ -1,20 +1,18 @@
 use crate::error::ErrorCode;
 use crate::handle::HandleId;
-use crate::message::MessageInfo;
 use crate::poll::Readiness;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u8)]
-pub enum SyscallNumber {
-    ConsoleWrite = 0,
-    PollCreate = 1,
-    PollAdd = 2,
-    PollWait = 3,
-    ChannelSend = 4,
-    ChannelRecv = 5,
-    ThreadYield = 6,
-    HandleClose = 7,
-}
+pub const SYS_CONSOLE_WRITE: u8 = 0;
+pub const SYS_POLL_CREATE: u8 = 1;
+pub const SYS_POLL_ADD: u8 = 2;
+pub const SYS_POLL_WAIT: u8 = 3;
+pub const SYS_CHANNEL_SEND: u8 = 4;
+pub const SYS_CHANNEL_RECV: u8 = 5;
+pub const SYS_HANDLE_CLOSE: u8 = 7;
+pub const SYS_FOLIO_CREATE: u8 = 8;
+pub const SYS_FOLIO_PADDR: u8 = 9;
+pub const SYS_FOLIO_CREATE_FIXED: u8 = 10;
+pub const SYS_VMSPACE_MAP: u8 = 11;
 
 #[repr(C)]
 pub struct VsyscallPage {
@@ -24,22 +22,6 @@ pub struct VsyscallPage {
 
 /// SAFETY: VsyscallPage is pre-allocated, the same across threads, and immutable.
 unsafe impl Send for VsyscallPage {}
-
-pub struct InKernelSyscallTable {
-    pub console_write: fn(&[u8]),
-    pub poll_create: fn() -> Result<HandleId, ErrorCode>,
-    pub poll_add: fn(
-        HandleId, /* poll */
-        HandleId, /* object */
-        Readiness,
-    ) -> Result<(), ErrorCode>,
-    pub poll_wait: fn(HandleId) -> Result<(HandleId, Readiness), ErrorCode>,
-    pub channel_send:
-        fn(HandleId, MessageInfo, *const u8, *const HandleId) -> Result<(), ErrorCode>,
-    pub channel_recv: fn(HandleId, *mut u8, *mut HandleId) -> Result<MessageInfo, ErrorCode>,
-    pub thread_yield: fn(),
-    pub handle_close: fn(HandleId) -> Result<(), ErrorCode>,
-}
 
 #[derive(Debug, Clone, Copy)]
 #[repr(transparent)]

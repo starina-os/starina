@@ -18,4 +18,16 @@ pub enum ErrorCode {
     InvalidMessage = -15,
     TooLongUri = -16,
     InvalidArg = -17,
+    InvalidHandle = -18,
+    InvalidErrorCode = -19,
+}
+
+impl From<isize> for ErrorCode {
+    fn from(value: isize) -> Self {
+        if -19 <= value && value < 0 {
+            unsafe { core::mem::transmute(value) }
+        } else {
+            ErrorCode::InvalidErrorCode
+        }
+    }
 }

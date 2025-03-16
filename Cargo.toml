@@ -14,6 +14,7 @@ rustc-hash = { version = "2.1.1", default-features = false }
 spin = "0.9.8"
 serde = { version = "1", default-features = false }
 serde_json = { version = "1", default-features = false, features = ["alloc"] }
+serde_bytes = { version = "0.11.17", default-features = false }
 fdt-rs = { version = "0", default-features = false }
 
 kernel = { path = "kernel" }

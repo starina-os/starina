@@ -10,6 +10,7 @@ path = "lib.rs"
 
 [dependencies]
 serde = { workspace = true, features = ["derive"] }
+serde_bytes = { workspace = true, features = ["alloc"] }
 fdt-rs = { workspace = true }
 hashbrown = { workspace = true, features = ["serde"] }
 

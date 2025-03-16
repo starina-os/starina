@@ -13,17 +13,15 @@ use serde::Serialize;
 /// The device tree. This is the root of the device tree.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DeviceTree {
-    pub nodes: HashMap<String, DeviceTreeNode>,
+    pub nodes: HashMap<String, DeviceNode>,
 }
 
 /// A node in the device tree.
 #[derive(Serialize, Deserialize, Debug)]
-pub struct DeviceTreeNode {
-    pub props: HashMap<String, DeviceTreeProp>,
+pub struct DeviceNode {
+    pub compatible: Option<Vec<String>>,
+    pub reg: Option<Vec<(u64, u64)>>,
 }
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct DeviceTreeProp(Vec<u8>);
 
 #[derive(Debug)]
 pub enum ParseError {
@@ -52,15 +50,12 @@ impl DeviceTree {
         let mut root_nodes = HashMap::new();
         while let Some(node) = node_iter.next().map_err(ParseError::InvalidNode)? {
             let node_name = node.name().map_err(ParseError::InvalidName)?;
-            let mut props = HashMap::new();
             let mut prop_iter = node.props();
-            while let Some(prop) = prop_iter.next().map_err(ParseError::InvalidProp)? {
-                let prop_name = prop.name().map_err(ParseError::InvalidProp)?;
-                let prop_value = prop.propbuf().to_vec();
-                props.insert(prop_name.to_owned(), DeviceTreeProp(prop_value));
-            }
+            let mut compatible = None;
+            let mut reg = None;
+            while let Some(prop) = prop_iter.next().map_err(ParseError::InvalidProp)? {}
 
-            root_nodes.insert(node_name.to_owned(), DeviceTreeNode { props });
+            root_nodes.insert(node_name.to_owned(), DeviceNode { compatible, reg });
         }
 
         Ok(DeviceTree { nodes: root_nodes })

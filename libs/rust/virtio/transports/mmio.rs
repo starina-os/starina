@@ -1,6 +1,6 @@
-use starina_api::folio::MappedFolio;
-use starina_api::prelude::*;
-use starina_api::types::address::PAddr;
+use starina::address::PAddr;
+use starina::folio::MappedFolio;
+use starina::prelude::*;
 use starina_driver_utils::mmio::LittleEndian;
 use starina_driver_utils::mmio::MmioReg;
 use starina_driver_utils::mmio::ReadOnly;
@@ -8,8 +8,8 @@ use starina_driver_utils::mmio::ReadWrite;
 use starina_driver_utils::mmio::WriteOnly;
 
 use super::VirtioTransport;
-use crate::transports::IsrStatus;
 use crate::DeviceType;
+use crate::transports::IsrStatus;
 
 // "All register values are organized as Little Endian."
 // (4.2.2 MMIO Device Register Layout).

@@ -1,5 +1,8 @@
 use core::ops::BitOr;
 
+use crate::error::ErrorCode;
+use crate::syscall::RetVal;
+
 /// A handle ID.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct HandleId(i32);
@@ -12,6 +15,20 @@ impl HandleId {
 
     pub const fn as_raw(&self) -> i32 {
         self.0
+    }
+
+    pub fn from_raw_isize(raw: isize) -> Result<HandleId, ErrorCode> {
+        if let Ok(raw) = raw.try_into() {
+            Ok(HandleId(raw))
+        } else {
+            Err(ErrorCode::InvalidSyscall)
+        }
+    }
+}
+
+impl From<HandleId> for RetVal {
+    fn from(handle: HandleId) -> Self {
+        RetVal::new(handle.as_raw() as isize)
     }
 }
 

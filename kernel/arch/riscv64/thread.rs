@@ -86,6 +86,7 @@ impl Thread {
 }
 
 #[naked]
+#[unsafe(no_mangle)]
 pub extern "C" fn enter_kernelland(
     _a0: isize,
     _a1: isize,
