@@ -15,6 +15,7 @@ pub struct App {}
 impl EventLoop<Env> for App {
     fn init(dispatcher: &Dispatcher, env: Env) -> Self {
         info!("Hello from virtio-net!");
+        info!("device_tree: {:?}", env.device_tree);
         App {}
     }
 
