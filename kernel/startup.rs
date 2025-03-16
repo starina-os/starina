@@ -1,7 +1,9 @@
 use alloc::boxed::Box;
 use alloc::string::String;
+use alloc::sync::Arc;
 use alloc::vec::Vec;
 
+use starina::device_tree::DeviceTree;
 use starina::spec::EnvType;
 use starina::syscall::VsyscallPage;
 use starina_types::spec::AppSpec;
@@ -30,7 +32,10 @@ struct Instance {
     environ_str: String,
 }
 
-pub fn load_inkernel_apps() {
+pub fn load_inkernel_apps(device_tree: DeviceTree) {
+    let device_tree_json =
+        serde_json::to_value(device_tree).expect("failed to serialize device tree");
+
     let mut instances = INSTANCES.lock();
     let mut env = serde_json::Map::new();
     for app in INKERNEL_APPS {
@@ -39,7 +44,7 @@ pub fn load_inkernel_apps() {
         for item in app.spec.env {
             items.push(match item.ty {
                 EnvType::DeviceTree {} => {
-                    env.insert(item.name.into(), serde_json::json!({}));
+                    env.insert(item.name.into(), device_tree_json.clone());
                 }
             });
         }

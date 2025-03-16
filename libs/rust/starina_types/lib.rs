@@ -1,6 +1,8 @@
 #![no_std]
 #![cfg_attr(test, feature(test))]
 
+extern crate alloc;
+
 pub mod address;
 pub mod device_tree;
 pub mod error;

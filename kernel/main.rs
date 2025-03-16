@@ -20,6 +20,7 @@ use arrayvec::ArrayVec;
 use channel::Channel;
 use cpuvar::CpuId;
 use handle::Handle;
+use starina::device_tree::DeviceTree;
 use starina_types::handle::HandleRights;
 
 mod allocator;
@@ -44,6 +45,7 @@ pub struct FreeRam {
 }
 
 pub struct BootInfo {
+    dtb: *const u8,
     cpu_id: CpuId,
     free_rams: ArrayVec<FreeRam, 8>,
 }
@@ -59,8 +61,10 @@ pub fn boot(bootinfo: BootInfo) -> ! {
         GLOBAL_ALLOCATOR.add_region(free_ram.addr, free_ram.size);
     }
 
+    let device_tree = DeviceTree::parse(bootinfo.dtb).expect("failed to parse device tree");
+
     cpuvar::percpu_init(bootinfo.cpu_id);
     arch::percpu_init();
-    startup::load_inkernel_apps();
+    startup::load_inkernel_apps(device_tree);
     thread::switch_thread();
 }

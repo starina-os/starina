@@ -55,7 +55,7 @@ unsafe extern "C" {
 }
 
 #[unsafe(no_mangle)]
-unsafe extern "C" fn riscv64_boot(hartid: u64, _dtb_addr: u64) -> ! {
+unsafe extern "C" fn riscv64_boot(hartid: u64, dtb: *const u8) -> ! {
     let bss_start = &raw const __bss as usize;
     let bss_end = &raw const __bss_end as usize;
     let free_ram = &raw const __free_ram as usize;
@@ -74,7 +74,11 @@ unsafe extern "C" fn riscv64_boot(hartid: u64, _dtb_addr: u64) -> ! {
         size: free_ram_end - free_ram,
     });
 
-    crate::boot(BootInfo { cpu_id, free_rams });
+    crate::boot(BootInfo {
+        cpu_id,
+        free_rams,
+        dtb,
+    });
 }
 
 pub fn percpu_init() {
