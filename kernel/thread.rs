@@ -135,34 +135,35 @@ pub fn switch_thread() -> ! {
         // Try unblocking the next thread.
         let arch_thread = {
             let mut next_mutable = next.mutable.lock();
-            match &next_mutable.state {
+            let retval = match &next_mutable.state {
                 ThreadState::BlockedByPoll(poll) => {
                     match poll.try_wait(&next) {
                         BlockableSyscallResult::Done(result) => {
-                            // We've got an event. Make the thread runnable again
-                            // with the system call's return value.
-                            next_mutable.state = ThreadState::Runnable(Some(result.into()));
-                            GLOBAL_SCHEDULER.push(next.clone());
+                            // We've got an event. Resume the thread with a return
+                            // value.
+                            Some(result.into())
                         }
                         BlockableSyscallResult::Blocked(new_state) => {
                             // The thread is still blocked. We'll retry when the
                             // poll wakes us up again...
                             next_mutable.state = new_state;
+                            continue 'next_thread;
                         }
                     }
-
-                    continue 'next_thread;
                 }
-                ThreadState::Runnable(retval) => unsafe {
-                    let arch = next_mutable.arch_thread_ptr();
+                ThreadState::Runnable(retval) => *retval,
+            };
 
-                    // If we're returning from a system call, set the return value.
-                    if let Some(retval) = retval {
-                        (*arch).set_retval(*retval);
-                    }
+            // The thread is runnable. Get ready to restore the thread's context.
+            unsafe {
+                let arch = next_mutable.arch_thread_ptr();
 
-                    arch
-                },
+                // If we're returning from a system call, set the return value.
+                if let Some(retval) = retval {
+                    (*arch).set_retval(retval);
+                }
+
+                arch
             }
         };
 
