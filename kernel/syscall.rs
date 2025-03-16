@@ -195,7 +195,7 @@ fn do_syscall(
             Ok(SyscallResult::Done(msginfo.into()))
         }
         _ => {
-            warn!("unknown syscall: {}", n);
+            debug_warn!("unknown syscall: {}", n);
             Err(ErrorCode::InvalidSyscall)
         }
     }
@@ -218,6 +218,7 @@ pub extern "C" fn syscall_handler(
             Err(err) => ThreadState::Runnable(None),
         };
         current.set_state(new_state);
-        switch_thread();
-    })
+    });
+
+    switch_thread();
 }
