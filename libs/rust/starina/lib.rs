@@ -4,7 +4,9 @@
 extern crate alloc;
 
 pub use starina_types::address;
+pub use starina_types::device_tree;
 pub use starina_types::error;
+pub use starina_types::spec;
 
 #[macro_use]
 pub mod log;

@@ -10,3 +10,4 @@ path = "lib.rs"
 
 [dependencies]
 starina = { workspace = true }
+serde = { workspace = true, features = ["derive"] }

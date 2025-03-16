@@ -17,6 +17,8 @@ arrayvec = { version = "0.7.6", default-features = false }
 hashbrown = "0.15.2"
 rustc-hash = { version = "2.1.1", default-features = false }
 spin = "0.9.8"
+serde = { version = "1", default-features = false }
+serde_json = { version = "1", default-features = false, features = ["alloc"] }
 
 kernel = { path = "kernel" }
 starina = { path = "libs/rust/starina" }

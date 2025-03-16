@@ -2,7 +2,6 @@
 
 pub mod autogen;
 
-use starina::channel::Channel;
 use starina::eventloop::Context;
 use starina::eventloop::Dispatcher;
 use starina::eventloop::EventLoop;

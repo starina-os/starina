@@ -9,5 +9,6 @@ edition = { workspace = true }
 path = "lib.rs"
 
 [dependencies]
+serde = { workspace = true, features = ["derive"] }
 
 [features]
