@@ -22,6 +22,7 @@ pub trait EventLoop: Send + Sync {
 
     fn on_open(&self, ctx: &Context, msg: Message<Open<'_>>);
 
+    #[allow(unused_variables)]
     fn on_unknown_message(&self, ctx: &Context, msg: AnyMessage) {
         debug_warn!("ignored message: {}", msg.msginfo.kind());
     }
