@@ -1,0 +1,12 @@
+[package]
+name = "virtio_net"
+publish = false
+version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
+
+[lib]
+path = "lib.rs"
+
+[dependencies]
+starina = { workspace = true }

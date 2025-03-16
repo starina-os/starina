@@ -63,32 +63,15 @@ pub fn boot(bootinfo: BootInfo) -> ! {
     {
         use process::KERNEL_PROCESS;
         use scheduler::GLOBAL_SCHEDULER;
-        let (ch1, ch2) = Channel::new().unwrap();
-        let ch1_handle = KERNEL_PROCESS
-            .handles()
-            .lock()
-            .insert(Handle::new(ch1, HandleRights::READ | HandleRights::WRITE))
-            .unwrap();
-        let ch2_handle = KERNEL_PROCESS
-            .handles()
-            .lock()
-            .insert(Handle::new(ch2, HandleRights::READ | HandleRights::WRITE))
-            .unwrap();
-
-        GLOBAL_SCHEDULER.push(
-            thread::Thread::new_inkernel(
-                ktest::autogen::app_main as usize,
-                ch1_handle.as_raw() as usize,
-            )
-            .unwrap(),
-        );
-        GLOBAL_SCHEDULER.push(
-            thread::Thread::new_inkernel(
-                ktest::autogen::app_main as usize,
-                ch2_handle.as_raw() as usize,
-            )
-            .unwrap(),
-        );
+        GLOBAL_SCHEDULER
+            .push(thread::Thread::new_inkernel(virtio_net::autogen::app_main as usize, 0).unwrap());
+        // GLOBAL_SCHEDULER.push(
+        //     thread::Thread::new_inkernel(
+        //         ktest::autogen::app_main as usize,
+        //         ch2_handle.as_raw() as usize,
+        //     )
+        //     .unwrap(),
+        // );
     }
 
     thread::switch_thread();
