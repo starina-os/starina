@@ -21,6 +21,7 @@ spin = "0.9.8"
 kernel = { path = "kernel" }
 starina = { path = "libs/rust/starina" }
 starina_types = { path = "libs/rust/starina_types" }
+starina_utils = { path = "libs/rust/starina_utils" }
 
 ktest = { path = "apps/tests/ktest" }
 virtio_net = { path = "apps/drivers/virtio_net" }

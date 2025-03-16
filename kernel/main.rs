@@ -10,6 +10,7 @@
 
 #[macro_use]
 mod print;
+mod folio;
 
 extern crate alloc;
 

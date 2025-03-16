@@ -17,4 +17,5 @@ pub enum ErrorCode {
     Closed = -14,
     InvalidMessage = -15,
     TooLongUri = -16,
+    InvalidArg = -17,
 }

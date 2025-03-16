@@ -53,6 +53,7 @@ dependencies = [
  "rustc-hash",
  "starina",
  "starina_types",
+ "starina_utils",
  "virtio_net",
 ]
 
@@ -105,6 +106,14 @@ dependencies = [
 
 [[package]]
 name = "starina_types"
+version = "0.0.0"
+
+[[package]]
+name = "starina_utils"
+version = "0.0.0"
+
+[[package]]
+name = "starina_virtio"
 version = "0.0.0"
 
 [[package]]

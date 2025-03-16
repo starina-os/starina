@@ -2,6 +2,9 @@ use core::arch::asm;
 use core::arch::global_asm;
 
 use arrayvec::ArrayVec;
+use starina::address::PAddr;
+use starina::address::VAddr;
+use starina::error::ErrorCode;
 
 use crate::BootInfo;
 use crate::FreeRam;
@@ -22,6 +25,7 @@ pub use thread::Thread;
 pub use thread::enter_kernelland;
 pub use thread::enter_userland;
 
+pub const PAGE_SIZE: usize = 4096;
 pub const NUM_CPUS_MAX: usize = 4;
 
 pub fn halt() -> ! {
@@ -30,6 +34,11 @@ pub fn halt() -> ! {
             asm!("wfi");
         }
     }
+}
+
+pub fn vaddr2paddr(vaddr: VAddr) -> Result<PAddr, ErrorCode> {
+    // Identical mapping.
+    Ok(PAddr::new(vaddr.as_usize()))
 }
 
 pub fn console_write(bytes: &[u8]) {
