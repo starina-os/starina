@@ -54,7 +54,11 @@ impl DeviceTree {
             let node_name = node.name().map_err(ParseError::InvalidName)?;
             let mut props = HashMap::new();
             let mut prop_iter = node.props();
-            while let Some(prop) = prop_iter.next().map_err(ParseError::InvalidProp)? {}
+            while let Some(prop) = prop_iter.next().map_err(ParseError::InvalidProp)? {
+                let prop_name = prop.name().map_err(ParseError::InvalidProp)?;
+                let prop_value = prop.propbuf().to_vec();
+                props.insert(prop_name.to_owned(), DeviceTreeProp(prop_value));
+            }
 
             root_nodes.insert(node_name.to_owned(), DeviceTreeNode { props });
         }
