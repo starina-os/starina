@@ -1,6 +1,6 @@
 use alloc::collections::VecDeque;
 
-use starina::error::ErrorCode;
+use starina_types::error::ErrorCode;
 
 use crate::refcount::SharedRef;
 use crate::spinlock::SpinLock;

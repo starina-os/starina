@@ -1,8 +1,8 @@
 use core::sync::atomic::AtomicUsize;
 use core::sync::atomic::Ordering;
 
-use starina::error::ErrorCode;
-use starina::syscall::RetVal;
+use starina_types::error::ErrorCode;
+use starina_types::syscall::RetVal;
 
 use crate::arch;
 use crate::poll::Poll;

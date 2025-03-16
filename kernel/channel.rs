@@ -3,11 +3,11 @@ use alloc::vec::Vec;
 use core::fmt;
 
 use arrayvec::ArrayVec;
-use starina::error::ErrorCode;
-use starina::handle::HandleId;
-use starina::message::MESSAGE_NUM_HANDLES_MAX;
-use starina::message::MessageInfo;
-use starina::poll::Readiness;
+use starina_types::error::ErrorCode;
+use starina_types::handle::HandleId;
+use starina_types::message::MESSAGE_NUM_HANDLES_MAX;
+use starina_types::message::MessageInfo;
+use starina_types::poll::Readiness;
 
 use crate::cpuvar::current_thread;
 use crate::handle::AnyHandle;

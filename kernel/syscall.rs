@@ -1,13 +1,13 @@
-use starina::error::ErrorCode;
-use starina::handle::HandleId;
-use starina::handle::HandleRights;
-use starina::message::MESSAGE_DATA_LEN_MAX;
-use starina::message::MESSAGE_NUM_HANDLES_MAX;
-use starina::message::MessageInfo;
-use starina::poll::Readiness;
-use starina::syscall::InKernelSyscallTable;
-use starina::syscall::RetVal;
-use starina::syscall::SyscallNumber;
+use starina_types::error::ErrorCode;
+use starina_types::handle::HandleId;
+use starina_types::handle::HandleRights;
+use starina_types::message::MESSAGE_DATA_LEN_MAX;
+use starina_types::message::MESSAGE_NUM_HANDLES_MAX;
+use starina_types::message::MessageInfo;
+use starina_types::poll::Readiness;
+use starina_types::syscall::InKernelSyscallTable;
+use starina_types::syscall::RetVal;
+use starina_types::syscall::SyscallNumber;
 
 use crate::arch::enter_kernelland;
 use crate::channel::Channel;

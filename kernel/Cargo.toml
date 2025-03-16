@@ -10,6 +10,8 @@ name = "kernel"
 path = "main.rs"
 
 [dependencies]
+starina_types = { workspace = true, features = [] }
+
 # Specifying "in-kernel" here automatically enables the feature in all
 # in-kernel apps thanks to the feature unification feature of Cargo:
 # https://doc.rust-lang.org/1.59.0/cargo/reference/features.html#feature-unification

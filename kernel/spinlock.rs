@@ -5,8 +5,6 @@ use core::ops::DerefMut;
 use core::sync::atomic::AtomicBool;
 use core::sync::atomic::Ordering;
 
-use starina::oops;
-
 /// A simple spinlock.
 pub struct SpinLock<T: ?Sized> {
     lock: AtomicBool,

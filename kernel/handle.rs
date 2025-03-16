@@ -1,10 +1,10 @@
 use core::any::Any;
 use core::ops::Deref;
 
-use starina::error::ErrorCode;
-use starina::handle::HandleId;
-use starina::handle::HandleRights;
-use starina::poll::Readiness;
+use starina_types::error::ErrorCode;
+use starina_types::handle::HandleId;
+use starina_types::handle::HandleRights;
+use starina_types::poll::Readiness;
 
 use crate::poll::Listener;
 use crate::poll::Poll;

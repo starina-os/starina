@@ -12,7 +12,7 @@ use core::sync::atomic;
 use core::sync::atomic::AtomicUsize;
 use core::sync::atomic::Ordering;
 
-use starina::error::ErrorCode;
+use starina_types::error::ErrorCode;
 
 use crate::handle::Handleable;
 

@@ -1,6 +1,6 @@
 use alloc::vec::Vec;
 
-use starina::error::ErrorCode;
+use starina_types::error::ErrorCode;
 
 pub enum Isolation {
     InKernel,

@@ -8,6 +8,7 @@
 #![feature(allocator_api)]
 #![allow(unused)]
 
+// FIXME: Don't use starina crate here.
 #[macro_use]
 extern crate starina;
 
@@ -18,7 +19,7 @@ use arrayvec::ArrayVec;
 use channel::Channel;
 use cpuvar::CpuId;
 use handle::Handle;
-use starina::handle::HandleRights;
+use starina_types::handle::HandleRights;
 
 mod allocator;
 mod arch;

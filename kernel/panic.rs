@@ -2,8 +2,7 @@ use core::panic::PanicInfo;
 use core::sync::atomic::AtomicU8;
 use core::sync::atomic::Ordering;
 
-use starina::error;
-use starina::println;
+use starina_types::error;
 
 use crate::arch;
 

@@ -4,9 +4,9 @@ use core::fmt;
 use core::hash::Hash;
 
 use hashbrown::HashSet;
-use starina::error::ErrorCode;
-use starina::handle::HandleId;
-use starina::poll::Readiness;
+use starina_types::error::ErrorCode;
+use starina_types::handle::HandleId;
+use starina_types::poll::Readiness;
 
 use crate::handle::AnyHandle;
 use crate::handle::Handleable;

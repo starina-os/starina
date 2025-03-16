@@ -4,7 +4,7 @@ use core::arch::asm;
 use core::arch::naked_asm;
 use core::mem::offset_of;
 
-use starina::syscall::RetVal;
+use starina_types::syscall::RetVal;
 
 use crate::allocator::GLOBAL_ALLOCATOR;
 
