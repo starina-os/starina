@@ -1,3 +1,6 @@
+use crate::error::ErrorCode;
+use crate::handle::HandleId;
+
 pub const MESSAGE_NUM_HANDLES_MAX: usize = 3;
 pub const MESSAGE_DATA_LEN_MAX: usize = 4 * 1024;
 
@@ -22,5 +25,103 @@ impl MessageInfo {
 
     pub fn num_handles(self) -> usize {
         ((self.0 >> 16) & 0b11) as usize
+    }
+}
+
+pub struct MessageBuffer {
+    pub data: [u8; MESSAGE_DATA_LEN_MAX],
+    pub handles: [HandleId; MESSAGE_NUM_HANDLES_MAX],
+}
+
+impl MessageBuffer {
+    pub const unsafe fn data_as_ref<T>(&self) -> &T {
+        debug_assert!(size_of::<T>() <= MESSAGE_DATA_LEN_MAX);
+        unsafe { &*(self.data.as_ptr() as *const T) }
+    }
+
+    pub const unsafe fn data_as_mut<T>(&mut self) -> &mut T {
+        debug_assert!(size_of::<T>() <= MESSAGE_DATA_LEN_MAX);
+        unsafe { &mut *(self.data.as_mut_ptr() as *mut T) }
+    }
+}
+
+#[repr(u8)]
+pub enum MessageKind {
+    Connect = 1,
+    Open = 3,
+    OpenReply = 4,
+    StreamData = 5,
+    FramedData = 6,
+}
+
+pub trait Messageable {
+    type This<'a>;
+    fn kind() -> MessageKind;
+    fn write(self, buffer: &mut MessageBuffer) -> Result<MessageInfo, ErrorCode>;
+    /// # Safety
+    ///
+    /// This method does not check the message kind. It's caller's
+    /// responsibility to ensure the message kind is correct.
+    unsafe fn is_valid(msginfo: MessageInfo, buffer: &MessageBuffer) -> bool;
+    /// # Safety
+    ///
+    /// This method does not check the validity of the message. It's caller's
+    /// responsibility to make sure:
+    ///
+    /// - The message kind is correct.
+    /// - The validity of the message is checked by `is_valid`.
+    unsafe fn cast_unchecked(msginfo: MessageInfo, buffer: &MessageBuffer) -> Self::This<'_>;
+}
+
+pub const URI_LEN_MAX: usize = 1024;
+
+pub struct RawOpen {
+    pub uri: [u8; URI_LEN_MAX],
+}
+
+pub struct Open<'a> {
+    pub uri: &'a str,
+}
+
+impl Messageable for Open<'_> {
+    type This<'a> = Open<'a>;
+
+    fn kind() -> MessageKind {
+        MessageKind::Open
+    }
+
+    unsafe fn is_valid(msginfo: MessageInfo, buffer: &MessageBuffer) -> bool {
+        if msginfo.data_len() > URI_LEN_MAX {
+            return false;
+        }
+
+        let raw = unsafe { buffer.data_as_ref::<RawOpen>() };
+        if core::str::from_utf8(&raw.uri[..msginfo.data_len()]).is_err() {
+            return false;
+        }
+
+        true
+    }
+
+    unsafe fn cast_unchecked(msginfo: MessageInfo, buffer: &MessageBuffer) -> Self::This<'_> {
+        unsafe {
+            let raw = buffer.data_as_ref::<RawOpen>();
+            let uri = core::str::from_utf8_unchecked(&raw.uri[..msginfo.data_len()]);
+            Open { uri }
+        }
+    }
+
+    fn write(self, buffer: &mut MessageBuffer) -> Result<MessageInfo, ErrorCode> {
+        let raw = unsafe { buffer.data_as_mut::<RawOpen>() };
+        if self.uri.len() > URI_LEN_MAX {
+            return Err(ErrorCode::TooLongUri);
+        }
+
+        raw.uri[..self.uri.len()].copy_from_slice(self.uri.as_bytes());
+        Ok(MessageInfo::new(
+            MessageKind::Open as i32,
+            self.uri.len() as u16,
+            0,
+        ))
     }
 }
