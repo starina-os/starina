@@ -77,8 +77,3 @@ pub fn boot(bootinfo: BootInfo) -> ! {
 
     thread::switch_thread();
 }
-
-#[cfg(not(target_os = "none"))]
-fn main() {
-    unreachable!("added to make rust-analyzer happy");
-}

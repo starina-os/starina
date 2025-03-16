@@ -115,6 +115,10 @@ version = "0.0.0"
 [[package]]
 name = "starina_virtio"
 version = "0.0.0"
+dependencies = [
+ "starina",
+ "starina_utils",
+]
 
 [[package]]
 name = "virtio_net"

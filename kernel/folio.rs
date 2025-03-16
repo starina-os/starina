@@ -42,7 +42,6 @@ impl Folio {
             len,
         };
 
-        folio.inc_ref();
         Ok(folio)
     }
 
@@ -60,7 +59,6 @@ impl Folio {
 
         let folio = Self { paddr, len };
 
-        folio.inc_ref();
         Ok(folio)
     }
 
@@ -77,7 +75,6 @@ impl Folio {
 
         let folio = Self { paddr, len };
 
-        folio.inc_ref();
         Ok(folio)
     }
 
@@ -87,19 +84,5 @@ impl Folio {
 
     pub fn paddr(&self) -> PAddr {
         self.paddr
-    }
-
-    pub fn inc_ref(&self) {
-        // TODO:
-    }
-
-    pub fn dec_ref(&self) {
-        // TODO:
-    }
-}
-
-impl Drop for Folio {
-    fn drop(&mut self) {
-        self.dec_ref();
     }
 }

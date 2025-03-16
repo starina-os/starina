@@ -8,6 +8,6 @@ edition = { workspace = true }
 path = "lib.rs"
 
 [dependencies]
-# starina_api = { workspace = true }
+starina = { workspace = true }
 # starina_driver_utils = { workspace = true }
-# starina_utils = { workspace = true }
+starina_utils = { workspace = true }
