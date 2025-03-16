@@ -15,7 +15,7 @@ use crate::message::Message;
 use crate::poll::Poll;
 use crate::poll::Readiness;
 
-pub trait Mainloop: Send + Sync {
+pub trait EventLoop: Send + Sync {
     fn init(dispatcher: &Dispatcher, ch: Channel) -> Self
     where
         Self: Sized;
@@ -67,7 +67,7 @@ impl Dispatcher {
         Ok(())
     }
 
-    fn wait_and_dispatch(&self, app: &impl Mainloop) {
+    fn wait_and_dispatch(&self, app: &impl EventLoop) {
         let (handle, readiness) = self.poll.wait().unwrap();
 
         // TODO: Let poll API return an opaque pointer to the object so that
@@ -104,7 +104,7 @@ impl Dispatcher {
     }
 }
 
-pub fn app_loop<A: Mainloop>(ch: Channel) {
+pub fn app_loop<A: EventLoop>(ch: Channel) {
     let poll = Poll::create().unwrap();
     let dispatcher = Dispatcher::new(poll);
     let app = A::init(&dispatcher, ch);

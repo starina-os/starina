@@ -10,5 +10,5 @@ pub fn app_main(handle_id: isize) {
     let handle_id = HandleId::from_raw(handle_id.try_into().unwrap());
     let handle = OwnedHandle::from_raw(handle_id);
     let ch = Channel::from_handle(handle);
-    starina::app::app_loop::<App>(ch);
+    starina::eventloop::app_loop::<App>(ch);
 }

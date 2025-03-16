@@ -2,17 +2,17 @@
 
 pub mod autogen;
 
-use starina::app::Context;
-use starina::app::Dispatcher;
-use starina::app::Mainloop;
 use starina::channel::Channel;
+use starina::eventloop::Context;
+use starina::eventloop::Dispatcher;
+use starina::eventloop::EventLoop;
 use starina::info;
 use starina::message::Message;
 use starina::message::Open;
 
 pub struct App {}
 
-impl Mainloop for App {
+impl EventLoop for App {
     fn init(dispatcher: &Dispatcher, ch: Channel) -> Self {
         info!("Hello from ktest!");
         ch.send(Open { uri: "ping" }).unwrap();

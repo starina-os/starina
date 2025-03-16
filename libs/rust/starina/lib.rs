@@ -9,8 +9,8 @@ pub use starina_types::error;
 #[macro_use]
 pub mod log;
 
-pub mod app;
 pub mod channel;
+pub mod eventloop;
 pub mod handle;
 pub mod message;
 pub mod poll;
