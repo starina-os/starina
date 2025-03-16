@@ -1,6 +1,7 @@
 use alloc::sync::Arc;
 
 use hashbrown::HashMap;
+use serde::de::DeserializeOwned;
 use starina_types::message::MessageKind;
 use starina_types::message::Open;
 use starina_types::syscall::VsyscallPage;
@@ -16,8 +17,8 @@ use crate::message::Message;
 use crate::poll::Poll;
 use crate::poll::Readiness;
 
-pub trait EventLoop: Send + Sync {
-    fn init(dispatcher: &Dispatcher) -> Self
+pub trait EventLoop<E>: Send + Sync {
+    fn init(dispatcher: &Dispatcher, env: E) -> Self
     where
         Self: Sized;
 
@@ -69,7 +70,7 @@ impl Dispatcher {
         Ok(())
     }
 
-    fn wait_and_dispatch(&self, app: &impl EventLoop) {
+    fn wait_and_dispatch<E>(&self, app: &impl EventLoop<E>) {
         let (handle, readiness) = self.poll.wait().unwrap();
 
         // TODO: Let poll API return an opaque pointer to the object so that
@@ -106,10 +107,17 @@ impl Dispatcher {
     }
 }
 
-pub fn app_loop<A: EventLoop>(vsyscall: *const VsyscallPage) {
+pub fn app_loop<E: DeserializeOwned, A: EventLoop<E>>(vsyscall: *const VsyscallPage) {
+    let env_json = unsafe {
+        let ptr = (*vsyscall).environ_ptr;
+        let len = (*vsyscall).environ_len;
+        core::slice::from_raw_parts(ptr, len)
+    };
+    let env: E = serde_json::from_slice(&env_json).expect("failed to parse env");
+
     let poll = Poll::create().unwrap();
     let dispatcher = Dispatcher::new(poll);
-    let app = A::init(&dispatcher);
+    let app = A::init(&dispatcher, env);
 
     loop {
         dispatcher.wait_and_dispatch(&app);

@@ -11,8 +11,8 @@ use starina::message::Open;
 
 pub struct App {}
 
-impl EventLoop for App {
-    fn init(dispatcher: &Dispatcher) -> Self {
+impl EventLoop<()> for App {
+    fn init(dispatcher: &Dispatcher, _: ()) -> Self {
         info!("Hello from ktest!");
         App {}
     }

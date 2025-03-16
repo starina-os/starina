@@ -2,6 +2,7 @@
 
 pub mod autogen;
 
+use autogen::Env;
 use starina::eventloop::Context;
 use starina::eventloop::Dispatcher;
 use starina::eventloop::EventLoop;
@@ -11,8 +12,8 @@ use starina::message::Open;
 
 pub struct App {}
 
-impl EventLoop for App {
-    fn init(dispatcher: &Dispatcher) -> Self {
+impl EventLoop<Env> for App {
+    fn init(dispatcher: &Dispatcher, env: Env) -> Self {
         info!("Hello from virtio-net!");
         App {}
     }
