@@ -24,5 +24,4 @@ serde_json = { workspace = true }
 # https://doc.rust-lang.org/1.59.0/cargo/reference/features.html#feature-unification
 starina = { workspace = true, features = ["in-kernel"] }
 
-ktest = { workspace = true }
 virtio_net = { workspace = true }

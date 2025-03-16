@@ -55,20 +55,12 @@ version = "0.0.0"
 dependencies = [
  "arrayvec",
  "hashbrown",
- "ktest",
  "rustc-hash",
  "serde_json",
  "starina",
  "starina_types",
  "starina_utils",
  "virtio_net",
-]
-
-[[package]]
-name = "ktest"
-version = "0.0.0"
-dependencies = [
- "starina",
 ]
 
 [[package]]

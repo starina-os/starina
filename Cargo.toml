@@ -1,11 +1,6 @@
 [workspace]
 resolver = "2"
-members = [
-    "kernel",
-    "libs/rust/*",
-    "apps/tests/ktest",
-    "apps/drivers/virtio_net",
-]
+members = ["kernel", "libs/rust/*", "apps/drivers/virtio_net"]
 
 [workspace.package]
 version = "0.0.0"
@@ -25,5 +20,4 @@ starina = { path = "libs/rust/starina" }
 starina_types = { path = "libs/rust/starina_types" }
 starina_utils = { path = "libs/rust/starina_utils" }
 
-ktest = { path = "apps/tests/ktest" }
 virtio_net = { path = "apps/drivers/virtio_net" }
