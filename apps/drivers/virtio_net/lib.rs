@@ -13,7 +13,7 @@ use starina::message::Open;
 pub struct App {}
 
 impl EventLoop for App {
-    fn init(dispatcher: &Dispatcher, ch: Channel) -> Self {
+    fn init(dispatcher: &Dispatcher) -> Self {
         info!("Hello from virtio-net!");
         App {}
     }

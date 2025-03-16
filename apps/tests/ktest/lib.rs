@@ -13,11 +13,8 @@ use starina::message::Open;
 pub struct App {}
 
 impl EventLoop for App {
-    fn init(dispatcher: &Dispatcher, ch: Channel) -> Self {
+    fn init(dispatcher: &Dispatcher) -> Self {
         info!("Hello from ktest!");
-        ch.send(Open { uri: "ping" }).unwrap();
-        dispatcher.add_channel(ch).unwrap();
-        info!("added channel");
         App {}
     }
 

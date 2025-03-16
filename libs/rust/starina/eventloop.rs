@@ -3,6 +3,7 @@ use alloc::sync::Arc;
 use hashbrown::HashMap;
 use starina_types::message::MessageKind;
 use starina_types::message::Open;
+use starina_types::syscall::VsyscallPage;
 
 use crate::channel::Channel;
 use crate::channel::ChannelReceiver;
@@ -16,7 +17,7 @@ use crate::poll::Poll;
 use crate::poll::Readiness;
 
 pub trait EventLoop: Send + Sync {
-    fn init(dispatcher: &Dispatcher, ch: Channel) -> Self
+    fn init(dispatcher: &Dispatcher) -> Self
     where
         Self: Sized;
 
@@ -105,10 +106,10 @@ impl Dispatcher {
     }
 }
 
-pub fn app_loop<A: EventLoop>(ch: Channel) {
+pub fn app_loop<A: EventLoop>(vsyscall: *const VsyscallPage) {
     let poll = Poll::create().unwrap();
     let dispatcher = Dispatcher::new(poll);
-    let app = A::init(&dispatcher, ch);
+    let app = A::init(&dispatcher);
 
     loop {
         dispatcher.wait_and_dispatch(&app);

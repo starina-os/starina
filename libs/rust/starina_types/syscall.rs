@@ -16,6 +16,12 @@ pub enum SyscallNumber {
     HandleClose = 7,
 }
 
+#[repr(C)]
+pub struct VsyscallPage {
+    pub environ_ptr: *const u8,
+    pub environ_len: usize,
+}
+
 pub struct InKernelSyscallTable {
     pub console_write: fn(&[u8]),
     pub poll_create: fn() -> Result<HandleId, ErrorCode>,

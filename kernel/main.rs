@@ -11,6 +11,7 @@
 #[macro_use]
 mod print;
 mod folio;
+mod startup;
 
 extern crate alloc;
 
@@ -60,20 +61,6 @@ pub fn boot(bootinfo: BootInfo) -> ! {
 
     cpuvar::percpu_init(bootinfo.cpu_id);
     arch::percpu_init();
-
-    {
-        use process::KERNEL_PROCESS;
-        use scheduler::GLOBAL_SCHEDULER;
-        GLOBAL_SCHEDULER
-            .push(thread::Thread::new_inkernel(virtio_net::autogen::app_main as usize, 0).unwrap());
-        // GLOBAL_SCHEDULER.push(
-        //     thread::Thread::new_inkernel(
-        //         ktest::autogen::app_main as usize,
-        //         ch2_handle.as_raw() as usize,
-        //     )
-        //     .unwrap(),
-        // );
-    }
-
+    startup::load_inkernel_apps();
     thread::switch_thread();
 }
