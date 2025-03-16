@@ -113,6 +113,7 @@ pub fn app_loop<E: DeserializeOwned, A: EventLoop<E>>(vsyscall: *const VsyscallP
         let len = (*vsyscall).environ_len;
         core::slice::from_raw_parts(ptr, len)
     };
+
     let env: E = serde_json::from_slice(&env_json).expect("failed to parse env");
 
     let poll = Poll::create().unwrap();

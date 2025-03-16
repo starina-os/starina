@@ -22,6 +22,9 @@ pub struct VsyscallPage {
     pub environ_len: usize,
 }
 
+/// SAFETY: VsyscallPage is pre-allocated, the same across threads, and immutable.
+unsafe impl Send for VsyscallPage {}
+
 pub struct InKernelSyscallTable {
     pub console_write: fn(&[u8]),
     pub poll_create: fn() -> Result<HandleId, ErrorCode>,
