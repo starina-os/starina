@@ -54,26 +54,6 @@ impl Handleable for Channel {
     }
 }
 
-impl serde::Serialize for Channel {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        serializer.serialize_i32(self.0.id().as_raw())
-    }
-}
-
-impl<'de> serde::Deserialize<'de> for Channel {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let raw: i32 = serde::Deserialize::deserialize(deserializer)?;
-        let id = HandleId::from_raw(raw);
-        Ok(Channel::from_handle(OwnedHandle::from_raw(id)))
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct ChannelSender(Arc<Channel>);
 
