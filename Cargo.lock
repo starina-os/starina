@@ -102,6 +102,7 @@ dependencies = [
  "hashbrown",
  "spin",
  "starina_types",
+ "starina_utils",
 ]
 
 [[package]]

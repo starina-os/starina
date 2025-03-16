@@ -4,10 +4,13 @@ pub use starina_types::syscall::*;
 pub use self::in_kernel::*;
 
 pub mod in_kernel {
+    use starina_types::address::PAddr;
+    use starina_types::address::VAddr;
     use starina_types::error::ErrorCode;
     use starina_types::handle::HandleId;
     use starina_types::message::MessageInfo;
     use starina_types::poll::Readiness;
+    use starina_types::vmspace::PageProtect;
 
     use super::*;
 
@@ -58,5 +61,26 @@ pub mod in_kernel {
 
     pub fn handle_close(handle: HandleId) -> Result<(), ErrorCode> {
         (INKERNEL_SYSCALL_TABLE.handle_close)(handle)
+    }
+
+    pub fn folio_create(len: usize) -> Result<HandleId, ErrorCode> {
+        todo!()
+    }
+
+    pub fn folio_create_fixed(paddr: PAddr, len: usize) -> Result<HandleId, ErrorCode> {
+        todo!()
+    }
+
+    pub fn folio_paddr(handle: HandleId) -> Result<usize, ErrorCode> {
+        todo!()
+    }
+
+    pub fn vmspace_map(
+        handle: HandleId,
+        len: usize,
+        folio: HandleId,
+        prot: PageProtect,
+    ) -> Result<VAddr, ErrorCode> {
+        todo!()
     }
 }

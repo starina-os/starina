@@ -40,6 +40,11 @@ impl VAddr {
     pub const fn as_usize(self) -> usize {
         self.0
     }
+
+    pub fn add(self, offset: usize) -> VAddr {
+        // TODO: Check overflow.
+        VAddr::new(self.as_usize() + offset)
+    }
 }
 
 impl fmt::Display for VAddr {

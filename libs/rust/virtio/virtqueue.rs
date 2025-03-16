@@ -2,10 +2,10 @@ use core::mem::size_of;
 use core::sync::atomic::Ordering;
 use core::sync::atomic::{self};
 
-use starina_api::folio::MappedFolio;
-use starina_api::prelude::Vec;
-use starina_api::types::address::PAddr;
-use starina_api::types::address::VAddr;
+use starina::address::PAddr;
+use starina::address::VAddr;
+use starina::folio::MappedFolio;
+use starina::prelude::*;
 use starina_utils::alignment::align_up;
 
 use super::transports::VirtioTransport;
