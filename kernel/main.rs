@@ -8,9 +8,8 @@
 #![feature(allocator_api)]
 #![allow(unused)]
 
-// FIXME: Don't use starina crate here.
 #[macro_use]
-extern crate starina;
+mod print;
 
 extern crate alloc;
 

@@ -6,7 +6,7 @@ pub struct Printer;
 
 impl core::fmt::Write for Printer {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        crate::syscall::console_write(s.as_bytes());
+        crate::arch::console_write(s.as_bytes());
         Ok(())
     }
 }
@@ -17,7 +17,7 @@ macro_rules! print {
     ($($arg:tt)*) => {{
         #![allow(unused_imports)]
         use core::fmt::Write;
-        write!($crate::log::Printer, $($arg)*).ok();
+        write!($crate::print::Printer, $($arg)*).ok();
     }};
 }
 
@@ -55,7 +55,7 @@ pub enum LogLevel {
 #[macro_export]
 macro_rules! log {
     ($level:expr, $($arg:tt)+) => {{
-        use $crate::log::LogLevel;
+        use $crate::print::LogLevel;
 
         const RESET_COLOR: &str = "\x1b[0m";
 
@@ -69,8 +69,7 @@ macro_rules! log {
             };
 
             $crate::println!(
-                // TODO:
-                "[app         ] {}{:6}{} {}",
+                "[kernel      ] {}{:6}{} {}",
                 color,
                 level_str,
                 RESET_COLOR,
@@ -82,27 +81,27 @@ macro_rules! log {
 
 #[macro_export]
 macro_rules! error {
-    ($($arg:tt)+) => { $crate::log!($crate::log::LogLevel::Error, $($arg)+) }
+    ($($arg:tt)+) => { $crate::log!($crate::print::LogLevel::Error, $($arg)+) }
 }
 
 #[macro_export]
 macro_rules! warn {
-    ($($arg:tt)+) => { $crate::log!($crate::log::LogLevel::Warn, $($arg)+) }
+    ($($arg:tt)+) => { $crate::log!($crate::print::LogLevel::Warn, $($arg)+) }
 }
 
 #[macro_export]
 macro_rules! info {
-    ($($arg:tt)+) => { $crate::log!($crate::log::LogLevel::Info, $($arg)+) }
+    ($($arg:tt)+) => { $crate::log!($crate::print::LogLevel::Info, $($arg)+) }
 }
 
 #[macro_export]
 macro_rules! debug {
-    ($($arg:tt)+) => { $crate::log!($crate::log::LogLevel::Debug, $($arg)+) }
+    ($($arg:tt)+) => { $crate::log!($crate::print::LogLevel::Debug, $($arg)+) }
 }
 
 #[macro_export]
 macro_rules! trace {
-    ($($arg:tt)+) => { $crate::log!($crate::log::LogLevel::Trace, $($arg)+) }
+    ($($arg:tt)+) => { $crate::log!($crate::print::LogLevel::Trace, $($arg)+) }
 }
 
 /// Print kernel message with backtraces.
