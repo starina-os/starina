@@ -68,7 +68,7 @@ pub struct MmioFolio {
 impl MmioFolio {
     /// Allocates a folio at an arbitrary physical address, and maps it to the
     /// current process's address space.
-    pub fn create(bus: IoBus, len: usize) -> Result<MmioFolio, ErrorCode> {
+    pub fn create(bus: &IoBus, len: usize) -> Result<MmioFolio, ErrorCode> {
         let folio = bus.map(None, len)?;
         let vaddr = syscall::vmspace_map(
             SELF_VMSPACE,
@@ -87,7 +87,7 @@ impl MmioFolio {
 
     /// Allocates a folio at a specific physical address (`paddr`), and maps it to the
     /// current process's address space.
-    pub fn create_pinned(bus: IoBus, daddr: DAddr, len: usize) -> Result<MmioFolio, ErrorCode> {
+    pub fn create_pinned(bus: &IoBus, daddr: DAddr, len: usize) -> Result<MmioFolio, ErrorCode> {
         let offset = daddr.as_usize() % PAGE_SIZE;
         let map_daddr = DAddr::new(align_down(daddr.as_usize(), PAGE_SIZE));
         let map_len = align_up(len, PAGE_SIZE);

@@ -274,14 +274,6 @@ name = "starina_utils"
 version = "0.0.0"
 
 [[package]]
-name = "starina_virtio"
-version = "0.0.0"
-dependencies = [
- "starina",
- "starina_utils",
-]
-
-[[package]]
 name = "static_assertions"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -322,9 +314,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1230ec65f13e0f9b28d789da20d2d419511893ea9dac2c1f4ef67b8b14e5da80"
 
 [[package]]
+name = "virtio"
+version = "0.0.0"
+dependencies = [
+ "starina",
+ "starina_utils",
+]
+
+[[package]]
 name = "virtio_net"
 version = "0.0.0"
 dependencies = [
  "serde",
  "starina",
+ "virtio",
 ]

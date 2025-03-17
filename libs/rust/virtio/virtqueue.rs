@@ -3,8 +3,8 @@ use core::sync::atomic::Ordering;
 use core::sync::atomic::{self};
 
 use starina::address::PAddr;
-use starina::address::VAddr;
 use starina::folio::MmioFolio;
+use starina::iobus::IoBus;
 use starina::prelude::*;
 use starina_utils::alignment::align_up;
 
@@ -75,16 +75,15 @@ pub struct VirtQueue {
     last_used_index: u16,
     free_head: u16,
     num_free_descs: u16,
-    descs: VAddr,
-    avail: VAddr,
-    used: VAddr,
+    avail_ring_off: usize,
+    used_ring_off: usize,
 }
 
 // FIXME:
 const PAGE_SIZE: usize = 4096;
 
 impl VirtQueue {
-    pub fn new(index: u16, transport: &mut dyn VirtioTransport) -> VirtQueue {
+    pub fn new(iobus: &IoBus, index: u16, transport: &mut dyn VirtioTransport) -> VirtQueue {
         transport.select_queue(index);
 
         let num_descs = transport.queue_max_size();
@@ -97,38 +96,33 @@ impl VirtQueue {
             size_of::<u16>() * 3 + size_of::<VirtqUsedElem>() * (num_descs as usize);
         let virtq_size = used_ring_off + align_up(used_ring_size, PAGE_SIZE);
 
-        let folio = MmioFolio::create(align_up(virtq_size, PAGE_SIZE))
-            .expect("failed to allocate virtuqeue");
-
-        let virtqueue_vaddr = folio.vaddr();
-        let virtqueue_paddr = folio.paddr();
-        let descs = virtqueue_paddr;
-        let avail = virtqueue_paddr.add(avail_ring_off);
-        let used = virtqueue_paddr.add(used_ring_off);
+        let folio = MmioFolio::create(iobus, virtq_size).expect("failed to allocate virtuqeue");
+        let descs = folio.daddr();
+        let avail = folio.daddr().add(avail_ring_off);
+        let used = folio.daddr().add(used_ring_off);
 
         transport.set_queue_desc_paddr(descs);
         transport.set_queue_driver_paddr(avail);
         transport.set_queue_device_paddr(used);
         transport.enable_queue();
 
-        // Add descriptors into the free list.
-        for i in 0..num_descs {
-            let desc =
-                unsafe { &mut *virtqueue_vaddr.as_mut_ptr::<VirtqDesc>().offset(i as isize) };
-            desc.next = if i == num_descs - 1 { 0 } else { i + 1 };
-        }
-
-        VirtQueue {
+        let mut this = VirtQueue {
             folio,
             index,
             num_descs,
             last_used_index: 0,
             free_head: 0,
             num_free_descs: num_descs,
-            descs: virtqueue_vaddr.add(0),
-            avail: virtqueue_vaddr.add(avail_ring_off),
-            used: virtqueue_vaddr.add(used_ring_off),
+            avail_ring_off,
+            used_ring_off,
+        };
+
+        // Add descriptors into the free list.
+        for i in 0..num_descs {
+            this.desc_mut(i).next = if i == num_descs - 1 { 0 } else { i + 1 };
         }
+
+        this
     }
 
     /// Enqueues a request to the device. A request is a chain of descriptors

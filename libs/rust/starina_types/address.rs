@@ -74,6 +74,11 @@ impl DAddr {
     pub const fn as_usize(self) -> usize {
         self.0
     }
+
+    pub fn add(self, offset: usize) -> DAddr {
+        // TODO: Check overflow.
+        DAddr::new(self.as_usize() + offset)
+    }
 }
 
 impl fmt::Display for DAddr {
