@@ -6,6 +6,7 @@ use starina_types::vmspace::PageProtect;
 
 use crate::arch;
 use crate::folio::Folio;
+use crate::handle::Handleable;
 use crate::refcount::SharedRef;
 
 pub static KERNEL_VMSPACE: spin::Lazy<SharedRef<VmSpace>> = spin::Lazy::new(|| {
@@ -27,7 +28,11 @@ impl VmSpace {
         &self.arch
     }
 
-    fn map_anywhere(&self, folio: SharedRef<Folio>, prot: PageProtect) -> Result<(), ErrorCode> {
+    pub fn map_anywhere(
+        &self,
+        folio: SharedRef<Folio>,
+        prot: PageProtect,
+    ) -> Result<VAddr, ErrorCode> {
         let paddr = folio.paddr();
 
         // The arch's page table will own an reference to the folio.
@@ -38,5 +43,26 @@ impl VmSpace {
 
     pub fn switch(&self) {
         self.arch.switch();
+    }
+}
+
+impl Handleable for VmSpace {
+    fn close(&self) {
+        // Do nothing
+    }
+
+    fn add_listener(&self, _listener: Listener) -> Result<(), ErrorCode> {
+        debug_warn!("unsupported method at {}:{}", file!(), line!());
+        Err(ErrorCode::NotSupported)
+    }
+
+    fn remove_listener(&self, _poll: &crate::poll::Poll) -> Result<(), ErrorCode> {
+        debug_warn!("unsupported method at {}:{}", file!(), line!());
+        Err(ErrorCode::NotSupported)
+    }
+
+    fn readiness(&self) -> Result<Readiness, ErrorCode> {
+        debug_warn!("unsupported method at {}:{}", file!(), line!());
+        Err(ErrorCode::NotSupported)
     }
 }

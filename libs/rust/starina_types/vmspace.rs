@@ -1,5 +1,7 @@
 use core::ops;
 
+use crate::error::ErrorCode;
+
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 #[repr(transparent)]
 pub struct PageProtect(u8);
@@ -16,6 +18,11 @@ impl PageProtect {
 
     pub const fn from_raw(value: u8) -> PageProtect {
         PageProtect(value)
+    }
+
+    pub fn from_raw_isize(value: isize) -> Result<PageProtect, ErrorCode> {
+        let value: u8 = value.try_into().map_err(|_| ErrorCode::InvalidArg)?;
+        Ok(PageProtect::from_raw(value))
     }
 
     pub fn contains(&self, other: PageProtect) -> bool {

@@ -1,4 +1,5 @@
 use starina::address::DAddr;
+use starina::address::VAddr;
 use starina_types::error::ErrorCode;
 use starina_types::handle::HandleId;
 use starina_types::handle::HandleRights;
@@ -7,11 +8,13 @@ use starina_types::message::MESSAGE_NUM_HANDLES_MAX;
 use starina_types::message::MessageInfo;
 use starina_types::poll::Readiness;
 use starina_types::syscall::*;
+use starina_types::vmspace::PageProtect;
 
 use crate::arch;
 use crate::arch::enter_kernelland;
 use crate::channel::Channel;
 use crate::cpuvar::current_thread;
+use crate::folio::Folio;
 use crate::handle::Handle;
 use crate::iobus::IoBus;
 use crate::isolation::IsolationHeap;
@@ -21,6 +24,7 @@ use crate::refcount::SharedRef;
 use crate::thread::Thread;
 use crate::thread::ThreadState;
 use crate::thread::switch_thread;
+use crate::vmspace::VmSpace;
 
 pub enum SyscallResult {
     Done(RetVal),
@@ -129,6 +133,31 @@ fn channel_recv(
     Ok(msginfo)
 }
 
+pub fn vmspace_map(
+    current: &SharedRef<Thread>,
+    handle: HandleId,
+    folio: HandleId,
+    prot: PageProtect,
+) -> Result<VAddr, ErrorCode> {
+    let vmspace = if handle.as_raw() == 0 {
+        current.process().vmspace().clone()
+    } else {
+        let mut handle_table = current.process().handles().lock();
+        handle_table.get::<VmSpace>(handle)?
+    };
+
+    let folio = handle_table.get::<Folio>(folio)?;
+    let vaddr = vmspace.map_anywhere(folio, prot)?;
+    Ok(vaddr)
+}
+
+pub fn folio_daddr(current: &SharedRef<Thread>, handle: HandleId) -> Result<DAddr, ErrorCode> {
+    let mut handle_table = current.process().handles().lock();
+    let folio = handle_table.get::<Folio>(handle)?;
+    let daddr = folio.daddr();
+    Ok(daddr)
+}
+
 fn busio_map(
     current: &SharedRef<Thread>,
     handle: HandleId,
@@ -176,7 +205,7 @@ fn do_syscall(
             let poll = HandleId::from_raw_isize(a0)?;
             let object = HandleId::from_raw_isize(a1)?;
             let interests = Readiness::from_raw_isize(a2)?;
-            let ret = poll_add(&current, poll, object, interests)?;
+            poll_add(&current, poll, object, interests)?;
             Ok(SyscallResult::Done(RetVal::new(0)))
         }
         SYS_POLL_WAIT => {
@@ -198,6 +227,25 @@ fn do_syscall(
             let handles = a2 as *mut HandleId;
             let msginfo = channel_recv(&current, handle, data, handles)?;
             Ok(SyscallResult::Done(msginfo.into()))
+        }
+        SYS_VMSPACE_MAP => {
+            let handle = HandleId::from_raw_isize(a0)?;
+            let folio = HandleId::from_raw_isize(a1)?;
+            let prot = PageProtect::from_raw_isize(a2)?;
+            let ret = vmspace_map(&current, handle, folio, prot)?;
+            Ok(SyscallResult::Done(ret.into()))
+        }
+        SYS_FOLIO_DADDR => {
+            let handle = HandleId::from_raw_isize(a0)?;
+            let daddr = folio_daddr(&current, handle)?;
+            Ok(SyscallResult::Done(daddr.into()))
+        }
+        SYS_BUSIO_MAP => {
+            let handle = HandleId::from_raw_isize(a0)?;
+            let daddr = DAddr::from_raw_isize(a1)?;
+            let len = a2 as usize;
+            let ret = busio_map(&current, handle, daddr, len)?;
+            Ok(SyscallResult::Done(ret.into()))
         }
         _ => {
             debug_warn!("unknown syscall: {}", n);

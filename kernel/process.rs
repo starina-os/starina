@@ -7,6 +7,7 @@ use crate::refcount::RefCounted;
 use crate::refcount::SharedRef;
 use crate::spinlock::SpinLock;
 use crate::vmspace::KERNEL_VMSPACE;
+use crate::vmspace::VmSpace;
 
 pub struct Process {
     vmspace: SharedRef<VmSpace>,
@@ -25,6 +26,10 @@ impl Process {
 
     pub fn handles(&self) -> &SpinLock<HandleTable> {
         &self.handles
+    }
+
+    pub fn vmspace(&self) -> &SharedRef<VmSpace> {
+        &self.vmspace
     }
 
     pub fn isolation(&self) -> &Isolation {

@@ -1,3 +1,4 @@
+use crate::address::VAddr;
 use crate::error::ErrorCode;
 use crate::handle::HandleId;
 use crate::poll::Readiness;
@@ -15,7 +16,7 @@ pub const SYS_FOLIO_CREATE_FIXED: u8 = 10;
 pub const SYS_VMSPACE_MAP: u8 = 11;
 pub const SYS_FOLIO_CREATE_MMIO: u8 = 12;
 pub const SYS_FOLIO_DADDR: u8 = 13;
-
+pub const SYS_BUSIO_MAP: u8 = 14;
 #[repr(C)]
 pub struct VsyscallPage {
     pub environ_ptr: *const u8,
@@ -57,6 +58,12 @@ impl From<(HandleId, Readiness)> for RetVal {
         assert!(handle_raw < 0x10000);
         let readiness = value.1.as_isize();
         RetVal((readiness << 24) | handle_raw)
+    }
+}
+
+impl From<VAddr> for RetVal {
+    fn from(value: VAddr) -> Self {
+        RetVal(value.as_usize() as isize)
     }
 }
 
