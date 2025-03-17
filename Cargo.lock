@@ -86,6 +86,7 @@ dependencies = [
  "hashbrown",
  "rustc-hash",
  "serde_json",
+ "spin",
  "starina",
  "starina_types",
  "starina_utils",

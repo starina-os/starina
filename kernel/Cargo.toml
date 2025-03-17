@@ -13,6 +13,7 @@ path = "main.rs"
 starina_types = { workspace = true }
 starina_utils = { workspace = true }
 
+spin = { workspace = true }
 arrayvec = { workspace = true }
 hashbrown = { workspace = true }
 rustc-hash = { workspace = true }

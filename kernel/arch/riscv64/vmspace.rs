@@ -72,53 +72,41 @@ struct PageTable {
 impl PageTable {
     pub fn new() -> Result<PageTable, ErrorCode> {
         let l0_table = Folio::alloc(size_of::<Table>())?;
-        Ok(PageTable { l0_table })
+        let mut table = PageTable { l0_table };
+        table.map_kernel_space()?;
+        Ok(table)
     }
 
+    // FIXME: Move to machine-specific code.
     pub fn map_kernel_space(&mut self) -> Result<(), ErrorCode> {
         // Kernel memory
-        self.map_range(
+        self.map(
             VAddr::new(0x8020_0000),
             PAddr::new(0x8020_0000),
             0x8ff00000 - 0x8020_0000,
             PageProtect::READABLE | PageProtect::WRITABLE | PageProtect::EXECUTABLE,
         )?;
         // PLIC
-        self.map_range(
+        self.map(
             VAddr::new(0x0c00_0000),
             PAddr::new(0x0c00_0000),
             0x400000,
             PageProtect::READABLE | PageProtect::WRITABLE,
         )?;
         // UART
-        self.map_range(
+        self.map(
             VAddr::new(0x1000_0000),
             PAddr::new(0x1000_0000),
             0x1000,
             PageProtect::READABLE | PageProtect::WRITABLE,
         )?;
         // Virtio
-        self.map_range(
+        self.map(
             VAddr::new(0x10001000),
             PAddr::new(0x10001000),
             0x1000,
             PageProtect::READABLE | PageProtect::WRITABLE,
         )?;
-        Ok(())
-    }
-
-    fn map_range(
-        &mut self,
-        vaddr: VAddr,
-        paddr: PAddr,
-        len: usize,
-        prot: PageProtect,
-    ) -> Result<(), ErrorCode> {
-        assert!(is_aligned(len, PAGE_SIZE));
-
-        for offset in (0..len).step_by(PAGE_SIZE) {
-            self.map(vaddr.add(offset), paddr.add(offset), PAGE_SIZE, prot)?;
-        }
         Ok(())
     }
 

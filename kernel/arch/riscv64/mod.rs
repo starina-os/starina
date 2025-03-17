@@ -25,6 +25,7 @@ pub use idle::idle;
 pub use thread::Thread;
 pub use thread::enter_kernelland;
 pub use thread::enter_userland;
+pub use vmspace::VmSpace;
 
 pub const PAGE_SIZE: usize = 4096;
 pub const NUM_CPUS_MAX: usize = 4;
@@ -39,7 +40,14 @@ pub fn halt() -> ! {
 
 pub fn vaddr2paddr(vaddr: VAddr) -> Result<PAddr, ErrorCode> {
     // Identical mapping.
+    // FIXME:
     Ok(PAddr::new(vaddr.as_usize()))
+}
+
+pub fn paddr2vaddr(paddr: PAddr) -> Result<VAddr, ErrorCode> {
+    // Identical mapping.
+    // FIXME:
+    Ok(VAddr::new(paddr.as_usize()))
 }
 
 pub fn console_write(bytes: &[u8]) {
