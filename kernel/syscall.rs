@@ -137,8 +137,12 @@ fn busio_map(
 ) -> Result<HandleId, ErrorCode> {
     let mut handle_table = current.process().handles().lock();
     let busio = handle_table.get::<IoBus>(handle)?;
+    if !busio.is_capable(HandleRights::WRITE) {
+        return Err(ErrorCode::NotAllowed);
+    }
+
     let folio = busio.map(daddr, len)?;
-    let handle = Handle::new(SharedRef::new(folio)?, HandleRights::READ);
+    let handle = Handle::new(SharedRef::new(folio)?, HandleRights::MAP);
     let folio_id = handle_table.insert(handle)?;
     Ok(folio_id)
 }

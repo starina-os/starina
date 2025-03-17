@@ -40,6 +40,7 @@ impl HandleRights {
     pub const READ: HandleRights = HandleRights(1 << 0);
     pub const WRITE: HandleRights = HandleRights(1 << 1);
     pub const POLL: HandleRights = HandleRights(1 << 2);
+    pub const MAP: HandleRights = HandleRights(1 << 3);
 
     pub fn is_capable(&self, required: HandleRights) -> bool {
         self.0 & required.0 == required.0
