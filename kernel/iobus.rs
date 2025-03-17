@@ -35,6 +35,10 @@ impl IoBus {
                 return Err(ErrorCode::InvalidArg);
             }
 
+            if !is_aligned(len, PAGE_SIZE) {
+                return Err(ErrorCode::InvalidArg);
+            }
+
             Folio::alloc_fixed(paddr, len)
         } else {
             Folio::alloc(len)
