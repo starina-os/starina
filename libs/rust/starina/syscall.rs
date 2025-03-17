@@ -118,11 +118,7 @@ pub fn handle_close(handle: HandleId) -> Result<(), ErrorCode> {
     Ok(())
 }
 
-pub fn folio_create_mmio(
-    iobus: HandleId,
-    daddr: Option<DAddr>,
-    len: usize,
-) -> Result<HandleId, ErrorCode> {
+pub fn iobus_map(iobus: HandleId, daddr: Option<DAddr>, len: usize) -> Result<HandleId, ErrorCode> {
     let ret = syscall(
         SYS_FOLIO_CREATE_MMIO,
         iobus.as_raw() as isize,

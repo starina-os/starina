@@ -11,6 +11,7 @@
 #[macro_use]
 mod print;
 mod folio;
+mod iobus;
 mod startup;
 
 extern crate alloc;

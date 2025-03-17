@@ -239,14 +239,17 @@ impl Handleable for Poll {
     }
 
     fn add_listener(&self, _listener: Listener) -> Result<(), ErrorCode> {
+        debug_warn!("unsupported method at {}:{}", file!(), line!());
         Err(ErrorCode::NotSupported)
     }
 
     fn remove_listener(&self, _poll: &Poll) -> Result<(), ErrorCode> {
+        debug_warn!("unsupported method at {}:{}", file!(), line!());
         Err(ErrorCode::NotSupported)
     }
 
     fn readiness(&self) -> Result<Readiness, ErrorCode> {
+        debug_warn!("unsupported method at {}:{}", file!(), line!());
         Err(ErrorCode::NotSupported)
     }
 }

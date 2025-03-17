@@ -1,3 +1,4 @@
+use starina::address::DAddr;
 use starina_types::error::ErrorCode;
 use starina_types::handle::HandleId;
 use starina_types::handle::HandleRights;
@@ -12,6 +13,7 @@ use crate::arch::enter_kernelland;
 use crate::channel::Channel;
 use crate::cpuvar::current_thread;
 use crate::handle::Handle;
+use crate::iobus::IoBus;
 use crate::isolation::IsolationHeap;
 use crate::isolation::IsolationHeapMut;
 use crate::poll::Poll;
@@ -125,6 +127,20 @@ fn channel_recv(
     };
     let msginfo = ch.recv(&mut handle_table, &mut data, &mut handles)?;
     Ok(msginfo)
+}
+
+fn busio_map(
+    current: &SharedRef<Thread>,
+    handle: HandleId,
+    daddr: Option<DAddr>,
+    len: usize,
+) -> Result<HandleId, ErrorCode> {
+    let mut handle_table = current.process().handles().lock();
+    let busio = handle_table.get::<IoBus>(handle)?;
+    let folio = busio.map(daddr, len)?;
+    let handle = Handle::new(SharedRef::new(folio)?, HandleRights::READ);
+    let folio_id = handle_table.insert(handle)?;
+    Ok(folio_id)
 }
 
 fn do_syscall(

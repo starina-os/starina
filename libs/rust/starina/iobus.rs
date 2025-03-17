@@ -1,6 +1,6 @@
 use crate::address::DAddr;
 use crate::error::ErrorCode;
-use crate::handle::HandleId;
+use crate::folio::Folio;
 use crate::handle::OwnedHandle;
 use crate::syscall;
 
@@ -9,7 +9,8 @@ pub struct IoBus {
 }
 
 impl IoBus {
-    pub fn map(&self, vm: HandleId, daddr: Option<DAddr>, len: usize) -> Result<DAddr, ErrorCode> {
-        todo!()
+    pub fn map(&self, daddr: Option<DAddr>, len: usize) -> Result<Folio, ErrorCode> {
+        let handle = syscall::iobus_map(self.handle.id(), daddr, len)?;
+        Ok(Folio::from_handle(OwnedHandle::from_raw(handle)))
     }
 }

@@ -2,7 +2,9 @@
 use core::alloc::GlobalAlloc;
 use core::alloc::Layout;
 
+use starina::address::DAddr;
 use starina::error::ErrorCode;
+use starina::poll::Readiness;
 use starina_types::address::PAddr;
 use starina_types::address::VAddr;
 use starina_utils::alignment::is_aligned;
@@ -10,9 +12,13 @@ use starina_utils::alignment::is_aligned;
 use crate::allocator::GLOBAL_ALLOCATOR;
 use crate::arch::PAGE_SIZE;
 use crate::arch::vaddr2paddr;
+use crate::handle::Handleable;
+use crate::poll::Listener;
+use crate::poll::Poll;
 
 pub struct Folio {
     paddr: PAddr,
+    daddr: Option<DAddr>,
     len: usize,
 }
 
@@ -39,6 +45,7 @@ impl Folio {
 
         let folio = Self {
             paddr: vaddr2paddr(VAddr::new(ptr as usize)).unwrap(),
+            daddr: None,
             len,
         };
 
@@ -57,7 +64,11 @@ impl Folio {
         // TODO: Inherit the reference counter if the paddr is already owned by a folio.
         // TODO: Make sure the paddr range is not exclusively owned by any other folio.
 
-        let folio = Self { paddr, len };
+        let folio = Self {
+            paddr,
+            daddr: None,
+            len,
+        };
 
         Ok(folio)
     }
@@ -72,8 +83,13 @@ impl Folio {
         }
 
         // TODO: Make sure the paddr range is not owned by any other folio.
+        // TODO: Check if the paddr is mappable - should not point to the kernel memory.
 
-        let folio = Self { paddr, len };
+        let folio = Self {
+            paddr,
+            daddr: None,
+            len,
+        };
 
         Ok(folio)
     }
@@ -84,5 +100,30 @@ impl Folio {
 
     pub fn paddr(&self) -> PAddr {
         self.paddr
+    }
+
+    pub fn daddr(&self) -> Option<DAddr> {
+        self.daddr
+    }
+}
+
+impl Handleable for Folio {
+    fn close(&self) {
+        // Do nothing
+    }
+
+    fn add_listener(&self, _listener: Listener) -> Result<(), ErrorCode> {
+        debug_warn!("unsupported method at {}:{}", file!(), line!());
+        Err(ErrorCode::NotSupported)
+    }
+
+    fn remove_listener(&self, _poll: &Poll) -> Result<(), ErrorCode> {
+        debug_warn!("unsupported method at {}:{}", file!(), line!());
+        Err(ErrorCode::NotSupported)
+    }
+
+    fn readiness(&self) -> Result<Readiness, ErrorCode> {
+        debug_warn!("unsupported method at {}:{}", file!(), line!());
+        Err(ErrorCode::NotSupported)
     }
 }

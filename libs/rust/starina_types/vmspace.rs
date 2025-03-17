@@ -6,7 +6,7 @@ pub struct PageProtect(u8);
 
 impl PageProtect {
     pub const READABLE: PageProtect = PageProtect::from_raw(1 << 1);
-    pub const WRITABLE: PageProtect = PageProtect::from_raw(1 << 2);
+    pub const WRITEABLE: PageProtect = PageProtect::from_raw(1 << 2);
     pub const EXECUTABLE: PageProtect = PageProtect::from_raw(1 << 3);
     pub const USER: PageProtect = PageProtect::from_raw(1 << 4);
 
@@ -23,7 +23,7 @@ impl PageProtect {
     }
 
     pub fn user_allowed_flags(&self) -> bool {
-        let allowed = Self::READABLE | Self::WRITABLE | Self::EXECUTABLE;
+        let allowed = Self::READABLE | Self::WRITEABLE | Self::EXECUTABLE;
         (self.0 & allowed.0) == self.0
     }
 
