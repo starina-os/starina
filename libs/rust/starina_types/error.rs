@@ -20,6 +20,7 @@ pub enum ErrorCode {
     InvalidArg = -17,
     InvalidHandle = -18,
     InvalidErrorCode = -19,
+    TooLarge = -20,
 }
 
 impl From<isize> for ErrorCode {

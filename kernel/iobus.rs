@@ -39,7 +39,7 @@ impl IoBus {
                 return Err(ErrorCode::InvalidArg);
             }
 
-            Folio::alloc_fixed(paddr, len)
+            Folio::alloc_at(paddr, len)
         } else {
             Folio::alloc(len)
         }

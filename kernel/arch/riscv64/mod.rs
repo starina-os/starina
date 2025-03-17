@@ -16,6 +16,7 @@ mod cpuvar;
 mod idle;
 mod sbi;
 mod thread;
+mod vmspace;
 
 pub use cpuvar::CpuVar;
 pub use cpuvar::get_cpuvar;

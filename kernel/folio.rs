@@ -52,28 +52,7 @@ impl Folio {
         Ok(folio)
     }
 
-    pub fn alloc_shared(paddr: PAddr, len: usize) -> Result<Folio, ErrorCode> {
-        if len == 0 || !is_aligned(len, PAGE_SIZE) {
-            return Err(ErrorCode::InvalidArg);
-        }
-
-        if !is_aligned(paddr.as_usize(), PAGE_SIZE) {
-            return Err(ErrorCode::InvalidArg);
-        }
-
-        // TODO: Inherit the reference counter if the paddr is already owned by a folio.
-        // TODO: Make sure the paddr range is not exclusively owned by any other folio.
-
-        let folio = Self {
-            paddr,
-            daddr: None,
-            len,
-        };
-
-        Ok(folio)
-    }
-
-    pub fn alloc_fixed(paddr: PAddr, len: usize) -> Result<Folio, ErrorCode> {
+    pub fn alloc_at(paddr: PAddr, len: usize) -> Result<Folio, ErrorCode> {
         if len == 0 || !is_aligned(len, PAGE_SIZE) {
             return Err(ErrorCode::InvalidArg);
         }

@@ -8,12 +8,6 @@
 #![feature(allocator_api)]
 #![allow(unused)]
 
-#[macro_use]
-mod print;
-mod folio;
-mod iobus;
-mod startup;
-
 extern crate alloc;
 
 use allocator::GLOBAL_ALLOCATOR;
@@ -24,11 +18,16 @@ use handle::Handle;
 use starina::device_tree::DeviceTree;
 use starina_types::handle::HandleRights;
 
+#[macro_use]
+mod print;
+
 mod allocator;
 mod arch;
 mod channel;
 mod cpuvar;
+mod folio;
 mod handle;
+mod iobus;
 mod isolation;
 mod panic;
 mod poll;
@@ -36,9 +35,11 @@ mod process;
 mod refcount;
 mod scheduler;
 mod spinlock;
+mod startup;
 mod syscall;
 mod thread;
 mod utils;
+mod vmspace;
 
 pub struct FreeRam {
     addr: *mut u8,
