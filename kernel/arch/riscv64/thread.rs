@@ -154,7 +154,7 @@ pub extern "C" fn enter_kernelland(
             s9_offset = const offset_of!(Context, s9),
             s10_offset = const offset_of!(Context, s10),
             s11_offset = const offset_of!(Context, s11),
-            syscall_handler = sym crate::syscall::syscall_handler,
+            syscall_handler = sym crate::syscall::syscall_inkernel_handler,
         )
     }
 }

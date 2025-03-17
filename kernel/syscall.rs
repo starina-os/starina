@@ -26,21 +26,6 @@ pub enum SyscallResult {
     Block(ThreadState),
 }
 
-fn kernel_scope<F, R>(f: F) -> R
-where
-    F: FnOnce() -> R,
-{
-    unsafe {
-        use core::arch::asm;
-        #[cfg(target_arch = "riscv64")]
-        asm!("csrrw tp, sscratch, tp");
-        let ret = f();
-        #[cfg(target_arch = "riscv64")]
-        asm!("csrrw tp, sscratch, tp");
-        ret
-    }
-}
-
 fn handle_close(current: &SharedRef<Thread>, handle: HandleId) -> Result<(), ErrorCode> {
     let mut handle_table = current.process().handles().lock();
     handle_table.close(handle)?;
@@ -201,7 +186,22 @@ fn do_syscall(
     }
 }
 
-pub extern "C" fn syscall_handler(
+fn kernel_scope<F, R>(f: F) -> R
+where
+    F: FnOnce() -> R,
+{
+    unsafe {
+        use core::arch::asm;
+        #[cfg(target_arch = "riscv64")]
+        asm!("csrrw tp, sscratch, tp");
+        let ret = f();
+        #[cfg(target_arch = "riscv64")]
+        asm!("csrrw tp, sscratch, tp");
+        ret
+    }
+}
+
+pub extern "C" fn syscall_inkernel_handler(
     a0: isize,
     a1: isize,
     a2: isize,
