@@ -8,8 +8,10 @@ use crate::arch;
 use crate::folio::Folio;
 use crate::refcount::SharedRef;
 
-pub static KERNEL_VMSPACE: spin::Lazy<VmSpace> =
-    spin::Lazy::new(|| VmSpace::new().expect("failed to create kernel vmspace"));
+pub static KERNEL_VMSPACE: spin::Lazy<SharedRef<VmSpace>> = spin::Lazy::new(|| {
+    let vmspace = VmSpace::new().expect("failed to create kernel vmspace");
+    SharedRef::new(&vmspace)
+});
 
 pub struct VmSpace {
     arch: arch::VmSpace,
