@@ -106,11 +106,6 @@ impl MmioFolio {
         })
     }
 
-    /// Returns the start address of the folio in the current process's address space.
-    pub fn vaddr(&self) -> VAddr {
-        self.vaddr
-    }
-
     /// Returns the start address of the folio in device memory space.
     pub fn daddr(&self) -> DAddr {
         self.daddr
