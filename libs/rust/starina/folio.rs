@@ -88,11 +88,6 @@ impl MmioFolio {
     /// Allocates a folio at a specific physical address (`paddr`), and maps it to the
     /// current process's address space.
     pub fn create_pinned(bus: IoBus, daddr: DAddr, len: usize) -> Result<MmioFolio, ErrorCode> {
-        debug_assert!(starina_utils::alignment::is_aligned(
-            daddr.as_usize(),
-            PAGE_SIZE
-        ));
-
         let offset = daddr.as_usize() % PAGE_SIZE;
         let map_daddr = DAddr::new(align_down(daddr.as_usize(), PAGE_SIZE));
         let map_len = align_up(len, PAGE_SIZE);
