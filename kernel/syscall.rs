@@ -254,21 +254,6 @@ fn do_syscall(
     }
 }
 
-fn kernel_scope<F, R>(f: F) -> R
-where
-    F: FnOnce() -> R,
-{
-    unsafe {
-        use core::arch::asm;
-        #[cfg(target_arch = "riscv64")]
-        asm!("csrrw tp, sscratch, tp");
-        let ret = f();
-        #[cfg(target_arch = "riscv64")]
-        asm!("csrrw tp, sscratch, tp");
-        ret
-    }
-}
-
 pub extern "C" fn syscall_inkernel_handler(
     a0: isize,
     a1: isize,
@@ -277,7 +262,7 @@ pub extern "C" fn syscall_inkernel_handler(
     a4: isize,
     n: isize,
 ) -> ! {
-    kernel_scope(|| {
+    arch::kernel_scope(|| {
         let current = current_thread();
         let new_state = match do_syscall(a0, a1, a2, a3, a4, n, &current) {
             Ok(SyscallResult::Done(value)) => ThreadState::Runnable(Some(value.into())),
