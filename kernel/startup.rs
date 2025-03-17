@@ -3,7 +3,9 @@ use alloc::string::String;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
+use hashbrown::HashMap;
 use starina::device_tree::DeviceTree;
+use starina::spec::DeviceMatch;
 use starina::spec::EnvType;
 use starina::syscall::VsyscallPage;
 use starina_types::spec::AppSpec;
@@ -33,9 +35,6 @@ struct Instance {
 }
 
 pub fn load_inkernel_apps(device_tree: DeviceTree) {
-    let device_tree_json =
-        serde_json::to_value(device_tree).expect("failed to serialize device tree");
-
     let mut instances = INSTANCES.lock();
     let mut env = serde_json::Map::new();
     for app in INKERNEL_APPS {
@@ -43,8 +42,29 @@ pub fn load_inkernel_apps(device_tree: DeviceTree) {
         let mut items = Vec::with_capacity(app.spec.env.len());
         for item in app.spec.env {
             items.push(match item.ty {
-                EnvType::DeviceTree {} => {
-                    env.insert(item.name.into(), device_tree_json.clone());
+                EnvType::DeviceTree { matches } => {
+                    let mut devices = HashMap::new();
+                    for (name, node) in &device_tree.devices {
+                        let should_add = matches.iter().any(|m| {
+                            match m {
+                                DeviceMatch::Compatible(compatible) => {
+                                    node.compatible.iter().any(|c| c == compatible)
+                                }
+                            }
+                        });
+
+                        if should_add {
+                            devices.insert(name, node);
+                        }
+                    }
+
+                    env.insert(
+                        item.name.into(),
+                        serde_json::json!({
+                            "buses": device_tree.buses,
+                            "devices": devices,
+                        }),
+                    );
                 }
             });
         }

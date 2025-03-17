@@ -1,5 +1,9 @@
+pub enum DeviceMatch {
+    Compatible(&'static str),
+}
+
 pub enum EnvType {
-    DeviceTree {},
+    DeviceTree { matches: &'static [DeviceMatch] },
 }
 
 pub struct EnvItem {

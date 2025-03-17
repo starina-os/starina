@@ -15,7 +15,14 @@ pub struct App {}
 impl EventLoop<Env> for App {
     fn init(dispatcher: &Dispatcher, env: Env) -> Self {
         info!("Hello from virtio-net!");
-        info!("device_tree: \n{:#x?}", env.device_tree);
+        for (name, node) in env.device_tree.devices {
+            if !node.compatible.iter().any(|c| c == "virtio,mmio") {
+                continue;
+            }
+
+            info!("device: {}", name);
+            info!("  reg: {:x?}", node.reg);
+        }
         App {}
     }
 

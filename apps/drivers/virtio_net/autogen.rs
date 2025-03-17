@@ -1,6 +1,7 @@
 // TODO: auto geenrate this file from app.toml
 use starina::device_tree::DeviceTree;
 use starina::spec::AppSpec;
+use starina::spec::DeviceMatch;
 use starina::spec::EnvItem;
 use starina::spec::EnvType;
 use starina::syscall::VsyscallPage;
@@ -15,7 +16,9 @@ pub struct Env {
 pub const APP_SPEC: AppSpec = AppSpec {
     env: &[EnvItem {
         name: "device_tree",
-        ty: EnvType::DeviceTree {},
+        ty: EnvType::DeviceTree {
+            matches: &[DeviceMatch::Compatible("virtio,mmio")],
+        },
     }],
 };
 
