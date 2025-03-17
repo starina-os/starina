@@ -1,5 +1,5 @@
 use starina::address::PAddr;
-use starina::folio::MappedFolio;
+use starina::folio::MmioFolio;
 use starina::prelude::*;
 use starina_driver_utils::mmio::LittleEndian;
 use starina_driver_utils::mmio::MmioReg;
@@ -37,11 +37,11 @@ static QUEUE_DEVICE_HIGH_REG: MmioReg<LittleEndian, WriteOnly, u32> = MmioReg::n
 static CONFIG_REG_BASE: MmioReg<LittleEndian, ReadWrite, u8> = MmioReg::new(0x100);
 
 pub struct VirtioMmio {
-    mmio: MappedFolio,
+    mmio: MmioFolio,
 }
 
 impl VirtioMmio {
-    pub fn new(mmio: MappedFolio) -> VirtioMmio {
+    pub fn new(mmio: MmioFolio) -> VirtioMmio {
         VirtioMmio { mmio }
     }
 }

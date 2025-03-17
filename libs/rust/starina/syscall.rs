@@ -1,4 +1,4 @@
-use starina_types::address::PAddr;
+use starina_types::address::DAddr;
 use starina_types::address::VAddr;
 use starina_types::error::ErrorCode;
 use starina_types::handle::HandleId;
@@ -118,46 +118,43 @@ pub fn handle_close(handle: HandleId) -> Result<(), ErrorCode> {
     Ok(())
 }
 
-pub fn folio_create(len: usize) -> Result<HandleId, ErrorCode> {
-    let ret = syscall(SYS_FOLIO_CREATE, len.try_into().unwrap(), 0, 0, 0, 0)?;
-    // SAFETY: The syscall returns a valid handle ID.
-    let id = unsafe { HandleId::from_raw_isize(ret.as_isize()).unwrap_unchecked() };
-    Ok(id)
-}
-
-pub fn folio_paddr(handle: HandleId) -> Result<PAddr, ErrorCode> {
-    let ret = syscall(SYS_FOLIO_PADDR, handle.as_raw() as isize, 0, 0, 0, 0)?;
-    // SAFETY: The syscall returns a valid page address.
-    let paddr = PAddr::new(ret.as_isize() as usize);
-    Ok(paddr)
-}
-
-pub fn folio_create_fixed(paddr: PAddr, len: usize) -> Result<HandleId, ErrorCode> {
+pub fn folio_create_mmio(
+    iobus: HandleId,
+    daddr: Option<DAddr>,
+    len: usize,
+) -> Result<HandleId, ErrorCode> {
     let ret = syscall(
-        SYS_FOLIO_CREATE_FIXED,
-        paddr.as_usize() as isize,
+        SYS_FOLIO_CREATE_MMIO,
+        iobus.as_raw() as isize,
+        daddr.map_or(0, |daddr| daddr.as_usize() as isize),
         len.try_into().unwrap(),
         0,
         0,
-        0,
     )?;
+
     // SAFETY: The syscall returns a valid handle ID.
     let id = unsafe { HandleId::from_raw_isize(ret.as_isize()).unwrap_unchecked() };
     Ok(id)
+}
+
+pub fn folio_daddr(handle: HandleId) -> Result<DAddr, ErrorCode> {
+    let ret = syscall(SYS_FOLIO_DADDR, handle.as_raw() as isize, 0, 0, 0, 0)?;
+    // SAFETY: The syscall returns a valid device address.
+    let daddr = DAddr::new(ret.as_isize() as usize);
+    Ok(daddr)
 }
 
 pub fn vmspace_map(
     handle: HandleId,
-    len: usize,
     folio: HandleId,
     prot: PageProtect,
 ) -> Result<VAddr, ErrorCode> {
     let ret = syscall(
         SYS_VMSPACE_MAP,
         handle.as_raw() as isize,
-        len.try_into().unwrap(),
         folio.as_raw() as isize,
         prot.as_raw() as isize,
+        0,
         0,
     )?;
     // SAFETY: The syscall returns a valid virtual address.
