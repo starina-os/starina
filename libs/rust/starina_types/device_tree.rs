@@ -16,7 +16,7 @@ use serde::Serialize;
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DeviceTree {
     pub buses: HashMap<String, BusNode>,
-    pub nodes: HashMap<String, DeviceNode>,
+    pub devices: HashMap<String, DeviceNode>,
 }
 
 /// A node in the device tree.
@@ -179,13 +179,14 @@ impl DeviceTree {
             }
         }
 
-        let mut nodes = HashMap::new();
+        let mut devices = HashMap::new();
         for node in devtree_index.nodes() {
             let Some(parent_name) = node.parent().and_then(|p| p.name().ok()) else {
                 continue;
             };
 
             let Some(found_bus) = found_buses.get_mut(parent_name) else {
+                // Not connected to a bus.
                 continue;
             };
 
@@ -209,7 +210,7 @@ impl DeviceTree {
             }
 
             found_bus.is_referenced = true;
-            nodes.insert(
+            devices.insert(
                 node_name.to_owned(),
                 DeviceNode {
                     compatible,
@@ -226,6 +227,6 @@ impl DeviceTree {
             }
         }
 
-        Ok(DeviceTree { nodes, buses })
+        Ok(DeviceTree { devices, buses })
     }
 }
