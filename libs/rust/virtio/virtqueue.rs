@@ -197,12 +197,15 @@ impl VirtQueue {
 
         let avail_elem_index = self.avail().index & (self.num_descs() - 1);
         *self.avail_elem_mut(avail_elem_index) = head_index;
-        self.avail_mut().index = self.avail_mut().index.wrapping_add(1);
+
+        let avail = self.avail_mut();
+        avail.index = avail.index.wrapping_add(1);
     }
 
     /// Notifies the device to start processing descriptors.
     pub fn notify(&self, transport: &mut dyn VirtioTransport) {
         atomic::fence(Ordering::Release);
+        info!("notify queue {}", self.index);
         transport.notify_queue(self.index);
     }
 
@@ -258,7 +261,8 @@ impl VirtQueue {
     }
 
     fn desc_mut(&mut self, index: u16) -> &mut VirtqDesc {
-        let offset = size_of::<VirtqDesc>() + (index as usize) * size_of::<VirtqDesc>();
+        let i = (index % self.num_descs) as usize;
+        let offset = i * size_of::<VirtqDesc>();
         unsafe { &mut *self.folio.as_mut(offset) }
     }
 
@@ -271,8 +275,8 @@ impl VirtQueue {
     }
 
     fn avail_elem_mut(&mut self, index: u16) -> &mut u16 {
-        let offset =
-            self.avail_ring_off + size_of::<VirtqAvail>() + (index as usize) * size_of::<u16>();
+        let i = (index % self.num_descs) as usize;
+        let offset = self.avail_ring_off + size_of::<VirtqAvail>() + i * size_of::<u16>();
         unsafe { &mut *self.folio.as_mut(offset) }
     }
 
@@ -281,9 +285,8 @@ impl VirtQueue {
     }
 
     fn used_elem(&self, index: u16) -> &VirtqUsedElem {
-        let offset = self.used_ring_off
-            + size_of::<VirtqUsed>()
-            + ((index % self.num_descs) as usize) * size_of::<VirtqUsedElem>();
+        let i = (index % self.num_descs) as usize;
+        let offset = self.used_ring_off + size_of::<VirtqUsed>() + i * size_of::<VirtqUsedElem>();
         unsafe { &*self.folio.as_ref(offset) }
     }
 }

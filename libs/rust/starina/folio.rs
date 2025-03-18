@@ -6,6 +6,7 @@ use starina_types::handle::HandleId;
 use starina_types::vmspace::PageProtect;
 use starina_utils::alignment::align_down;
 use starina_utils::alignment::align_up;
+use starina_utils::alignment::is_aligned;
 
 use crate::handle::OwnedHandle;
 use crate::iobus::IoBus;
@@ -70,6 +71,8 @@ impl MmioFolio {
     /// Allocates a folio at an arbitrary physical address, and maps it to the
     /// current process's address space.
     pub fn create(bus: &IoBus, len: usize) -> Result<MmioFolio, ErrorCode> {
+        debug_assert!(is_aligned(len, PAGE_SIZE));
+
         let folio = bus.map(None, len)?;
         let vaddr = syscall::vmspace_map(
             SELF_VMSPACE,
@@ -90,11 +93,10 @@ impl MmioFolio {
     /// Allocates a folio at a specific physical address (`paddr`), and maps it to the
     /// current process's address space.
     pub fn create_pinned(bus: &IoBus, daddr: DAddr, len: usize) -> Result<MmioFolio, ErrorCode> {
-        let offset = daddr.as_usize() % PAGE_SIZE;
-        let map_daddr = DAddr::new(align_down(daddr.as_usize(), PAGE_SIZE));
-        let map_len = align_up(len, PAGE_SIZE);
+        debug_assert!(is_aligned(daddr.as_usize(), PAGE_SIZE));
+        debug_assert!(is_aligned(len, PAGE_SIZE));
 
-        let folio = bus.map(Some(map_daddr), map_len)?;
+        let folio = bus.map(Some(daddr), len)?;
         let vaddr = syscall::vmspace_map(
             SELF_VMSPACE,
             folio.handle.id(),
@@ -103,9 +105,9 @@ impl MmioFolio {
 
         Ok(MmioFolio {
             _folio: folio,
-            daddr: map_daddr,
-            vaddr: vaddr.add(offset),
-            len: map_len,
+            daddr,
+            vaddr,
+            len,
         })
     }
 
