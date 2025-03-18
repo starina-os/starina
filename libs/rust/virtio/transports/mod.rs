@@ -62,7 +62,7 @@ impl dyn VirtioTransport {
         iobus: &IoBus,
         features: u64,
         num_virtqueues: u16,
-    ) -> Result<Vec<Option<VirtQueue>>, VirtioAttachError> {
+    ) -> Result<Vec<VirtQueue>, VirtioAttachError> {
         // "3.1.1 Driver Requirements: Device Initialization"
         self.write_device_status(0); // Reset the device.
         self.set_device_status_bit(VIRTIO_STATUS_ACK);
@@ -88,7 +88,7 @@ impl dyn VirtioTransport {
         // Initialize virtqueues.
         let mut virtqueues = Vec::new();
         for index in 0..num_virtqueues {
-            virtqueues.push(Some(VirtQueue::new(iobus, index, self)));
+            virtqueues.push(VirtQueue::new(iobus, index, self));
         }
 
         self.set_device_status_bit(VIRTIO_STATUS_DRIVER_OK);

@@ -2,6 +2,7 @@ use core::mem::size_of;
 use core::sync::atomic::Ordering;
 use core::sync::atomic::{self};
 
+use starina::address::DAddr;
 use starina::address::PAddr;
 use starina::folio::MmioFolio;
 use starina::iobus::IoBus;
@@ -57,8 +58,8 @@ struct VirtqUsed {
 
 #[derive(Debug)]
 pub enum VirtqDescBuffer {
-    ReadOnlyFromDevice { paddr: PAddr, len: usize },
-    WritableFromDevice { paddr: PAddr, len: usize },
+    ReadOnlyFromDevice { daddr: DAddr, len: usize },
+    WritableFromDevice { daddr: DAddr, len: usize },
 }
 
 pub struct VirtqUsedChain {
@@ -172,9 +173,9 @@ impl VirtQueue {
         for (i, buffer) in chain.iter().enumerate() {
             let desc = self.desc_mut(desc_index);
             let (addr, len, flags) = match buffer {
-                VirtqDescBuffer::ReadOnlyFromDevice { paddr: addr, len } => (addr, *len, 0),
-                VirtqDescBuffer::WritableFromDevice { paddr: addr, len } => {
-                    (addr, *len, VIRTQ_DESC_F_WRITE)
+                VirtqDescBuffer::ReadOnlyFromDevice { daddr, len } => (daddr, *len, 0),
+                VirtqDescBuffer::WritableFromDevice { daddr, len } => {
+                    (daddr, *len, VIRTQ_DESC_F_WRITE)
                 }
             };
 
@@ -223,12 +224,12 @@ impl VirtQueue {
             let desc = self.desc_mut(next_desc_index);
             used_descs.push(if desc.is_writable() {
                 VirtqDescBuffer::WritableFromDevice {
-                    paddr: PAddr::new(desc.addr as usize),
+                    daddr: DAddr::new(desc.addr as usize),
                     len: desc.len as usize,
                 }
             } else {
                 VirtqDescBuffer::ReadOnlyFromDevice {
-                    paddr: PAddr::new(desc.addr as usize),
+                    daddr: DAddr::new(desc.addr as usize),
                     len: desc.len as usize,
                 }
             });

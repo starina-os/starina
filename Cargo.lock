@@ -337,5 +337,6 @@ version = "0.0.0"
 dependencies = [
  "serde",
  "starina",
+ "starina_driver_sdk",
  "virtio",
 ]

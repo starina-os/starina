@@ -3,52 +3,42 @@
 pub mod autogen;
 
 use autogen::Env;
-use starina::address::DAddr;
 use starina::eventloop::Context;
 use starina::eventloop::Dispatcher;
 use starina::eventloop::EventLoop;
-use starina::folio::MmioFolio;
-use starina::info;
 use starina::message::Message;
 use starina::message::Open;
-use virtio::DeviceType;
-use virtio::transports::VirtioTransport;
-use virtio::transports::mmio::VirtioMmio;
+use virtio_net::VirtioNet;
 
-fn probe(env: Env) -> Option<VirtioMmio> {
-    for (name, node) in env.device_tree.devices {
-        if !node.compatible.iter().any(|c| c == "virtio,mmio") {
-            continue;
-        }
-
-        info!("device: {}", name);
-        info!("  reg: {:x?}", node.reg);
-
-        let iobus = todo!();
-        let daddr = DAddr::new(node.reg[0].addr as usize);
-        let len = node.reg[0].size as usize;
-        let folio = MmioFolio::create_pinned(&iobus, daddr, len).unwrap();
-        let virtio = VirtioMmio::new(folio);
-        let device_type = virtio.probe();
-        if device_type == Some(DeviceType::Net) {
-            return Some(virtio);
-        }
-    }
-
-    None
-}
+mod virtio_net;
 
 pub struct App {
-    virtio: VirtioMmio,
+    virtio_net: VirtioNet,
 }
 
 impl EventLoop<Env> for App {
-    fn init(dispatcher: &Dispatcher, env: Env) -> Self {
-        let virtio = probe(env).expect("failed to probe virtio-net device");
-        App { virtio }
+    fn init(_dispatcher: &Dispatcher, env: Env) -> Self {
+        let mut virtio_net = VirtioNet::init_or_panic(env);
+        virtio_net.transmit(&[
+            // Ethernet header
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, // Destination MAC (broadcast)
+            0x52, 0x54, 0x00, 0x12, 0x34, 0x56, // Source MAC (example)
+            0x08, 0x06, // EtherType (ARP)
+            // ARP packet
+            0x00, 0x01, // Hardware type (Ethernet)
+            0x08, 0x00, // Protocol type (IPv4)
+            0x06, // Hardware address length (6 bytes for MAC)
+            0x04, // Protocol address length (4 bytes for IPv4)
+            0x00, 0x01, // Operation (1 = request)
+            0x52, 0x54, 0x00, 0x12, 0x34, 0x56, // Sender MAC
+            192, 168, 1, 10, // Sender IP
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target MAC (zeros for request)
+            192, 168, 1, 1, // Target IP
+        ]);
+        Self { virtio_net }
     }
 
-    fn on_open(&self, ctx: &Context, msg: Message<Open<'_>>) {
+    fn on_open(&self, ctx: &Context, _msg: Message<Open<'_>>) {
         ctx.sender.send(Open { uri: "pong" }).unwrap();
     }
 }
