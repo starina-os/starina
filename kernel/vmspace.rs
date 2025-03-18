@@ -1,5 +1,6 @@
 //! Virtual memory space management.
 use starina::error::ErrorCode;
+use starina::poll::Readiness;
 use starina_types::address::PAddr;
 use starina_types::address::VAddr;
 use starina_types::vmspace::PageProtect;
@@ -7,11 +8,12 @@ use starina_types::vmspace::PageProtect;
 use crate::arch;
 use crate::folio::Folio;
 use crate::handle::Handleable;
+use crate::poll::Listener;
 use crate::refcount::SharedRef;
 
 pub static KERNEL_VMSPACE: spin::Lazy<SharedRef<VmSpace>> = spin::Lazy::new(|| {
     let vmspace = VmSpace::new().expect("failed to create kernel vmspace");
-    SharedRef::new(&vmspace)
+    SharedRef::new(vmspace).unwrap()
 });
 
 pub struct VmSpace {
@@ -34,11 +36,12 @@ impl VmSpace {
         prot: PageProtect,
     ) -> Result<VAddr, ErrorCode> {
         let paddr = folio.paddr();
+        let len = folio.len();
 
         // The arch's page table will own an reference to the folio.
         core::mem::forget(folio);
 
-        self.arch.map_anywhere(paddr, folio.len(), prot)
+        self.arch.map_anywhere(paddr, len, prot)
     }
 
     pub fn switch(&self) {

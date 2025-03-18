@@ -38,7 +38,7 @@ pub fn halt() -> ! {
     }
 }
 
-fn kernel_scope<F, R>(f: F) -> R
+pub fn kernel_scope<F, R>(f: F) -> R
 where
     F: FnOnce() -> R,
 {

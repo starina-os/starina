@@ -24,6 +24,7 @@ fn probe(env: Env) -> Option<VirtioMmio> {
         info!("device: {}", name);
         info!("  reg: {:x?}", node.reg);
 
+        let iobus = todo!();
         let daddr = DAddr::new(node.reg[0].addr as usize);
         let len = node.reg[0].size as usize;
         let folio = MmioFolio::create_pinned(&iobus, daddr, len).unwrap();

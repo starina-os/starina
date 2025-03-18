@@ -14,6 +14,11 @@ impl PAddr {
     pub const fn as_usize(self) -> usize {
         self.0
     }
+
+    // TODO: Check overflow.
+    pub fn add(self, offset: usize) -> PAddr {
+        PAddr::new(self.as_usize() + offset)
+    }
 }
 
 impl fmt::Display for PAddr {

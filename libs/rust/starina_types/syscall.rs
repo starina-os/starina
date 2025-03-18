@@ -1,3 +1,4 @@
+use crate::address::DAddr;
 use crate::address::VAddr;
 use crate::error::ErrorCode;
 use crate::handle::HandleId;
@@ -63,6 +64,12 @@ impl From<(HandleId, Readiness)> for RetVal {
 
 impl From<VAddr> for RetVal {
     fn from(value: VAddr) -> Self {
+        RetVal(value.as_usize() as isize)
+    }
+}
+
+impl From<DAddr> for RetVal {
+    fn from(value: DAddr) -> Self {
         RetVal(value.as_usize() as isize)
     }
 }

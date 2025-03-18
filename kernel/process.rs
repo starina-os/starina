@@ -45,5 +45,5 @@ impl fmt::Debug for Process {
 
 pub static KERNEL_PROCESS: spin::Lazy<SharedRef<Process>> = spin::Lazy::new(|| {
     let process = Process::create(KERNEL_VMSPACE.clone(), Isolation::InKernel);
-    SharedRef::new(&process)
+    SharedRef::new(process).unwrap()
 });

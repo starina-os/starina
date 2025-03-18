@@ -21,6 +21,8 @@ pub enum ErrorCode {
     InvalidHandle = -18,
     InvalidErrorCode = -19,
     TooLarge = -20,
+    NotADevice = -21,
+    AlreadyMapped = -22,
 }
 
 impl From<isize> for ErrorCode {

@@ -84,21 +84,21 @@ impl PageTable {
             VAddr::new(0x8020_0000),
             PAddr::new(0x8020_0000),
             0x8ff00000 - 0x8020_0000,
-            PageProtect::READABLE | PageProtect::WRITABLE | PageProtect::EXECUTABLE,
+            PageProtect::READABLE | PageProtect::WRITEABLE | PageProtect::EXECUTABLE,
         )?;
         // PLIC
         self.map(
             VAddr::new(0x0c00_0000),
             PAddr::new(0x0c00_0000),
             0x400000,
-            PageProtect::READABLE | PageProtect::WRITABLE,
+            PageProtect::READABLE | PageProtect::WRITEABLE,
         )?;
         // UART
         self.map(
             VAddr::new(0x1000_0000),
             PAddr::new(0x1000_0000),
             0x1000,
-            PageProtect::READABLE | PageProtect::WRITABLE,
+            PageProtect::READABLE | PageProtect::WRITEABLE,
         )?;
         Ok(())
     }
@@ -167,7 +167,7 @@ impl PageTable {
         if prot.contains(PageProtect::READABLE) {
             flags |= PTE_R;
         }
-        if prot.contains(PageProtect::WRITABLE) {
+        if prot.contains(PageProtect::WRITEABLE) {
             flags |= PTE_W;
         }
         if prot.contains(PageProtect::EXECUTABLE) {

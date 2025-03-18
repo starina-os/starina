@@ -139,22 +139,31 @@ pub fn vmspace_map(
     folio: HandleId,
     prot: PageProtect,
 ) -> Result<VAddr, ErrorCode> {
+    let mut handle_table = current.process().handles().lock();
     let vmspace = if handle.as_raw() == 0 {
         current.process().vmspace().clone()
     } else {
-        let mut handle_table = current.process().handles().lock();
-        handle_table.get::<VmSpace>(handle)?
+        let handle = handle_table.get::<VmSpace>(handle)?;
+        if !handle.is_capable(HandleRights::WRITE) {
+            return Err(ErrorCode::NotAllowed);
+        }
+
+        handle.into_object()
     };
 
     let folio = handle_table.get::<Folio>(folio)?;
-    let vaddr = vmspace.map_anywhere(folio, prot)?;
+    if !folio.is_capable(HandleRights::MAP) {
+        return Err(ErrorCode::NotAllowed);
+    }
+
+    let vaddr = vmspace.map_anywhere(folio.into_object(), prot)?;
     Ok(vaddr)
 }
 
 pub fn folio_daddr(current: &SharedRef<Thread>, handle: HandleId) -> Result<DAddr, ErrorCode> {
     let mut handle_table = current.process().handles().lock();
     let folio = handle_table.get::<Folio>(handle)?;
-    let daddr = folio.daddr();
+    let daddr = folio.daddr().ok_or(ErrorCode::NotADevice)?;
     Ok(daddr)
 }
 
