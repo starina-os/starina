@@ -281,7 +281,7 @@ pub extern "C" fn syscall_inkernel_handler(
             Ok(SyscallResult::Done(value)) => ThreadState::Runnable(Some(value.into())),
             Ok(SyscallResult::Err(err)) => ThreadState::Runnable(Some(err.into())),
             Ok(SyscallResult::Block(state)) => state,
-            Err(err) => ThreadState::Runnable(None),
+            Err(err) => ThreadState::Runnable(Some(err.into())),
         };
         current.set_state(new_state);
     });
