@@ -1,9 +1,8 @@
 use core::mem::size_of;
+use core::sync::atomic;
 use core::sync::atomic::Ordering;
-use core::sync::atomic::{self};
 
 use starina::address::DAddr;
-use starina::address::PAddr;
 use starina::folio::MmioFolio;
 use starina::iobus::IoBus;
 use starina::prelude::*;

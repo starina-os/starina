@@ -12,6 +12,7 @@ pub use starina_types::spec;
 pub mod log;
 
 pub mod channel;
+pub mod collections;
 pub mod eventloop;
 pub mod folio;
 pub mod handle;

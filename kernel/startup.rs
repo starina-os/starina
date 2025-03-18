@@ -4,12 +4,16 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use hashbrown::HashMap;
+use starina::device_tree::BusNode;
 use starina::device_tree::DeviceTree;
+use starina::handle::HandleRights;
 use starina::spec::DeviceMatch;
 use starina::spec::EnvType;
 use starina::syscall::VsyscallPage;
 use starina_types::spec::AppSpec;
 
+use crate::handle::Handle;
+use crate::iobus::NOMMU_IOBUS;
 use crate::process::KERNEL_PROCESS;
 use crate::scheduler::GLOBAL_SCHEDULER;
 use crate::spinlock::SpinLock;
@@ -36,12 +40,29 @@ struct Instance {
 
 pub fn load_inkernel_apps(device_tree: DeviceTree) {
     let mut instances = INSTANCES.lock();
-    let mut env = serde_json::Map::new();
     for app in INKERNEL_APPS {
         info!("startup: loading app {}", app.name);
-        let mut items = Vec::with_capacity(app.spec.env.len());
+        let mut env = serde_json::Map::new();
         for item in app.spec.env {
-            items.push(match item.ty {
+            let value = match item.ty {
+                EnvType::IoBusMap => {
+                    let mut buses = HashMap::new();
+                    for (name, node) in &device_tree.buses {
+                        let bus = match node {
+                            BusNode::NoMmu => NOMMU_IOBUS.clone(),
+                        };
+
+                        let handle = Handle::new(bus, HandleRights::WRITE);
+                        let handle_id = KERNEL_PROCESS
+                            .handles()
+                            .lock()
+                            .insert(handle)
+                            .expect("failed to insert iobus");
+                        buses.insert(name, handle_id.as_raw());
+                    }
+
+                    serde_json::json!(buses)
+                }
                 EnvType::DeviceTree { matches } => {
                     let mut devices = HashMap::new();
                     for (name, node) in &device_tree.devices {
@@ -58,15 +79,14 @@ pub fn load_inkernel_apps(device_tree: DeviceTree) {
                         }
                     }
 
-                    env.insert(
-                        item.name.into(),
-                        serde_json::json!({
-                            "buses": device_tree.buses,
-                            "devices": devices,
-                        }),
-                    );
+                    serde_json::json!({
+                        "devices": devices,
+                        "buses": device_tree.buses,
+                    })
                 }
-            });
+            };
+
+            env.insert(item.name.into(), value);
         }
 
         let env_str = serde_json::to_string(&env).unwrap();

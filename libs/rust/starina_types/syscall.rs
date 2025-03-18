@@ -15,9 +15,8 @@ pub const SYS_FOLIO_CREATE: u8 = 8;
 pub const SYS_FOLIO_PADDR: u8 = 9;
 pub const SYS_FOLIO_CREATE_FIXED: u8 = 10;
 pub const SYS_VMSPACE_MAP: u8 = 11;
-pub const SYS_FOLIO_CREATE_MMIO: u8 = 12;
+pub const SYS_BUSIO_MAP: u8 = 12;
 pub const SYS_FOLIO_DADDR: u8 = 13;
-pub const SYS_BUSIO_MAP: u8 = 14;
 #[repr(C)]
 pub struct VsyscallPage {
     pub environ_ptr: *const u8,

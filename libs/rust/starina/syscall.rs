@@ -120,7 +120,7 @@ pub fn handle_close(handle: HandleId) -> Result<(), ErrorCode> {
 
 pub fn iobus_map(iobus: HandleId, daddr: Option<DAddr>, len: usize) -> Result<HandleId, ErrorCode> {
     let ret = syscall(
-        SYS_FOLIO_CREATE_MMIO,
+        SYS_BUSIO_MAP,
         iobus.as_raw() as isize,
         daddr.map_or(0, |daddr| daddr.as_usize() as isize),
         len.try_into().unwrap(),
