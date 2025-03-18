@@ -217,8 +217,6 @@ pub struct VmSpace {
 impl VmSpace {
     pub fn new() -> Result<VmSpace, ErrorCode> {
         let mut table = PageTable::new()?;
-        table.map_kernel_space()?;
-
         let table_paddr = table.l0_table.paddr().as_usize() as u64;
         let satp = SATP_MODE_SV48 | (table_paddr >> PPN_SHIFT);
         Ok(VmSpace {

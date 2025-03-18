@@ -1,3 +1,5 @@
+use core::mem::offset_of;
+
 use starina::address::DAddr;
 use starina::eventloop::Context;
 use starina::eventloop::Dispatcher;
@@ -71,7 +73,8 @@ fn probe(env: Env) -> Option<(IoBus, Box<dyn VirtioTransport>, Vec<VirtQueue>)> 
 }
 
 pub struct VirtioNet {
-    iobus: IoBus,
+    mac: [u8; 6],
+    _iobus: IoBus,
     transport: Box<dyn VirtioTransport>,
     transmitq: VirtQueue,
     receiveq: VirtQueue,
@@ -82,6 +85,11 @@ pub struct VirtioNet {
 impl VirtioNet {
     pub fn init_or_panic(env: Env) -> Self {
         let (iobus, mut transport, mut virtqueues) = probe(env).unwrap();
+
+        let mut mac = [0; 6];
+        for i in 0..6 {
+            mac[i] = transport.read_device_config8((offset_of!(VirtioNetConfig, mac) + i) as u16)
+        }
 
         let mut receiveq = virtqueues.remove(0 /* 1st queue */);
         let transmitq = virtqueues.remove(0 /* 2nd queue */);
@@ -101,7 +109,8 @@ impl VirtioNet {
         receiveq.notify(&mut *transport);
 
         Self {
-            iobus,
+            _iobus: iobus,
+            mac,
             transport,
             receiveq,
             transmitq,
