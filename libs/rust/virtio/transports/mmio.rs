@@ -134,6 +134,7 @@ impl VirtioTransport for VirtioMmio {
     }
 
     fn set_queue_driver_paddr(&mut self, daddr: DAddr) {
+        info!("daddr.as_usize() = {:x}", daddr.as_usize());
         QUEUE_DRIVER_LOW_REG.write(&mut self.mmio, (daddr.as_usize() & 0xffff_ffff) as u32);
         QUEUE_DRIVER_HIGH_REG.write(&mut self.mmio, (daddr.as_usize() >> 32) as u32);
     }

@@ -41,7 +41,7 @@ impl IoBus {
 
             Folio::alloc_at(paddr, len)
         } else {
-            Folio::alloc(len)
+            Folio::alloc_for_device(len)
         }
     }
 }

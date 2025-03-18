@@ -52,6 +52,13 @@ impl Folio {
         Ok(folio)
     }
 
+    pub fn alloc_for_device(len: usize) -> Result<Folio, ErrorCode> {
+        let mut folio = Self::alloc(len)?;
+        // FIXME: This is arch specific - we might need another allocator for device memory.
+        folio.daddr = Some(DAddr::new(folio.paddr.as_usize()));
+        Ok(folio)
+    }
+
     pub fn alloc_at(paddr: PAddr, len: usize) -> Result<Folio, ErrorCode> {
         if len == 0 || !is_aligned(len, PAGE_SIZE) {
             return Err(ErrorCode::InvalidArg);
