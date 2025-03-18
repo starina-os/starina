@@ -172,6 +172,9 @@ pub fn switch_thread() -> ! {
             }
         };
 
+        // Switch to the next thread's address space.
+        next.process().vmspace().switch();
+
         // Make the next thread the current thread.
         *current_thread = next;
 
