@@ -27,6 +27,7 @@ mod channel;
 mod cpuvar;
 mod folio;
 mod handle;
+mod interrupt;
 mod iobus;
 mod isolation;
 mod panic;

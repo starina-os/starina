@@ -25,6 +25,7 @@ pub struct DeviceNode {
     pub compatible: Vec<String>,
     pub bus: String,
     pub reg: Vec<Reg>,
+    pub interrupts: Vec<u32>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -105,11 +106,21 @@ fn parse_reg(
 
     Ok(())
 }
+
+#[derive(Debug)]
 struct FoundBus {
     is_referenced: bool,
     bus: BusNode,
     address_cells: u32,
     size_cells: u32,
+}
+
+#[derive(Debug)]
+struct FoundInterruptController {
+    name: String,
+    compatible: Vec<String>,
+    is_referenced: bool,
+    interrupt_cells: u32,
 }
 
 impl DeviceTree {
@@ -179,6 +190,61 @@ impl DeviceTree {
             }
         }
 
+        // Enumerate all interrupt controllers.
+        let mut found_intcs = HashMap::new();
+        for node in devtree_index.nodes() {
+            let node_name = node.name().map_err(ParseError::InvalidName)?;
+            let mut is_interrupt_controller = false;
+            let mut interrupt_cells = None;
+            let mut compatible = Vec::new();
+            let mut phandle = None;
+            for prop in node.props() {
+                let prop_name = prop.name().map_err(ParseError::InvalidName)?;
+                match prop_name {
+                    "compatible" => {
+                        compatible = stringlist_to_vec(&prop)?;
+                    }
+                    "interrupt-controller" => {
+                        is_interrupt_controller = true;
+                    }
+                    "#interrupt-cells" => {
+                        interrupt_cells = Some(prop.u32(0).map_err(ParseError::InvalidProp)?);
+                    }
+                    "phandle" => {
+                        phandle = Some(prop.u32(0).map_err(ParseError::InvalidProp)?);
+                    }
+                    _ => {}
+                }
+            }
+
+            if !is_interrupt_controller {
+                continue;
+            }
+
+            let Some(phandle) = phandle else {
+                continue;
+            };
+
+            let Some(interrupt_cells) = interrupt_cells else {
+                continue;
+            };
+
+            if compatible.is_empty() {
+                continue;
+            }
+
+            found_intcs.insert(
+                phandle,
+                FoundInterruptController {
+                    name: node_name.to_owned(),
+                    compatible,
+                    is_referenced: false,
+                    interrupt_cells,
+                },
+            );
+        }
+
+        // Enumerate all devices.
         let mut devices = HashMap::new();
         for node in devtree_index.nodes() {
             let Some(parent_name) = node.parent().and_then(|p| p.name().ok()) else {
@@ -193,6 +259,8 @@ impl DeviceTree {
             let node_name = node.name().map_err(ParseError::InvalidName)?;
             let mut compatible = Vec::new();
             let mut reg = Vec::new();
+            let mut interrupts = Vec::new();
+            let mut interrupt_parent = None;
             for prop in node.props() {
                 let prop_name = prop.name().map_err(ParseError::InvalidName)?;
                 match prop_name {
@@ -205,6 +273,24 @@ impl DeviceTree {
                     "reg" => {
                         parse_reg(&mut reg, &prop, found_bus)?;
                     }
+                    "interrupts" => {
+                        for i in 0.. {
+                            if let Ok(value) = prop.u32(i) {
+                                interrupts.push(value);
+                            } else {
+                                break;
+                            }
+                        }
+                    }
+                    "interrupt-parent" => {
+                        let value = prop.phandle(0).map_err(ParseError::InvalidProp)?;
+                        let Some(found_intc) = found_intcs.get_mut(&value) else {
+                            panic!("{}: interrupt parent not found: {}", node_name, value);
+                        };
+
+                        found_intc.is_referenced = true;
+                        interrupt_parent = Some(found_intc);
+                    }
                     _ => {}
                 }
             }
@@ -216,6 +302,7 @@ impl DeviceTree {
                     compatible,
                     bus: parent_name.to_owned(),
                     reg,
+                    interrupts,
                 },
             );
         }

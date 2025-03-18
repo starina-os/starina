@@ -16,6 +16,7 @@ pub mod collections;
 pub mod eventloop;
 pub mod folio;
 pub mod handle;
+pub mod interrupt;
 pub mod iobus;
 pub mod message;
 pub mod poll;

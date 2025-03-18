@@ -6,6 +6,7 @@ use starina::info;
 use starina::iobus::IoBus;
 use starina::prelude::Box;
 use starina::prelude::vec::Vec;
+use starina::trace;
 use starina_driver_sdk::DmaBufferPool;
 use virtio::DeviceType;
 use virtio::transports::VirtioTransport;
@@ -54,6 +55,7 @@ fn probe(mut env: Env) -> Option<(IoBus, Box<dyn VirtioTransport>, Vec<VirtQueue
         let folio = MmioFolio::create_pinned(&iobus, daddr, len).unwrap();
         let mut virtio = VirtioMmio::new(folio);
         let device_type = virtio.probe();
+        trace!("interrupts: {:?}", node.interrupts);
         if device_type == Some(DeviceType::Net) {
             info!("found virtio-net device: {}", name);
             let mut transport = Box::new(virtio) as Box<dyn VirtioTransport>;

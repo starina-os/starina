@@ -7,6 +7,7 @@ pub mod address;
 pub mod device_tree;
 pub mod error;
 pub mod handle;
+pub mod interrupt;
 pub mod message;
 pub mod poll;
 pub mod spec;
