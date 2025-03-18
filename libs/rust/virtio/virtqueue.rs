@@ -205,7 +205,6 @@ impl VirtQueue {
     /// Notifies the device to start processing descriptors.
     pub fn notify(&self, transport: &mut dyn VirtioTransport) {
         atomic::fence(Ordering::Release);
-        info!("notify queue {}", self.index);
         transport.notify_queue(self.index);
     }
 
