@@ -63,6 +63,7 @@ pub struct MmioFolio {
     _folio: Folio,
     daddr: DAddr,
     vaddr: VAddr,
+    len: usize,
 }
 
 impl MmioFolio {
@@ -82,6 +83,7 @@ impl MmioFolio {
             _folio: folio,
             daddr,
             vaddr,
+            len,
         })
     }
 
@@ -103,6 +105,7 @@ impl MmioFolio {
             _folio: folio,
             daddr: map_daddr,
             vaddr: vaddr.add(offset),
+            len: map_len,
         })
     }
 
@@ -110,6 +113,8 @@ impl MmioFolio {
     ///
     /// <https://doc.rust-lang.org/std/ptr/index.html#pointer-to-reference-conversion>
     pub unsafe fn as_ref<T: Copy>(&self, byte_offset: usize) -> &T {
+        assert!(byte_offset + size_of::<T>() <= self.len);
+
         let ptr = unsafe { self.vaddr.add(byte_offset).as_ptr::<T>() };
         unsafe { &*ptr }
     }
@@ -118,8 +123,14 @@ impl MmioFolio {
     ///
     /// <https://doc.rust-lang.org/std/ptr/index.html#pointer-to-reference-conversion>
     pub unsafe fn as_mut<T: Copy>(&mut self, byte_offset: usize) -> &mut T {
+        assert!(byte_offset + size_of::<T>() <= self.len);
+
         let ptr = unsafe { self.vaddr.add(byte_offset).as_mut_ptr::<T>() };
         unsafe { &mut *ptr }
+    }
+
+    pub fn vaddr(&self) -> VAddr {
+        self.vaddr
     }
 
     /// Returns the start address of the folio in device memory space.

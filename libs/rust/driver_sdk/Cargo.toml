@@ -1,13 +1,12 @@
 [package]
-name = "virtio"
+name = "starina_driver_sdk"
 version = { workspace = true }
 authors = { workspace = true }
 edition = { workspace = true }
 
 [lib]
-path = "lib.rs"
+path = "./lib.rs"
 
 [dependencies]
 starina = { workspace = true }
-starina_driver_sdk = { workspace = true }
 starina_utils = { workspace = true }

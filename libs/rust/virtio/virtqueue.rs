@@ -256,10 +256,6 @@ impl VirtQueue {
         self.num_descs
     }
 
-    fn desc_elem_off(&self, i: u16) -> usize {
-        size_of::<VirtqDesc>() + (i as usize) * size_of::<VirtqDesc>()
-    }
-
     fn desc_mut(&mut self, index: u16) -> &mut VirtqDesc {
         let offset = size_of::<VirtqDesc>() + (index as usize) * size_of::<VirtqDesc>();
         unsafe { &mut *self.folio.as_mut(offset) }

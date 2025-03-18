@@ -261,6 +261,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "starina_driver_sdk"
+version = "0.0.0"
+dependencies = [
+ "starina",
+ "starina_utils",
+]
+
+[[package]]
 name = "starina_types"
 version = "0.0.0"
 dependencies = [
@@ -319,6 +327,7 @@ name = "virtio"
 version = "0.0.0"
 dependencies = [
  "starina",
+ "starina_driver_sdk",
  "starina_utils",
 ]
 

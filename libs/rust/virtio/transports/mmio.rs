@@ -1,11 +1,11 @@
 use starina::address::DAddr;
 use starina::folio::MmioFolio;
 use starina::prelude::*;
-use starina_driver_utils::mmio::LittleEndian;
-use starina_driver_utils::mmio::MmioReg;
-use starina_driver_utils::mmio::ReadOnly;
-use starina_driver_utils::mmio::ReadWrite;
-use starina_driver_utils::mmio::WriteOnly;
+use starina_driver_sdk::mmio::LittleEndian;
+use starina_driver_sdk::mmio::MmioReg;
+use starina_driver_sdk::mmio::ReadOnly;
+use starina_driver_sdk::mmio::ReadWrite;
+use starina_driver_sdk::mmio::WriteOnly;
 
 use super::VirtioTransport;
 use crate::DeviceType;

@@ -21,6 +21,7 @@ kernel = { path = "kernel" }
 starina = { path = "libs/rust/starina" }
 starina_types = { path = "libs/rust/starina_types" }
 starina_utils = { path = "libs/rust/starina_utils" }
+starina_driver_sdk = { path = "libs/rust/driver_sdk" }
 virtio = { path = "libs/rust/virtio" }
 
 virtio_net = { path = "apps/drivers/virtio_net" }
