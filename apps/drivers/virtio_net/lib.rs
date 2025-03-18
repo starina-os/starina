@@ -8,6 +8,7 @@ use starina::eventloop::Dispatcher;
 use starina::eventloop::EventLoop;
 use starina::message::Message;
 use starina::message::Open;
+use starina::prelude::*;
 use virtio_net::VirtioNet;
 
 mod virtio_net;
@@ -19,6 +20,7 @@ pub struct App {
 impl EventLoop<Env> for App {
     fn init(_dispatcher: &Dispatcher, env: Env) -> Self {
         let mut virtio_net = VirtioNet::init_or_panic(env);
+        info!("submitting arp request");
         virtio_net.transmit(&[
             // Ethernet header
             0xff, 0xff, 0xff, 0xff, 0xff, 0xff, // Destination MAC (broadcast)
