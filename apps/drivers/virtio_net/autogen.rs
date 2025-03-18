@@ -1,7 +1,6 @@
 use starina::collections::HashMap;
 // TODO: auto geenrate this file from app.toml
 use starina::device_tree::DeviceTree;
-use starina::interrupt::Interrupt;
 use starina::iobus::IoBus;
 use starina::prelude::*;
 use starina::spec::AppSpec;

@@ -81,6 +81,7 @@ pub struct VirtioNet {
 impl VirtioNet {
     pub fn init_or_panic(env: Env) -> Self {
         let (iobus, mut transport, mut virtqueues) = probe(env).unwrap();
+        assert!(transport.is_modern());
 
         let mut mac = [0; 6];
         for i in 0..6 {

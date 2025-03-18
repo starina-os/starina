@@ -288,7 +288,7 @@ impl DeviceTree {
                             panic!("{}: interrupt parent not found: {}", node_name, value);
                         };
 
-                        found_intc.is_referenced = true;
+                        // found_intc.is_referenced = true;
                         interrupt_parent = Some(found_intc);
                     }
                     _ => {}

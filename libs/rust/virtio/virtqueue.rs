@@ -1,3 +1,4 @@
+use core::fmt;
 use core::mem::size_of;
 use core::sync::atomic;
 use core::sync::atomic::Ordering;
@@ -284,5 +285,13 @@ impl VirtQueue {
             + size_of::<VirtqUsed>()
             + ((index % self.num_descs) as usize) * size_of::<VirtqUsedElem>();
         unsafe { &*self.folio.as_ref(offset) }
+    }
+}
+
+impl fmt::Debug for VirtQueue {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("VirtQueue")
+            .field("index", &self.index)
+            .finish()
     }
 }
