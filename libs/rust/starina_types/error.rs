@@ -27,7 +27,7 @@ pub enum ErrorCode {
 
 impl From<isize> for ErrorCode {
     fn from(value: isize) -> Self {
-        if -19 <= value && value < 0 {
+        if -22 <= value && value < 0 {
             unsafe { core::mem::transmute(value) }
         } else {
             ErrorCode::InvalidErrorCode
