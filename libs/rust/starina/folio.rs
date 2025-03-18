@@ -106,6 +106,22 @@ impl MmioFolio {
         })
     }
 
+    //// # Safety
+    ///
+    /// <https://doc.rust-lang.org/std/ptr/index.html#pointer-to-reference-conversion>
+    pub unsafe fn as_ref<T: Copy>(&self, byte_offset: usize) -> &T {
+        let ptr = unsafe { self.vaddr.add(byte_offset).as_ptr::<T>() };
+        unsafe { &*ptr }
+    }
+
+    //// # Safety
+    ///
+    /// <https://doc.rust-lang.org/std/ptr/index.html#pointer-to-reference-conversion>
+    pub unsafe fn as_mut<T: Copy>(&mut self, byte_offset: usize) -> &mut T {
+        let ptr = unsafe { self.vaddr.add(byte_offset).as_mut_ptr::<T>() };
+        unsafe { &mut *ptr }
+    }
+
     /// Returns the start address of the folio in device memory space.
     pub fn daddr(&self) -> DAddr {
         self.daddr

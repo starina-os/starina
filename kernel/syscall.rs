@@ -242,7 +242,11 @@ fn do_syscall(
         }
         SYS_BUSIO_MAP => {
             let handle = HandleId::from_raw_isize(a0)?;
-            let daddr = DAddr::from_raw_isize(a1)?;
+            let daddr = if a1 == 0 {
+                None
+            } else {
+                Some(DAddr::new(a1 as usize))
+            };
             let len = a2 as usize;
             let ret = busio_map(&current, handle, daddr, len)?;
             Ok(SyscallResult::Done(ret.into()))

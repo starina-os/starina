@@ -256,44 +256,37 @@ impl VirtQueue {
         self.num_descs
     }
 
+    fn desc_elem_off(&self, i: u16) -> usize {
+        size_of::<VirtqDesc>() + (i as usize) * size_of::<VirtqDesc>()
+    }
+
     fn desc_mut(&mut self, index: u16) -> &mut VirtqDesc {
-        unsafe {
-            &mut *self
-                .descs
-                .as_mut_ptr::<VirtqDesc>()
-                .offset((index % self.num_descs) as isize)
-        }
+        let offset = size_of::<VirtqDesc>() + (index as usize) * size_of::<VirtqDesc>();
+        unsafe { &mut *self.folio.as_mut(offset) }
     }
 
     fn avail(&self) -> &VirtqAvail {
-        unsafe { &*self.avail.as_ptr::<VirtqAvail>() }
+        unsafe { &*self.folio.as_ref(self.avail_ring_off) }
     }
 
     fn avail_mut(&mut self) -> &mut VirtqAvail {
-        unsafe { &mut *self.avail.as_mut_ptr::<VirtqAvail>() }
+        unsafe { &mut *self.folio.as_mut(self.avail_ring_off) }
     }
 
     fn avail_elem_mut(&mut self, index: u16) -> &mut u16 {
-        unsafe {
-            &mut *self
-                .avail
-                .add(size_of::<VirtqAvail>())
-                .as_mut_ptr::<u16>()
-                .offset((index % self.num_descs) as isize)
-        }
+        let offset =
+            self.avail_ring_off + size_of::<VirtqAvail>() + (index as usize) * size_of::<u16>();
+        unsafe { &mut *self.folio.as_mut(offset) }
     }
 
     fn used(&self) -> &VirtqUsed {
-        unsafe { &*self.used.as_ptr::<VirtqUsed>() }
+        unsafe { &*self.folio.as_ref(self.used_ring_off) }
     }
 
     fn used_elem(&self, index: u16) -> &VirtqUsedElem {
-        unsafe {
-            &*self
-                .used
-                .add(size_of::<VirtqUsed>())
-                .as_ptr::<VirtqUsedElem>()
-                .offset((index % self.num_descs) as isize)
-        }
+        let offset = self.used_ring_off
+            + size_of::<VirtqUsed>()
+            + ((index % self.num_descs) as usize) * size_of::<VirtqUsedElem>();
+        unsafe { &*self.folio.as_ref(offset) }
     }
 }

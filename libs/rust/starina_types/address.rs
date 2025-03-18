@@ -45,6 +45,22 @@ impl VAddr {
         // TODO: Check overflow.
         VAddr::new(self.as_usize() + offset)
     }
+
+    //// # Safety
+    ///
+    /// <https://doc.rust-lang.org/std/ptr/index.html#pointer-to-reference-conversion>
+    pub unsafe fn as_mut_ptr<T>(self) -> *mut T {
+        let ptr = self.as_usize() as *mut T;
+        unsafe { &mut *ptr }
+    }
+
+    //// # Safety
+    ///
+    /// <https://doc.rust-lang.org/std/ptr/index.html#pointer-to-reference-conversion>
+    pub unsafe fn as_ptr<T>(self) -> *const T {
+        let ptr = self.as_usize() as *const T;
+        unsafe { &*ptr }
+    }
 }
 
 impl fmt::Display for VAddr {
