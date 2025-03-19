@@ -160,6 +160,9 @@ pub struct MmioFolio {
 }
 
 impl MmioFolio {
+    /// # Note
+    ///
+    /// `folio` must be already mapped to the kernel address space.
     pub fn from_folio(folio: Folio) -> Result<MmioFolio, ErrorCode> {
         let vaddr = paddr2vaddr(folio.paddr())?;
         Ok(MmioFolio { folio, vaddr })

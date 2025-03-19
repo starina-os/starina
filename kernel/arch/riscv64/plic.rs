@@ -93,10 +93,11 @@ impl Plic {
 
     pub fn enable_irq(&mut self, irq: Irq) {
         assert!((irq.as_raw() as usize) < IRQ_MAX);
+        trace!("PLIC: enabling irq={}", irq.as_raw());
+        trace!("PLIC priority: {:x}", 4 * (irq.as_raw() as usize));
 
         priority_reg(irq).write(&mut self.folio, 1);
 
-        trace!("PLIC: enabling irq={}", irq.as_raw());
         let enable = enable_reg(irq);
         let mut value = enable.read(&mut self.folio);
         value |= 1 << ((irq.as_raw() as usize) % 32);
