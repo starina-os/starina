@@ -6,6 +6,7 @@ use autogen::Env;
 use starina::eventloop::Context;
 use starina::eventloop::Dispatcher;
 use starina::eventloop::EventLoop;
+use starina::interrupt::Interrupt;
 use starina::message::Message;
 use starina::message::Open;
 use starina::prelude::*;
@@ -14,7 +15,7 @@ use virtio_net::VirtioNet;
 mod virtio_net;
 
 pub struct App {
-    virtio_net: VirtioNet,
+    virtio_net: spin::Mutex<VirtioNet>,
 }
 
 impl EventLoop<Env> for App {
@@ -42,10 +43,19 @@ impl EventLoop<Env> for App {
         dispatcher
             .add_interrupt(interrupt)
             .expect("failed to add interrupt");
-        Self { virtio_net }
+        Self {
+            virtio_net: spin::Mutex::new(virtio_net),
+        }
     }
 
     fn on_open(&self, ctx: &Context, _msg: Message<Open<'_>>) {
         ctx.sender.send(Open { uri: "pong" }).unwrap();
+    }
+
+    fn on_interrupt(&self, interrupt: &Interrupt) {
+        interrupt.acknowledge().unwrap();
+        self.virtio_net.lock().handle_interrupt(|pkt| {
+            info!("packet received: {:02x?}", pkt);
+        });
     }
 }

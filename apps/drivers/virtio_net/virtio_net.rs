@@ -15,6 +15,7 @@ use virtio::transports::VirtioTransport;
 use virtio::transports::mmio::VirtioMmio;
 use virtio::virtqueue::VirtQueue;
 use virtio::virtqueue::VirtqDescBuffer;
+use virtio::virtqueue::VirtqUsedChain;
 
 use crate::autogen::Env;
 
@@ -174,5 +175,67 @@ impl VirtioNet {
 
         self.transmitq.enqueue(chain);
         self.transmitq.notify(&mut *self.transport);
+    }
+
+    pub fn handle_interrupt<F>(&mut self, mut receive: F)
+    where
+        F: FnMut(&[u8]),
+    {
+        loop {
+            let status = self.transport.read_isr_status();
+            self.transport.ack_interrupt(status);
+
+            if !status.queue_intr() {
+                break;
+            }
+
+            while let Some(VirtqUsedChain { descs, total_len }) = self.receiveq.pop_used() {
+                debug_assert!(descs.len() == 1);
+                let mut remaining = total_len;
+                for desc in descs {
+                    let VirtqDescBuffer::WritableFromDevice { daddr, len } = desc else {
+                        panic!("unexpected desc");
+                    };
+
+                    let read_len = core::cmp::min(len, remaining);
+                    remaining -= read_len;
+
+                    let buffer_index = self
+                        .receiveq_buffers
+                        .daddr_to_id(daddr)
+                        .expect("invalid daddr");
+                    let vaddr = self.receiveq_buffers.vaddr(buffer_index);
+                    let header_len = size_of::<VirtioNetModernHeader>();
+                    let payload = unsafe {
+                        core::slice::from_raw_parts(vaddr.as_ptr::<u8>().add(header_len), read_len)
+                    };
+
+                    receive(payload);
+                    self.receiveq_buffers.free(buffer_index);
+                }
+            }
+
+            while let Some(VirtqUsedChain { descs, .. }) = self.transmitq.pop_used() {
+                let VirtqDescBuffer::ReadOnlyFromDevice { daddr, .. } = descs[0] else {
+                    panic!("unexpected desc");
+                };
+                let buffer_index = self
+                    .transmitq_buffers
+                    .daddr_to_id(daddr)
+                    .expect("invalid daddr");
+                self.transmitq_buffers.free(buffer_index);
+            }
+
+            while let Some(buffer_index) = self.receiveq_buffers.allocate() {
+                let chain = &[VirtqDescBuffer::WritableFromDevice {
+                    daddr: self.receiveq_buffers.daddr(buffer_index),
+                    len: DMA_BUF_SIZE,
+                }];
+
+                self.receiveq.enqueue(chain);
+            }
+
+            self.receiveq.notify(&mut *self.transport);
+        }
     }
 }

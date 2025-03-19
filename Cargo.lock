@@ -336,6 +336,7 @@ name = "virtio_net"
 version = "0.0.0"
 dependencies = [
  "serde",
+ "spin",
  "starina",
  "starina_driver_sdk",
  "virtio",
