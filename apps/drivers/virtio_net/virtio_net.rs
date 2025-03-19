@@ -77,7 +77,7 @@ fn probe(mut env: Env) -> Option<(IoBus, Box<dyn VirtioTransport>, Vec<VirtQueue
 }
 
 pub struct VirtioNet {
-    mac: [u8; 6],
+    mac_addr: [u8; 6],
     _iobus: IoBus,
     transport: Box<dyn VirtioTransport>,
     transmitq: VirtQueue,
@@ -104,9 +104,9 @@ impl VirtioNet {
         let transmitq_buffers =
             DmaBufferPool::new(&iobus, DMA_BUF_SIZE, transmitq.num_descs() as usize);
 
-        while let Some(buffer_index) = receiveq_buffers.allocate() {
+        while let Some(i) = receiveq_buffers.allocate() {
             let chain = &[VirtqDescBuffer::WritableFromDevice {
-                daddr: receiveq_buffers.daddr(buffer_index),
+                daddr: receiveq_buffers.daddr(i),
                 len: DMA_BUF_SIZE,
             }];
 
@@ -116,7 +116,7 @@ impl VirtioNet {
 
         Self {
             _iobus: iobus,
-            mac,
+            mac_addr: mac,
             transport,
             receiveq,
             transmitq,
@@ -124,6 +124,10 @@ impl VirtioNet {
             transmitq_buffers,
             interrupt: Some(interrupt),
         }
+    }
+
+    pub fn mac_addr(&self) -> &[u8; 6] {
+        &self.mac_addr
     }
 
     pub fn take_interrupt(&mut self) -> Option<Interrupt> {

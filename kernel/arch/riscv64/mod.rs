@@ -2,10 +2,13 @@ use core::arch::asm;
 use core::arch::global_asm;
 
 use arrayvec::ArrayVec;
+use csr::StvecMode;
+use csr::write_stvec;
 use plic::use_plic;
 use starina::address::PAddr;
 use starina::address::VAddr;
 use starina::error::ErrorCode;
+use transition::switch_to_kernel;
 
 use crate::BootInfo;
 use crate::FreeRam;
@@ -20,6 +23,7 @@ mod interrupt;
 mod plic;
 mod sbi;
 mod thread;
+mod transition;
 mod vmspace;
 
 pub use cpuvar::CpuVar;
@@ -110,6 +114,17 @@ unsafe extern "C" fn riscv64_boot(hartid: u64, dtb: *const u8) -> ! {
 pub fn percpu_init() {
     unsafe {
         asm!("csrw sscratch, tp");
+    }
+
+    unsafe {
+        write_stvec(switch_to_kernel as *const () as usize, StvecMode::Direct);
+
+        let mut sie: u64;
+        asm!("csrr {}, sie", out(reg) sie);
+        sie |= 1 << 1; // SSIE: supervisor-level software interrupts
+        sie |= 1 << 5; // STIE: supervisor-level timer interrupts
+        sie |= 1 << 9; // SEIE: supervisor-level external interrupts
+        asm!("csrw sie, {}", in(reg) sie);
     }
 
     use_plic(|plic| {

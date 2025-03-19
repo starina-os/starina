@@ -7,6 +7,7 @@ use crate::thread::Thread;
 pub struct CpuVar {
     pub(super) context: *mut Context,
     pub(super) kernel_sp: u64,
+    pub(super) s0_scratch: u64,
 }
 
 impl CpuVar {
@@ -19,6 +20,7 @@ impl CpuVar {
         Self {
             context: unsafe { &raw mut (*idle_thread.arch_thread_ptr()).context },
             kernel_sp: sp_top,
+            s0_scratch: 0,
         }
     }
 }
