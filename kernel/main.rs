@@ -25,6 +25,7 @@ mod allocator;
 mod arch;
 mod channel;
 mod cpuvar;
+mod device_tree;
 mod folio;
 mod handle;
 mod interrupt;
@@ -64,7 +65,7 @@ pub fn boot(bootinfo: BootInfo) -> ! {
         GLOBAL_ALLOCATOR.add_region(free_ram.addr, free_ram.size);
     }
 
-    let device_tree = DeviceTree::parse(bootinfo.dtb).expect("failed to parse device tree");
+    let device_tree = device_tree::parse(bootinfo.dtb).expect("failed to parse device tree");
 
     cpuvar::percpu_init(bootinfo.cpu_id);
     arch::percpu_init();

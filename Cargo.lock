@@ -83,6 +83,7 @@ name = "kernel"
 version = "0.0.0"
 dependencies = [
  "arrayvec",
+ "fdt-rs",
  "hashbrown",
  "rustc-hash",
  "serde_json",
@@ -272,7 +273,6 @@ dependencies = [
 name = "starina_types"
 version = "0.0.0"
 dependencies = [
- "fdt-rs",
  "hashbrown",
  "serde",
  "serde_bytes",

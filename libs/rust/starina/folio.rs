@@ -4,8 +4,6 @@ use starina_types::address::VAddr;
 use starina_types::error::ErrorCode;
 use starina_types::handle::HandleId;
 use starina_types::vmspace::PageProtect;
-use starina_utils::alignment::align_down;
-use starina_utils::alignment::align_up;
 use starina_utils::alignment::is_aligned;
 
 use crate::handle::OwnedHandle;

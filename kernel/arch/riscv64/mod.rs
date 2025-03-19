@@ -13,7 +13,9 @@ use crate::cpuvar::CpuId;
 global_asm!(include_str!("boot.S"));
 
 mod cpuvar;
+mod csr;
 mod idle;
+mod interrupt;
 mod sbi;
 mod thread;
 mod vmspace;
@@ -22,6 +24,7 @@ pub use cpuvar::CpuVar;
 pub use cpuvar::get_cpuvar;
 pub use cpuvar::set_cpuvar;
 pub use idle::idle;
+pub use interrupt::INTERRUPT_CONTROLLER;
 pub use thread::Thread;
 pub use thread::enter_kernelland;
 pub use thread::enter_userland;
