@@ -1,0 +1,5 @@
+[app]
+name = "virtio_net"
+lang = "rust"
+
+[env]

@@ -11,7 +11,7 @@ use crate::process::Process;
 use crate::refcount::SharedRef;
 use crate::scheduler::GLOBAL_SCHEDULER;
 use crate::spinlock::SpinLock;
-use crate::syscall::BlockableSyscallResult;
+use crate::syscall::SyscallResult;
 
 static NUM_THREADS: AtomicUsize = AtomicUsize::new(0);
 
@@ -138,12 +138,17 @@ pub fn switch_thread() -> ! {
             let retval = match &next_mutable.state {
                 ThreadState::BlockedByPoll(poll) => {
                     match poll.try_wait(&next) {
-                        BlockableSyscallResult::Done(result) => {
+                        SyscallResult::Done(result) => {
                             // We've got an event. Resume the thread with a return
                             // value.
                             Some(result.into())
                         }
-                        BlockableSyscallResult::Blocked(new_state) => {
+                        SyscallResult::Err(err) => {
+                            // The poll is no longer valid. Return the error as a
+                            // syscall result.
+                            Some(err.into())
+                        }
+                        SyscallResult::Block(new_state) => {
                             // The thread is still blocked. We'll retry when the
                             // poll wakes us up again...
                             next_mutable.state = new_state;
@@ -166,6 +171,9 @@ pub fn switch_thread() -> ! {
                 arch
             }
         };
+
+        // Switch to the next thread's address space.
+        next.process().vmspace().switch();
 
         // Make the next thread the current thread.
         *current_thread = next;

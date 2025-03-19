@@ -5,6 +5,8 @@ use core::ops::BitAndAssign;
 use core::ops::BitOr;
 use core::ops::BitOrAssign;
 
+use crate::error::ErrorCode;
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct Readiness(i8);
@@ -26,6 +28,13 @@ impl Readiness {
 
     pub const fn from_raw(raw: i8) -> Readiness {
         Readiness(raw)
+    }
+
+    pub fn from_raw_isize(raw: isize) -> Result<Readiness, ErrorCode> {
+        match i8::try_from(raw) {
+            Ok(raw) if raw >= 0 => Ok(Readiness::from_raw(raw)),
+            _ => Err(ErrorCode::InvalidArg),
+        }
     }
 
     pub fn as_isize(&self) -> isize {

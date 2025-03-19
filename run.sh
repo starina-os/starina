@@ -21,5 +21,9 @@ echo -e "\nStarting QEMU..."
 $QEMU -machine virt -m 256 -bios default \
   -kernel starina.elf \
   -nographic -serial mon:stdio --no-reboot \
+  -global virtio-mmio.force-legacy=false \
+  -device virtio-net-device,netdev=net0,bus=virtio-mmio-bus.0 \
+  -object filter-dump,id=fiter0,netdev=net0,file=virtio-net.pcap \
+  -netdev user,id=net0,hostfwd=tcp:127.0.0.1:1234-:80 \
   -d cpu_reset,unimp,guest_errors,int -D qemu.log \
   ${GDB:+-gdb tcp::7778 -S}

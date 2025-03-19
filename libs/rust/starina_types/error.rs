@@ -17,4 +17,20 @@ pub enum ErrorCode {
     Closed = -14,
     InvalidMessage = -15,
     TooLongUri = -16,
+    InvalidArg = -17,
+    InvalidHandle = -18,
+    InvalidErrorCode = -19,
+    TooLarge = -20,
+    NotADevice = -21,
+    AlreadyMapped = -22,
+}
+
+impl From<isize> for ErrorCode {
+    fn from(value: isize) -> Self {
+        if -22 <= value && value < 0 {
+            unsafe { core::mem::transmute(value) }
+        } else {
+            ErrorCode::InvalidErrorCode
+        }
+    }
 }

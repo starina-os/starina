@@ -11,6 +11,14 @@ path = "main.rs"
 
 [dependencies]
 starina_types = { workspace = true }
+starina_utils = { workspace = true }
+
+spin = { workspace = true }
+arrayvec = { workspace = true }
+hashbrown = { workspace = true }
+rustc-hash = { workspace = true }
+serde_json = { workspace = true }
+fdt-rs = { workspace = true }
 
 # The kernel does not and should not use this API crate directly, but
 # specifying "in-kernel" here automatically enables the feature in all
@@ -18,8 +26,4 @@ starina_types = { workspace = true }
 # https://doc.rust-lang.org/1.59.0/cargo/reference/features.html#feature-unification
 starina = { workspace = true, features = ["in-kernel"] }
 
-arrayvec = { workspace = true }
-hashbrown = { workspace = true }
-rustc-hash = { workspace = true }
-
-ktest = { workspace = true }
+virtio_net = { workspace = true }
