@@ -1,8 +1,8 @@
 use core::arch::asm;
 use core::arch::naked_asm;
 
+use super::csr::StvecMode;
 use super::csr::write_stvec;
-use crate::arch::riscv64::csr::StvecMode;
 
 /// The entry point of interrupts or exceptions.
 #[unsafe(link_section = ".text.idle_entry")]
