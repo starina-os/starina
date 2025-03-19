@@ -2,6 +2,7 @@ use core::arch::asm;
 use core::arch::global_asm;
 
 use arrayvec::ArrayVec;
+use plic::use_plic;
 use starina::address::PAddr;
 use starina::address::VAddr;
 use starina::error::ErrorCode;
@@ -16,6 +17,7 @@ mod cpuvar;
 mod csr;
 mod idle;
 mod interrupt;
+mod plic;
 mod sbi;
 mod thread;
 mod vmspace;
@@ -109,4 +111,8 @@ pub fn percpu_init() {
     unsafe {
         asm!("csrw sscratch, tp");
     }
+
+    use_plic(|plic| {
+        plic.init_per_cpu(get_cpuvar().cpu_id);
+    });
 }

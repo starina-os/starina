@@ -155,16 +155,29 @@ pub fn parse(dtb: *const u8) -> Result<DeviceTree, fdt_rs::error::DevTreeError> 
     // Enumerate all interrupt controllers.
     let mut found_intcs = HashMap::new();
     for node in devtree_index.nodes() {
+        let Some(parent_name) = node.parent().and_then(|p| p.name().ok()) else {
+            continue;
+        };
+
+        let Some(found_bus) = found_buses.get_mut(parent_name) else {
+            // Not connected to a bus.
+            continue;
+        };
+
         let node_name = node.name()?;
         let mut is_interrupt_controller = false;
         let mut interrupt_cells = None;
         let mut compatible = Vec::new();
+        let mut reg = Vec::new();
         let mut phandle = None;
         for prop in node.props() {
             let prop_name = prop.name()?;
             match prop_name {
                 "compatible" => {
                     compatible = stringlist_to_vec(&prop)?;
+                }
+                "reg" => {
+                    parse_reg(&mut reg, &prop, found_bus)?;
                 }
                 "interrupt-controller" => {
                     is_interrupt_controller = true;
@@ -195,15 +208,13 @@ pub fn parse(dtb: *const u8) -> Result<DeviceTree, fdt_rs::error::DevTreeError> 
             continue;
         }
 
-        if !compatible.iter().any(|c| c == "riscv,plic0") {
-            continue;
-        }
+        let is_compatible = INTERRUPT_CONTROLLER.try_init(&compatible, &reg).is_ok();
 
         found_intcs.insert(
             phandle,
             FoundInterruptController {
                 name: node_name.to_owned(),
-                is_compatible: INTERRUPT_CONTROLLER.is_compatible(&compatible),
+                is_compatible,
                 interrupt_cells,
             },
         );

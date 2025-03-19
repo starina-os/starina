@@ -7,7 +7,7 @@ use crate::error::ErrorCode;
 pub struct Irq(u32);
 
 impl Irq {
-    pub const fn new(irq: u32) -> Self {
+    pub const fn from_raw(irq: u32) -> Self {
         Self(irq)
     }
 

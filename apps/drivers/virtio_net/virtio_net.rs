@@ -68,7 +68,6 @@ fn probe(mut env: Env) -> Option<(IoBus, Box<dyn VirtioTransport>, Vec<VirtQueue
                 InterruptDesc::Static(irq) => {
                     Interrupt::create(irq).expect("failed to create interrupt")
                 }
-                _ => panic!("invalid interrupt descriptor"),
             };
             return Some((iobus, transport, virtqueues, interrupt));
         }
