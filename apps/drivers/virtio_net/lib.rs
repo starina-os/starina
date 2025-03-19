@@ -21,6 +21,11 @@ pub struct App {
 impl EventLoop<Env> for App {
     fn init(dispatcher: &Dispatcher, env: Env) -> Self {
         let mut virtio_net = VirtioNet::init_or_panic(env);
+        let interrupt = virtio_net.take_interrupt().unwrap();
+        dispatcher
+            .add_interrupt(interrupt)
+            .expect("failed to add interrupt");
+
         info!("submitting arp request");
         let mut payload = &mut [
             0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x52, 0x55, 0x0a, 0x00, 0x02, 0x02, 0x08, 0x06,
@@ -36,10 +41,6 @@ impl EventLoop<Env> for App {
 
         virtio_net.transmit(payload);
 
-        let interrupt = virtio_net.take_interrupt().unwrap();
-        dispatcher
-            .add_interrupt(interrupt)
-            .expect("failed to add interrupt");
         Self {
             virtio_net: spin::Mutex::new(virtio_net),
         }
