@@ -93,20 +93,17 @@ pub enum InterruptCellParseError {
 }
 
 // FIXME: Move this to plic.rs
-pub struct InterruptController {}
+pub struct InterruptController {
+    _private: (),
+}
 
 impl InterruptController {
     pub fn new() -> Self {
-        Self {}
+        Self { _private: () }
     }
 
     pub fn try_init(&self, compatible: &[String], reg: &[Reg]) -> Result<(), ErrorCode> {
-        if !compatible.iter().any(|s| s == "riscv,plic0") {
-            return Err(ErrorCode::NotSupported);
-        }
-
-        plic::init(reg);
-        Ok(())
+        plic::try_init(compatible, reg)
     }
 
     pub fn interrupts_cell_to_irq(

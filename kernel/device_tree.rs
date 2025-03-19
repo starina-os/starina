@@ -209,7 +209,6 @@ pub fn parse(dtb: *const u8) -> Result<DeviceTree, fdt_rs::error::DevTreeError> 
         }
 
         let is_compatible = INTERRUPT_CONTROLLER.try_init(&compatible, &reg).is_ok();
-
         found_intcs.insert(
             phandle,
             FoundInterruptController {

@@ -1,6 +1,8 @@
 //! A DMA buffer allocator.
 //!
 //! This module provides a buffer pool for DMA operations.
+use core::mem::MaybeUninit;
+
 use starina::address::DAddr;
 use starina::address::VAddr;
 use starina::folio::MmioFolio;
@@ -101,5 +103,18 @@ impl DmaBufferPool {
     pub fn daddr(&self, index: BufferId) -> DAddr {
         debug_assert!(index.0 < self.num_buffers);
         self.folio.daddr().add(index.0 * self.buffer_size)
+    }
+
+    pub fn to_device<F, T: Copy>(&self, index: BufferId, f: F)
+    where
+        F: FnOnce(&mut MaybeUninit<T>),
+    {
+        let vaddr = self.vaddr(index);
+        let daddr = self.daddr(index);
+
+        unsafe {
+            let ptr = vaddr.as_mut_ptr::<T>();
+            // f(ptr);
+        }
     }
 }

@@ -1,4 +1,5 @@
 use alloc::collections::BTreeMap;
+use alloc::string::String;
 use alloc::vec::Vec;
 
 use starina::device_tree::Reg;
@@ -47,9 +48,19 @@ fn threshold_reg(hart: CpuId) -> MmioReg<LittleEndian, ReadWrite, u32> {
 
 static PLIC: SpinLock<Option<Plic>> = SpinLock::new(None);
 
-pub fn init(reg: &[Reg]) {
+pub fn try_init(compatible: &[String], reg: &[Reg]) -> Result<(), ErrorCode> {
+    let mut plic_lock = PLIC.lock();
+    if plic_lock.is_some() {
+        return Ok(()); // Already initialized.
+    }
+
+    if !compatible.iter().any(|s| s == "riscv,plic0") {
+        return Err(ErrorCode::NotSupported);
+    }
+
     let plic = Plic::new(reg);
-    PLIC.lock().replace(plic);
+    plic_lock.replace(plic);
+    Ok(())
 }
 
 pub fn use_plic(f: impl FnOnce(&mut Plic)) {
