@@ -10,9 +10,6 @@ use crate::handle::OwnedHandle;
 use crate::iobus::IoBus;
 use crate::syscall;
 
-// FIXME: What if PAGE_SIZE is not 4KB?
-const PAGE_SIZE: usize = 4096;
-
 /// The ownership of a contiguous page-aliged memory region.
 ///
 /// To summarize:
@@ -69,7 +66,7 @@ impl MmioFolio {
     /// Allocates a folio at an arbitrary physical address, and maps it to the
     /// current process's address space.
     pub fn create(bus: &IoBus, len: usize) -> Result<MmioFolio, ErrorCode> {
-        debug_assert!(is_aligned(len, PAGE_SIZE));
+        debug_assert!(is_aligned(len, 0x1000));
 
         let folio = bus.map(None, len)?;
         let vaddr = syscall::vmspace_map(
@@ -91,8 +88,8 @@ impl MmioFolio {
     /// Allocates a folio at a specific physical address (`paddr`), and maps it to the
     /// current process's address space.
     pub fn create_pinned(bus: &IoBus, daddr: DAddr, len: usize) -> Result<MmioFolio, ErrorCode> {
-        debug_assert!(is_aligned(daddr.as_usize(), PAGE_SIZE));
-        debug_assert!(is_aligned(len, PAGE_SIZE));
+        debug_assert!(is_aligned(daddr.as_usize(), 0x1000));
+        debug_assert!(is_aligned(len, 0x1000));
 
         let folio = bus.map(Some(daddr), len)?;
         let vaddr = syscall::vmspace_map(
@@ -137,4 +134,14 @@ impl MmioFolio {
     pub fn daddr(&self) -> DAddr {
         self.daddr
     }
+}
+
+/// Returns the page size.
+///
+/// # Why not a constant?
+///
+/// To make it easy to support non-4KB pages, reading it from the kernel
+/// (ala `sysconf(_SC_PAGESIZE)`) in the future.
+pub fn page_size() -> usize {
+    4096
 }

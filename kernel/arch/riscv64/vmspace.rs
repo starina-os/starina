@@ -146,8 +146,6 @@ impl PageTable {
                 let new_table = Folio::alloc(size_of::<Table>())?;
                 *entry = Entry::new(new_table.paddr(), PTE_V);
 
-                // TODO: Initialize the new table with zeros.
-
                 // This vmspace object owns the allocated folio.
                 // TODO: deallocate on Drop
                 mem::forget(new_table);

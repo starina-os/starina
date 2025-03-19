@@ -5,6 +5,7 @@ use core::sync::atomic::Ordering;
 
 use starina::address::DAddr;
 use starina::folio::MmioFolio;
+use starina::folio::page_size;
 use starina::iobus::IoBus;
 use starina::prelude::*;
 use starina_utils::alignment::align_up;
@@ -80,9 +81,6 @@ pub struct VirtQueue {
     used_ring_off: usize,
 }
 
-// FIXME:
-const PAGE_SIZE: usize = 4096;
-
 impl VirtQueue {
     pub fn new(iobus: &IoBus, index: u16, transport: &mut dyn VirtioTransport) -> VirtQueue {
         transport.select_queue(index);
@@ -92,10 +90,10 @@ impl VirtQueue {
 
         let avail_ring_off = size_of::<VirtqDesc>() * (num_descs as usize);
         let avail_ring_size: usize = size_of::<u16>() * (3 + (num_descs as usize));
-        let used_ring_off = align_up(avail_ring_off + avail_ring_size, PAGE_SIZE);
+        let used_ring_off = align_up(avail_ring_off + avail_ring_size, page_size());
         let used_ring_size =
             size_of::<u16>() * 3 + size_of::<VirtqUsedElem>() * (num_descs as usize);
-        let virtq_size = used_ring_off + align_up(used_ring_size, PAGE_SIZE);
+        let virtq_size = used_ring_off + align_up(used_ring_size, page_size());
 
         let folio = MmioFolio::create(iobus, virtq_size).expect("failed to allocate virtuqeue");
         let descs = folio.daddr();

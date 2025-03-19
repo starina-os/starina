@@ -8,7 +8,6 @@ use starina::interrupt::Interrupt;
 use starina::iobus::IoBus;
 use starina::prelude::Box;
 use starina::prelude::vec::Vec;
-use starina::trace;
 use starina_driver_sdk::DmaBufferPool;
 use virtio::DeviceType;
 use virtio::transports::VirtioTransport;

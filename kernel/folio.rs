@@ -10,6 +10,7 @@ use starina_types::address::VAddr;
 use starina_utils::alignment::is_aligned;
 
 use crate::allocator::GLOBAL_ALLOCATOR;
+use crate::arch;
 use crate::arch::PAGE_SIZE;
 use crate::arch::vaddr2paddr;
 use crate::handle::Handleable;
@@ -54,8 +55,8 @@ impl Folio {
 
     pub fn alloc_for_device(len: usize) -> Result<Folio, ErrorCode> {
         let mut folio = Self::alloc(len)?;
-        // FIXME: This is arch specific - we might need another allocator for device memory.
-        folio.daddr = Some(DAddr::new(folio.paddr.as_usize()));
+        let daddr = arch::map_daddr(folio.paddr())?;
+        folio.daddr = Some(daddr);
         Ok(folio)
     }
 
@@ -90,6 +91,16 @@ impl Folio {
 
     pub fn daddr(&self) -> Option<DAddr> {
         self.daddr
+    }
+}
+
+impl Drop for Folio {
+    fn drop(&mut self) {
+        if let Some(daddr) = self.daddr {
+            if let Err(e) = arch::unmap_daddr(daddr) {
+                debug_warn!("failed to unmap daddr: {:?}", e);
+            }
+        }
     }
 }
 

@@ -5,6 +5,7 @@ use arrayvec::ArrayVec;
 use csr::StvecMode;
 use csr::write_stvec;
 use plic::use_plic;
+use starina::address::DAddr;
 use starina::address::PAddr;
 use starina::address::VAddr;
 use starina::error::ErrorCode;
@@ -57,6 +58,16 @@ where
         asm!("csrrw tp, sscratch, tp");
         ret
     }
+}
+
+pub fn map_daddr(paddr: PAddr) -> Result<DAddr, ErrorCode> {
+    // We don't have IOMMU. Device will see the same address as the kernel.
+    Ok(DAddr::new(paddr.as_usize()))
+}
+
+pub fn unmap_daddr(daddr: DAddr) -> Result<(), ErrorCode> {
+    // We don't do anything in map_daddr. Nothing to unmap.
+    Ok(())
 }
 
 pub fn vaddr2paddr(vaddr: VAddr) -> Result<PAddr, ErrorCode> {
