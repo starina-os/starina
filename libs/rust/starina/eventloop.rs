@@ -12,6 +12,7 @@ use crate::channel::ChannelSender;
 use crate::error::ErrorCode;
 use crate::handle::HandleId;
 use crate::handle::Handleable;
+use crate::interrupt::Interrupt;
 use crate::message::AnyMessage;
 use crate::message::Message;
 use crate::poll::Poll;
@@ -27,6 +28,11 @@ pub trait EventLoop<E>: Send + Sync {
     #[allow(unused_variables)]
     fn on_unknown_message(&self, ctx: &Context, msg: AnyMessage) {
         debug_warn!("ignored message: {}", msg.msginfo.kind());
+    }
+
+    #[allow(unused_variables)]
+    fn on_interrupt(&self, interrupt: &Interrupt) {
+        debug_warn!("ignored interrupt");
     }
 }
 
@@ -59,11 +65,12 @@ impl Dispatcher {
     }
 
     pub fn add_channel(&self, channel: Channel) -> Result<(), ErrorCode> {
+        let handle_id = channel.handle_id();
+
         // Tell the kernel to notify us when the channel is readable.
-        self.poll.add(channel.handle_id(), Readiness::READABLE)?;
+        self.poll.add(handle_id, Readiness::READABLE)?;
 
         // Register the channel in the dispatcher.
-        let handle_id = channel.handle_id();
         let (sender, receiver) = channel.split();
         let object = Object::Channel { sender, receiver };
         self.objects
@@ -74,12 +81,12 @@ impl Dispatcher {
     }
 
     pub fn add_interrupt(&self, interrupt: Interrupt) -> Result<(), ErrorCode> {
-        self.poll.add(interrupt.handle_id(), Readiness::READABLE)?;
-
+        let handle_id = interrupt.handle_id();
+        self.poll.add(handle_id, Readiness::READABLE)?;
         let object = Object::Interrupt { interrupt };
         self.objects
             .write()
-            .insert(interrupt.handle_id(), Arc::new(spin::Mutex::new(object)));
+            .insert(handle_id, Arc::new(spin::Mutex::new(object)));
 
         Ok(())
     }
@@ -115,6 +122,11 @@ impl Dispatcher {
                         }
                         _ => panic!("unexpected message kind: {}", msg.msginfo.kind()),
                     }
+                }
+            }
+            Object::Interrupt { interrupt } => {
+                if readiness.contains(Readiness::READABLE) {
+                    app.on_interrupt(interrupt);
                 }
             }
         }

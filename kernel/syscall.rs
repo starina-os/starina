@@ -1,5 +1,6 @@
 use starina::address::DAddr;
 use starina::address::VAddr;
+use starina::interrupt::Irq;
 use starina_types::error::ErrorCode;
 use starina_types::handle::HandleId;
 use starina_types::handle::HandleRights;
@@ -16,6 +17,7 @@ use crate::channel::Channel;
 use crate::cpuvar::current_thread;
 use crate::folio::Folio;
 use crate::handle::Handle;
+use crate::interrupt::Interrupt;
 use crate::iobus::IoBus;
 use crate::isolation::IsolationHeap;
 use crate::isolation::IsolationHeapMut;
@@ -185,6 +187,20 @@ fn busio_map(
     Ok(folio_id)
 }
 
+fn interrupt_create(current: &SharedRef<Thread>, irq: Irq) -> Result<HandleId, ErrorCode> {
+    let interrupt = Interrupt::new(irq)?;
+    let handle = Handle::new(interrupt, HandleRights::READ | HandleRights::WRITE);
+    let handle_id = current.process().handles().lock().insert(handle)?;
+    Ok(handle_id)
+}
+
+fn interrupt_ack(current: &SharedRef<Thread>, handle: HandleId) -> Result<(), ErrorCode> {
+    let mut handle_table = current.process().handles().lock();
+    let interrupt = handle_table.get::<Interrupt>(handle)?;
+    interrupt.acknowledge()?;
+    Ok(())
+}
+
 fn do_syscall(
     a0: isize,
     a1: isize,
@@ -259,6 +275,16 @@ fn do_syscall(
             let len = a2 as usize;
             let ret = busio_map(&current, handle, daddr, len)?;
             Ok(SyscallResult::Done(ret.into()))
+        }
+        SYS_INTERRUPT_CREATE => {
+            let irq = Irq::from_raw_isize(a0)?;
+            let ret = interrupt_create(&current, irq)?;
+            Ok(SyscallResult::Done(ret.into()))
+        }
+        SYS_INTERRUPT_ACK => {
+            let handle = HandleId::from_raw_isize(a0)?;
+            interrupt_ack(&current, handle)?;
+            Ok(SyscallResult::Done(RetVal::new(0)))
         }
         _ => {
             debug_warn!("unknown syscall: {}", n);

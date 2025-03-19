@@ -3,6 +3,7 @@ use starina_types::error::ErrorCode;
 use starina_types::interrupt::Irq;
 
 use crate::arch;
+use crate::arch::INTERRUPT_CONTROLLER;
 use crate::handle::Handleable;
 use crate::poll::Listener;
 use crate::poll::Poll;
@@ -14,11 +15,9 @@ pub struct Interrupt {
 
 impl Interrupt {
     pub fn new(irq: Irq) -> Result<SharedRef<Interrupt>, ErrorCode> {
-        let interrupt = SharedRef::new(Interrupt { irq });
-
-        // arch::interrupt_create(&interrupt)?;
-        todo!()
-        // Ok(interrupt)
+        let interrupt = SharedRef::new(Interrupt { irq })?;
+        INTERRUPT_CONTROLLER.enable_irq(irq);
+        Ok(interrupt)
     }
 
     pub fn irq(&self) -> Irq {
@@ -30,7 +29,7 @@ impl Interrupt {
         todo!()
     }
 
-    pub fn ack(&self) -> Result<(), ErrorCode> {
+    pub fn acknowledge(&self) -> Result<(), ErrorCode> {
         // arch::interrupt_ack(self.irq)
         todo!()
     }

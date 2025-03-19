@@ -39,7 +39,9 @@ impl EventLoop<Env> for App {
         ]);
 
         let interrupt = virtio_net.take_interrupt().unwrap();
-        dispatcher.add_interrupt(interrupt);
+        dispatcher
+            .add_interrupt(interrupt)
+            .expect("failed to add interrupt");
         Self { virtio_net }
     }
 
