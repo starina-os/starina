@@ -18,7 +18,7 @@ pub struct App {
 }
 
 impl EventLoop<Env> for App {
-    fn init(_dispatcher: &Dispatcher, env: Env) -> Self {
+    fn init(dispatcher: &Dispatcher, env: Env) -> Self {
         let mut virtio_net = VirtioNet::init_or_panic(env);
         info!("submitting arp request");
         virtio_net.transmit(&[
@@ -37,6 +37,9 @@ impl EventLoop<Env> for App {
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target MAC (zeros for request)
             192, 168, 1, 1, // Target IP
         ]);
+
+        let interrupt = virtio_net.take_interrupt().unwrap();
+        dispatcher.add_interrupt(interrupt);
         Self { virtio_net }
     }
 

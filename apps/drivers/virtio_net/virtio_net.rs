@@ -1,8 +1,10 @@
 use core::mem::offset_of;
 
 use starina::address::DAddr;
+use starina::device_tree::InterruptDesc;
 use starina::folio::MmioFolio;
 use starina::info;
+use starina::interrupt::Interrupt;
 use starina::iobus::IoBus;
 use starina::prelude::Box;
 use starina::prelude::vec::Vec;
@@ -43,7 +45,7 @@ struct VirtioNetConfig {
     supported_hash_types: u32,
 }
 
-fn probe(mut env: Env) -> Option<(IoBus, Box<dyn VirtioTransport>, Vec<VirtQueue>)> {
+fn probe(mut env: Env) -> Option<(IoBus, Box<dyn VirtioTransport>, Vec<VirtQueue>, Interrupt)> {
     for (name, node) in env.device_tree.devices {
         if !node.compatible.iter().any(|c| c == "virtio,mmio") {
             continue;
@@ -55,13 +57,19 @@ fn probe(mut env: Env) -> Option<(IoBus, Box<dyn VirtioTransport>, Vec<VirtQueue
         let folio = MmioFolio::create_pinned(&iobus, daddr, len).unwrap();
         let mut virtio = VirtioMmio::new(folio);
         let device_type = virtio.probe();
-        trace!("interrupts: {:?}", node.interrupts);
+
         if device_type == Some(DeviceType::Net) {
             info!("found virtio-net device: {}", name);
             let mut transport = Box::new(virtio) as Box<dyn VirtioTransport>;
             let virtqueues = transport.initialize(&iobus, 0, 2).unwrap();
             let iobus = env.iobus.remove(&node.bus).unwrap();
-            return Some((iobus, transport, virtqueues));
+            let interrupt = match node.interrupts[0] {
+                InterruptDesc::Static(irq) => {
+                    Interrupt::create(irq).expect("failed to create interrupt")
+                }
+                _ => panic!("invalid interrupt descriptor"),
+            };
+            return Some((iobus, transport, virtqueues, interrupt));
         }
     }
 
@@ -76,11 +84,12 @@ pub struct VirtioNet {
     receiveq: VirtQueue,
     transmitq_buffers: DmaBufferPool,
     receiveq_buffers: DmaBufferPool,
+    interrupt: Option<Interrupt>,
 }
 
 impl VirtioNet {
     pub fn init_or_panic(env: Env) -> Self {
-        let (iobus, mut transport, mut virtqueues) = probe(env).unwrap();
+        let (iobus, mut transport, mut virtqueues, interrupt) = probe(env).unwrap();
         assert!(transport.is_modern());
 
         let mut mac = [0; 6];
@@ -113,7 +122,12 @@ impl VirtioNet {
             transmitq,
             receiveq_buffers,
             transmitq_buffers,
+            interrupt: Some(interrupt),
         }
+    }
+
+    pub fn take_interrupt(&mut self) -> Option<Interrupt> {
+        self.interrupt.take()
     }
 
     pub fn transmit(&mut self, payload: &[u8]) {

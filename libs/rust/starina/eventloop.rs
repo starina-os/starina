@@ -35,6 +35,9 @@ pub enum Object {
         receiver: ChannelReceiver,
         sender: ChannelSender,
     },
+    Interrupt {
+        interrupt: Interrupt,
+    },
 }
 
 pub struct Context<'a> {
@@ -66,6 +69,17 @@ impl Dispatcher {
         self.objects
             .write()
             .insert(handle_id, Arc::new(spin::Mutex::new(object)));
+
+        Ok(())
+    }
+
+    pub fn add_interrupt(&self, interrupt: Interrupt) -> Result<(), ErrorCode> {
+        self.poll.add(interrupt.handle_id(), Readiness::READABLE)?;
+
+        let object = Object::Interrupt { interrupt };
+        self.objects
+            .write()
+            .insert(interrupt.handle_id(), Arc::new(spin::Mutex::new(object)));
 
         Ok(())
     }
