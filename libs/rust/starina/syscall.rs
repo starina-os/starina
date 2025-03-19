@@ -72,10 +72,7 @@ pub fn poll_add(poll: HandleId, object: HandleId, interests: Readiness) -> Resul
 
 pub fn poll_wait(poll: HandleId) -> Result<(HandleId, Readiness), ErrorCode> {
     let ret = syscall(SYS_POLL_WAIT, poll.as_raw() as isize, 0, 0, 0, 0)?;
-    // SAFETY: The syscall returns a valid handle ID.
-    let id = unsafe { HandleId::from_raw_isize(ret.as_isize()).unwrap_unchecked() };
-    // SAFETY: The syscall returns a valid readiness.
-    let readiness = unsafe { Readiness::from_raw_isize(ret.as_isize()).unwrap_unchecked() };
+    let (id, readiness) = ret.into();
     Ok((id, readiness))
 }
 

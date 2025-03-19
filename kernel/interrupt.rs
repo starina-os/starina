@@ -23,14 +23,15 @@ pub struct Interrupt {
 
 impl Interrupt {
     pub fn new(irq: Irq) -> Result<SharedRef<Interrupt>, ErrorCode> {
-        INTERRUPT_CONTROLLER.enable_irq(irq);
-        Ok(SharedRef::new(Interrupt {
+        let interrupt = SharedRef::new(Interrupt {
             irq,
             mutable: SpinLock::new(Mutable {
                 listeners: ListenerSet::new(),
                 active: false,
             }),
-        })?)
+        })?;
+        INTERRUPT_CONTROLLER.enable_irq(interrupt.clone());
+        Ok(interrupt)
     }
 
     pub fn irq(&self) -> Irq {
@@ -38,7 +39,9 @@ impl Interrupt {
     }
 
     pub fn trigger(&self) -> Result<(), ErrorCode> {
-        self.mutable.lock().active = true;
+        let mut mutable = self.mutable.lock();
+        mutable.active = true;
+        mutable.listeners.notify_all(Readiness::READABLE);
         Ok(())
     }
 

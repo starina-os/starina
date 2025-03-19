@@ -7,6 +7,8 @@ use starina::interrupt::Irq;
 
 use super::plic::use_plic;
 use super::plic::{self};
+use crate::interrupt::Interrupt;
+use crate::refcount::SharedRef;
 use crate::thread::switch_thread;
 
 pub extern "C" fn interrupt_handler() -> ! {
@@ -118,9 +120,10 @@ impl InterruptController {
         Ok(Irq::from_raw(interrupts_cell[0]))
     }
 
-    pub fn enable_irq(&self, irq: Irq) {
+    pub fn enable_irq(&self, interrupt: SharedRef<Interrupt>) {
         use_plic(|plic| {
-            plic.enable_irq(irq);
+            plic.enable_irq(interrupt.irq());
+            plic.register_listener(interrupt.irq(), interrupt);
         });
     }
 

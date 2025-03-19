@@ -12,7 +12,7 @@ pub unsafe extern "C" fn switch_to_kernel() -> ! {
         naked_asm!(
             r#"
                 csrrw tp, sscratch, tp      // Save tp to sscratch and load Cpuvar
-                sd a0, {s0_scratch_offset}(tp)
+                sd a0, {a0_scratch_offset}(tp)
                 ld a0, {context_offset}(tp) // Load CpuVar.arch.context
 
                 sd ra, {ra_offset}(a0)
@@ -53,14 +53,14 @@ pub unsafe extern "C" fn switch_to_kernel() -> ! {
                 csrrw a1, sscratch, tp
                 sd a1, {tp_offset}(a0)
 
-                ld a1, {s0_scratch_offset}(tp)
+                ld a1, {a0_scratch_offset}(tp)
                 sd a1, {a0_offset}(a0)
 
                 ld sp, {kernel_sp_offset}(tp)
                 j {interrupt_handler}
             "#,
             context_offset = const offset_of!(CpuVar, context),
-            s0_scratch_offset = const offset_of!(CpuVar, s0_scratch),
+            a0_scratch_offset = const offset_of!(CpuVar, a0_scratch),
             kernel_sp_offset = const offset_of!(CpuVar, kernel_sp),
             sepc_offset = const offset_of!(Context, sepc),
             sstatus_offset = const offset_of!(Context, sstatus),
