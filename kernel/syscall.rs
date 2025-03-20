@@ -55,10 +55,6 @@ fn poll_add(
     interests: Readiness,
 ) -> Result<(), ErrorCode> {
     let handles = current.process().handles().lock();
-    println!(
-        "poll_add: poll={:?}, object={:?}, interests={:?}",
-        poll, object, interests
-    );
     let poll = handles.get::<Poll>(poll)?;
     let object_handle = handles.get_any(object)?;
 

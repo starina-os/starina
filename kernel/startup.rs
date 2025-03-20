@@ -41,7 +41,7 @@ struct Instance {
 pub fn load_inkernel_apps(device_tree: DeviceTree) {
     let mut instances = INSTANCES.lock();
     for app in INKERNEL_APPS {
-        info!("startup: loading app {}", app.name);
+        info!("startup: starting \"{}\"", app.name);
         let mut env = serde_json::Map::new();
         for item in app.spec.env {
             let value = match item.ty {
