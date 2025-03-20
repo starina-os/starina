@@ -8,9 +8,6 @@
 #![feature(allocator_api)]
 #![allow(unused)]
 
-#[macro_use]
-mod print;
-
 extern crate alloc;
 
 use allocator::GLOBAL_ALLOCATOR;
@@ -18,13 +15,21 @@ use arrayvec::ArrayVec;
 use channel::Channel;
 use cpuvar::CpuId;
 use handle::Handle;
+use starina::device_tree::DeviceTree;
 use starina_types::handle::HandleRights;
+
+#[macro_use]
+mod print;
 
 mod allocator;
 mod arch;
 mod channel;
 mod cpuvar;
+mod device_tree;
+mod folio;
 mod handle;
+mod interrupt;
+mod iobus;
 mod isolation;
 mod panic;
 mod poll;
@@ -32,9 +37,11 @@ mod process;
 mod refcount;
 mod scheduler;
 mod spinlock;
+mod startup;
 mod syscall;
 mod thread;
 mod utils;
+mod vmspace;
 
 pub struct FreeRam {
     addr: *mut u8,
@@ -42,6 +49,7 @@ pub struct FreeRam {
 }
 
 pub struct BootInfo {
+    dtb: *const u8,
     cpu_id: CpuId,
     free_rams: ArrayVec<FreeRam, 8>,
 }
@@ -57,44 +65,10 @@ pub fn boot(bootinfo: BootInfo) -> ! {
         GLOBAL_ALLOCATOR.add_region(free_ram.addr, free_ram.size);
     }
 
+    let device_tree = device_tree::parse(bootinfo.dtb).expect("failed to parse device tree");
+
     cpuvar::percpu_init(bootinfo.cpu_id);
     arch::percpu_init();
-
-    {
-        use process::KERNEL_PROCESS;
-        use scheduler::GLOBAL_SCHEDULER;
-        let (ch1, ch2) = Channel::new().unwrap();
-        let ch1_handle = KERNEL_PROCESS
-            .handles()
-            .lock()
-            .insert(Handle::new(ch1, HandleRights::READ | HandleRights::WRITE))
-            .unwrap();
-        let ch2_handle = KERNEL_PROCESS
-            .handles()
-            .lock()
-            .insert(Handle::new(ch2, HandleRights::READ | HandleRights::WRITE))
-            .unwrap();
-
-        GLOBAL_SCHEDULER.push(
-            thread::Thread::new_inkernel(
-                ktest::autogen::app_main as usize,
-                ch1_handle.as_raw() as usize,
-            )
-            .unwrap(),
-        );
-        GLOBAL_SCHEDULER.push(
-            thread::Thread::new_inkernel(
-                ktest::autogen::app_main as usize,
-                ch2_handle.as_raw() as usize,
-            )
-            .unwrap(),
-        );
-    }
-
+    startup::load_inkernel_apps(device_tree);
     thread::switch_thread();
-}
-
-#[cfg(not(target_os = "none"))]
-fn main() {
-    unreachable!("added to make rust-analyzer happy");
 }

@@ -3,7 +3,6 @@ use core::marker::PhantomData;
 use core::ops::Deref;
 use core::ops::DerefMut;
 
-use starina_types::error::ErrorCode;
 use starina_types::handle::HandleId;
 pub use starina_types::message::*;
 

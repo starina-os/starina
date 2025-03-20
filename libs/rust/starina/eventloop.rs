@@ -1,8 +1,10 @@
 use alloc::sync::Arc;
 
 use hashbrown::HashMap;
+use serde::de::DeserializeOwned;
 use starina_types::message::MessageKind;
 use starina_types::message::Open;
+use starina_types::syscall::VsyscallPage;
 
 use crate::channel::Channel;
 use crate::channel::ChannelReceiver;
@@ -10,20 +12,27 @@ use crate::channel::ChannelSender;
 use crate::error::ErrorCode;
 use crate::handle::HandleId;
 use crate::handle::Handleable;
+use crate::interrupt::Interrupt;
 use crate::message::AnyMessage;
 use crate::message::Message;
 use crate::poll::Poll;
 use crate::poll::Readiness;
 
-pub trait EventLoop: Send + Sync {
-    fn init(dispatcher: &Dispatcher, ch: Channel) -> Self
+pub trait EventLoop<E>: Send + Sync {
+    fn init(dispatcher: &Dispatcher, env: E) -> Self
     where
         Self: Sized;
 
     fn on_open(&self, ctx: &Context, msg: Message<Open<'_>>);
 
+    #[allow(unused_variables)]
     fn on_unknown_message(&self, ctx: &Context, msg: AnyMessage) {
         debug_warn!("ignored message: {}", msg.msginfo.kind());
+    }
+
+    #[allow(unused_variables)]
+    fn on_interrupt(&self, interrupt: &Interrupt) {
+        debug_warn!("ignored interrupt");
     }
 }
 
@@ -31,6 +40,9 @@ pub enum Object {
     Channel {
         receiver: ChannelReceiver,
         sender: ChannelSender,
+    },
+    Interrupt {
+        interrupt: Interrupt,
     },
 }
 
@@ -53,11 +65,12 @@ impl Dispatcher {
     }
 
     pub fn add_channel(&self, channel: Channel) -> Result<(), ErrorCode> {
+        let handle_id = channel.handle_id();
+
         // Tell the kernel to notify us when the channel is readable.
-        self.poll.add(channel.handle_id(), Readiness::READABLE)?;
+        self.poll.add(handle_id, Readiness::READABLE)?;
 
         // Register the channel in the dispatcher.
-        let handle_id = channel.handle_id();
         let (sender, receiver) = channel.split();
         let object = Object::Channel { sender, receiver };
         self.objects
@@ -67,7 +80,18 @@ impl Dispatcher {
         Ok(())
     }
 
-    fn wait_and_dispatch(&self, app: &impl EventLoop) {
+    pub fn add_interrupt(&self, interrupt: Interrupt) -> Result<(), ErrorCode> {
+        let handle_id = interrupt.handle_id();
+        self.poll.add(handle_id, Readiness::READABLE)?;
+        let object = Object::Interrupt { interrupt };
+        self.objects
+            .write()
+            .insert(handle_id, Arc::new(spin::Mutex::new(object)));
+
+        Ok(())
+    }
+
+    fn wait_and_dispatch<E>(&self, app: &impl EventLoop<E>) {
         let (handle, readiness) = self.poll.wait().unwrap();
 
         // TODO: Let poll API return an opaque pointer to the object so that
@@ -100,14 +124,27 @@ impl Dispatcher {
                     }
                 }
             }
+            Object::Interrupt { interrupt } => {
+                if readiness.contains(Readiness::READABLE) {
+                    app.on_interrupt(interrupt);
+                }
+            }
         }
     }
 }
 
-pub fn app_loop<A: EventLoop>(ch: Channel) {
+pub fn app_loop<E: DeserializeOwned, A: EventLoop<E>>(vsyscall: *const VsyscallPage) {
+    let env_json = unsafe {
+        let ptr = (*vsyscall).environ_ptr;
+        let len = (*vsyscall).environ_len;
+        core::slice::from_raw_parts(ptr, len)
+    };
+
+    let env: E = serde_json::from_slice(&env_json).expect("failed to parse env");
+
     let poll = Poll::create().unwrap();
     let dispatcher = Dispatcher::new(poll);
-    let app = A::init(&dispatcher, ch);
+    let app = A::init(&dispatcher, env);
 
     loop {
         dispatcher.wait_and_dispatch(&app);

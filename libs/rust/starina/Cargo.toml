@@ -12,6 +12,9 @@ path = "lib.rs"
 hashbrown = { workspace = true }
 spin = { workspace = true }
 starina_types = { workspace = true }
+starina_utils = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
 
 [features]
 in-kernel = []

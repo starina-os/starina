@@ -9,5 +9,8 @@ edition = { workspace = true }
 path = "lib.rs"
 
 [dependencies]
+serde = { workspace = true, features = ["derive"] }
+serde_bytes = { workspace = true, features = ["alloc"] }
+hashbrown = { workspace = true, features = ["serde"] }
 
 [features]
