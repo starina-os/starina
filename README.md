@@ -30,6 +30,16 @@ This year, we focus on cloud computing domain, where Starina will be used as a t
 - [ ] WSL2-like Linux compatibility layer
 - [ ] Streamlined observability and debugging experience
 
+## How to run
+
+```
+brew install qemu riscv-software-src/riscv/riscv-tools
+rustup override set nightly
+rustup target add riscv64gc-unknown-none-elf
+rustup component add rust-src llvm-tools
+./run.sh
+```
+
 ## Is it Linux or POSIX compatible?
 
 No. Starina provides completely original APIs and fresh new development experiences. However, to make it easier to adapt to Starina, We plan to implement a [WSL2-like](https://learn.microsoft.com/en-us/windows/wsl/about#what-is-wsl-2) seamless Linux environment based on real Linux microVM + lightweight integration layer (akin to [LWK](https://en.wikipedia.org/wiki/Lightweight_kernel_operating_system) in [supercomputing](https://link.springer.com/book/10.1007/978-981-13-6624-6)).
