@@ -91,9 +91,42 @@ impl BufferWriter {
     }
 }
 
+pub struct BufferReader<'a> {
+    slice: &'a [u8],
+    byte_offset: usize,
+}
+
+impl<'a> BufferReader<'a> {
+    pub fn read<T: Copy>(&mut self) -> Result<&T, Error> {
+        let slice = self.reserve::<T>(1)?;
+        Ok(&slice[0])
+    }
+
+    pub fn read_bytes(&mut self, count: usize) -> Result<&[u8], Error> {
+        let slice = self.reserve::<u8>(count)?;
+        Ok(slice)
+    }
+
+    fn reserve<T: Copy>(&mut self, count: usize) -> Result<&[T], Error> {
+        let slice = unsafe {
+            let bytes_ptr = self.slice.as_ptr().add(self.byte_offset);
+            let ptr = bytes_ptr.cast::<T>();
+            if !ptr.is_aligned() {
+                return Err(Error::AlignmentError);
+            }
+
+            core::slice::from_raw_parts(ptr, count)
+        };
+
+        self.byte_offset += size_of::<T>() * count;
+        Ok(slice)
+    }
+}
+
 #[derive(Debug)]
 pub enum Error {
     OutOfMemory,
+    AlignmentError,
 }
 
 impl DmaBufferPool {
@@ -150,6 +183,20 @@ impl DmaBufferPool {
     pub fn daddr(&self, index: BufferId) -> DAddr {
         debug_assert!(index.0 < self.num_buffers);
         self.folio.daddr().add(index.0 * self.buffer_size)
+    }
+
+    pub fn from_device(&mut self, daddr: DAddr) -> Option<BufferReader<'_>> {
+        let id = self.daddr_to_id(daddr)?;
+
+        let slice = unsafe {
+            let ptr = self.vaddr(id).as_ptr();
+            core::slice::from_raw_parts(ptr, self.buffer_size)
+        };
+
+        Some(BufferReader {
+            slice,
+            byte_offset: 0,
+        })
     }
 
     pub fn to_device(&mut self) -> Result<BufferWriter, Error> {

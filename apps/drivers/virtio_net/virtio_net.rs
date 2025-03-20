@@ -181,18 +181,14 @@ impl VirtioNet {
                     let read_len = core::cmp::min(len, remaining);
                     remaining -= read_len;
 
-                    let buffer_index = self
+                    let mut buf = self
                         .receiveq_buffers
-                        .daddr_to_id(daddr)
+                        .from_device(daddr)
                         .expect("invalid daddr");
-                    let vaddr = self.receiveq_buffers.vaddr(buffer_index);
-                    let header_len = size_of::<VirtioNetModernHeader>();
-                    let payload = unsafe {
-                        core::slice::from_raw_parts(vaddr.as_ptr::<u8>().add(header_len), read_len)
-                    };
 
+                    let _header = buf.read::<VirtioNetModernHeader>();
+                    let payload = buf.read_bytes(read_len).unwrap();
                     receive(payload);
-                    self.receiveq_buffers.free(buffer_index);
                 }
             }
 
