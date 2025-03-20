@@ -143,7 +143,7 @@ impl VirtioNet {
             })
             .unwrap();
         writer.write_bytes(payload).unwrap();
-        let daddr = writer.daddr_base();
+        let daddr = writer.finish();
 
         self.transmitq.enqueue(&[
             VirtqDescBuffer::ReadOnlyFromDevice {

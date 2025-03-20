@@ -61,7 +61,12 @@ impl BufferWriter {
         Ok(())
     }
 
-    pub fn daddr_base(&self) -> DAddr {
+    /// Finishes the writes, and returns the start device address of the buffer.
+    ///
+    /// This requires `self` to ensure you won't write to the buffer anymore
+    /// when telling the address to the device. In other words, the buffer will
+    /// be moved to the device.
+    pub fn finish(self) -> DAddr {
         self.daddr
     }
 
