@@ -69,8 +69,8 @@ macro_rules! log {
             };
 
             $crate::println!(
-                // TODO:
-                "[app         ] {}{:6}{} {}",
+                "[{:<12}] {}{:6}{} {}",
+                $crate::tls::thread_local().name,
                 color,
                 level_str,
                 RESET_COLOR,

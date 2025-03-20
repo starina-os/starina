@@ -17,6 +17,7 @@ use crate::message::AnyMessage;
 use crate::message::Message;
 use crate::poll::Poll;
 use crate::poll::Readiness;
+use crate::tls;
 
 pub trait EventLoop<E>: Send + Sync {
     fn init(dispatcher: &Dispatcher, env: E) -> Self
@@ -133,7 +134,12 @@ impl Dispatcher {
     }
 }
 
-pub fn app_loop<E: DeserializeOwned, A: EventLoop<E>>(vsyscall: *const VsyscallPage) {
+pub fn app_loop<E: DeserializeOwned, A: EventLoop<E>>(
+    program_name: &'static str,
+    vsyscall: *const VsyscallPage,
+) {
+    tls::init_thread_local(program_name);
+
     let env_json = unsafe {
         let ptr = (*vsyscall).environ_ptr;
         let len = (*vsyscall).environ_len;

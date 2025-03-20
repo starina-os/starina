@@ -22,3 +22,4 @@ pub mod message;
 pub mod poll;
 pub mod prelude;
 pub mod syscall;
+pub mod tls;
