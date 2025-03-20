@@ -41,8 +41,12 @@ impl Entry {
         Self(ppn << PTE_PPN_SHIFT | flags)
     }
 
-    pub fn is_invalid(&self) -> bool {
-        self.0 & PTE_V == 0
+    pub fn is_valid(&self) -> bool {
+        self.0 & PTE_V != 0
+    }
+
+    pub fn is_leaf(&self) -> bool {
+        self.0 & (PTE_R | PTE_W | PTE_X) != 0
     }
 
     pub fn ppn(&self) -> u64 {
@@ -65,8 +69,32 @@ impl Table {
     }
 }
 
-fn is_large_page_aligned(vaddr: VAddr, level: usize) -> bool {
-    false
+fn is_large_page_aligned(
+    vaddr: VAddr,
+    paddr: PAddr,
+    remaining: usize,
+    level: usize,
+) -> Option<usize> {
+    let page_size = match level {
+        1 => 2 * 1024 * 1024,        // 2MiB pages (level 1)
+        2 => 1 * 1024 * 1024 * 1024, // 1GiB pages (level 2)
+        3 => return None,            // Not supported in Sv48
+        _ => unreachable!(),
+    };
+
+    if page_size > remaining {
+        return None;
+    }
+
+    if !is_aligned(vaddr.as_usize(), page_size) {
+        return None;
+    }
+
+    if !is_aligned(paddr.as_usize(), page_size) {
+        return None;
+    }
+
+    Some(page_size)
 }
 
 struct PageTable {
@@ -133,13 +161,17 @@ impl PageTable {
         assert!(is_aligned(paddr.as_usize(), PAGE_SIZE));
         assert!(is_aligned(len, PAGE_SIZE));
 
-        for offset in (0..len).step_by(PAGE_SIZE) {
-            self.map_page(
+        let mut offset = 0;
+        while offset < len {
+            let remaining = len - offset;
+            let page_size = self.map_page(
                 vaddr.add(offset),
                 paddr.add(offset),
                 prot,
+                remaining,
                 allow_large_pages,
             )?;
+            offset += page_size;
         }
 
         // FIXME: Invalidate TLB
@@ -156,8 +188,9 @@ impl PageTable {
         vaddr: VAddr,
         paddr: PAddr,
         prot: PageProtect,
+        remaining: usize,
         allow_large_pages: bool,
-    ) -> Result<(), ErrorCode> {
+    ) -> Result<usize, ErrorCode> {
         assert!(is_aligned(vaddr.as_usize(), PAGE_SIZE));
         assert!(is_aligned(paddr.as_usize(), PAGE_SIZE));
 
@@ -189,19 +222,26 @@ impl PageTable {
         let mut table = self.paddr2table(self.l0_table.paddr())?;
         for level in (1..=3).rev() {
             let entry = table.get_mut_by_vaddr(vaddr, level);
-            if entry.is_invalid() {
-                if allow_large_pages && is_large_page_aligned(vaddr, level) {
-                    // Allocate a large page.
-                    *entry = Entry::new(paddr, PTE_V | leaf_flags);
-                } else {
-                    // Allocate a new table.
-                    let new_table = Folio::alloc(size_of::<Table>())?;
-                    *entry = Entry::new(new_table.paddr(), PTE_V);
-
-                    // This vmspace object owns the allocated folio.
-                    // TODO: deallocate on Drop
-                    mem::forget(new_table);
+            if !entry.is_valid() {
+                if allow_large_pages {
+                    if let Some(page_size) = is_large_page_aligned(vaddr, paddr, remaining, level) {
+                        // Allocate a large page.
+                        *entry = Entry::new(paddr, PTE_V | leaf_flags);
+                        return Ok(page_size);
+                    }
                 }
+
+                // Allocate a new table.
+                let new_table = Folio::alloc(size_of::<Table>())?;
+                *entry = Entry::new(new_table.paddr(), PTE_V);
+
+                // This vmspace object owns the allocated folio.
+                // TODO: deallocate on Drop
+                mem::forget(new_table);
+            }
+
+            if entry.is_leaf() {
+                return Err(ErrorCode::AlreadyMapped);
             }
 
             // Traverse to the next table.
@@ -210,12 +250,12 @@ impl PageTable {
         }
 
         let entry = table.get_mut_by_vaddr(vaddr, 0);
-        if !entry.is_invalid() {
+        if entry.is_valid() {
             return Err(ErrorCode::AlreadyMapped);
         }
 
         *entry = Entry::new(paddr, leaf_flags);
-        Ok(())
+        Ok(4096)
     }
 }
 
