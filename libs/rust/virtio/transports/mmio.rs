@@ -13,28 +13,28 @@ use crate::transports::IsrStatus;
 
 // "All register values are organized as Little Endian."
 // (4.2.2 MMIO Device Register Layout).
-static MAGIC_VALUE_REG: MmioReg<LittleEndian, ReadOnly, u32> = MmioReg::new(0x00);
-static DEVICE_VERSION_REG: MmioReg<LittleEndian, ReadOnly, u32> = MmioReg::new(0x04);
-static DEVICE_ID_REG: MmioReg<LittleEndian, ReadOnly, u32> = MmioReg::new(0x08);
-static DEVICE_FEATURES_REG: MmioReg<LittleEndian, ReadOnly, u32> = MmioReg::new(0x10);
-static DEVICE_FEATURES_SEL_REG: MmioReg<LittleEndian, WriteOnly, u32> = MmioReg::new(0x14);
-static DRIVER_FEATURES_REG: MmioReg<LittleEndian, WriteOnly, u32> = MmioReg::new(0x20);
-static DRIVER_FEATURES_SEL_REG: MmioReg<LittleEndian, WriteOnly, u32> = MmioReg::new(0x24);
-static QUEUE_SEL_REG: MmioReg<LittleEndian, WriteOnly, u32> = MmioReg::new(0x30);
-static QUEUE_NUM_MAX_REG: MmioReg<LittleEndian, ReadOnly, u32> = MmioReg::new(0x34);
-static QUEUE_NUM_REG: MmioReg<LittleEndian, WriteOnly, u32> = MmioReg::new(0x38);
-static QUEUE_READY_REG: MmioReg<LittleEndian, ReadWrite, u32> = MmioReg::new(0x44);
-static QUEUE_NOTIFY_REG: MmioReg<LittleEndian, WriteOnly, u32> = MmioReg::new(0x50);
-static INTERRUPT_STATUS_REG: MmioReg<LittleEndian, ReadOnly, u32> = MmioReg::new(0x60);
-static INTERRUPT_ACK_REG: MmioReg<LittleEndian, WriteOnly, u32> = MmioReg::new(0x64);
-static DEVICE_STATUS_REG: MmioReg<LittleEndian, ReadWrite, u32> = MmioReg::new(0x70);
-static QUEUE_DESC_LOW_REG: MmioReg<LittleEndian, WriteOnly, u32> = MmioReg::new(0x80);
-static QUEUE_DESC_HIGH_REG: MmioReg<LittleEndian, WriteOnly, u32> = MmioReg::new(0x84);
-static QUEUE_DRIVER_LOW_REG: MmioReg<LittleEndian, WriteOnly, u32> = MmioReg::new(0x90);
-static QUEUE_DRIVER_HIGH_REG: MmioReg<LittleEndian, WriteOnly, u32> = MmioReg::new(0x94);
-static QUEUE_DEVICE_LOW_REG: MmioReg<LittleEndian, WriteOnly, u32> = MmioReg::new(0xa0);
-static QUEUE_DEVICE_HIGH_REG: MmioReg<LittleEndian, WriteOnly, u32> = MmioReg::new(0xa4);
-static CONFIG_REG_BASE: MmioReg<LittleEndian, ReadWrite, u8> = MmioReg::new(0x100);
+const MAGIC_VALUE_REG: MmioReg<LittleEndian, ReadOnly, u32> = MmioReg::new(0x00);
+const DEVICE_VERSION_REG: MmioReg<LittleEndian, ReadOnly, u32> = MmioReg::new(0x04);
+const DEVICE_ID_REG: MmioReg<LittleEndian, ReadOnly, u32> = MmioReg::new(0x08);
+const DEVICE_FEATURES_REG: MmioReg<LittleEndian, ReadOnly, u32> = MmioReg::new(0x10);
+const DEVICE_FEATURES_SEL_REG: MmioReg<LittleEndian, WriteOnly, u32> = MmioReg::new(0x14);
+const DRIVER_FEATURES_REG: MmioReg<LittleEndian, WriteOnly, u32> = MmioReg::new(0x20);
+const DRIVER_FEATURES_SEL_REG: MmioReg<LittleEndian, WriteOnly, u32> = MmioReg::new(0x24);
+const QUEUE_SEL_REG: MmioReg<LittleEndian, WriteOnly, u32> = MmioReg::new(0x30);
+const QUEUE_NUM_MAX_REG: MmioReg<LittleEndian, ReadOnly, u32> = MmioReg::new(0x34);
+const QUEUE_NUM_REG: MmioReg<LittleEndian, WriteOnly, u32> = MmioReg::new(0x38);
+const QUEUE_READY_REG: MmioReg<LittleEndian, ReadWrite, u32> = MmioReg::new(0x44);
+const QUEUE_NOTIFY_REG: MmioReg<LittleEndian, WriteOnly, u32> = MmioReg::new(0x50);
+const INTERRUPT_STATUS_REG: MmioReg<LittleEndian, ReadOnly, u32> = MmioReg::new(0x60);
+const INTERRUPT_ACK_REG: MmioReg<LittleEndian, WriteOnly, u32> = MmioReg::new(0x64);
+const DEVICE_STATUS_REG: MmioReg<LittleEndian, ReadWrite, u32> = MmioReg::new(0x70);
+const QUEUE_DESC_LOW_REG: MmioReg<LittleEndian, WriteOnly, u32> = MmioReg::new(0x80);
+const QUEUE_DESC_HIGH_REG: MmioReg<LittleEndian, WriteOnly, u32> = MmioReg::new(0x84);
+const QUEUE_DRIVER_LOW_REG: MmioReg<LittleEndian, WriteOnly, u32> = MmioReg::new(0x90);
+const QUEUE_DRIVER_HIGH_REG: MmioReg<LittleEndian, WriteOnly, u32> = MmioReg::new(0x94);
+const QUEUE_DEVICE_LOW_REG: MmioReg<LittleEndian, WriteOnly, u32> = MmioReg::new(0xa0);
+const QUEUE_DEVICE_HIGH_REG: MmioReg<LittleEndian, WriteOnly, u32> = MmioReg::new(0xa4);
+const CONFIG_REG_BASE: MmioReg<LittleEndian, ReadWrite, u8> = MmioReg::new(0x100);
 
 pub struct VirtioMmio {
     mmio: MmioFolio,
