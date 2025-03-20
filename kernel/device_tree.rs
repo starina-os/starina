@@ -12,8 +12,8 @@ use hashbrown::HashMap;
 use starina::device_tree::BusNode;
 use starina::device_tree::DeviceNode;
 use starina::device_tree::DeviceTree;
-use starina::device_tree::InterruptDesc;
 use starina::device_tree::Reg;
+use starina::interrupt::IrqMatcher;
 
 use crate::arch::INTERRUPT_CONTROLLER;
 
@@ -257,14 +257,14 @@ pub fn parse(dtb: *const u8) -> Result<DeviceTree, fdt_rs::error::DevTreeError> 
                         }
                     }
 
-                    let irq = match INTERRUPT_CONTROLLER.interrupts_cell_to_irq(&cell) {
+                    let irq_matcher = match INTERRUPT_CONTROLLER.parse_interrupts_cell(&cell) {
                         Ok(irq) => irq,
                         Err(e) => {
                             panic!("{}: failed to parse interrupts cell: {:?}", node_name, e);
                         }
                     };
 
-                    interrupts.push(InterruptDesc::Static(irq));
+                    interrupts.push(irq_matcher);
                 }
                 "interrupt-parent" => {
                     let value = prop.phandle(0)?;

@@ -2,7 +2,7 @@ use starina_types::address::DAddr;
 use starina_types::address::VAddr;
 use starina_types::error::ErrorCode;
 use starina_types::handle::HandleId;
-use starina_types::interrupt::Irq;
+use starina_types::interrupt::IrqMatcher;
 use starina_types::message::MessageInfo;
 use starina_types::poll::Readiness;
 pub use starina_types::syscall::*;
@@ -156,8 +156,15 @@ pub fn vmspace_map(
     Ok(vaddr)
 }
 
-pub fn interrupt_create(irq: Irq) -> Result<HandleId, ErrorCode> {
-    let ret = syscall(SYS_INTERRUPT_CREATE, irq.as_raw() as isize, 0, 0, 0, 0)?;
+pub fn interrupt_create(irq_matcher: IrqMatcher) -> Result<HandleId, ErrorCode> {
+    let ret = syscall(
+        SYS_INTERRUPT_CREATE,
+        irq_matcher.as_raw() as isize,
+        0,
+        0,
+        0,
+        0,
+    )?;
     // SAFETY: The syscall returns a valid handle ID.
     let id = unsafe { HandleId::from_raw_isize(ret.as_isize()).unwrap_unchecked() };
     Ok(id)

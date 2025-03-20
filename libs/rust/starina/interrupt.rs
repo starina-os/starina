@@ -21,8 +21,8 @@ pub struct Interrupt {
 
 impl Interrupt {
     /// Creates a new interrupt object for the given IRQ.
-    pub fn create(irq: Irq) -> Result<Interrupt, ErrorCode> {
-        let handle = syscall::interrupt_create(irq)?;
+    pub fn create(irq_matcher: IrqMatcher) -> Result<Interrupt, ErrorCode> {
+        let handle = syscall::interrupt_create(irq_matcher)?;
         let interrupt = Interrupt {
             handle: OwnedHandle::from_raw(handle),
         };

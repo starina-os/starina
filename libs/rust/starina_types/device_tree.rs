@@ -5,7 +5,7 @@ use hashbrown::HashMap;
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::interrupt::Irq;
+use crate::interrupt::IrqMatcher;
 
 /// The device tree. This is the root of the device tree.
 #[derive(Serialize, Deserialize, Debug)]
@@ -20,12 +20,7 @@ pub struct DeviceNode {
     pub compatible: Vec<String>,
     pub bus: String,
     pub reg: Vec<Reg>,
-    pub interrupts: Vec<InterruptDesc>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub enum InterruptDesc {
-    Static(Irq),
+    pub interrupts: Vec<IrqMatcher>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

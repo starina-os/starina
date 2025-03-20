@@ -1,3 +1,4 @@
+use starina::interrupt::IrqMatcher;
 use starina::poll::Readiness;
 use starina_types::error::ErrorCode;
 use starina_types::interrupt::Irq;
@@ -22,7 +23,9 @@ pub struct Interrupt {
 }
 
 impl Interrupt {
-    pub fn new(irq: Irq) -> Result<SharedRef<Interrupt>, ErrorCode> {
+    pub fn attach(irq_matcher: IrqMatcher) -> Result<SharedRef<Interrupt>, ErrorCode> {
+        let irq = INTERRUPT_CONTROLLER.acquire_irq(irq_matcher)?;
+
         let interrupt = SharedRef::new(Interrupt {
             irq,
             mutable: SpinLock::new(Mutable {
@@ -30,6 +33,7 @@ impl Interrupt {
                 active: false,
             }),
         })?;
+
         INTERRUPT_CONTROLLER.enable_irq(interrupt.clone());
         Ok(interrupt)
     }

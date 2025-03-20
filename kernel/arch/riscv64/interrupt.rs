@@ -4,9 +4,10 @@ use core::arch::asm;
 use starina::device_tree::Reg;
 use starina::error::ErrorCode;
 use starina::interrupt::Irq;
+use starina::interrupt::IrqMatcher;
 
+use super::plic;
 use super::plic::use_plic;
-use super::plic::{self};
 use crate::interrupt::Interrupt;
 use crate::refcount::SharedRef;
 use crate::thread::switch_thread;
@@ -84,21 +85,19 @@ pub extern "C" fn interrupt_handler() -> ! {
         panic!("unhandled intrrupt");
     }
 }
-pub static INTERRUPT_CONTROLLER: spin::Lazy<InterruptController> =
-    spin::Lazy::new(InterruptController::new);
+pub static INTERRUPT_CONTROLLER: PlicWrapper = PlicWrapper::new();
 
 #[derive(Debug)]
 pub enum InterruptCellParseError {
     InvalidCellCount,
 }
 
-// FIXME: Move this to plic.rs
-pub struct InterruptController {
+pub struct PlicWrapper {
     _private: (),
 }
 
-impl InterruptController {
-    pub fn new() -> Self {
+impl PlicWrapper {
+    pub const fn new() -> Self {
         Self { _private: () }
     }
 
@@ -106,15 +105,22 @@ impl InterruptController {
         plic::try_init(compatible, reg)
     }
 
-    pub fn interrupts_cell_to_irq(
+    pub fn parse_interrupts_cell(
         &self,
         interrupts_cell: &[u32],
-    ) -> Result<Irq, InterruptCellParseError> {
+    ) -> Result<IrqMatcher, InterruptCellParseError> {
         if interrupts_cell.len() != 1 {
             return Err(InterruptCellParseError::InvalidCellCount);
         }
 
-        Ok(Irq::from_raw(interrupts_cell[0]))
+        let irq = Irq::from_raw(interrupts_cell[0]);
+        Ok(IrqMatcher::Static(irq))
+    }
+
+    pub fn acquire_irq(&self, irq_matcher: IrqMatcher) -> Result<Irq, ErrorCode> {
+        match irq_matcher {
+            IrqMatcher::Static(irq) => Ok(irq),
+        }
     }
 
     pub fn enable_irq(&self, interrupt: SharedRef<Interrupt>) {

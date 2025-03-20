@@ -1,6 +1,7 @@
 use starina::address::DAddr;
 use starina::address::VAddr;
 use starina::interrupt::Irq;
+use starina::interrupt::IrqMatcher;
 use starina_types::error::ErrorCode;
 use starina_types::handle::HandleId;
 use starina_types::handle::HandleRights;
@@ -187,8 +188,11 @@ fn busio_map(
     Ok(folio_id)
 }
 
-fn interrupt_create(current: &SharedRef<Thread>, irq: Irq) -> Result<HandleId, ErrorCode> {
-    let interrupt = Interrupt::new(irq)?;
+fn interrupt_create(
+    current: &SharedRef<Thread>,
+    irq_matcher: IrqMatcher,
+) -> Result<HandleId, ErrorCode> {
+    let interrupt = Interrupt::attach(irq_matcher)?;
     let handle = Handle::new(interrupt, HandleRights::READ | HandleRights::WRITE);
     let handle_id = current.process().handles().lock().insert(handle)?;
     Ok(handle_id)
@@ -277,8 +281,8 @@ fn do_syscall(
             Ok(SyscallResult::Done(ret.into()))
         }
         SYS_INTERRUPT_CREATE => {
-            let irq = Irq::from_raw_isize(a0)?;
-            let ret = interrupt_create(&current, irq)?;
+            let irq_matcher = IrqMatcher::from_raw_isize(a0)?;
+            let ret = interrupt_create(&current, irq_matcher)?;
             Ok(SyscallResult::Done(ret.into()))
         }
         SYS_INTERRUPT_ACK => {

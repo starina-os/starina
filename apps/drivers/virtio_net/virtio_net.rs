@@ -1,7 +1,6 @@
 use core::mem::offset_of;
 
 use starina::address::DAddr;
-use starina::device_tree::InterruptDesc;
 use starina::folio::MmioFolio;
 use starina::info;
 use starina::interrupt::Interrupt;
@@ -63,11 +62,8 @@ fn probe(mut env: Env) -> Option<(IoBus, Box<dyn VirtioTransport>, Vec<VirtQueue
             let mut transport = Box::new(virtio) as Box<dyn VirtioTransport>;
             let virtqueues = transport.initialize(&iobus, 0, 2).unwrap();
             let iobus = env.iobus.remove(&node.bus).unwrap();
-            let interrupt = match node.interrupts[0] {
-                InterruptDesc::Static(irq) => {
-                    Interrupt::create(irq).expect("failed to create interrupt")
-                }
-            };
+            let interrupt =
+                Interrupt::create(node.interrupts[0]).expect("failed to create interrupt");
             return Some((iobus, transport, virtqueues, interrupt));
         }
     }
