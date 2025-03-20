@@ -130,48 +130,31 @@ impl VirtioNet {
     }
 
     pub fn transmit(&mut self, payload: &[u8]) {
-        let buffer_index = self
-            .transmitq_buffers
-            .allocate()
-            .expect("no free tx buffers");
-        let vaddr = self.transmitq_buffers.vaddr(buffer_index);
-        let daddr = self.transmitq_buffers.daddr(buffer_index);
+        let mut writer = self.transmitq_buffers.to_device().unwrap();
+        writer
+            .write(VirtioNetModernHeader {
+                flags: 0,
+                hdr_len: 0,
+                gso_type: 0,
+                gso_size: 0,
+                checksum_start: 0,
+                checksum_offset: 0,
+                // num_buffer: 0,
+            })
+            .unwrap();
+        writer.write_bytes(payload).unwrap();
+        let daddr = writer.daddr_base();
 
-        unsafe {
-            vaddr
-                .as_mut_ptr::<VirtioNetModernHeader>()
-                .write(VirtioNetModernHeader {
-                    flags: 0,
-                    hdr_len: 0,
-                    gso_type: 0,
-                    gso_size: 0,
-                    checksum_start: 0,
-                    checksum_offset: 0,
-                    // num_buffer: 0,
-                });
-        }
-
-        let header_len = size_of::<VirtioNetModernHeader>();
-        unsafe {
-            let buf = core::slice::from_raw_parts_mut(
-                vaddr.add(header_len).as_mut_ptr(),
-                DMA_BUF_SIZE - header_len,
-            );
-            buf[..payload.len()].copy_from_slice(payload);
-        }
-
-        let chain = &[
+        self.transmitq.enqueue(&[
             VirtqDescBuffer::ReadOnlyFromDevice {
                 daddr,
-                len: header_len,
+                len: size_of::<VirtioNetModernHeader>(),
             },
             VirtqDescBuffer::ReadOnlyFromDevice {
-                daddr: daddr.add(header_len),
+                daddr: daddr.add(size_of::<VirtioNetModernHeader>()),
                 len: payload.len(),
             },
-        ];
-
-        self.transmitq.enqueue(chain);
+        ]);
         self.transmitq.notify(&mut *self.transport);
     }
 

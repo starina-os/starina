@@ -1,8 +1,6 @@
 //! A DMA buffer allocator.
 //!
 //! This module provides a buffer pool for DMA operations.
-use core::mem::MaybeUninit;
-
 use starina::address::DAddr;
 use starina::address::VAddr;
 use starina::folio::MmioFolio;
@@ -47,6 +45,50 @@ pub struct DmaBufferPool {
     free_indices: Vec<BufferId>,
     buffer_size: usize,
     num_buffers: usize,
+}
+
+pub struct BufferWriter {
+    vaddr: VAddr,
+    daddr: DAddr,
+    byte_offset: usize,
+    size: usize,
+}
+
+impl BufferWriter {
+    pub fn write_bytes(&mut self, data: &[u8]) -> Result<(), Error> {
+        let dest = self.reserve(data.len())?;
+        dest.copy_from_slice(data);
+        Ok(())
+    }
+
+    pub fn daddr_base(&self) -> DAddr {
+        self.daddr
+    }
+
+    pub fn write<T: Copy>(&mut self, value: T) -> Result<(), Error> {
+        let dest = self.reserve(1)?;
+        dest[0] = value;
+        Ok(())
+    }
+
+    fn reserve<T: Copy>(&mut self, count: usize) -> Result<&mut [T], Error> {
+        if self.byte_offset + count * size_of::<T>() > self.size {
+            return Err(Error::OutOfMemory);
+        }
+
+        let slice = unsafe {
+            let ptr = self.vaddr.add(self.byte_offset).as_mut_ptr();
+            core::slice::from_raw_parts_mut(ptr, count)
+        };
+
+        self.byte_offset += size_of::<T>() * count;
+        Ok(slice)
+    }
+}
+
+#[derive(Debug)]
+pub enum Error {
+    OutOfMemory,
 }
 
 impl DmaBufferPool {
@@ -105,16 +147,16 @@ impl DmaBufferPool {
         self.folio.daddr().add(index.0 * self.buffer_size)
     }
 
-    pub fn to_device<F, T: Copy>(&self, index: BufferId, f: F)
-    where
-        F: FnOnce(&mut MaybeUninit<T>),
-    {
+    pub fn to_device(&mut self) -> Result<BufferWriter, Error> {
+        let index = self.allocate().ok_or(Error::OutOfMemory)?;
         let vaddr = self.vaddr(index);
         let daddr = self.daddr(index);
 
-        unsafe {
-            let ptr = vaddr.as_mut_ptr::<T>();
-            // f(ptr);
-        }
+        Ok(BufferWriter {
+            vaddr,
+            daddr,
+            byte_offset: 0,
+            size: self.buffer_size,
+        })
     }
 }
