@@ -7,6 +7,7 @@ use super::thread::Context;
 
 /// The entry point for traps: exceptions, interrupts, and system calls.
 #[naked]
+#[repr(align(4))]
 pub unsafe extern "C" fn switch_to_kernel() -> ! {
     unsafe {
         naked_asm!(

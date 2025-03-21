@@ -6,6 +6,7 @@
 #![feature(coerce_unsized)]
 #![feature(unsize)]
 #![feature(allocator_api)]
+#![feature(fn_align)]
 #![allow(unused)]
 
 extern crate alloc;

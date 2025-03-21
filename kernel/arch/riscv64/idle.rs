@@ -7,8 +7,8 @@ use super::interrupt::interrupt_handler;
 use super::transition::switch_to_kernel;
 
 /// The entry point of interrupts or exceptions.
-#[unsafe(link_section = ".text.idle_entry")]
 #[naked]
+#[repr(align(4))]
 unsafe extern "C" fn idle_entry() -> ! {
     unsafe {
         naked_asm!(
