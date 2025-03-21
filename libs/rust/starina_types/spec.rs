@@ -5,6 +5,7 @@ pub enum DeviceMatch {
 pub enum EnvType {
     DeviceTree { matches: &'static [DeviceMatch] },
     IoBusMap,
+    Service { name: &'static str },
 }
 
 pub struct EnvItem {

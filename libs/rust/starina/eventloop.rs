@@ -24,7 +24,10 @@ pub trait EventLoop<E>: Send + Sync {
     where
         Self: Sized;
 
-    fn on_open(&self, ctx: &Context, msg: Message<Open<'_>>);
+    #[allow(unused_variables)]
+    fn on_open(&self, ctx: &Context, msg: Message<Open<'_>>) {
+        debug_warn!("ignored open message");
+    }
 
     #[allow(unused_variables)]
     fn on_unknown_message(&self, ctx: &Context, msg: AnyMessage) {
@@ -63,6 +66,25 @@ impl Dispatcher {
             poll,
             objects: spin::RwLock::new(HashMap::new()),
         }
+    }
+
+    pub fn split_and_add_channel(&self, channel: Channel) -> Result<ChannelSender, ErrorCode> {
+        let handle_id = channel.handle_id();
+
+        // Tell the kernel to notify us when the channel is readable.
+        self.poll.add(handle_id, Readiness::READABLE)?;
+
+        // Register the channel in the dispatcher.
+        let (sender, receiver) = channel.split();
+        let object = Object::Channel {
+            sender: sender.clone(),
+            receiver,
+        };
+        self.objects
+            .write()
+            .insert(handle_id, Arc::new(spin::Mutex::new(object)));
+
+        Ok(sender)
     }
 
     pub fn add_channel(&self, channel: Channel) -> Result<(), ErrorCode> {
