@@ -16,6 +16,7 @@ fn read_register() -> usize {
     value
 }
 
+#[cfg(target_arch = "riscv64")]
 fn set_register(value: usize) {
     unsafe {
         asm!("mv tp, {}", in(reg) value);
