@@ -11,14 +11,13 @@ use smoltcp::wire::EthernetAddress;
 use smoltcp::wire::HardwareAddress;
 use smoltcp::wire::IpAddress;
 use smoltcp::wire::IpCidr;
-use starina::channel::ChannelSender;
 use starina::eventloop::Dispatcher;
 use starina::eventloop::EventLoop;
 use starina::prelude::*;
 use tcpip::TcpIp;
 
 pub struct App {
-    tcpip: TcpIp,
+    tcpip: TcpIp<'static>,
 }
 
 impl EventLoop<Env> for App {

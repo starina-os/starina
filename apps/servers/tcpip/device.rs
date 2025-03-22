@@ -38,13 +38,13 @@ impl<'a> smoltcp::phy::TxToken for TxTokenImpl<'a> {
 
 /// A network device implementation for smoltcp.
 pub struct NetDevice {
-    transmit: Box<dyn Fn(&[u8])>,
+    transmit: Box<dyn Fn(&[u8]) + Send + Sync>,
     tx_buf: Vec<u8>,
     rx_queue: VecDeque<Vec<u8>>,
 }
 
 impl NetDevice {
-    pub fn new(transmit: Box<dyn Fn(&[u8])>) -> NetDevice {
+    pub fn new(transmit: Box<dyn Fn(&[u8]) + Send + Sync>) -> NetDevice {
         NetDevice {
             transmit,
             tx_buf: vec![0; 1514],
