@@ -1,12 +1,44 @@
+use crate::prelude::Vec;
+
 /// The console output writer.
 ///
 /// This is an internal implementation detail of the `print!` and `println!`
 /// macros. You should use those macros, not this struct directly.
-pub struct Printer;
+struct Printer {
+    buf: spin::Mutex<Vec<u8>>,
+}
 
-impl core::fmt::Write for Printer {
+static GLOBAL_PRINTER: Printer = Printer::new();
+
+impl Printer {
+    const fn new() -> Printer {
+        Printer {
+            buf: spin::Mutex::new(Vec::new()),
+        }
+    }
+
+    fn write_str(&self, s: &str) {
+        let mut buf = self.buf.lock();
+        for b in s.bytes() {
+            buf.push(b);
+            if b == b'\n' {
+                let old_buf = core::mem::replace(&mut *buf, Vec::with_capacity(128));
+                // Do not hold the lock while writing to the console. This
+                // printer could be shared between multiple apps/threads,
+                // and the kernel may switch to another app/thread.
+                drop(buf);
+                crate::syscall::console_write(&old_buf);
+                buf = self.buf.lock();
+            }
+        }
+    }
+}
+
+pub struct GlobalPrinter;
+
+impl core::fmt::Write for GlobalPrinter {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        crate::syscall::console_write(s.as_bytes());
+        GLOBAL_PRINTER.write_str(s);
         Ok(())
     }
 }
@@ -17,7 +49,7 @@ macro_rules! print {
     ($($arg:tt)*) => {{
         #![allow(unused_imports)]
         use core::fmt::Write;
-        write!($crate::log::Printer, $($arg)*).ok();
+        write!($crate::log::GlobalPrinter, $($arg)*).ok();
     }};
 }
 
