@@ -38,7 +38,11 @@ impl EventLoop<Env> for App {
         let device = NetDevice::new(Box::new(transmit));
         let ip = IpCidr::new(IpAddress::v4(10, 0, 2, 15), 24);
         let mac: [u8; 6] = [0x52, 0x54, 0x00, 0x12, 0x34, 0x56];
-        let tcpip = TcpIp::new(device, ip, HardwareAddress::Ethernet(EthernetAddress(mac)));
+        let mut tcpip = TcpIp::new(device, ip, HardwareAddress::Ethernet(EthernetAddress(mac)));
+
+        tcpip.poll(|ev| {
+            trace!("event: {:?}", ev);
+        });
 
         Self { tcpip }
     }
