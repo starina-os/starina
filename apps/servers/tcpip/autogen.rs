@@ -15,8 +15,11 @@ pub struct Env {
 pub const APP_SPEC: AppSpec = AppSpec {
     env: &[EnvItem {
         name: "driver",
-        ty: EnvType::Service { name: "ethernet" },
+        ty: EnvType::Service {
+            name: "device/ethernet",
+        },
     }],
+    exports: &[],
 };
 
 pub fn app_main(vsyscall: *const VsyscallPage) {

@@ -13,6 +13,11 @@ pub struct EnvItem {
     pub ty: EnvType,
 }
 
+pub enum ExportItem {
+    Service { name: &'static str },
+}
+
 pub struct AppSpec {
     pub env: &'static [EnvItem],
+    pub exports: &'static [ExportItem],
 }
