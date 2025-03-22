@@ -6,15 +6,19 @@ mod smoltcp_logger;
 mod tcpip;
 
 use autogen::Env;
+use device::NetDevice;
+use smoltcp::wire::EthernetAddress;
+use smoltcp::wire::HardwareAddress;
 use smoltcp::wire::IpAddress;
 use smoltcp::wire::IpCidr;
 use starina::channel::ChannelSender;
 use starina::eventloop::Dispatcher;
 use starina::eventloop::EventLoop;
 use starina::prelude::*;
+use tcpip::TcpIp;
 
 pub struct App {
-    driver: ChannelSender,
+    tcpip: TcpIp,
 }
 
 impl EventLoop<Env> for App {
@@ -27,9 +31,16 @@ impl EventLoop<Env> for App {
 
         info!("hello from tcpip");
 
-        let ip = IpCidr::new(IpAddress::v4(10, 0, 2, 15), 24);
-        // let mac =
+        let transmit = move |buf: &[u8]| {
+            todo!("transmit: {:?}", buf);
+        };
 
-        Self { driver }
+        // FIXME:
+        let device = NetDevice::new(Box::new(transmit));
+        let ip = IpCidr::new(IpAddress::v4(10, 0, 2, 15), 24);
+        let mac: [u8; 6] = [0x52, 0x54, 0x00, 0x12, 0x34, 0x56];
+        let tcpip = TcpIp::new(device, ip, HardwareAddress::Ethernet(EthernetAddress(mac)));
+
+        Self { tcpip }
     }
 }
