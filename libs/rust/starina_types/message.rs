@@ -143,3 +143,39 @@ impl Messageable for Open<'_> {
         ))
     }
 }
+
+pub struct FramedData<'a> {
+    pub data: &'a [u8],
+}
+
+impl Messageable for FramedData<'_> {
+    type This<'a> = FramedData<'a>;
+
+    fn kind() -> MessageKind {
+        MessageKind::FramedData
+    }
+
+    unsafe fn is_valid(msginfo: MessageInfo, buffer: &MessageBuffer) -> bool {
+        msginfo.data_len() <= buffer.data.len()
+    }
+
+    unsafe fn cast_unchecked(msginfo: MessageInfo, buffer: &MessageBuffer) -> Self::This<'_> {
+        unsafe {
+            let data = &buffer.data[..msginfo.data_len()];
+            FramedData { data }
+        }
+    }
+
+    fn write(self, buffer: &mut MessageBuffer) -> Result<MessageInfo, ErrorCode> {
+        if self.data.len() > buffer.data.len() {
+            return Err(ErrorCode::TooLarge);
+        }
+
+        buffer.data[..self.data.len()].copy_from_slice(self.data);
+        Ok(MessageInfo::new(
+            MessageKind::FramedData as i32,
+            self.data.len() as u16,
+            0,
+        ))
+    }
+}

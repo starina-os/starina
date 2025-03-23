@@ -16,6 +16,7 @@ use smoltcp::wire::IpCidr;
 use starina::channel::Channel;
 use starina::eventloop::Dispatcher;
 use starina::eventloop::EventLoop;
+use starina::message::FramedData;
 use starina::prelude::*;
 use tcpip::TcpIp;
 
@@ -33,8 +34,11 @@ impl EventLoop<Env> for App {
 
         info!("hello from tcpip");
 
-        let transmit = move |buf: &[u8]| {
-            todo!("transmit: {:?}", buf);
+        let transmit = move |data: &[u8]| {
+            trace!("transmit {} bytes", data.len());
+            if let Err(err) = driver.send(FramedData { data }) {
+                debug_warn!("failed to send: {:?}", err);
+            }
         };
 
         // FIXME:

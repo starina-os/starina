@@ -88,6 +88,13 @@ impl<'a> Message<Open<'a>> {
     }
 }
 
+impl<'a> Message<FramedData<'a>> {
+    pub fn data(&self) -> &[u8] {
+        // SAFETY: The validity of the message is checked in `Message::new`.
+        unsafe { FramedData::cast_unchecked(self.msginfo, &self.buffer).data }
+    }
+}
+
 pub struct AnyMessage {
     pub msginfo: MessageInfo,
     pub buffer: OwnedMessageBuffer,

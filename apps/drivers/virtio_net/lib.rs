@@ -7,6 +7,7 @@ use starina::eventloop::Context;
 use starina::eventloop::Dispatcher;
 use starina::eventloop::EventLoop;
 use starina::interrupt::Interrupt;
+use starina::message::FramedData;
 use starina::message::Message;
 use starina::message::Open;
 use starina::prelude::*;
@@ -40,6 +41,10 @@ impl EventLoop<Env> for App {
 
     fn on_open(&self, ctx: &Context, _msg: Message<Open<'_>>) {
         ctx.sender.send(Open { uri: "pong" }).unwrap();
+    }
+
+    fn on_framed_data(&self, _ctx: &Context, msg: Message<FramedData<'_>>) {
+        trace!("frame data received: {:2x?}", msg.data());
     }
 
     fn on_interrupt(&self, interrupt: &Interrupt) {

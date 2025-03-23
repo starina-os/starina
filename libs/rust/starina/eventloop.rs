@@ -2,6 +2,7 @@ use alloc::sync::Arc;
 
 use hashbrown::HashMap;
 use serde::de::DeserializeOwned;
+use starina_types::message::FramedData;
 use starina_types::message::MessageKind;
 use starina_types::message::Open;
 use starina_types::syscall::VsyscallPage;
@@ -27,6 +28,11 @@ pub trait EventLoop<E>: Send + Sync {
     #[allow(unused_variables)]
     fn on_open(&self, ctx: &Context, msg: Message<Open<'_>>) {
         debug_warn!("ignored open message");
+    }
+
+    #[allow(unused_variables)]
+    fn on_framed_data(&self, _ctx: &Context, _msg: Message<FramedData<'_>>) {
+        debug_warn!("ignored framed data message");
     }
 
     #[allow(unused_variables)]
