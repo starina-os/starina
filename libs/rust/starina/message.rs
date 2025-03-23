@@ -49,6 +49,7 @@ impl DerefMut for OwnedMessageBuffer {
 
 impl Drop for OwnedMessageBuffer {
     fn drop(&mut self) {
+        trace!("dropping message buffer");
         // Drop handles.
         for handle in self.0.handles.iter() {
             if handle.as_raw() != 0 {
@@ -57,6 +58,7 @@ impl Drop for OwnedMessageBuffer {
                 }
             }
         }
+        trace!("dropped message buffer");
     }
 }
 

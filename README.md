@@ -33,7 +33,7 @@ This year, we focus on cloud computing domain, where Starina will be used as a t
 ## How to run
 
 ```
-brew install qemu riscv-software-src/riscv/riscv-tools
+brew install qemu riscv64-elf-gdb
 rustup override set nightly
 rustup target add riscv64gc-unknown-none-elf
 rustup component add rust-src llvm-tools
