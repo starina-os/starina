@@ -48,6 +48,7 @@ impl EventLoop<Env> for App {
 
     fn on_framed_data(&self, _ctx: &Context, msg: Message<FramedData<'_>>) {
         trace!("frame data received: {:2x?}", msg.data());
+        self.virtio_net.lock().transmit(msg.data());
     }
 
     fn on_interrupt(&self, interrupt: &Interrupt) {
