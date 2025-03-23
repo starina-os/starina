@@ -76,6 +76,13 @@ pub fn poll_wait(poll: HandleId) -> Result<(HandleId, Readiness), ErrorCode> {
     Ok((id, readiness))
 }
 
+pub fn channel_create() -> Result<(HandleId, HandleId), ErrorCode> {
+    let ret = syscall(SYS_CHANNEL_CREATE, 0, 0, 0, 0, 0)?;
+    let first: HandleId = ret.into();
+    let second = HandleId::from_raw(first.as_raw() + 1);
+    Ok((first, second))
+}
+
 pub fn channel_send(
     ch: HandleId,
     msginfo: MessageInfo,

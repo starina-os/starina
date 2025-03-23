@@ -19,6 +19,7 @@ pub const SYS_BUSIO_MAP: u8 = 12;
 pub const SYS_FOLIO_DADDR: u8 = 13;
 pub const SYS_INTERRUPT_CREATE: u8 = 14;
 pub const SYS_INTERRUPT_ACK: u8 = 15;
+pub const SYS_CHANNEL_CREATE: u8 = 16;
 
 #[repr(C)]
 pub struct VsyscallPage {
@@ -105,5 +106,11 @@ impl From<RetVal> for (HandleId, Readiness) {
             HandleId::from_raw(handle_raw as i32),
             Readiness::from_raw(readiness as i8),
         )
+    }
+}
+
+impl From<RetVal> for HandleId {
+    fn from(value: RetVal) -> Self {
+        HandleId::from_raw(value.0 as i32)
     }
 }
