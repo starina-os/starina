@@ -77,10 +77,13 @@ impl EventLoop<Env> for App {
         self.tcpip.lock().poll(|ev| {
             match ev {
                 SocketEvent::Data { ch, data } => {
-                    trace!("\n\x1b[1;37m{:?}\x1b[0m", core::str::from_utf8(data));
+                    trace!(
+                        "\n\x1b[1;33m{}\x1b[0m",
+                        core::str::from_utf8(data).unwrap_or("NON-UTF8")
+                    );
                 }
                 SocketEvent::Close { ch } => {
-                    todo!()
+                    warn!("SocketEvent::Close: not yet implemented");
                 }
                 SocketEvent::NewConnection { ch, smol_handle } => {
                     todo!()

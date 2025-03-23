@@ -37,7 +37,12 @@ brew install qemu riscv64-elf-gdb
 rustup override set nightly
 rustup target add riscv64gc-unknown-none-elf
 rustup component add rust-src llvm-tools
+
+# Build and run
 ./run.sh
+
+# Attach GDB to QEMU, dump backtrace, and leave the prompt.
+riscv64-elf-gdb -ex bt
 ```
 
 ## Is it Linux or POSIX compatible?

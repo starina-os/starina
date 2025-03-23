@@ -130,6 +130,7 @@ impl<'a> TcpIp<'a> {
                                 concat!(
                                     "GET /connecttest.txt HTTP/1.1\r\n",
                                     "Host: www.msftconnecttest.com\r\n",
+                                    "User-Agent: Starina\r\n",
                                     "Connection: close\r\n",
                                     "\r\n"
                                 )
