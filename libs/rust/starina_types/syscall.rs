@@ -25,6 +25,7 @@ pub const SYS_CHANNEL_CREATE: u8 = 16;
 pub struct VsyscallPage {
     pub environ_ptr: *const u8,
     pub environ_len: usize,
+    pub startup_ch: HandleId,
 }
 
 /// SAFETY: VsyscallPage is pre-allocated, the same across threads, and immutable.

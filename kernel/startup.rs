@@ -8,6 +8,7 @@ use arrayvec::ArrayVec;
 use hashbrown::HashMap;
 use starina::device_tree::BusNode;
 use starina::device_tree::DeviceTree;
+use starina::handle::HandleId;
 use starina::handle::HandleRights;
 use starina::message::MessageInfo;
 use starina::message::MessageKind;
@@ -61,7 +62,10 @@ pub fn load_inkernel_apps(device_tree: DeviceTree) {
             match export {
                 ExportItem::Service { name } => {
                     let (ch1, ch2) = Channel::new().unwrap();
-                    server_channels.insert(*name, ch1);
+                    assert!(
+                        server_channels.insert(app.name, ch1).is_none(),
+                        "multiple exports are not yet supported"
+                    );
                     client_channels.insert(*name, ch2);
                 }
             }
@@ -154,10 +158,19 @@ pub fn load_inkernel_apps(device_tree: DeviceTree) {
             env.insert(item.name.into(), value);
         }
 
+        let startup_ch = if let Some(ch) = server_channels.get(app.name) {
+            let handle = Handle::new(ch.clone(), HandleRights::READ | HandleRights::WRITE);
+            let handle_id = KERNEL_PROCESS.handles().lock().insert(handle).unwrap();
+            handle_id
+        } else {
+            HandleId::from_raw(0)
+        };
+
         let env_str = serde_json::to_string(&env).unwrap();
         let vsyscall_page = Box::new(VsyscallPage {
             environ_ptr: env_str.as_ptr(),
             environ_len: env_str.len(),
+            startup_ch,
         });
 
         let arg = unsafe { &*vsyscall_page as *const VsyscallPage } as usize;

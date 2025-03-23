@@ -60,6 +60,7 @@ impl EventLoop<Env> for App {
         tcpip.poll(|ev| {
             trace!("event: {:?}", ev);
         });
+        trace!("polling done");
 
         Self { tcpip }
     }

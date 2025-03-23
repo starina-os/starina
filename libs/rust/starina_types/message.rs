@@ -93,6 +93,33 @@ pub trait Messageable {
 
 pub const URI_LEN_MAX: usize = 1024;
 
+pub struct Connect {
+    handle: HandleId,
+}
+
+impl Messageable for Connect {
+    type This<'a> = Connect;
+
+    fn kind() -> MessageKind {
+        MessageKind::Connect
+    }
+
+    unsafe fn is_valid(msginfo: MessageInfo, _buffer: &MessageBuffer) -> bool {
+        msginfo.data_len() == 0 && msginfo.num_handles() == 1
+    }
+
+    unsafe fn cast_unchecked(msginfo: MessageInfo, buffer: &MessageBuffer) -> Self::This<'_> {
+        Connect {
+            handle: buffer.handles[0],
+        }
+    }
+
+    fn write(self, buffer: &mut MessageBuffer) -> Result<MessageInfo, ErrorCode> {
+        buffer.handles[0] = self.handle;
+        Ok(MessageInfo::new(MessageKind::Connect as i32, 0, 1))
+    }
+}
+
 pub struct RawOpen {
     pub uri: [u8; URI_LEN_MAX],
 }

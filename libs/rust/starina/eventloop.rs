@@ -2,6 +2,7 @@ use alloc::sync::Arc;
 
 use hashbrown::HashMap;
 use serde::de::DeserializeOwned;
+use starina_types::message::Connect;
 use starina_types::message::FramedData;
 use starina_types::message::MessageKind;
 use starina_types::message::Open;
@@ -13,6 +14,7 @@ use crate::channel::ChannelSender;
 use crate::error::ErrorCode;
 use crate::handle::HandleId;
 use crate::handle::Handleable;
+use crate::handle::OwnedHandle;
 use crate::interrupt::Interrupt;
 use crate::message::AnyMessage;
 use crate::message::Message;
@@ -24,6 +26,11 @@ pub trait EventLoop<E>: Send + Sync {
     fn init(dispatcher: &Dispatcher, env: E) -> Self
     where
         Self: Sized;
+
+    #[allow(unused_variables)]
+    fn on_connect(&self, ctx: &Context, msg: Message<Connect>) {
+        debug_warn!("ignored connect message");
+    }
 
     #[allow(unused_variables)]
     fn on_open(&self, ctx: &Context, msg: Message<Open<'_>>) {
@@ -141,9 +148,25 @@ impl Dispatcher {
                     };
 
                     match msg.msginfo.kind() {
+                        kind @ _ if kind == MessageKind::Connect as usize => {
+                            match msg.try_into() {
+                                Ok(msg) => app.on_connect(&ctx, msg),
+                                Err(msg) => {
+                                    app.on_unknown_message(&ctx, msg);
+                                }
+                            };
+                        }
                         kind @ _ if kind == MessageKind::Open as usize => {
                             match msg.try_into() {
                                 Ok(msg) => app.on_open(&ctx, msg),
+                                Err(msg) => {
+                                    app.on_unknown_message(&ctx, msg);
+                                }
+                            };
+                        }
+                        kind @ _ if kind == MessageKind::FramedData as usize => {
+                            match msg.try_into() {
+                                Ok(msg) => app.on_framed_data(&ctx, msg),
                                 Err(msg) => {
                                     app.on_unknown_message(&ctx, msg);
                                 }
@@ -174,10 +197,24 @@ pub fn app_loop<E: DeserializeOwned, A: EventLoop<E>>(
         core::slice::from_raw_parts(ptr, len)
     };
 
+    let startup_ch = unsafe {
+        let id = (*vsyscall).startup_ch;
+        if id.as_raw() == 0 {
+            None
+        } else {
+            Some(Channel::from_handle(OwnedHandle::from_raw(id)))
+        }
+    };
+
     let env: E = serde_json::from_slice(&env_json).expect("failed to parse env");
 
     let poll = Poll::create().unwrap();
     let dispatcher = Dispatcher::new(poll);
+
+    if let Some(ch) = startup_ch {
+        dispatcher.add_channel(ch).unwrap();
+    }
+
     let app = A::init(&dispatcher, env);
 
     loop {

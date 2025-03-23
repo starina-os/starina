@@ -3,10 +3,12 @@
 pub mod autogen;
 
 use autogen::Env;
+use starina::channel::Channel;
 use starina::eventloop::Context;
 use starina::eventloop::Dispatcher;
 use starina::eventloop::EventLoop;
 use starina::interrupt::Interrupt;
+use starina::message::Connect;
 use starina::message::FramedData;
 use starina::message::Message;
 use starina::message::Open;
@@ -39,8 +41,9 @@ impl EventLoop<Env> for App {
         }
     }
 
-    fn on_open(&self, ctx: &Context, _msg: Message<Open<'_>>) {
-        ctx.sender.send(Open { uri: "pong" }).unwrap();
+    fn on_connect(&self, ctx: &Context, mut msg: Message<Connect>) {
+        let handle = Channel::from_handle(msg.handle().unwrap()); // FIXME: type check?
+        ctx.dispatcher.add_channel(handle).unwrap();
     }
 
     fn on_framed_data(&self, _ctx: &Context, msg: Message<FramedData<'_>>) {

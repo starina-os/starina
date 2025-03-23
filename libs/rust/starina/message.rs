@@ -6,6 +6,7 @@ use core::ops::DerefMut;
 use starina_types::handle::HandleId;
 pub use starina_types::message::*;
 
+use crate::handle::OwnedHandle;
 use crate::syscall;
 
 pub struct OwnedMessageBuffer(Box<MessageBuffer>);
@@ -78,6 +79,13 @@ impl<M: Messageable> TryFrom<AnyMessage> for Message<M> {
             buffer: msg.buffer,
             _pd: PhantomData,
         })
+    }
+}
+
+impl Message<Connect> {
+    pub fn handle(&mut self) -> Option<OwnedHandle> {
+        let id = self.buffer.take_handle(0)?;
+        Some(OwnedHandle::from_raw(id))
     }
 }
 
