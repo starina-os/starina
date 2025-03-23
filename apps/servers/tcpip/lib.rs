@@ -14,14 +14,17 @@ use smoltcp::wire::HardwareAddress;
 use smoltcp::wire::IpAddress;
 use smoltcp::wire::IpCidr;
 use starina::channel::Channel;
+use starina::eventloop::Context;
 use starina::eventloop::Dispatcher;
 use starina::eventloop::EventLoop;
 use starina::message::FramedData;
+use starina::message::Message;
 use starina::prelude::*;
+use tcpip::SocketEvent;
 use tcpip::TcpIp;
 
 pub struct App {
-    tcpip: TcpIp<'static>,
+    tcpip: spin::Mutex<TcpIp<'static>>,
 }
 
 impl EventLoop<Env> for App {
@@ -54,7 +57,7 @@ impl EventLoop<Env> for App {
         let (sender, receiver) = our_ch.split();
 
         let remote_endpoint = (IpAddress::v4(96, 7, 181, 39), 80).into();
-        tcpip.tcp_connect(remote_endpoint, sender).unwrap();
+        let sock = tcpip.tcp_connect(remote_endpoint, sender).unwrap();
 
         trace!("polling");
         tcpip.poll(|ev| {
@@ -62,6 +65,28 @@ impl EventLoop<Env> for App {
         });
         trace!("polling done");
 
-        Self { tcpip }
+        Self {
+            tcpip: spin::Mutex::new(tcpip),
+        }
+    }
+
+    fn on_framed_data(&self, _ctx: &Context, msg: Message<FramedData<'_>>) {
+        trace!("frame data received: {:2x?}", msg.data());
+        self.tcpip.lock().receive_packet(msg.data());
+        trace!("polling");
+        self.tcpip.lock().poll(|ev| {
+            match ev {
+                SocketEvent::Data { ch, data } => {
+                    trace!("\n\x1b[1;37m{:?}\x1b[0m", core::str::from_utf8(data));
+                }
+                SocketEvent::Close { ch } => {
+                    todo!()
+                }
+                SocketEvent::NewConnection { ch, smol_handle } => {
+                    todo!()
+                }
+            }
+        });
+        trace!("polling done");
     }
 }

@@ -11,7 +11,6 @@ use starina::interrupt::Interrupt;
 use starina::message::Connect;
 use starina::message::FramedData;
 use starina::message::Message;
-use starina::message::Open;
 use starina::prelude::*;
 use virtio_net::VirtioNet;
 
@@ -43,7 +42,12 @@ impl EventLoop<Env> for App {
 
     fn on_connect(&self, ctx: &Context, mut msg: Message<Connect>) {
         let handle = Channel::from_handle(msg.handle().unwrap()); // FIXME: type check?
-        ctx.dispatcher.add_channel(handle).unwrap();
+        let tcpip_ch = ctx.dispatcher.split_and_add_channel(handle).unwrap();
+        self.virtio_net.lock().update_receive(Box::new(move |data| {
+            if let Err(err) = tcpip_ch.send(FramedData { data }) {
+                debug_warn!("failed to send data to tcpip: {:?}", err);
+            }
+        }));
     }
 
     fn on_framed_data(&self, _ctx: &Context, msg: Message<FramedData<'_>>) {
@@ -53,8 +57,6 @@ impl EventLoop<Env> for App {
 
     fn on_interrupt(&self, interrupt: &Interrupt) {
         interrupt.acknowledge().unwrap();
-        self.virtio_net.lock().handle_interrupt(|pkt| {
-            info!("packet received: {:02x?}", pkt);
-        });
+        self.virtio_net.lock().handle_interrupt();
     }
 }

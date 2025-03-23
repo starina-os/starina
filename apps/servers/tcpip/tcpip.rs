@@ -100,6 +100,7 @@ impl<'a> TcpIp<'a> {
         F: FnMut(SocketEvent<'_>),
     {
         loop {
+            trace!("poll");
             let result = self
                 .iface
                 .poll(now(), &mut self.device, &mut self.smol_sockets);
@@ -118,8 +119,27 @@ impl<'a> TcpIp<'a> {
             for (handle, sock) in self.sockets.iter_mut() {
                 let smol_sock = self.smol_sockets.get_mut::<tcp::Socket>(sock.smol_handle);
                 match (&mut sock.state, smol_sock.state()) {
-                    (SocketState::Connecting { .. }, _) => {
+                    (SocketState::Connecting { .. }, tcp::State::SynSent) => {
                         trace!("connecting socket {:?}", handle);
+                    }
+                    (SocketState::Connecting { .. }, tcp::State::Established) => {
+                        trace!("established socket {:?}", handle);
+                        trace!("@@@ GET http://www.msftconnecttest.com/connecttest.txt");
+                        smol_sock
+                            .send_slice(
+                                concat!(
+                                    "GET /connecttest.txt HTTP/1.1\r\n",
+                                    "Host: www.msftconnecttest.com\r\n",
+                                    "Connection: close\r\n",
+                                    "\r\n"
+                                )
+                                .as_bytes(),
+                            )
+                            .unwrap();
+                        sock.state = SocketState::Established;
+                    }
+                    (SocketState::Connecting { .. }, state) => {
+                        trace!("unexpected socket state {:?}: {}", handle, state);
                     }
                     (
                         SocketState::Listening { .. },
@@ -238,6 +258,7 @@ impl<'a> TcpIp<'a> {
                 state: SocketState::Connecting { remote_endpoint },
             },
         );
+
         Ok(())
     }
 
