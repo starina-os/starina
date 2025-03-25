@@ -49,7 +49,6 @@ impl DerefMut for OwnedMessageBuffer {
 
 impl Drop for OwnedMessageBuffer {
     fn drop(&mut self) {
-        trace!("dropping message buffer");
         // Drop handles.
         for handle in self.0.handles.iter() {
             if handle.as_raw() != 0 {
@@ -58,7 +57,6 @@ impl Drop for OwnedMessageBuffer {
                 }
             }
         }
-        trace!("dropped message buffer");
     }
 }
 
@@ -113,5 +111,32 @@ pub struct AnyMessage {
 impl AnyMessage {
     pub unsafe fn new(buffer: OwnedMessageBuffer, msginfo: MessageInfo) -> Self {
         Self { buffer, msginfo }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    pub fn serialize() {
+        let mut buffer = OwnedMessageBuffer::alloc();
+
+        let recv_data = b"ABC";
+        let recv_handles = &[];
+        let msginfo = MessageInfo::new(
+            MessageKind::FramedData as i32,
+            recv_data.len().try_into().unwrap(),
+            recv_handles.len().try_into().unwrap(),
+        );
+
+        // Fill the buffer with data and handles before creating AnyMessage
+        {
+            buffer.data.as_mut_slice()[..msginfo.data_len()].copy_from_slice(recv_data);
+            buffer.handles.as_mut_slice()[..msginfo.num_handles()].copy_from_slice(recv_handles);
+        }
+
+        // Now create the message after we're done with the raw pointers
+        let _msg = unsafe { AnyMessage::new(buffer, msginfo) };
     }
 }
