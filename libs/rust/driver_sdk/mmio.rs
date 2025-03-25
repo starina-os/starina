@@ -22,24 +22,28 @@
 //! using `MmioFolio::create_pinned`. Then, pass the mutable reference of
 //! the `MmioFolio` to the `read` method of the MMIO register:
 //!
-//! ```rust
+//! ```no_run
+//! use starina::prelude::*;
 //! use starina::folio::MmioFolio;
+//! use starina::address::DAddr;
 //! use starina_driver_sdk::mmio::{LittleEndian, MmioReg, ReadOnly};
 //!
-//! const MMIO_BASE: PAddr =PAddr::new(0x101000);
-//!
+//! let iobus = todo!();
+//! const MMIO_BASE: DAddr = DAddr::new(0x101000);
 //! const MMIO_SIZE: usize = 4096;
+//!
 //! static TIME_LOW_REG: MmioReg<LittleEndian, ReadOnly, u32> = MmioReg::new(0x00);
 //! static TIME_HIGH_REG: MmioReg<LittleEndian, ReadOnly, u32> = MmioReg::new(0x04);
 //!
-//! let mut folio = MmioFolio::create_pinned(MMIO_BASE, MMIO_SIZE).unwrap();
+//! let mut folio = MmioFolio::create_pinned(iobus, MMIO_BASE, MMIO_SIZE).unwrap();
 //! let low: u32 = TIME_LOW_REG.read(&mut folio);
 //! let high: u32 = TIME_HIGH_REG.read(&mut folio);
 //! let now: u64 = (high as u64) << 32 | (low as u64);
 //!
-//! let now_i64: i64 = now.try_into().unwrap();
-//! let datetime = chrono::DateTime::from_timestamp_nanos(now_i64);
-//! info!("now: {datetime}");
+//! // If you want to convert the time to a human-readable format:
+//! // date = chrono::DateTime::from_timestamp_nanos(now);
+//! let now: i64 = now.try_into().unwrap();
+//! info!("now: {now}");
 //! ```
 use core::marker::PhantomData;
 

@@ -74,6 +74,7 @@ impl EventLoop<Env> for App {
         trace!("frame data received: {:2x?}", msg.data());
         self.tcpip.lock().receive_packet(msg.data());
         trace!("polling");
+
         self.tcpip.lock().poll(|ev| {
             match ev {
                 SocketEvent::Data { ch, data } => {
@@ -91,5 +92,7 @@ impl EventLoop<Env> for App {
             }
         });
         trace!("polling done");
+
+        core::mem::forget(msg);
     }
 }
