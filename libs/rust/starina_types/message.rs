@@ -108,7 +108,7 @@ impl Messageable for Connect {
         msginfo.data_len() == 0 && msginfo.num_handles() == 1
     }
 
-    unsafe fn cast_unchecked(msginfo: MessageInfo, buffer: &MessageBuffer) -> Self::This<'_> {
+    unsafe fn cast_unchecked(_msginfo: MessageInfo, buffer: &MessageBuffer) -> Self::This<'_> {
         Connect {
             handle: buffer.handles[0],
         }
@@ -187,10 +187,8 @@ impl Messageable for FramedData<'_> {
     }
 
     unsafe fn cast_unchecked(msginfo: MessageInfo, buffer: &MessageBuffer) -> Self::This<'_> {
-        unsafe {
-            let data = &buffer.data[..msginfo.data_len()];
-            FramedData { data }
-        }
+        let data = &buffer.data[..msginfo.data_len()];
+        FramedData { data }
     }
 
     fn write(self, buffer: &mut MessageBuffer) -> Result<MessageInfo, ErrorCode> {
