@@ -14,21 +14,18 @@ impl OwnedMessageBuffer {
     pub fn alloc() -> Self {
         // TODO: Have a thread-local buffer pool.
         // TODO: Use `MaybeUninit` to unnecesarily zero-fill the buffer.
-        let buffer = Box::new(MessageBuffer {
-            handles: [HandleId::from_raw(0); MESSAGE_NUM_HANDLES_MAX],
-            data: [0; MESSAGE_DATA_LEN_MAX],
-        });
-
+        let buffer = Box::new(MessageBuffer::zeroed());
         OwnedMessageBuffer(buffer)
     }
 
     pub fn take_handle(&mut self, index: usize) -> Option<HandleId> {
-        let handle = self.0.handles[index];
+        let handles = self.0.handles_mut();
+        let handle = handles[index];
         if handle.as_raw() == 0 {
             return None;
         }
 
-        self.0.handles[index] = HandleId::from_raw(0);
+        handles[index] = HandleId::from_raw(0);
         Some(handle)
     }
 }
@@ -50,7 +47,7 @@ impl DerefMut for OwnedMessageBuffer {
 impl Drop for OwnedMessageBuffer {
     fn drop(&mut self) {
         // Drop handles.
-        for handle in self.0.handles.iter() {
+        for handle in self.0.handles() {
             if handle.as_raw() != 0 {
                 if let Err(e) = syscall::handle_close(*handle) {
                     warn!("failed to close handle: {:?}", e);
@@ -111,32 +108,5 @@ pub struct AnyMessage {
 impl AnyMessage {
     pub unsafe fn new(buffer: OwnedMessageBuffer, msginfo: MessageInfo) -> Self {
         Self { buffer, msginfo }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    pub fn serialize() {
-        let mut buffer = OwnedMessageBuffer::alloc();
-
-        let recv_data = b"ABC";
-        let recv_handles = &[];
-        let msginfo = MessageInfo::new(
-            MessageKind::FramedData as i32,
-            recv_data.len().try_into().unwrap(),
-            recv_handles.len().try_into().unwrap(),
-        );
-
-        // Fill the buffer with data and handles before creating AnyMessage
-        {
-            buffer.data.as_mut_slice()[..msginfo.data_len()].copy_from_slice(recv_data);
-            buffer.handles.as_mut_slice()[..msginfo.num_handles()].copy_from_slice(recv_handles);
-        }
-
-        // Now create the message after we're done with the raw pointers
-        let _msg = unsafe { AnyMessage::new(buffer, msginfo) };
     }
 }

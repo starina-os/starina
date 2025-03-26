@@ -31,17 +31,19 @@ impl Channel {
         syscall::channel_send(
             self.0.id(),
             msginfo,
-            buffer.data.as_ptr(),
-            buffer.handles.as_ptr(),
+            buffer.data().as_ptr(),
+            buffer.handles().as_ptr(),
         )?;
         Ok(())
     }
 
     pub fn recv(&self) -> Result<AnyMessage, ErrorCode> {
         let mut buffer = OwnedMessageBuffer::alloc();
-        let data_ptr = buffer.data.as_mut_ptr();
-        let handles_ptr = buffer.handles.as_mut_ptr();
-        let msginfo = syscall::channel_recv(self.0.id(), data_ptr, handles_ptr)?;
+        let msginfo = syscall::channel_recv(
+            self.0.id(),
+            buffer.data_mut().as_mut_ptr(),
+            buffer.handles_mut().as_mut_ptr(),
+        )?;
 
         let msg = unsafe { AnyMessage::new(buffer, msginfo) };
         Ok(msg)
