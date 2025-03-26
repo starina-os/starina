@@ -75,13 +75,17 @@ impl MessageBuffer {
         &mut self.handles
     }
 
-    pub const unsafe fn data_as_ref<T>(&self) -> &T {
+    pub unsafe fn data_as_ref<T>(&self) -> &T {
         debug_assert!(size_of::<T>() <= MESSAGE_DATA_LEN_MAX);
+        debug_assert!(self.data.as_ptr().is_aligned_to(align_of::<T>()));
+
         unsafe { &*(self.data.as_ptr() as *const T) }
     }
 
-    pub const unsafe fn data_as_mut<T>(&mut self) -> &mut T {
+    pub unsafe fn data_as_mut<T>(&mut self) -> &mut T {
         debug_assert!(size_of::<T>() <= MESSAGE_DATA_LEN_MAX);
+        debug_assert!(self.data.as_ptr().is_aligned_to(align_of::<T>()));
+
         unsafe { &mut *(self.data.as_mut_ptr() as *mut T) }
     }
 }
