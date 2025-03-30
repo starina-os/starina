@@ -82,6 +82,17 @@ fn poll_wait(current: &SharedRef<Thread>, poll: HandleId) -> SyscallResult {
     poll.try_wait(current)
 }
 
+fn channel_create(current: &SharedRef<Thread>) -> Result<HandleId, ErrorCode> {
+    let (ch1, ch2) = Channel::new()?;
+    let handle_table = &mut current.process().handles().lock();
+    let ch1_handle = Handle::new(ch1, HandleRights::READ | HandleRights::WRITE);
+    let ch2_handle = Handle::new(ch2, HandleRights::READ | HandleRights::WRITE);
+    let ch1_id = handle_table.insert(ch1_handle)?;
+    let ch2_id = handle_table.insert(ch2_handle)?;
+    assert!((ch1_id.as_raw() + 1) == ch2_id.as_raw()); // FIXME: guarantee this in HandleTable
+    Ok((ch1_id))
+}
+
 fn channel_send(
     current: &SharedRef<Thread>,
     ch: HandleId,
@@ -237,6 +248,10 @@ fn do_syscall(
             let poll = HandleId::from_raw_isize(a0)?;
             let ret = poll_wait(&current, poll);
             Ok(ret)
+        }
+        SYS_CHANNEL_CREATE => {
+            let ch1 = channel_create(&current)?;
+            Ok(SyscallResult::Done((ch1.into())))
         }
         SYS_CHANNEL_SEND => {
             let ch = HandleId::from_raw_isize(a0)?;
