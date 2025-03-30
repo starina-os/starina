@@ -151,11 +151,13 @@ impl DmaBufferPool {
 
     /// Allocates a buffer.
     pub fn allocate(&mut self) -> Option<BufferId> {
-        self.free_indices.pop()
+        let id = self.free_indices.pop();
+        id
     }
 
     /// Frees a buffer.
     pub fn free(&mut self, index: BufferId) {
+        assert!(index.0 < self.num_buffers, "Invalid buffer index");
         self.free_indices.push(index);
     }
 
