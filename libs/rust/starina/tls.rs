@@ -7,18 +7,25 @@ pub struct Storage {
     pub name: &'static str,
 }
 
-#[cfg(target_arch = "riscv64")]
 fn read_register() -> usize {
-    let mut value: usize;
-    unsafe {
-        asm!("mv {}, tp", out(reg) value);
+    if cfg!(target_arch = "riscv64") {
+        let mut value: usize;
+        unsafe {
+            asm!("mv {}, tp", out(reg) value);
+        }
+        value
+    } else {
+        unimplemented!();
     }
-    value
 }
 
 fn set_register(value: usize) {
-    unsafe {
-        asm!("mv tp, {}", in(reg) value);
+    if cfg!(target_arch = "riscv64") {
+        unsafe {
+            asm!("mv tp, {}", in(reg) value);
+        }
+    } else {
+        unimplemented!();
     }
 }
 
