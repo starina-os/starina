@@ -13,6 +13,13 @@ use crate::syscall;
 pub struct Channel(OwnedHandle);
 
 impl Channel {
+    pub fn new() -> Result<(Self, Self), ErrorCode> {
+        let (first, second) = syscall::channel_create()?;
+        let first = Channel(OwnedHandle::from_raw(first));
+        let second = Channel(OwnedHandle::from_raw(second));
+        Ok((first, second))
+    }
+
     pub fn from_handle(handle: OwnedHandle) -> Self {
         Self(handle)
     }
