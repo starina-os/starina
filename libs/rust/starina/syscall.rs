@@ -16,8 +16,7 @@ fn syscall(
     a3: isize,
     a4: isize,
 ) -> Result<RetVal, ErrorCode> {
-    #[cfg(feature = "in-kernel")]
-    {
+    if cfg!(feature = "in-kernel") {
         unsafe extern "C" {
             fn enter_kernelland(
                 _a0: isize,
@@ -37,6 +36,8 @@ fn syscall(
                 Ok(ret)
             }
         }
+    } else {
+        unimplemented!()
     }
 }
 
