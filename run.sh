@@ -17,6 +17,13 @@ else
   cp target/kernel/debug/kernel starina.elf
 fi
 
+
+if [[ -n ${REPLAY:-} ]]; then
+  RR_MODE=replay
+else
+  RR_MODE=record
+fi
+
 echo -e "\nStarting QEMU..."
 $QEMU -machine virt -m 256 -bios default \
   -kernel starina.elf \
@@ -26,4 +33,5 @@ $QEMU -machine virt -m 256 -bios default \
   -object filter-dump,id=fiter0,netdev=net0,file=virtio-net.pcap \
   -netdev user,id=net0,hostfwd=tcp:127.0.0.1:1234-:80 \
   -d cpu_reset,unimp,guest_errors,int -D qemu.log \
+  -icount shift=auto,rr=${RR_MODE},rrfile=qemu-replay.bin \
   -gdb tcp::7778 ${WAIT_FOR_GDB:+-S}
