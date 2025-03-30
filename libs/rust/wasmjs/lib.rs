@@ -71,7 +71,8 @@ pub fn wasmtime_page_size() -> usize {
 
 #[unsafe(no_mangle)]
 pub fn wasmtime_mprotect() -> usize {
-    panic!("wasmtime_mprotect called");
+    // panic!("wasmtime_mprotect called");
+    0
 }
 
 #[unsafe(no_mangle)]
