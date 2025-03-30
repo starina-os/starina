@@ -68,6 +68,9 @@ pub fn boot(bootinfo: BootInfo) -> ! {
 
     let device_tree = device_tree::parse(bootinfo.dtb).expect("failed to parse device tree");
 
+    wasmjs::test(crate::arch::console_write);
+    panic!("done");
+
     cpuvar::percpu_init(bootinfo.cpu_id);
     arch::percpu_init();
     startup::load_inkernel_apps(device_tree);

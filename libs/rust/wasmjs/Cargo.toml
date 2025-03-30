@@ -1,0 +1,15 @@
+[package]
+name = "wasmjs"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+
+[lib]
+path = "lib.rs"
+
+[dependencies]
+wasmtime = { workspace = true, features = ["runtime"] }
+anyhow = { workspace = true }
+
+[build-dependencies]
+wasmtime = { workspace = true, features = ["cranelift", "all-arch"] }
