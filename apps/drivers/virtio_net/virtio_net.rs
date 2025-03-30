@@ -80,6 +80,7 @@ pub struct VirtioNet {
     transmitq_buffers: DmaBufferPool,
     receiveq_buffers: DmaBufferPool,
     interrupt: Option<Interrupt>,
+    receive: Option<Box<dyn FnMut(&[u8]) + Send + Sync>>,
 }
 
 impl VirtioNet {
@@ -118,7 +119,12 @@ impl VirtioNet {
             receiveq_buffers,
             transmitq_buffers,
             interrupt: Some(interrupt),
+            receive: None,
         }
+    }
+
+    pub fn update_receive(&mut self, f: Box<dyn FnMut(&[u8]) + Send + Sync>) {
+        self.receive = Some(f);
     }
 
     pub fn mac_addr(&self) -> &[u8; 6] {
@@ -158,10 +164,7 @@ impl VirtioNet {
         self.transmitq.notify(&mut *self.transport);
     }
 
-    pub fn handle_interrupt<F>(&mut self, mut receive: F)
-    where
-        F: FnMut(&[u8]),
-    {
+    pub fn handle_interrupt(&mut self) {
         loop {
             let status = self.transport.read_isr_status();
             self.transport.ack_interrupt(status);
@@ -188,7 +191,9 @@ impl VirtioNet {
 
                     let _header = buf.read::<VirtioNetModernHeader>();
                     let payload = buf.read_bytes(read_len).unwrap();
-                    receive(payload);
+                    if let Some(receive) = self.receive.as_mut() {
+                        receive(payload);
+                    }
                 }
             }
 

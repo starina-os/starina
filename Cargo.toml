@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["kernel", "libs/rust/*", "apps/drivers/virtio_net"]
+members = ["kernel", "libs/rust/*", "apps/drivers/virtio_net", "apps/servers/tcpip"]
 
 [workspace.package]
 version = "0.0.0"
@@ -25,3 +25,4 @@ starina_driver_sdk = { path = "libs/rust/driver_sdk" }
 virtio = { path = "libs/rust/virtio" }
 
 virtio_net = { path = "apps/drivers/virtio_net" }
+tcpip = { path = "apps/servers/tcpip" }

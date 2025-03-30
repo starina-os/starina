@@ -33,11 +33,18 @@ struct InKernelApp {
     spec: AppSpec,
 }
 
-const INKERNEL_APPS: &[InKernelApp] = &[InKernelApp {
-    name: "virtio_net",
-    main: virtio_net::autogen::app_main,
-    spec: virtio_net::autogen::APP_SPEC,
-}];
+const INKERNEL_APPS: &[InKernelApp] = &[
+    InKernelApp {
+        name: "virtio_net",
+        main: virtio_net::autogen::app_main,
+        spec: virtio_net::autogen::APP_SPEC,
+    },
+    InKernelApp {
+        name: "tcpip",
+        main: tcpip::autogen::app_main,
+        spec: tcpip::autogen::APP_SPEC,
+    },
+];
 
 static INSTANCES: SpinLock<Vec<Instance>> = SpinLock::new(Vec::new());
 

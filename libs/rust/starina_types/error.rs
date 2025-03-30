@@ -23,11 +23,12 @@ pub enum ErrorCode {
     TooLarge = -20,
     NotADevice = -21,
     AlreadyMapped = -22,
+    InvalidState = -23,
 }
 
 impl From<isize> for ErrorCode {
     fn from(value: isize) -> Self {
-        if -22 <= value && value < 0 {
+        if -23 <= value && value < 0 {
             unsafe { core::mem::transmute(value) }
         } else {
             ErrorCode::InvalidErrorCode

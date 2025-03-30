@@ -27,3 +27,4 @@ fdt-rs = { workspace = true }
 starina = { workspace = true, features = ["in-kernel"] }
 
 virtio_net = { workspace = true }
+tcpip = { workspace = true }
