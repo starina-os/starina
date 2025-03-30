@@ -8,13 +8,13 @@ cargo build \
   ${RELEASE:+--release} \
   -Z build-std=core,alloc \
   -Z build-std-features=compiler-builtins-mem \
-  --target kernel/arch/riscv64/kernel.json \
+  --target kernel/arch/riscv64/riscv64-starina.json \
   --manifest-path kernel/Cargo.toml
 
 if [[ -n ${RELEASE:-} ]]; then
-  cp target/kernel/release/kernel starina.elf
+  cp target/riscv64-starina/release/kernel starina.elf
 else
-  cp target/kernel/debug/kernel starina.elf
+  cp target/riscv64-starina/debug/kernel starina.elf
 fi
 
 

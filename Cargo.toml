@@ -1,6 +1,11 @@
 [workspace]
 resolver = "2"
-members = ["kernel", "libs/rust/*", "apps/drivers/virtio_net", "apps/servers/tcpip"]
+members = [
+    "kernel",
+    "libs/rust/*",
+    "apps/drivers/virtio_net",
+    "apps/servers/tcpip",
+]
 
 [workspace.package]
 version = "0.0.0"
@@ -16,6 +21,7 @@ serde = { version = "1", default-features = false }
 serde_json = { version = "1", default-features = false, features = ["alloc"] }
 serde_bytes = { version = "0.11.17", default-features = false }
 fdt-rs = { version = "0", default-features = false }
+wasmtime = { version = "31.0.0", default-features = false }
 
 kernel = { path = "kernel" }
 starina = { path = "libs/rust/starina" }
