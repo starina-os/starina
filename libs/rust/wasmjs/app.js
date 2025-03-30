@@ -1,1 +1,3 @@
-answer(40 + 2);
+function main() {
+    answer(40 + 2);
+}
