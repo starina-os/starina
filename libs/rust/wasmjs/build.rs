@@ -30,7 +30,6 @@ pub fn main() {
     config.memory_reservation(1024 * 1024);
     config.memory_guard_size(0);
     config.signals_based_traps(false);
-    config.memory_init_cow(false);
 
     let engine = Engine::new(&config).unwrap();
     let precompiled = engine

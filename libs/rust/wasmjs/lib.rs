@@ -2,23 +2,16 @@
 
 extern crate alloc;
 
-use alloc::boxed::Box;
-use alloc::sync::Arc;
-use core::alloc::GlobalAlloc;
 use core::alloc::Layout;
-use core::convert::Infallible;
-use core::mem::MaybeUninit;
 
 use wasmtime::Caller;
 use wasmtime::Config;
-use wasmtime::CustomCodeMemory;
 use wasmtime::Engine;
 use wasmtime::Extern;
 use wasmtime::Func;
 use wasmtime::Instance;
 use wasmtime::Module;
 use wasmtime::Store;
-use wasmtime::Trap;
 
 pub fn test(console_write: fn(&[u8])) {
     let mut config = Config::new();
