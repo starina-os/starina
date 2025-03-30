@@ -2,6 +2,8 @@ use alloc::sync::Arc;
 
 use hashbrown::HashMap;
 use serde::de::DeserializeOwned;
+use starina_types::message::Connect;
+use starina_types::message::FramedData;
 use starina_types::message::MessageKind;
 use starina_types::message::Open;
 use starina_types::syscall::VsyscallPage;
@@ -12,6 +14,7 @@ use crate::channel::ChannelSender;
 use crate::error::ErrorCode;
 use crate::handle::HandleId;
 use crate::handle::Handleable;
+use crate::handle::OwnedHandle;
 use crate::interrupt::Interrupt;
 use crate::message::AnyMessage;
 use crate::message::Message;
@@ -24,7 +27,20 @@ pub trait EventLoop<E>: Send + Sync {
     where
         Self: Sized;
 
-    fn on_open(&self, ctx: &Context, msg: Message<Open<'_>>);
+    #[allow(unused_variables)]
+    fn on_connect(&self, ctx: &Context, msg: Message<Connect>) {
+        debug_warn!("ignored connect message");
+    }
+
+    #[allow(unused_variables)]
+    fn on_open(&self, ctx: &Context, msg: Message<Open<'_>>) {
+        debug_warn!("ignored open message");
+    }
+
+    #[allow(unused_variables)]
+    fn on_framed_data(&self, _ctx: &Context, _msg: Message<FramedData<'_>>) {
+        debug_warn!("ignored framed data message");
+    }
 
     #[allow(unused_variables)]
     fn on_unknown_message(&self, ctx: &Context, msg: AnyMessage) {
@@ -63,6 +79,25 @@ impl Dispatcher {
             poll,
             objects: spin::RwLock::new(HashMap::new()),
         }
+    }
+
+    pub fn split_and_add_channel(&self, channel: Channel) -> Result<ChannelSender, ErrorCode> {
+        let handle_id = channel.handle_id();
+
+        // Tell the kernel to notify us when the channel is readable.
+        self.poll.add(handle_id, Readiness::READABLE)?;
+
+        // Register the channel in the dispatcher.
+        let (sender, receiver) = channel.split();
+        let object = Object::Channel {
+            sender: sender.clone(),
+            receiver,
+        };
+        self.objects
+            .write()
+            .insert(handle_id, Arc::new(spin::Mutex::new(object)));
+
+        Ok(sender)
     }
 
     pub fn add_channel(&self, channel: Channel) -> Result<(), ErrorCode> {
@@ -113,9 +148,25 @@ impl Dispatcher {
                     };
 
                     match msg.msginfo.kind() {
+                        kind @ _ if kind == MessageKind::Connect as usize => {
+                            match msg.try_into() {
+                                Ok(msg) => app.on_connect(&ctx, msg),
+                                Err(msg) => {
+                                    app.on_unknown_message(&ctx, msg);
+                                }
+                            };
+                        }
                         kind @ _ if kind == MessageKind::Open as usize => {
                             match msg.try_into() {
                                 Ok(msg) => app.on_open(&ctx, msg),
+                                Err(msg) => {
+                                    app.on_unknown_message(&ctx, msg);
+                                }
+                            };
+                        }
+                        kind @ _ if kind == MessageKind::FramedData as usize => {
+                            match msg.try_into() {
+                                Ok(msg) => app.on_framed_data(&ctx, msg),
                                 Err(msg) => {
                                     app.on_unknown_message(&ctx, msg);
                                 }
@@ -146,10 +197,24 @@ pub fn app_loop<E: DeserializeOwned, A: EventLoop<E>>(
         core::slice::from_raw_parts(ptr, len)
     };
 
+    let startup_ch = unsafe {
+        let id = (*vsyscall).startup_ch;
+        if id.as_raw() == 0 {
+            None
+        } else {
+            Some(Channel::from_handle(OwnedHandle::from_raw(id)))
+        }
+    };
+
     let env: E = serde_json::from_slice(&env_json).expect("failed to parse env");
 
     let poll = Poll::create().unwrap();
     let dispatcher = Dispatcher::new(poll);
+
+    if let Some(ch) = startup_ch {
+        dispatcher.add_channel(ch).unwrap();
+    }
+
     let app = A::init(&dispatcher, env);
 
     loop {

@@ -3,12 +3,14 @@
 pub mod autogen;
 
 use autogen::Env;
+use starina::channel::Channel;
 use starina::eventloop::Context;
 use starina::eventloop::Dispatcher;
 use starina::eventloop::EventLoop;
 use starina::interrupt::Interrupt;
+use starina::message::Connect;
+use starina::message::FramedData;
 use starina::message::Message;
-use starina::message::Open;
 use starina::prelude::*;
 use virtio_net::VirtioNet;
 
@@ -26,34 +28,36 @@ impl EventLoop<Env> for App {
             .add_interrupt(interrupt)
             .expect("failed to add interrupt");
 
-        info!("submitting arp request");
-        let payload = &mut [
-            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x52, 0x55, 0x0a, 0x00, 0x02, 0x02, 0x08, 0x06,
-            0x00, 0x01, 0x08, 0x00, 0x06, 0x04, 0x00, 0x01, 0x52, 0x55, 0x0a, 0x00, 0x02, 0x02,
-            0x0a, 0x00, 0x02, 0x0f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0a, 0x00, 0x02, 0x02,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00,
-        ];
-
         // Update the source mac address.
         let mac = virtio_net.mac_addr();
-        payload[6..12].copy_from_slice(mac);
-
-        virtio_net.transmit(payload);
+        debug!(
+            "MAC address: {:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}",
+            mac[0], mac[1], mac[2], mac[3], mac[4], mac[5],
+        );
 
         Self {
             virtio_net: spin::Mutex::new(virtio_net),
         }
     }
 
-    fn on_open(&self, ctx: &Context, _msg: Message<Open<'_>>) {
-        ctx.sender.send(Open { uri: "pong" }).unwrap();
+    fn on_connect(&self, ctx: &Context, mut msg: Message<Connect>) {
+        let handle = Channel::from_handle(msg.handle().unwrap()); // FIXME: type check?
+        let tcpip_ch = ctx.dispatcher.split_and_add_channel(handle).unwrap();
+        self.virtio_net.lock().update_receive(Box::new(move |data| {
+            if let Err(err) = tcpip_ch.send(FramedData { data }) {
+                debug_warn!("failed to send data to tcpip: {:?}", err);
+            }
+        }));
+    }
+
+    fn on_framed_data(&self, _ctx: &Context, msg: Message<FramedData<'_>>) {
+        trace!("frame data received: {:2x?}", msg.data());
+        self.virtio_net.lock().transmit(msg.data());
+        core::mem::forget(msg);
     }
 
     fn on_interrupt(&self, interrupt: &Interrupt) {
         interrupt.acknowledge().unwrap();
-        self.virtio_net.lock().handle_interrupt(|pkt| {
-            info!("packet received: {:02x?}", pkt);
-        });
+        self.virtio_net.lock().handle_interrupt();
     }
 }

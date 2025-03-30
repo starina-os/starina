@@ -7,6 +7,7 @@ use starina::spec::AppSpec;
 use starina::spec::DeviceMatch;
 use starina::spec::EnvItem;
 use starina::spec::EnvType;
+use starina::spec::ExportItem;
 use starina::syscall::VsyscallPage;
 
 use crate::App;
@@ -30,6 +31,9 @@ pub const APP_SPEC: AppSpec = AppSpec {
             ty: EnvType::IoBusMap,
         },
     ],
+    exports: &[ExportItem::Service {
+        name: "device/ethernet",
+    }],
 };
 
 pub fn app_main(vsyscall: *const VsyscallPage) {

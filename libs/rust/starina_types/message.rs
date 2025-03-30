@@ -47,18 +47,45 @@ impl From<MessageInfo> for RetVal {
 }
 
 pub struct MessageBuffer {
-    pub data: [u8; MESSAGE_DATA_LEN_MAX],
-    pub handles: [HandleId; MESSAGE_NUM_HANDLES_MAX],
+    data: [u8; MESSAGE_DATA_LEN_MAX],
+    handles: [HandleId; MESSAGE_NUM_HANDLES_MAX],
 }
 
 impl MessageBuffer {
-    pub const unsafe fn data_as_ref<T>(&self) -> &T {
+    pub fn zeroed() -> Self {
+        Self {
+            data: [0; MESSAGE_DATA_LEN_MAX],
+            handles: [HandleId::from_raw(0); MESSAGE_NUM_HANDLES_MAX],
+        }
+    }
+
+    pub const fn data(&self) -> &[u8] {
+        &self.data
+    }
+
+    pub const fn handles(&self) -> &[HandleId] {
+        &self.handles
+    }
+
+    pub fn data_mut(&mut self) -> &mut [u8] {
+        &mut self.data
+    }
+
+    pub fn handles_mut(&mut self) -> &mut [HandleId] {
+        &mut self.handles
+    }
+
+    pub unsafe fn data_as_ref<T>(&self) -> &T {
         debug_assert!(size_of::<T>() <= MESSAGE_DATA_LEN_MAX);
+        debug_assert!(self.data.as_ptr().is_aligned_to(align_of::<T>()));
+
         unsafe { &*(self.data.as_ptr() as *const T) }
     }
 
-    pub const unsafe fn data_as_mut<T>(&mut self) -> &mut T {
+    pub unsafe fn data_as_mut<T>(&mut self) -> &mut T {
         debug_assert!(size_of::<T>() <= MESSAGE_DATA_LEN_MAX);
+        debug_assert!(self.data.as_ptr().is_aligned_to(align_of::<T>()));
+
         unsafe { &mut *(self.data.as_mut_ptr() as *mut T) }
     }
 }
@@ -92,6 +119,33 @@ pub trait Messageable {
 }
 
 pub const URI_LEN_MAX: usize = 1024;
+
+pub struct Connect {
+    handle: HandleId,
+}
+
+impl Messageable for Connect {
+    type This<'a> = Connect;
+
+    fn kind() -> MessageKind {
+        MessageKind::Connect
+    }
+
+    unsafe fn is_valid(msginfo: MessageInfo, _buffer: &MessageBuffer) -> bool {
+        msginfo.data_len() == 0 && msginfo.num_handles() == 1
+    }
+
+    unsafe fn cast_unchecked(_msginfo: MessageInfo, buffer: &MessageBuffer) -> Self::This<'_> {
+        Connect {
+            handle: buffer.handles[0],
+        }
+    }
+
+    fn write(self, buffer: &mut MessageBuffer) -> Result<MessageInfo, ErrorCode> {
+        buffer.handles[0] = self.handle;
+        Ok(MessageInfo::new(MessageKind::Connect as i32, 0, 1))
+    }
+}
 
 pub struct RawOpen {
     pub uri: [u8; URI_LEN_MAX],
@@ -139,6 +193,40 @@ impl Messageable for Open<'_> {
         Ok(MessageInfo::new(
             MessageKind::Open as i32,
             self.uri.len() as u16,
+            0,
+        ))
+    }
+}
+
+pub struct FramedData<'a> {
+    pub data: &'a [u8],
+}
+
+impl Messageable for FramedData<'_> {
+    type This<'a> = FramedData<'a>;
+
+    fn kind() -> MessageKind {
+        MessageKind::FramedData
+    }
+
+    unsafe fn is_valid(msginfo: MessageInfo, buffer: &MessageBuffer) -> bool {
+        msginfo.data_len() <= buffer.data.len()
+    }
+
+    unsafe fn cast_unchecked(msginfo: MessageInfo, buffer: &MessageBuffer) -> Self::This<'_> {
+        let data = &buffer.data[..msginfo.data_len()];
+        FramedData { data }
+    }
+
+    fn write(self, buffer: &mut MessageBuffer) -> Result<MessageInfo, ErrorCode> {
+        if self.data.len() > buffer.data.len() {
+            return Err(ErrorCode::TooLarge);
+        }
+
+        buffer.data[..self.data.len()].copy_from_slice(self.data);
+        Ok(MessageInfo::new(
+            MessageKind::FramedData as i32,
+            self.data.len() as u16,
             0,
         ))
     }
