@@ -3,6 +3,7 @@ use alloc::vec::Vec;
 use core::fmt;
 
 use arrayvec::ArrayVec;
+use starina::message::MESSAGE_DATA_LEN_MAX;
 use starina_types::error::ErrorCode;
 use starina_types::handle::HandleId;
 use starina_types::message::MESSAGE_NUM_HANDLES_MAX;
@@ -70,22 +71,15 @@ impl Channel {
         Ok((ch0, ch1))
     }
 
-    pub fn send(
+    pub fn do_send(
         &self,
-        handle_table: &mut HandleTable,
         msginfo: MessageInfo,
-        msgbuffer: &IsolationHeap,
-        handles: &IsolationHeap,
+        msgbuffer: Vec<u8>,
+        handles: ArrayVec<AnyHandle, MESSAGE_NUM_HANDLES_MAX>,
     ) -> Result<(), ErrorCode> {
-        let current_thread = current_thread();
-        let isolation = current_thread.process().isolation();
+        debug_assert_eq!(msgbuffer.len(), msginfo.data_len());
+        debug_assert_eq!(msginfo.num_handles(), handles.len());
 
-        // Copy message data into the kernel memory. Do this before locking
-        // the peer channel for better performance. This memory copy might
-        // take a long time.
-        let data = msgbuffer.read_to_vec(isolation, 0, msginfo.data_len())?;
-
-        // Enqueue the message to the peer's queue.
         let mutable = self.mutable.lock();
         let peer_ch = mutable.peer.as_ref().ok_or(ErrorCode::NoPeer)?;
         let mut peer_mutable = peer_ch.mutable.lock();
@@ -100,6 +94,38 @@ impl Channel {
         if peer_mutable.queue.try_reserve_exact(1).is_err() {
             return Err(ErrorCode::OutOfMemory);
         }
+
+        // The message is ready to be sent. Enqueue it.
+        peer_mutable.queue.push_back(MessageEntry {
+            msginfo,
+            data: msgbuffer,
+            handles: handles,
+        });
+
+        // So the peer has at least one message to read. Wake up a listener if any.
+        peer_mutable.listeners.notify_all(Readiness::READABLE);
+        Ok(())
+    }
+
+    pub fn send(
+        &self,
+        handle_table: &mut HandleTable,
+        msginfo: MessageInfo,
+        msgbuffer: &IsolationHeap,
+        handles: &IsolationHeap,
+    ) -> Result<(), ErrorCode> {
+        let current_thread = current_thread();
+        let isolation = current_thread.process().isolation();
+
+        if msginfo.data_len() > MESSAGE_DATA_LEN_MAX {
+            debug_warn!("too large message data: {}", msginfo.data_len());
+            return Err(ErrorCode::TooLarge);
+        }
+
+        // Copy message data into the kernel memory. Do this before locking
+        // the peer channel for better performance. This memory copy might
+        // take a long time.
+        let data = msgbuffer.read_to_vec(isolation, 0, msginfo.data_len())?;
 
         // Move handles.
         //
@@ -143,16 +169,7 @@ impl Channel {
             }
         }
 
-        // The message is ready to be sent. Enqueue it.
-        peer_mutable.queue.push_back(MessageEntry {
-            msginfo,
-            data,
-            handles: moved_handles,
-        });
-
-        // So the peer has at least one message to read. Wake up a listener if any.
-        peer_mutable.listeners.notify_all(Readiness::READABLE);
-
+        self.do_send(msginfo, data, moved_handles)?;
         Ok(())
     }
 
