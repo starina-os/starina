@@ -105,13 +105,20 @@ impl<E: Endianess, A: Access, T: Copy> MmioReg<E, A, T> {
         self.do_read_with_offset(folio, 0)
     }
 
-    pub fn do_read_with_offset(&self, folio: &mut MmioFolio, offset: usize) -> T {
-        let vaddr = folio.vaddr.as_usize() + self.offset + offset * size_of::<T>();
+    pub fn do_read_with_offset(&self, folio: &mut MmioFolio, index: usize) -> T {
+        let byte_offset = self.offset + index * size_of::<T>();
+        assert!(byte_offset + size_of::<T>() <= folio.folio.len());
+
+        let vaddr = folio.vaddr.as_usize() + byte_offset;
+
         unsafe { core::ptr::read_volatile(vaddr as *const T) }
     }
 
-    fn do_write_with_offset(&self, folio: &mut MmioFolio, offset: usize, value: T) {
-        let vaddr = folio.vaddr.as_usize() + self.offset + offset * size_of::<T>();
+    fn do_write_with_offset(&self, folio: &mut MmioFolio, index: usize, value: T) {
+        let byte_offset = self.offset + index * size_of::<T>();
+        assert!(byte_offset + size_of::<T>() <= folio.folio.len());
+
+        let vaddr = folio.vaddr.as_usize() + byte_offset;
         unsafe { core::ptr::write_volatile(vaddr as *mut T, value) };
     }
 
