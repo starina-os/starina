@@ -26,11 +26,14 @@ pub struct BufferId(usize);
 ///
 /// # Example
 ///
-/// ```rust
+/// ```no_run
+/// use starina_driver_sdk::DmaBufferPool;
+///
+/// let iobus = todo!();
 /// const BUFFER_SIZE: usize = 4096;
 /// const NUM_BUFFERS: usize = 16;
 ///
-/// let mut pool = DmaBufferPool::new(BUFFER_SIZE, NUM_BUFFERS);
+/// let mut pool = DmaBufferPool::new(iobus, BUFFER_SIZE, NUM_BUFFERS);
 /// let buffer_id = pool.allocate().unwrap();
 ///
 /// let daddr = pool.daddr(buffer_id);
