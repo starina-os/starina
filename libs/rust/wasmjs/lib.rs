@@ -18,18 +18,20 @@ pub fn test(console_write: fn(&[u8])) {
     config.memory_reservation(1024 * 1024);
 
     let engine = Engine::new(&config).unwrap();
-    let module =
-        unsafe { Module::deserialize(&engine, include_bytes!("app.precompiled")).unwrap() };
+    let module = unsafe { Module::deserialize(&engine, include_bytes!("app.wasmtime")).unwrap() };
 
     let mut store = Store::new(&engine, ());
 
-    let answer = Func::wrap(&mut store, move |caller: Caller<'_, ()>, x: i32| {
-        let s = alloc::format!("{}", x);
-        console_write(s.as_bytes());
-        Ok(())
-    });
+    let print = Func::wrap(
+        &mut store,
+        move |caller: Caller<'_, ()>, addr: i32, len: i32| {
+            panic!("print called");
+            // console_write(s.as_bytes());
+            Ok(())
+        },
+    );
 
-    let instance = Instance::new(&mut store, &module, &[Extern::Func(answer)]).unwrap();
+    let instance = Instance::new(&mut store, &module, &[Extern::Func(print)]).unwrap();
     let entrypoint = instance
         .get_typed_func::<(), ()>(&mut store, "main")
         .unwrap();

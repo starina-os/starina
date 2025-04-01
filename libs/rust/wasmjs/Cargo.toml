@@ -8,18 +8,8 @@ edition.workspace = true
 path = "lib.rs"
 
 [dependencies]
-wasmtime = { workspace = true, features = [
-    "runtime",
-    "gc",
-    "gc-drc",
-    "custom-virtual-memory",
-] }
+wasmtime = { workspace = true, features = ["runtime"] }
 anyhow = { workspace = true }
 
 [build-dependencies]
-wasmtime = { workspace = true, features = [
-    "cranelift",
-    "gc",
-    "gc-drc",
-    "all-arch",
-] }
+wasmtime = { workspace = true, features = ["cranelift", "wat", "all-arch"] }
