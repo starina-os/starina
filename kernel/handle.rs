@@ -1,3 +1,4 @@
+use alloc::collections::btree_map::BTreeMap;
 use core::any::Any;
 use core::ops::Deref;
 
@@ -9,7 +10,6 @@ use starina_types::poll::Readiness;
 use crate::poll::Listener;
 use crate::poll::Poll;
 use crate::refcount::SharedRef;
-use crate::utils::fxhashmap::FxHashMap;
 
 const NUM_HANDLES_MAX: usize = 128;
 
@@ -86,14 +86,14 @@ pub trait Handleable: Any + Send + Sync {
 }
 
 pub struct HandleTable {
-    handles: FxHashMap<HandleId, AnyHandle>,
+    handles: BTreeMap<HandleId, AnyHandle>,
     next_id: i32,
 }
 
 impl HandleTable {
     pub const fn new() -> HandleTable {
         HandleTable {
-            handles: FxHashMap::new(),
+            handles: BTreeMap::new(),
             next_id: 1,
         }
     }
@@ -103,12 +103,13 @@ impl HandleTable {
             return Err(ErrorCode::TooManyHandles);
         }
 
-        self.handles
-            .try_reserve(1)
-            .map_err(|_| ErrorCode::OutOfMemory)?;
-
         let handle_id = HandleId::from_raw(self.next_id);
-        self.handles.insert(handle_id, object.into());
+        let value = object.into();
+
+        if self.handles.try_insert(handle_id, value).is_err() {
+            return Err(ErrorCode::AlreadyExists);
+        }
+
         self.next_id += 1;
         Ok(handle_id)
     }

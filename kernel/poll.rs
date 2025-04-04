@@ -1,3 +1,4 @@
+use alloc::collections::btree_map::BTreeMap;
 use alloc::collections::vec_deque::VecDeque;
 use alloc::vec::Vec;
 use core::fmt;
@@ -15,7 +16,6 @@ use crate::spinlock::SpinLock;
 use crate::syscall::SyscallResult;
 use crate::thread::Thread;
 use crate::thread::ThreadState;
-use crate::utils::fxhashmap::FxHashMap;
 
 struct UniqueQueue<T> {
     queue: VecDeque<T>,
@@ -126,7 +126,7 @@ struct Listenee {
 }
 
 struct Mutable {
-    listenee: FxHashMap<HandleId, Listenee>,
+    listenee: BTreeMap<HandleId, Listenee>,
     ready_handles: UniqueQueue<HandleId>,
     waiters: VecDeque<SharedRef<Thread>>,
 }
@@ -138,7 +138,7 @@ pub struct Poll {
 impl Poll {
     pub fn new() -> Result<SharedRef<Poll>, ErrorCode> {
         let mutable = SharedRef::new(SpinLock::new(Mutable {
-            listenee: FxHashMap::new(),
+            listenee: BTreeMap::new(),
             ready_handles: UniqueQueue::new(),
             waiters: VecDeque::new(),
         }))?;
@@ -165,18 +165,14 @@ impl Poll {
             id,
         })?;
 
-        mutable
-            .listenee
-            .try_reserve(1)
-            .map_err(|_| ErrorCode::OutOfMemory)?;
+        let listenee = Listenee {
+            handle: handle.clone(),
+            interests,
+        };
 
-        mutable.listenee.insert(
-            id,
-            Listenee {
-                handle: handle.clone(),
-                interests,
-            },
-        );
+        if mutable.listenee.try_insert(id, listenee).is_err() {
+            return Err(ErrorCode::AlreadyExists);
+        }
 
         let readiness = handle.readiness()?;
         if readiness.contains(interests) {

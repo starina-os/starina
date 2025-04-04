@@ -13,7 +13,6 @@ use crate::folio::Folio;
 use crate::interrupt::Interrupt;
 use crate::refcount::SharedRef;
 use crate::spinlock::SpinLock;
-use crate::utils::fxhashmap::FxHashMap;
 use crate::utils::mmio::LittleEndian;
 use crate::utils::mmio::MmioFolio;
 use crate::utils::mmio::MmioReg;
@@ -71,7 +70,7 @@ pub fn use_plic(f: impl FnOnce(&mut Plic)) {
 
 pub struct Plic {
     folio: MmioFolio,
-    listeners: FxHashMap<Irq, SharedRef<Interrupt>>,
+    listeners: BTreeMap<Irq, SharedRef<Interrupt>>,
 }
 
 impl Plic {
@@ -86,7 +85,7 @@ impl Plic {
 
         Plic {
             folio: mmio_folio,
-            listeners: FxHashMap::new(),
+            listeners: BTreeMap::new(),
         }
     }
 
