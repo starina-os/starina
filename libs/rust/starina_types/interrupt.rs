@@ -3,7 +3,7 @@ use serde::Serialize;
 
 use crate::error::ErrorCode;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Irq(u32);
 
 impl Irq {

@@ -14,7 +14,6 @@ Unlike traditional operating systems, Starina kernel uses a single stack per CPU
 
 | `libstd` equivalent | Kernel alternative | Remarks |
 |----------------|--------------------|----|
-| `HashMap` | `crate::utils::FxHashMap` | If you want to intiialize a `HashMap` in a `const fn`. |
 | `Arc` | `crate::refcount::SharedRef` | |
 | `Mutex` | `crate::spinlock::SpinLock` | |
 | `thread_local` | `CpuVar` | A CPU-local variable, which is similar to `thread_local` in the userspace. |
