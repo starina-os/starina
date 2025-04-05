@@ -172,6 +172,7 @@ dependencies = [
  "arrayvec",
  "fdt-rs",
  "hashbrown",
+ "http_server",
  "rustc-hash",
  "serde_json",
  "spin",

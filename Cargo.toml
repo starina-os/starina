@@ -32,3 +32,4 @@ virtio = { path = "libs/rust/virtio" }
 
 virtio_net = { path = "apps/drivers/virtio_net" }
 tcpip = { path = "apps/servers/tcpip" }
+http_server = { path = "apps/bin/http_server" }
