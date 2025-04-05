@@ -24,6 +24,10 @@ else
   RR_MODE=record
 fi
 
+if [[ -n ${BUILD_ONLY:-} ]]; then
+  exit 0
+fi
+
 echo -e "\nStarting QEMU..."
 $QEMU -machine virt -m 256 -bios default \
   -kernel starina.elf \
