@@ -1,3 +1,5 @@
+use core::mem;
+
 use starina::collections::HashMap;
 use starina::prelude::*;
 
@@ -137,7 +139,7 @@ impl HttpRequestParser {
                         path,
                         headers,
                         ..
-                    } = core::mem::replace(&mut self.state, State::ReadingBody)
+                    } = mem::replace(&mut self.state, State::ReadingBody)
                     else {
                         unreachable!();
                     };
