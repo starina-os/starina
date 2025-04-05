@@ -22,10 +22,10 @@ This year, we focus on cloud computing domain, where Starina will be used as a t
 - [x] Redesign the OS based on lessons learned
 - [x] Rewrite from scratch
 - [x] Rust-based almost-zero-cost isolation ([Unikernel](https://en.wikipedia.org/wiki/Unikernel) style)
-- [ ] Usermode isolation (traditional microkernel style)
 - [ ] TCP/IP server (work-in-progress)
 - [ ] File system server
-- [ ] TypeScript API + QuickJS-based isolation (akin to WebAssembly)
+- [ ] TypeScript API + language-based isolation (akin to WebAssembly)
+- [ ] Usermode isolation (traditional microkernel style)
 - [ ] Shell
 - [ ] WSL2-like Linux compatibility layer
 - [ ] Streamlined observability and debugging experience
