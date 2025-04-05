@@ -3,6 +3,7 @@ use starina::channel::Channel;
 use starina::spec::AppSpec;
 use starina::spec::EnvItem;
 use starina::spec::EnvType;
+use starina::spec::ExportItem;
 use starina::syscall::VsyscallPage;
 
 use crate::App;
@@ -19,7 +20,7 @@ pub const APP_SPEC: AppSpec = AppSpec {
             name: "device/ethernet",
         },
     }],
-    exports: &[],
+    exports: &[ExportItem::Service { name: "tcpip" }],
 };
 
 pub fn app_main(vsyscall: *const VsyscallPage) {

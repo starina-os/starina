@@ -11,7 +11,7 @@ pub struct StartLine {
 }
 
 /// Per-connection state machine.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum State {
     ReadingStartLine,
     ReadingHeaders,
@@ -19,29 +19,35 @@ enum State {
     Errored,
 }
 
-pub struct TcpWriter(ChannelSender);
+pub trait TcpWriter {
+    fn write(&mut self, data: &[u8]) -> Result<(), ErrorCode>;
+}
 
-impl TcpWriter {
+pub struct ChannelTcpWriter(ChannelSender);
+
+impl ChannelTcpWriter {
     pub fn new(tcpip_sender: ChannelSender) -> Self {
         Self(tcpip_sender)
     }
+}
 
-    pub fn send(&self, data: &[u8]) -> Result<(), ErrorCode> {
+impl TcpWriter for ChannelTcpWriter {
+    fn write(&mut self, data: &[u8]) -> Result<(), ErrorCode> {
         self.0.send(StreamDataMsg { data })
     }
 }
 
-pub struct Conn {
+pub struct Conn<W: TcpWriter> {
     headers_buf: String,
     start_line: Option<StartLine>,
     headers: HashMap<String, Vec<String>>,
     remaining_headers_size: usize,
     state: State,
-    tcp_writer: TcpWriter,
+    tcp_writer: W,
 }
 
-impl Conn {
-    pub fn new(tcp_writer: TcpWriter) -> Self {
+impl<W: TcpWriter> Conn<W> {
+    pub fn new(tcp_writer: W) -> Self {
         Self {
             state: State::ReadingStartLine,
             headers_buf: String::with_capacity(128),
@@ -89,9 +95,10 @@ impl Conn {
         };
 
         self.headers_buf.push_str(chunk_str);
+        let headers_buf = core::mem::take(&mut self.headers_buf);
 
         let mut consumed_len = 0;
-        for line in self.headers_buf.split_inclusive("\r\n") {
+        for line in headers_buf.split_inclusive("\r\n") {
             if !line.ends_with("\r\n") {
                 // The line is still not terminated.
                 break;
@@ -133,6 +140,14 @@ impl Conn {
                     self.state = State::ReadingHeaders;
                 }
                 State::ReadingHeaders => {
+                    if line == "\r\n" {
+                        // End of headers.
+                        self.state = State::ReadingBody;
+                        self.on_body_chunk(headers_buf[consumed_len..].as_bytes());
+                        consumed_len = headers_buf.len();
+                        break;
+                    }
+
                     let mut parts = line.trim_ascii_end().splitn(2, ':');
                     let (Some(key), Some(value)) = (parts.next(), parts.next()) else {
                         debug_warn!("invalid header: {}", line);
@@ -154,6 +169,84 @@ impl Conn {
             }
         }
 
-        self.headers_buf = self.headers_buf[consumed_len..].to_owned();
+        self.headers_buf = headers_buf[consumed_len..].to_owned();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    pub struct MockTcpWriter(Vec<u8>);
+    impl MockTcpWriter {
+        pub fn new() -> Self {
+            Self(Vec::new())
+        }
+
+        pub fn written_data(&self) -> &[u8] {
+            &self.0
+        }
+    }
+
+    impl TcpWriter for MockTcpWriter {
+        fn write(&mut self, data: &[u8]) -> Result<(), ErrorCode> {
+            self.0.extend_from_slice(data);
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn parse_simple_http_request() {
+        let mut conn = Conn::new(MockTcpWriter::new());
+        conn.on_tcp_data(b"GET / HTTP/1.1\r\nHost: example.com\r\n\r\n");
+        assert_eq!(conn.state, State::ReadingBody);
+        assert_eq!(conn.start_line.as_ref().unwrap().method, "GET");
+        assert_eq!(conn.start_line.as_ref().unwrap().path, "/");
+        assert_eq!(conn.headers.len(), 1);
+        assert_eq!(conn.headers["host"], vec!["example.com"]);
+        assert_eq!(conn.headers_buf.len(), 0);
+    }
+
+    #[test]
+    fn parse_http_request_with_body() {
+        let mut conn = Conn::new(MockTcpWriter::new());
+        conn.on_tcp_data(
+            b"POST /submit HTTP/1.1\r\nHost: example.com\r\nContent-Length: 5\r\n\r\nHello",
+        );
+        assert_eq!(conn.state, State::ReadingBody);
+        assert_eq!(conn.start_line.as_ref().unwrap().method, "POST");
+        assert_eq!(conn.start_line.as_ref().unwrap().path, "/submit");
+        assert_eq!(conn.headers.len(), 2);
+        assert_eq!(conn.headers["content-length"], vec!["5"]);
+        assert_eq!(conn.headers_buf.len(), 0);
+    }
+
+    #[test]
+    fn parse_partial_http_request() {
+        let mut conn = Conn::new(MockTcpWriter::new());
+
+        conn.on_tcp_data(b"GE");
+        assert_eq!(conn.state, State::ReadingStartLine);
+
+        conn.on_tcp_data(b"T /path");
+        assert_eq!(conn.state, State::ReadingStartLine);
+
+        conn.on_tcp_data(b"/to HTTP/1.1\r\nHost");
+        assert_eq!(conn.state, State::ReadingHeaders);
+
+        conn.on_tcp_data(b": example");
+        assert_eq!(conn.state, State::ReadingHeaders);
+
+        conn.on_tcp_data(b".com\r\n");
+        assert_eq!(conn.state, State::ReadingHeaders);
+
+        conn.on_tcp_data(b"\r\n");
+        assert_eq!(conn.state, State::ReadingBody);
+
+        conn.on_tcp_data(b"Hello");
+        assert_eq!(conn.state, State::ReadingBody);
+
+        conn.on_tcp_data(b"World");
+        assert_eq!(conn.state, State::ReadingBody);
     }
 }

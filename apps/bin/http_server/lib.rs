@@ -4,9 +4,8 @@ pub mod autogen;
 mod connection;
 
 use autogen::Env;
+use connection::ChannelTcpWriter;
 use connection::Conn;
-use connection::TcpWriter;
-use starina::channel::ChannelSender;
 use starina::collections::HashMap;
 use starina::eventloop::Context;
 use starina::eventloop::Dispatcher;
@@ -26,7 +25,7 @@ enum CtrlState {
 
 pub struct App {
     state: spin::Mutex<CtrlState>,
-    connections: spin::Mutex<HashMap<HandleId, Conn>>,
+    connections: spin::Mutex<HashMap<HandleId, Conn<ChannelTcpWriter>>>,
 }
 
 impl EventLoop<Env> for App {
@@ -58,7 +57,7 @@ impl EventLoop<Env> for App {
         // FIXME: Check sender channel - it must be the listen channel
         let data_ch = ctx.sender.handle().id();
         let mut connections = self.connections.lock();
-        let tcp_writer = TcpWriter::new(ctx.sender.clone());
+        let tcp_writer = ChannelTcpWriter::new(ctx.sender.clone());
         connections.insert(data_ch, Conn::new(tcp_writer));
     }
 

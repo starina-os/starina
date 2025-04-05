@@ -14,8 +14,8 @@ use crate::App;
 #[derive(serde::Deserialize)]
 pub struct Env {
     pub tcpip: Channel,
-    pub listen_host: String,
-    pub listen_port: u16,
+    // pub listen_host: String,
+    // pub listen_port: u16,
 }
 
 pub const APP_SPEC: AppSpec = AppSpec {
