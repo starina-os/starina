@@ -1,15 +1,14 @@
 use alloc::boxed::Box;
-use core::marker::PhantomData;
 use core::ops::Deref;
 use core::ops::DerefMut;
 
 use starina_types::handle::HandleId;
 pub use starina_types::message::*;
 
-use crate::handle::OwnedHandle;
 use crate::syscall;
 
 pub struct OwnedMessageBuffer(Box<MessageBuffer>);
+
 impl OwnedMessageBuffer {
     pub fn alloc() -> Self {
         // TODO: Have a thread-local buffer pool.
@@ -54,49 +53,6 @@ impl Drop for OwnedMessageBuffer {
                 }
             }
         }
-    }
-}
-
-pub struct Message<M: Messageable> {
-    msginfo: MessageInfo,
-    buffer: OwnedMessageBuffer,
-    _pd: PhantomData<M>,
-}
-
-impl<M: Messageable> TryFrom<AnyMessage> for Message<M> {
-    type Error = AnyMessage;
-
-    fn try_from(msg: AnyMessage) -> Result<Self, AnyMessage> {
-        if !unsafe { M::is_valid(msg.msginfo, &msg.buffer) } {
-            return Err(msg);
-        }
-
-        Ok(Message {
-            msginfo: msg.msginfo,
-            buffer: msg.buffer,
-            _pd: PhantomData,
-        })
-    }
-}
-
-impl Message<Connect> {
-    pub fn handle(&mut self) -> Option<OwnedHandle> {
-        let id = self.buffer.take_handle(0)?;
-        Some(OwnedHandle::from_raw(id))
-    }
-}
-
-impl<'a> Message<Open<'a>> {
-    pub fn uri(&self) -> &str {
-        // SAFETY: The validity of the message is checked in `Message::new`.
-        unsafe { Open::cast_unchecked(self.msginfo, &self.buffer).uri }
-    }
-}
-
-impl<'a> Message<FramedData<'a>> {
-    pub fn data(&self) -> &[u8] {
-        // SAFETY: The validity of the message is checked in `Message::new`.
-        unsafe { FramedData::cast_unchecked(self.msginfo, &self.buffer).data }
     }
 }
 

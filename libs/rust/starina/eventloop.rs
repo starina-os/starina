@@ -28,17 +28,17 @@ pub trait EventLoop<E>: Send + Sync {
         Self: Sized;
 
     #[allow(unused_variables)]
-    fn on_connect(&self, ctx: &Context, msg: Message<Connect>) {
+    fn on_connect(&self, ctx: &Context, msg: Connect) {
         debug_warn!("ignored connect message");
     }
 
     #[allow(unused_variables)]
-    fn on_open(&self, ctx: &Context, msg: Message<Open<'_>>) {
+    fn on_open(&self, ctx: &Context, msg: Open<'_>) {
         debug_warn!("ignored open message");
     }
 
     #[allow(unused_variables)]
-    fn on_framed_data(&self, _ctx: &Context, _msg: Message<FramedData<'_>>) {
+    fn on_framed_data(&self, _ctx: &Context, _msg: FramedData<'_>) {
         debug_warn!("ignored framed data message");
     }
 
