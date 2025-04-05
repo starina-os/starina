@@ -90,6 +90,7 @@ impl MessageBuffer {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 #[repr(u8)]
 pub enum MessageKind {
     Connect = 1,
@@ -99,51 +100,34 @@ pub enum MessageKind {
     FramedData = 6,
 }
 
-pub trait Messageable {
-    type This<'a>;
+pub trait Messageable<'a> {
     fn kind() -> MessageKind;
     fn write(self, buffer: &mut MessageBuffer) -> Result<MessageInfo, ErrorCode>;
-    /// # Safety
-    ///
-    /// This method does not check the message kind. It's caller's
-    /// responsibility to ensure the message kind is correct.
-    unsafe fn is_valid(msginfo: MessageInfo, buffer: &MessageBuffer) -> bool;
-    /// # Safety
-    ///
-    /// This method does not check the validity of the message. It's caller's
-    /// responsibility to make sure:
-    ///
-    /// - The message kind is correct.
-    /// - The validity of the message is checked by `is_valid`.
-    unsafe fn cast_unchecked(msginfo: MessageInfo, buffer: &MessageBuffer) -> Self::This<'_>;
+    unsafe fn parse_unchecked(msginfo: MessageInfo, buffer: &'a MessageBuffer) -> Option<Self>
+    where
+        Self: Sized;
 }
 
 pub const URI_LEN_MAX: usize = 1024;
 
 pub struct Connect {
-    handle: HandleId,
+    pub handle: HandleId,
 }
 
-impl Messageable for Connect {
-    type This<'a> = Connect;
-
+impl<'a> Messageable<'a> for Connect {
     fn kind() -> MessageKind {
         MessageKind::Connect
-    }
-
-    unsafe fn is_valid(msginfo: MessageInfo, _buffer: &MessageBuffer) -> bool {
-        msginfo.data_len() == 0 && msginfo.num_handles() == 1
-    }
-
-    unsafe fn cast_unchecked(_msginfo: MessageInfo, buffer: &MessageBuffer) -> Self::This<'_> {
-        Connect {
-            handle: buffer.handles[0],
-        }
     }
 
     fn write(self, buffer: &mut MessageBuffer) -> Result<MessageInfo, ErrorCode> {
         buffer.handles[0] = self.handle;
         Ok(MessageInfo::new(MessageKind::Connect as i32, 0, 1))
+    }
+
+    unsafe fn parse_unchecked(msginfo: MessageInfo, buffer: &'a MessageBuffer) -> Option<Self> {
+        Some(Connect {
+            handle: buffer.handles[0],
+        })
     }
 }
 
@@ -155,32 +139,15 @@ pub struct Open<'a> {
     pub uri: &'a str,
 }
 
-impl Messageable for Open<'_> {
-    type This<'a> = Open<'a>;
-
+impl<'a> Messageable<'a> for Open<'a> {
     fn kind() -> MessageKind {
         MessageKind::Open
     }
 
-    unsafe fn is_valid(msginfo: MessageInfo, buffer: &MessageBuffer) -> bool {
-        if msginfo.data_len() > URI_LEN_MAX {
-            return false;
-        }
-
+    unsafe fn parse_unchecked(msginfo: MessageInfo, buffer: &'a MessageBuffer) -> Option<Self> {
         let raw = unsafe { buffer.data_as_ref::<RawOpen>() };
-        if core::str::from_utf8(&raw.uri[..msginfo.data_len()]).is_err() {
-            return false;
-        }
-
-        true
-    }
-
-    unsafe fn cast_unchecked(msginfo: MessageInfo, buffer: &MessageBuffer) -> Self::This<'_> {
-        unsafe {
-            let raw = buffer.data_as_ref::<RawOpen>();
-            let uri = core::str::from_utf8_unchecked(&raw.uri[..msginfo.data_len()]);
-            Open { uri }
-        }
+        let uri = unsafe { core::str::from_utf8_unchecked(&raw.uri[..msginfo.data_len()]) };
+        Some(Open { uri })
     }
 
     fn write(self, buffer: &mut MessageBuffer) -> Result<MessageInfo, ErrorCode> {
@@ -202,20 +169,14 @@ pub struct FramedData<'a> {
     pub data: &'a [u8],
 }
 
-impl Messageable for FramedData<'_> {
-    type This<'a> = FramedData<'a>;
-
+impl<'a> Messageable<'a> for FramedData<'a> {
     fn kind() -> MessageKind {
         MessageKind::FramedData
     }
 
-    unsafe fn is_valid(msginfo: MessageInfo, buffer: &MessageBuffer) -> bool {
-        msginfo.data_len() <= buffer.data.len()
-    }
-
-    unsafe fn cast_unchecked(msginfo: MessageInfo, buffer: &MessageBuffer) -> Self::This<'_> {
+    unsafe fn parse_unchecked(msginfo: MessageInfo, buffer: &'a MessageBuffer) -> Option<Self> {
         let data = &buffer.data[..msginfo.data_len()];
-        FramedData { data }
+        Some(FramedData { data })
     }
 
     fn write(self, buffer: &mut MessageBuffer) -> Result<MessageInfo, ErrorCode> {

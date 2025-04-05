@@ -1,32 +1,20 @@
 use alloc::boxed::Box;
-use core::marker::PhantomData;
 use core::ops::Deref;
 use core::ops::DerefMut;
 
 use starina_types::handle::HandleId;
 pub use starina_types::message::*;
 
-use crate::handle::OwnedHandle;
 use crate::syscall;
 
 pub struct OwnedMessageBuffer(Box<MessageBuffer>);
+
 impl OwnedMessageBuffer {
     pub fn alloc() -> Self {
         // TODO: Have a thread-local buffer pool.
         // TODO: Use `MaybeUninit` to unnecesarily zero-fill the buffer.
         let buffer = Box::new(MessageBuffer::zeroed());
         OwnedMessageBuffer(buffer)
-    }
-
-    pub fn take_handle(&mut self, index: usize) -> Option<HandleId> {
-        let handles = self.0.handles_mut();
-        let handle = handles[index];
-        if handle.as_raw() == 0 {
-            return None;
-        }
-
-        handles[index] = HandleId::from_raw(0);
-        Some(handle)
     }
 }
 
@@ -46,57 +34,14 @@ impl DerefMut for OwnedMessageBuffer {
 
 impl Drop for OwnedMessageBuffer {
     fn drop(&mut self) {
-        // Drop handles.
-        for handle in self.0.handles() {
-            if handle.as_raw() != 0 {
-                if let Err(e) = syscall::handle_close(*handle) {
-                    warn!("failed to close handle: {:?}", e);
-                }
-            }
-        }
-    }
-}
-
-pub struct Message<M: Messageable> {
-    msginfo: MessageInfo,
-    buffer: OwnedMessageBuffer,
-    _pd: PhantomData<M>,
-}
-
-impl<M: Messageable> TryFrom<AnyMessage> for Message<M> {
-    type Error = AnyMessage;
-
-    fn try_from(msg: AnyMessage) -> Result<Self, AnyMessage> {
-        if !unsafe { M::is_valid(msg.msginfo, &msg.buffer) } {
-            return Err(msg);
-        }
-
-        Ok(Message {
-            msginfo: msg.msginfo,
-            buffer: msg.buffer,
-            _pd: PhantomData,
-        })
-    }
-}
-
-impl Message<Connect> {
-    pub fn handle(&mut self) -> Option<OwnedHandle> {
-        let id = self.buffer.take_handle(0)?;
-        Some(OwnedHandle::from_raw(id))
-    }
-}
-
-impl<'a> Message<Open<'a>> {
-    pub fn uri(&self) -> &str {
-        // SAFETY: The validity of the message is checked in `Message::new`.
-        unsafe { Open::cast_unchecked(self.msginfo, &self.buffer).uri }
-    }
-}
-
-impl<'a> Message<FramedData<'a>> {
-    pub fn data(&self) -> &[u8] {
-        // SAFETY: The validity of the message is checked in `Message::new`.
-        unsafe { FramedData::cast_unchecked(self.msginfo, &self.buffer).data }
+        // FIXME: Drop handles.
+        // for handle in self.0.handles() {
+        //     if handle.as_raw() != 0 {
+        //         if let Err(e) = syscall::handle_close(*handle) {
+        //             debug_warn!("failed to close handle: {:?}", e);
+        //         }
+        //     }
+        // }
     }
 }
 

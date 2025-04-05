@@ -24,7 +24,7 @@ impl Channel {
         Self(handle)
     }
 
-    pub fn send(&self, msg: impl Messageable) -> Result<(), ErrorCode> {
+    pub fn send<'a>(&self, msg: impl Messageable<'a>) -> Result<(), ErrorCode> {
         let mut buffer = OwnedMessageBuffer::alloc();
         let msginfo = msg.write(&mut buffer)?;
 
@@ -81,7 +81,7 @@ pub struct ChannelSender(Arc<Channel>);
 pub struct ChannelReceiver(Arc<Channel>);
 
 impl ChannelSender {
-    pub fn send(&self, writer: impl Messageable) -> Result<(), ErrorCode> {
+    pub fn send<'a>(&self, writer: impl Messageable<'a>) -> Result<(), ErrorCode> {
         self.0.send(writer)
     }
 
