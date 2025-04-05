@@ -16,7 +16,7 @@ enum State {
 
 #[derive(Debug)]
 pub enum Part<'a> {
-    RequestEnd {
+    Request {
         method: String,
         path: String,
         headers: HashMap<String, Vec<String>>,
@@ -142,7 +142,7 @@ impl HttpRequestParser {
                         unreachable!();
                     };
 
-                    let part = Part::RequestEnd {
+                    let part = Part::Request {
                         method,
                         path,
                         headers,
@@ -183,7 +183,7 @@ mod tests {
     #[test]
     fn parse_simple_http_request() {
         let mut parser = HttpRequestParser::new();
-        let Ok(Some(Part::RequestEnd {
+        let Ok(Some(Part::Request {
             method,
             path,
             headers,
@@ -203,7 +203,7 @@ mod tests {
     #[test]
     fn parse_http_request_with_body() {
         let mut parser = HttpRequestParser::new();
-        let Ok(Some(Part::RequestEnd {
+        let Ok(Some(Part::Request {
             method,
             path,
             headers,
@@ -234,7 +234,7 @@ mod tests {
         assert!(matches!(parser.parse_chunk(b": example"), Ok(None)));
         assert!(matches!(parser.parse_chunk(b".com\r\n"), Ok(None)));
 
-        let Ok(Some(Part::RequestEnd {
+        let Ok(Some(Part::Request {
             method,
             path,
             headers,

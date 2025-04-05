@@ -38,15 +38,24 @@ impl<W: TcpWriter> Conn<W> {
         }
     }
 
-    fn on_body_chunk(&mut self, _chunk: &[u8]) {
-        // Do something with the body chunk.
-    }
-
     pub fn on_tcp_data(&mut self, chunk: &[u8]) {
         loop {
             match self.request_parser.parse_chunk(chunk) {
                 Ok(Some(part)) => {
                     warn!("{:?}", part);
+                    match part {
+                        Part::Request {
+                            method,
+                            path,
+                            headers,
+                            first_body,
+                        } => {
+                            // Do something.
+                        }
+                        Part::Body { chunk } => {
+                            // Do something.
+                        }
+                    }
                 }
                 Ok(None) => break,
                 Err(err) => {
