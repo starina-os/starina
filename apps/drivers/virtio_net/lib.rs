@@ -3,11 +3,9 @@
 pub mod autogen;
 
 use autogen::Env;
-use starina::channel::Channel;
 use starina::eventloop::Context;
 use starina::eventloop::Dispatcher;
 use starina::eventloop::EventLoop;
-use starina::handle::OwnedHandle;
 use starina::interrupt::Interrupt;
 use starina::message::ConnectMsg;
 use starina::message::FramedDataMsg;
