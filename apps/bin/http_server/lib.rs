@@ -2,6 +2,7 @@
 
 pub mod autogen;
 mod connection;
+mod http;
 
 use autogen::Env;
 use connection::ChannelTcpWriter;
