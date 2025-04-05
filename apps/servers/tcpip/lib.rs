@@ -18,7 +18,6 @@ use starina::eventloop::Context;
 use starina::eventloop::Dispatcher;
 use starina::eventloop::EventLoop;
 use starina::message::FramedData;
-use starina::message::Message;
 use starina::prelude::*;
 use tcpip::SocketEvent;
 use tcpip::TcpIp;
@@ -70,9 +69,9 @@ impl EventLoop<Env> for App {
         }
     }
 
-    fn on_framed_data(&self, _ctx: &Context, msg: Message<FramedData<'_>>) {
-        trace!("frame data received: {:2x?}", msg.data());
-        self.tcpip.lock().receive_packet(msg.data());
+    fn on_framed_data(&self, _ctx: &Context, msg: FramedData<'_>) {
+        trace!("frame data received: {:2x?}", msg.data);
+        self.tcpip.lock().receive_packet(msg.data);
         trace!("polling");
 
         self.tcpip.lock().poll(|ev| {

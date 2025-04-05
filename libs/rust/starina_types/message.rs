@@ -100,10 +100,10 @@ pub enum MessageKind {
     FramedData = 6,
 }
 
-pub trait Messageable {
+pub trait Messageable<'a> {
     fn kind() -> MessageKind;
     fn write(self, buffer: &mut MessageBuffer) -> Result<MessageInfo, ErrorCode>;
-    unsafe fn parse_unchecked(msginfo: MessageInfo, buffer: &MessageBuffer) -> Option<Self>
+    unsafe fn parse_unchecked(msginfo: MessageInfo, buffer: &'a MessageBuffer) -> Option<Self>
     where
         Self: Sized;
 }
@@ -111,10 +111,10 @@ pub trait Messageable {
 pub const URI_LEN_MAX: usize = 1024;
 
 pub struct Connect {
-    handle: HandleId,
+    pub handle: HandleId,
 }
 
-impl Messageable for Connect {
+impl<'a> Messageable<'a> for Connect {
     fn kind() -> MessageKind {
         MessageKind::Connect
     }
@@ -124,7 +124,7 @@ impl Messageable for Connect {
         Ok(MessageInfo::new(MessageKind::Connect as i32, 0, 1))
     }
 
-    unsafe fn parse_unchecked(msginfo: MessageInfo, buffer: &MessageBuffer) -> Option<Self> {
+    unsafe fn parse_unchecked(msginfo: MessageInfo, buffer: &'a MessageBuffer) -> Option<Self> {
         Some(Connect {
             handle: buffer.handles[0],
         })
@@ -139,12 +139,12 @@ pub struct Open<'a> {
     pub uri: &'a str,
 }
 
-impl Messageable for Open<'_> {
+impl<'a> Messageable<'a> for Open<'a> {
     fn kind() -> MessageKind {
         MessageKind::Open
     }
 
-    unsafe fn parse_unchecked(msginfo: MessageInfo, buffer: &MessageBuffer) -> Option<Self> {
+    unsafe fn parse_unchecked(msginfo: MessageInfo, buffer: &'a MessageBuffer) -> Option<Self> {
         let raw = unsafe { buffer.data_as_ref::<RawOpen>() };
         let uri = unsafe { core::str::from_utf8_unchecked(&raw.uri[..msginfo.data_len()]) };
         Some(Open { uri })
@@ -169,12 +169,12 @@ pub struct FramedData<'a> {
     pub data: &'a [u8],
 }
 
-impl Messageable for FramedData<'_> {
+impl<'a> Messageable<'a> for FramedData<'a> {
     fn kind() -> MessageKind {
         MessageKind::FramedData
     }
 
-    unsafe fn parse_unchecked(msginfo: MessageInfo, buffer: &MessageBuffer) -> Option<Self> {
+    unsafe fn parse_unchecked(msginfo: MessageInfo, buffer: &'a MessageBuffer) -> Option<Self> {
         let data = &buffer.data[..msginfo.data_len()];
         Some(FramedData { data })
     }

@@ -16,17 +16,6 @@ impl OwnedMessageBuffer {
         let buffer = Box::new(MessageBuffer::zeroed());
         OwnedMessageBuffer(buffer)
     }
-
-    pub fn take_handle(&mut self, index: usize) -> Option<HandleId> {
-        let handles = self.0.handles_mut();
-        let handle = handles[index];
-        if handle.as_raw() == 0 {
-            return None;
-        }
-
-        handles[index] = HandleId::from_raw(0);
-        Some(handle)
-    }
 }
 
 impl Deref for OwnedMessageBuffer {
@@ -45,14 +34,14 @@ impl DerefMut for OwnedMessageBuffer {
 
 impl Drop for OwnedMessageBuffer {
     fn drop(&mut self) {
-        // Drop handles.
-        for handle in self.0.handles() {
-            if handle.as_raw() != 0 {
-                if let Err(e) = syscall::handle_close(*handle) {
-                    warn!("failed to close handle: {:?}", e);
-                }
-            }
-        }
+        // FIXME: Drop handles.
+        // for handle in self.0.handles() {
+        //     if handle.as_raw() != 0 {
+        //         if let Err(e) = syscall::handle_close(*handle) {
+        //             debug_warn!("failed to close handle: {:?}", e);
+        //         }
+        //     }
+        // }
     }
 }
 
