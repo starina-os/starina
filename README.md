@@ -20,10 +20,10 @@ This year, we focus on cloud computing domain, where Starina will be used as a t
 
 - [x] Prototyping an microkernel-based OS in Rust: **[https://starina.dev](https://starina.dev) is served by Starina on Linux/QEMU hypervisor!**
 - [x] Redesign the OS based on lessons learned
-- [ ] Rewrite from scratch (work in progress)
-- [ ] Rust-based almost-zero-cost isolation ([Unikernel](https://en.wikipedia.org/wiki/Unikernel) style)
+- [x] Rewrite from scratch
+- [x] Rust-based almost-zero-cost isolation ([Unikernel](https://en.wikipedia.org/wiki/Unikernel) style)
 - [ ] Usermode isolation (traditional microkernel style)
-- [ ] TCP/IP server
+- [ ] TCP/IP server (work-in-progress)
 - [ ] File system server
 - [ ] TypeScript API + QuickJS-based isolation (akin to WebAssembly)
 - [ ] Shell
