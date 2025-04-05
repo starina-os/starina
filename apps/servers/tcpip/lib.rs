@@ -17,7 +17,7 @@ use starina::channel::Channel;
 use starina::eventloop::Context;
 use starina::eventloop::Dispatcher;
 use starina::eventloop::EventLoop;
-use starina::message::FramedData;
+use starina::message::FramedDataMsg;
 use starina::prelude::*;
 use tcpip::SocketEvent;
 use tcpip::TcpIp;
@@ -38,7 +38,7 @@ impl EventLoop<Env> for App {
 
         let transmit = move |data: &[u8]| {
             trace!("transmit {} bytes", data.len());
-            if let Err(err) = driver.send(FramedData { data }) {
+            if let Err(err) = driver.send(FramedDataMsg { data }) {
                 debug_warn!("failed to send: {:?}", err);
             }
         };
@@ -69,7 +69,7 @@ impl EventLoop<Env> for App {
         }
     }
 
-    fn on_framed_data(&self, _ctx: &Context, msg: FramedData<'_>) {
+    fn on_framed_data(&self, _ctx: &Context, msg: FramedDataMsg<'_>) {
         trace!("frame data received: {:2x?}", msg.data);
         self.tcpip.lock().receive_packet(msg.data);
         trace!("polling");

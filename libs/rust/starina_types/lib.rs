@@ -1,5 +1,4 @@
 #![no_std]
-#![feature(pointer_is_aligned_to)]
 #![cfg_attr(test, feature(test))]
 
 extern crate alloc;
