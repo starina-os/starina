@@ -2,11 +2,6 @@ use alloc::sync::Arc;
 
 use hashbrown::HashMap;
 use serde::de::DeserializeOwned;
-use starina_types::message::Connect;
-use starina_types::message::FramedData;
-use starina_types::message::MessageKind;
-use starina_types::message::Messageable;
-use starina_types::message::Open;
 use starina_types::syscall::VsyscallPage;
 
 use crate::channel::Channel;
@@ -18,6 +13,11 @@ use crate::handle::Handleable;
 use crate::handle::OwnedHandle;
 use crate::interrupt::Interrupt;
 use crate::message::AnyMessage;
+use crate::message::ConnectMsg;
+use crate::message::FramedDataMsg;
+use crate::message::MessageKind;
+use crate::message::Messageable;
+use crate::message::OpenMsg;
 use crate::poll::Poll;
 use crate::poll::Readiness;
 use crate::tls;
@@ -28,17 +28,17 @@ pub trait EventLoop<E>: Send + Sync {
         Self: Sized;
 
     #[allow(unused_variables)]
-    fn on_connect(&self, ctx: &Context, msg: Connect) {
+    fn on_connect(&self, ctx: &Context, msg: ConnectMsg) {
         debug_warn!("ignored connect message");
     }
 
     #[allow(unused_variables)]
-    fn on_open(&self, ctx: &Context, msg: Open<'_>) {
+    fn on_open(&self, ctx: &Context, msg: OpenMsg<'_>) {
         debug_warn!("ignored open message");
     }
 
     #[allow(unused_variables)]
-    fn on_framed_data(&self, _ctx: &Context, _msg: FramedData<'_>) {
+    fn on_framed_data(&self, _ctx: &Context, _msg: FramedDataMsg<'_>) {
         debug_warn!("ignored framed data message");
     }
 
@@ -141,7 +141,7 @@ impl Dispatcher {
         match &*object {
             Object::Channel { receiver, sender } => {
                 if readiness.contains(Readiness::READABLE) {
-                    let msg = receiver.recv().unwrap();
+                    let mut msg = receiver.recv().unwrap();
                     let ctx = Context {
                         sender,
                         dispatcher: self,
@@ -149,7 +149,9 @@ impl Dispatcher {
 
                     match msg.msginfo.kind() {
                         kind @ _ if kind == MessageKind::Connect as usize => {
-                            match unsafe { Connect::parse_unchecked(msg.msginfo, &msg.buffer) } {
+                            match unsafe {
+                                ConnectMsg::parse_unchecked(msg.msginfo, &mut msg.buffer)
+                            } {
                                 Some(msg) => app.on_connect(&ctx, msg),
                                 None => {
                                     app.on_unknown_message(&ctx, msg);
@@ -157,7 +159,8 @@ impl Dispatcher {
                             };
                         }
                         kind @ _ if kind == MessageKind::Open as usize => {
-                            match unsafe { Open::parse_unchecked(msg.msginfo, &msg.buffer) } {
+                            match unsafe { OpenMsg::parse_unchecked(msg.msginfo, &mut msg.buffer) }
+                            {
                                 Some(msg) => app.on_open(&ctx, msg),
                                 None => {
                                     app.on_unknown_message(&ctx, msg);
@@ -165,7 +168,9 @@ impl Dispatcher {
                             };
                         }
                         kind @ _ if kind == MessageKind::FramedData as usize => {
-                            match unsafe { FramedData::parse_unchecked(msg.msginfo, &msg.buffer) } {
+                            match unsafe {
+                                FramedDataMsg::parse_unchecked(msg.msginfo, &mut msg.buffer)
+                            } {
                                 Some(msg) => app.on_framed_data(&ctx, msg),
                                 None => {
                                     app.on_unknown_message(&ctx, msg);
