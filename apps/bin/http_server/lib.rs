@@ -72,6 +72,6 @@ impl EventLoop<Env> for App {
             return;
         };
 
-        conn.on_data(msg.data);
+        conn.on_tcp_data(msg.data);
     }
 }
