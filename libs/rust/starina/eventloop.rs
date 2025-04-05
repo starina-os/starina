@@ -18,6 +18,8 @@ use crate::message::FramedDataMsg;
 use crate::message::MessageKind;
 use crate::message::Messageable;
 use crate::message::OpenMsg;
+use crate::message::OpenReplyMsg;
+use crate::message::StreamDataMsg;
 use crate::poll::Poll;
 use crate::poll::Readiness;
 use crate::tls;
@@ -38,8 +40,18 @@ pub trait EventLoop<E>: Send + Sync {
     }
 
     #[allow(unused_variables)]
+    fn on_open_reply(&self, ctx: &Context, msg: OpenReplyMsg) {
+        debug_warn!("ignored open-reply message");
+    }
+
+    #[allow(unused_variables)]
     fn on_framed_data(&self, _ctx: &Context, _msg: FramedDataMsg<'_>) {
         debug_warn!("ignored framed data message");
+    }
+
+    #[allow(unused_variables)]
+    fn on_stream_data(&self, _ctx: &Context, _msg: StreamDataMsg<'_>) {
+        debug_warn!("ignored stream data message");
     }
 
     #[allow(unused_variables)]
@@ -167,11 +179,31 @@ impl Dispatcher {
                                 }
                             };
                         }
+                        kind @ _ if kind == MessageKind::OpenReply as usize => {
+                            match unsafe {
+                                OpenReplyMsg::parse_unchecked(msg.msginfo, &mut msg.buffer)
+                            } {
+                                Some(msg) => app.on_open_reply(&ctx, msg),
+                                None => {
+                                    app.on_unknown_message(&ctx, msg);
+                                }
+                            };
+                        }
                         kind @ _ if kind == MessageKind::FramedData as usize => {
                             match unsafe {
                                 FramedDataMsg::parse_unchecked(msg.msginfo, &mut msg.buffer)
                             } {
                                 Some(msg) => app.on_framed_data(&ctx, msg),
+                                None => {
+                                    app.on_unknown_message(&ctx, msg);
+                                }
+                            };
+                        }
+                        kind @ _ if kind == MessageKind::StreamData as usize => {
+                            match unsafe {
+                                StreamDataMsg::parse_unchecked(msg.msginfo, &mut msg.buffer)
+                            } {
+                                Some(msg) => app.on_stream_data(&ctx, msg),
                                 None => {
                                     app.on_unknown_message(&ctx, msg);
                                 }

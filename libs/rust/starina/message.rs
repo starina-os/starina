@@ -141,6 +141,38 @@ impl<'a> Messageable<'a> for OpenMsg<'a> {
     }
 }
 
+pub struct OpenReplyMsg {
+    pub handle: Channel,
+}
+
+impl<'a> Messageable<'a> for OpenReplyMsg {
+    fn kind() -> MessageKind {
+        MessageKind::OpenReply
+    }
+
+    fn write(self, buffer: &mut MessageBuffer) -> Result<MessageInfo, ErrorCode> {
+        let handle = self.handle;
+        buffer.handles[0] = handle.handle_id();
+
+        // Avoid dropping the handle. It will be moved to the channel.
+        core::mem::forget(handle);
+
+        Ok(MessageInfo::new(MessageKind::OpenReply as i32, 0, 1))
+    }
+
+    unsafe fn parse_unchecked(
+        _msginfo: MessageInfo,
+        buffer: &'a mut MessageBuffer,
+    ) -> Option<Self> {
+        let handle = buffer.handles[0];
+        buffer.handles[0] = HandleId::from_raw(0); // Avoid dropping the handle.
+
+        Some(OpenReplyMsg {
+            handle: Channel::from_handle(OwnedHandle::from_raw(handle)),
+        })
+    }
+}
+
 pub struct FramedDataMsg<'a> {
     pub data: &'a [u8],
 }
@@ -163,6 +195,34 @@ impl<'a> Messageable<'a> for FramedDataMsg<'a> {
         buffer.data[..self.data.len()].copy_from_slice(self.data);
         Ok(MessageInfo::new(
             MessageKind::FramedData as i32,
+            self.data.len() as u16,
+            0,
+        ))
+    }
+}
+
+pub struct StreamDataMsg<'a> {
+    pub data: &'a [u8],
+}
+
+impl<'a> Messageable<'a> for StreamDataMsg<'a> {
+    fn kind() -> MessageKind {
+        MessageKind::StreamData
+    }
+
+    unsafe fn parse_unchecked(msginfo: MessageInfo, buffer: &'a mut MessageBuffer) -> Option<Self> {
+        let data = &buffer.data[..msginfo.data_len()];
+        Some(StreamDataMsg { data })
+    }
+
+    fn write(self, buffer: &mut MessageBuffer) -> Result<MessageInfo, ErrorCode> {
+        if self.data.len() > buffer.data.len() {
+            return Err(ErrorCode::TooLarge);
+        }
+
+        buffer.data[..self.data.len()].copy_from_slice(self.data);
+        Ok(MessageInfo::new(
+            MessageKind::StreamData as i32,
             self.data.len() as u16,
             0,
         ))

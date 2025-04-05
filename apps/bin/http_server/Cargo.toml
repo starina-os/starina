@@ -1,0 +1,16 @@
+[package]
+name = "http_server"
+publish = false
+version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
+
+[lib]
+path = "lib.rs"
+
+[dependencies]
+starina = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+
+# FIXME:
+spin = { workspace = true }
