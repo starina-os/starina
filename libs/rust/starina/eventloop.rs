@@ -5,6 +5,7 @@ use serde::de::DeserializeOwned;
 use starina_types::message::Connect;
 use starina_types::message::FramedData;
 use starina_types::message::MessageKind;
+use starina_types::message::Messageable;
 use starina_types::message::Open;
 use starina_types::syscall::VsyscallPage;
 
@@ -17,7 +18,6 @@ use crate::handle::Handleable;
 use crate::handle::OwnedHandle;
 use crate::interrupt::Interrupt;
 use crate::message::AnyMessage;
-use crate::message::Message;
 use crate::poll::Poll;
 use crate::poll::Readiness;
 use crate::tls;
@@ -28,17 +28,17 @@ pub trait EventLoop<E>: Send + Sync {
         Self: Sized;
 
     #[allow(unused_variables)]
-    fn on_connect(&self, ctx: &Context, msg: Message<Connect>) {
+    fn on_connect(&self, ctx: &Context, msg: Connect) {
         debug_warn!("ignored connect message");
     }
 
     #[allow(unused_variables)]
-    fn on_open(&self, ctx: &Context, msg: Message<Open<'_>>) {
+    fn on_open(&self, ctx: &Context, msg: Open<'_>) {
         debug_warn!("ignored open message");
     }
 
     #[allow(unused_variables)]
-    fn on_framed_data(&self, _ctx: &Context, _msg: Message<FramedData<'_>>) {
+    fn on_framed_data(&self, _ctx: &Context, _msg: FramedData<'_>) {
         debug_warn!("ignored framed data message");
     }
 
@@ -149,25 +149,25 @@ impl Dispatcher {
 
                     match msg.msginfo.kind() {
                         kind @ _ if kind == MessageKind::Connect as usize => {
-                            match msg.try_into() {
-                                Ok(msg) => app.on_connect(&ctx, msg),
-                                Err(msg) => {
+                            match unsafe { Connect::parse_unchecked(msg.msginfo, &msg.buffer) } {
+                                Some(msg) => app.on_connect(&ctx, msg),
+                                None => {
                                     app.on_unknown_message(&ctx, msg);
                                 }
                             };
                         }
                         kind @ _ if kind == MessageKind::Open as usize => {
-                            match msg.try_into() {
-                                Ok(msg) => app.on_open(&ctx, msg),
-                                Err(msg) => {
+                            match unsafe { Open::parse_unchecked(msg.msginfo, &msg.buffer) } {
+                                Some(msg) => app.on_open(&ctx, msg),
+                                None => {
                                     app.on_unknown_message(&ctx, msg);
                                 }
                             };
                         }
                         kind @ _ if kind == MessageKind::FramedData as usize => {
-                            match msg.try_into() {
-                                Ok(msg) => app.on_framed_data(&ctx, msg),
-                                Err(msg) => {
+                            match unsafe { FramedData::parse_unchecked(msg.msginfo, &msg.buffer) } {
+                                Some(msg) => app.on_framed_data(&ctx, msg),
+                                None => {
                                     app.on_unknown_message(&ctx, msg);
                                 }
                             };

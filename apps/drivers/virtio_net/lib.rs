@@ -7,10 +7,10 @@ use starina::channel::Channel;
 use starina::eventloop::Context;
 use starina::eventloop::Dispatcher;
 use starina::eventloop::EventLoop;
+use starina::handle::OwnedHandle;
 use starina::interrupt::Interrupt;
 use starina::message::Connect;
 use starina::message::FramedData;
-use starina::message::Message;
 use starina::prelude::*;
 use virtio_net::VirtioNet;
 
@@ -40,8 +40,8 @@ impl EventLoop<Env> for App {
         }
     }
 
-    fn on_connect(&self, ctx: &Context, mut msg: Message<Connect>) {
-        let handle = Channel::from_handle(msg.handle().unwrap()); // FIXME: type check?
+    fn on_connect(&self, ctx: &Context, mut msg: Connect) {
+        let handle = Channel::from_handle(OwnedHandle::from_raw(msg.handle)); // FIXME: type check?
         let tcpip_ch = ctx.dispatcher.split_and_add_channel(handle).unwrap();
         self.virtio_net.lock().update_receive(Box::new(move |data| {
             if let Err(err) = tcpip_ch.send(FramedData { data }) {
@@ -50,9 +50,9 @@ impl EventLoop<Env> for App {
         }));
     }
 
-    fn on_framed_data(&self, _ctx: &Context, msg: Message<FramedData<'_>>) {
-        trace!("frame data received: {:2x?}", msg.data());
-        self.virtio_net.lock().transmit(msg.data());
+    fn on_framed_data(&self, _ctx: &Context, msg: FramedData<'_>) {
+        trace!("frame data received: {:2x?}", msg.data);
+        self.virtio_net.lock().transmit(msg.data);
         core::mem::forget(msg);
     }
 
