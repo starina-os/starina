@@ -3,12 +3,9 @@ use starina::error::ErrorCode;
 use starina::message::StreamDataMsg;
 use starina::prelude::*;
 
-use crate::http::HttpRequestParser;
-use crate::http::Part;
-
-pub trait TcpWriter {
-    fn write(&mut self, data: &[u8]) -> Result<(), ErrorCode>;
-}
+use crate::http::request_parser::HttpRequestParser;
+use crate::http::request_parser::Part;
+use crate::http::response_writer::Writer;
 
 pub struct ChannelTcpWriter(ChannelSender);
 
@@ -18,18 +15,20 @@ impl ChannelTcpWriter {
     }
 }
 
-impl TcpWriter for ChannelTcpWriter {
+impl Writer for ChannelTcpWriter {
+    type Error = ErrorCode;
+
     fn write(&mut self, data: &[u8]) -> Result<(), ErrorCode> {
         self.0.send(StreamDataMsg { data })
     }
 }
 
-pub struct Conn<W: TcpWriter> {
+pub struct Conn<W: Writer> {
     tcp_writer: W,
     request_parser: HttpRequestParser,
 }
 
-impl<W: TcpWriter> Conn<W> {
+impl<W: Writer> Conn<W> {
     pub fn new(tcp_writer: W) -> Self {
         Self {
             tcp_writer,
