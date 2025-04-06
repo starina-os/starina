@@ -132,7 +132,6 @@ impl HttpRequestParser {
                 }
                 State::ReadingHeaders { .. } if line == "\r\n" => {
                     // End of headers.
-                    let body_chunk = &chunk[(self.headers_buf.len() - consumed_len)..];
                     self.headers_buf = String::new();
                     let State::ReadingHeaders {
                         method,
@@ -148,7 +147,7 @@ impl HttpRequestParser {
                         method,
                         path,
                         headers,
-                        first_body: body_chunk,
+                        first_body: &chunk[consumed_len..],
                     };
 
                     return Ok(Some(part));
@@ -223,6 +222,34 @@ mod tests {
         assert_eq!(headers["content-length"], vec!["5"]);
         assert_eq!(first_body, b"Hello");
     }
+
+    #[test]
+    fn parse_http_request_with_partial_body() {
+        let mut parser = HttpRequestParser::new();
+        assert!(matches!(
+            parser.parse_chunk(
+                b"POST /submit HTTP/1.1\r\nHost: example.com\r\nContent-Length: 5\r\n"
+            ),
+            Ok(None)
+        ));
+
+        let Ok(Some(Part::Request {
+            method,
+            path,
+            headers,
+            first_body,
+        })) = parser.parse_chunk(b"\r\nHello")
+        else {
+            panic!();
+        };
+
+        assert_eq!(method, "POST");
+        assert_eq!(path, "/submit");
+        assert_eq!(headers.len(), 2);
+        assert_eq!(headers["content-length"], vec!["5"]);
+        assert_eq!(first_body, b"Hello");
+    }
+
     #[test]
     fn parse_partial_http_request() {
         let mut parser = HttpRequestParser::new();

@@ -1,5 +1,4 @@
 use starina::channel::ChannelSender;
-use starina::collections::HashMap;
 use starina::error::ErrorCode;
 use starina::message::StreamDataMsg;
 use starina::prelude::*;
