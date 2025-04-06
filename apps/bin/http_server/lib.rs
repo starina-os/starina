@@ -5,7 +5,7 @@ mod connection;
 mod http;
 
 use autogen::Env;
-use connection::ChannelTcpWriter;
+use connection::ChannelWriter;
 use connection::Conn;
 use starina::collections::HashMap;
 use starina::eventloop::Context;
@@ -27,7 +27,7 @@ enum CtrlState {
 
 pub struct App {
     state: spin::Mutex<CtrlState>,
-    connections: spin::Mutex<HashMap<HandleId, Conn<ChannelTcpWriter>>>,
+    connections: spin::Mutex<HashMap<HandleId, Conn<ChannelWriter>>>,
 }
 
 impl EventLoop<Env> for App {
@@ -67,7 +67,7 @@ impl EventLoop<Env> for App {
             .split_and_add_channel(msg.handle)
             .expect("failed to get channel sender");
         let mut connections = self.connections.lock();
-        let tcp_writer = ChannelTcpWriter::new(sender);
+        let tcp_writer = ChannelWriter::new(sender);
         connections.insert(data_ch_id, Conn::new(tcp_writer));
     }
 

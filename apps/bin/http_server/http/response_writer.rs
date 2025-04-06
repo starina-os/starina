@@ -1,9 +1,10 @@
-use core::fmt;
+use core::fmt::Debug;
+use core::fmt::{self};
 
 use starina::prelude::*;
 
 pub trait Writer {
-    type Error;
+    type Error: Debug;
 
     fn write(&mut self, buf: &[u8]) -> Result<(), Self::Error>;
 }

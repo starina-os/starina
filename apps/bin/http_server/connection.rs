@@ -5,17 +5,18 @@ use starina::prelude::*;
 
 use crate::http::request_parser::HttpRequestParser;
 use crate::http::request_parser::Part;
+use crate::http::response_writer::HttpResponseWriter;
 use crate::http::response_writer::Writer;
 
-pub struct ChannelTcpWriter(ChannelSender);
+pub struct ChannelWriter(ChannelSender);
 
-impl ChannelTcpWriter {
+impl ChannelWriter {
     pub fn new(tcpip_sender: ChannelSender) -> Self {
         Self(tcpip_sender)
     }
 }
 
-impl Writer for ChannelTcpWriter {
+impl Writer for ChannelWriter {
     type Error = ErrorCode;
 
     fn write(&mut self, buf: &[u8]) -> Result<(), Self::Error> {
@@ -24,14 +25,14 @@ impl Writer for ChannelTcpWriter {
 }
 
 pub struct Conn<W: Writer> {
-    tcp_writer: W,
+    response_writer: Option<HttpResponseWriter<W>>,
     request_parser: HttpRequestParser,
 }
 
 impl<W: Writer> Conn<W> {
-    pub fn new(tcp_writer: W) -> Self {
+    pub fn new(writer: W) -> Self {
         Self {
-            tcp_writer,
+            response_writer: Some(HttpResponseWriter::new(writer)),
             request_parser: HttpRequestParser::new(),
         }
     }
@@ -48,7 +49,15 @@ impl<W: Writer> Conn<W> {
                             headers,
                             first_body,
                         } => {
-                            // Do something.
+                            // TODO: backpressure
+                            let mut response_writer = self.response_writer.take().unwrap();
+                            response_writer.set_header("server", "Starina").unwrap();
+                            response_writer.set_header("connection", "close").unwrap();
+                            response_writer.write_status(200).unwrap();
+                            response_writer
+                                .write_body(format!("You sent: {} {}", method, path).as_bytes())
+                                .unwrap();
+                            drop(response_writer);
                         }
                         Part::Body { chunk } => {
                             // Do something.
