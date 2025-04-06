@@ -18,8 +18,8 @@ impl ChannelTcpWriter {
 impl Writer for ChannelTcpWriter {
     type Error = ErrorCode;
 
-    fn write(&mut self, data: &[u8]) -> Result<(), ErrorCode> {
-        self.0.send(StreamDataMsg { data })
+    fn write(&mut self, buf: &[u8]) -> Result<(), Self::Error> {
+        self.0.send(StreamDataMsg { data: buf })
     }
 }
 
