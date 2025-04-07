@@ -1,6 +1,6 @@
 #![no_std]
 
-mod autogen;
+pub mod autogen;
 mod connection;
 mod http;
 

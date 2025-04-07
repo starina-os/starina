@@ -15,9 +15,12 @@ use smoltcp::wire::IpAddress;
 use smoltcp::wire::IpCidr;
 use smoltcp::wire::IpListenEndpoint;
 use starina::channel::Channel;
+use starina::collections::HashMap;
 use starina::eventloop::Context;
 use starina::eventloop::Dispatcher;
 use starina::eventloop::EventLoop;
+use starina::handle::HandleId;
+use starina::handle::Handleable;
 use starina::message::ConnectMsg;
 use starina::message::FramedDataMsg;
 use starina::message::OpenMsg;
@@ -36,6 +39,7 @@ fn parse_addr(addr: &str) -> Option<(Ipv4Addr, u16)> {
 
 pub struct App {
     tcpip: spin::Mutex<TcpIp<'static>>,
+    data_channels: spin::Mutex<HashMap<HandleId, smoltcp::iface::SocketHandle>>,
 }
 
 impl EventLoop<Env> for App {
@@ -66,6 +70,7 @@ impl EventLoop<Env> for App {
 
         Self {
             tcpip: spin::Mutex::new(tcpip),
+            data_channels: spin::Mutex::new(HashMap::new()),
         }
     }
 
@@ -106,10 +111,34 @@ impl EventLoop<Env> for App {
         }
     }
 
+    fn on_stream_data(&self, ctx: &Context, msg: StreamDataMsg<'_>) {
+        let smol_handle = self
+            .data_channels
+            .lock()
+            .get(&ctx.sender.handle().id())
+            .copied()
+            .unwrap();
+        let mut tcpip = self.tcpip.lock();
+        // TODO: error handling
+        tcpip.tcp_send(smol_handle, msg.data).unwrap();
+        poll(&ctx.dispatcher, &mut *tcpip, &self.data_channels);
+    }
+
     fn on_framed_data(&self, ctx: &Context, msg: FramedDataMsg<'_>) {
         let mut tcpip = self.tcpip.lock();
         tcpip.receive_packet(msg.data);
-        tcpip.poll(ctx, |ctx, ev| {
+        poll(&ctx.dispatcher, &mut *tcpip, &self.data_channels);
+    }
+}
+
+fn poll(
+    dispatcher: &Dispatcher,
+    tcpip: &mut TcpIp,
+    data_channels: &spin::Mutex<HashMap<HandleId, smoltcp::iface::SocketHandle>>,
+) {
+    tcpip.poll(
+        &(dispatcher, data_channels),
+        |(dispatcher, data_channels), ev| {
             match ev {
                 SocketEvent::Data { ch, data } => {
                     ch.send(StreamDataMsg { data }).unwrap(); // FIXME: what if backpressure happens?
@@ -119,10 +148,12 @@ impl EventLoop<Env> for App {
                 }
                 SocketEvent::NewConnection { ch, smol_handle } => {
                     let (ours, theirs) = Channel::new().unwrap();
-                    let our_ch_sender = ctx
-                        .dispatcher
+
+                    data_channels.lock().insert(ours.handle_id(), smol_handle);
+                    let our_ch_sender = dispatcher
                         .split_and_add_channel(ours)
                         .expect("failed to get channel sender");
+
                     ch.send(ConnectMsg { handle: theirs }).unwrap(); // FIXME: what if backpressure happens?
 
                     // The socket has become an esblished socket, so replace the old
@@ -130,6 +161,6 @@ impl EventLoop<Env> for App {
                     *ch = our_ch_sender;
                 }
             }
-        });
-    }
+        },
+    );
 }

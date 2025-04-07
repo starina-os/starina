@@ -38,38 +38,38 @@ impl<W: Writer> Conn<W> {
     }
 
     pub fn on_tcp_data(&mut self, chunk: &[u8]) {
-        loop {
-            match self.request_parser.parse_chunk(chunk) {
-                Ok(Some(part)) => {
-                    warn!("{:?}", part);
-                    match part {
-                        Part::Request {
-                            method,
-                            path,
-                            headers,
-                            first_body,
-                        } => {
-                            // TODO: backpressure
-                            let mut response_writer = self.response_writer.take().unwrap();
-                            response_writer.set_header("server", "Starina").unwrap();
-                            response_writer.set_header("connection", "close").unwrap();
-                            response_writer.write_status(200).unwrap();
-                            response_writer
-                                .write_body(format!("You sent: {} {}", method, path).as_bytes())
-                                .unwrap();
-                            drop(response_writer);
-                        }
-                        Part::Body { chunk } => {
-                            // Do something.
-                        }
+        match self.request_parser.parse_chunk(chunk) {
+            Ok(Some(part)) => {
+                warn!("{:?}", part);
+                match part {
+                    Part::Request {
+                        method,
+                        path,
+                        headers,
+                        first_body,
+                    } => {
+                        // TODO: backpressure
+                        let mut response_writer = self.response_writer.take().unwrap();
+                        response_writer.set_header("server", "Starina").unwrap();
+                        response_writer.set_header("connection", "close").unwrap();
+                        response_writer.write_status(200).unwrap();
+                        response_writer
+                            .write_body(format!("You sent: {} {}", method, path).as_bytes())
+                            .unwrap();
+                        drop(response_writer);
+                    }
+                    Part::Body { chunk } => {
+                        // Do something.
                     }
                 }
-                Ok(None) => break,
-                Err(err) => {
-                    warn!("HTTP parse error: {:?}", err);
-                    // TODO: close the connection
-                    return;
-                }
+            }
+            Ok(None) => {
+                // Needs more data.
+            }
+            Err(err) => {
+                warn!("HTTP parse error: {:?}", err);
+                // TODO: close the connection
+                return;
             }
         }
     }
