@@ -34,6 +34,7 @@ impl EventLoop<Env> for App {
         let tcpip = env.tcpip;
 
         // let uri = format!("tcp:{}:{}", env.listen_host, env.listen_port);
+        info!("connecting to tcpip");
         let uri = format!("tcp-listen:0.0.0.0:80");
         tcpip.send(OpenMsg { uri: &uri }).unwrap();
 
@@ -45,6 +46,8 @@ impl EventLoop<Env> for App {
     }
 
     fn on_open_reply(&self, ctx: &Context, msg: OpenReplyMsg) {
+        info!("got open-reply");
+
         // FIXME: Check txid
         let listen_ch = msg.handle;
         ctx.dispatcher.add_channel(listen_ch).unwrap();
@@ -55,6 +58,7 @@ impl EventLoop<Env> for App {
     }
 
     fn on_connect(&self, ctx: &Context, msg: ConnectMsg) {
+        info!("got connect");
         // FIXME: Check sender channel - it must be the listen channel
         let data_ch = ctx.sender.handle().id();
         let mut connections = self.connections.lock();
@@ -63,6 +67,7 @@ impl EventLoop<Env> for App {
     }
 
     fn on_stream_data(&self, ctx: &Context, msg: StreamDataMsg<'_>) {
+        info!("got stream data");
         let mut connections = self.connections.lock();
         let Some(conn) = connections.get_mut(&ctx.sender.handle().id()) else {
             debug_warn!(

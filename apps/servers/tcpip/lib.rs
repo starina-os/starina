@@ -80,7 +80,12 @@ impl EventLoop<Env> for App {
         }
     }
 
+    fn on_connect(&self, ctx: &Context, msg: ConnectMsg) {
+        ctx.dispatcher.add_channel(msg.handle).unwrap();
+    }
+
     fn on_open(&self, ctx: &Context, msg: OpenMsg<'_>) {
+        info!("got open message: {}", msg.uri);
         match msg.uri.split_once(':') {
             Some(("tcp-listen", rest)) => {
                 let Some((ip, port)) = parse_addr(rest) else {

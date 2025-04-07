@@ -238,6 +238,13 @@ impl OwnedMessageBuffer {
         let buffer = Box::new(MessageBuffer::zeroed());
         OwnedMessageBuffer(buffer)
     }
+
+    pub fn mark_as_sent(&mut self) {
+        // Mark the handles as sent.
+        for handle in self.0.handles_mut() {
+            *handle = HandleId::from_raw(0);
+        }
+    }
 }
 
 impl Deref for OwnedMessageBuffer {
