@@ -13,6 +13,7 @@ use smoltcp::wire::EthernetAddress;
 use smoltcp::wire::HardwareAddress;
 use smoltcp::wire::IpAddress;
 use smoltcp::wire::IpCidr;
+use smoltcp::wire::IpListenEndpoint;
 use starina::channel::Channel;
 use starina::eventloop::Context;
 use starina::eventloop::Dispatcher;
@@ -63,18 +64,6 @@ impl EventLoop<Env> for App {
         let hwaddr = HardwareAddress::Ethernet(EthernetAddress(mac));
         let tcpip = TcpIp::new(device, ip, gw_ip, hwaddr);
 
-        // let (our_ch, their_ch) = Channel::new().unwrap();
-        // let (sender, receiver) = our_ch.split();
-
-        // let remote_endpoint = (IpAddress::v4(96, 7, 181, 39), 80).into();
-        // let sock = tcpip.tcp_connect(remote_endpoint, sender).unwrap();
-
-        // trace!("polling");
-        // tcpip.poll(|ev| {
-        //     trace!("event: {:?}", ev);
-        // });
-        // trace!("polling done");
-
         Self {
             tcpip: spin::Mutex::new(tcpip),
         }
@@ -93,7 +82,11 @@ impl EventLoop<Env> for App {
                     return;
                 };
 
-                let listen_addr = (ip, port).into();
+                let listen_addr = match ip {
+                    Ipv4Addr::UNSPECIFIED => IpListenEndpoint { addr: None, port },
+                    _ => (ip, port).into(),
+                };
+
                 let (our_ch, their_ch) = Channel::new().unwrap();
                 let sender = ctx.dispatcher.split_and_add_channel(our_ch).unwrap();
 
@@ -114,10 +107,9 @@ impl EventLoop<Env> for App {
     }
 
     fn on_framed_data(&self, ctx: &Context, msg: FramedDataMsg<'_>) {
-        trace!("polling");
-        self.tcpip.lock().receive_packet(msg.data);
-
-        self.tcpip.lock().poll(ctx, |ctx, ev| {
+        let mut tcpip = self.tcpip.lock();
+        tcpip.receive_packet(msg.data);
+        tcpip.poll(ctx, |ctx, ev| {
             match ev {
                 SocketEvent::Data { ch, data } => {
                     ch.send(StreamDataMsg { data }).unwrap(); // FIXME: what if backpressure happens?
@@ -139,8 +131,5 @@ impl EventLoop<Env> for App {
                 }
             }
         });
-        trace!("polling done");
-
-        core::mem::forget(msg);
     }
 }

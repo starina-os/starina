@@ -12,6 +12,7 @@ use starina::eventloop::Context;
 use starina::eventloop::Dispatcher;
 use starina::eventloop::EventLoop;
 use starina::handle::HandleId;
+use starina::handle::Handleable;
 use starina::message::ConnectMsg;
 use starina::message::OpenMsg;
 use starina::message::OpenReplyMsg;
@@ -60,10 +61,14 @@ impl EventLoop<Env> for App {
     fn on_connect(&self, ctx: &Context, msg: ConnectMsg) {
         info!("got connect");
         // FIXME: Check sender channel - it must be the listen channel
-        let data_ch = ctx.sender.handle().id();
+        let data_ch_id = msg.handle.handle_id();
+        let sender = ctx
+            .dispatcher
+            .split_and_add_channel(msg.handle)
+            .expect("failed to get channel sender");
         let mut connections = self.connections.lock();
-        let tcp_writer = ChannelTcpWriter::new(ctx.sender.clone());
-        connections.insert(data_ch, Conn::new(tcp_writer));
+        let tcp_writer = ChannelTcpWriter::new(sender);
+        connections.insert(data_ch_id, Conn::new(tcp_writer));
     }
 
     fn on_stream_data(&self, ctx: &Context, msg: StreamDataMsg<'_>) {
