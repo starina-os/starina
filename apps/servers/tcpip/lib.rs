@@ -144,7 +144,7 @@ fn poll(
                     ch.send(StreamDataMsg { data }).unwrap(); // FIXME: what if backpressure happens?
                 }
                 SocketEvent::Close { ch } => {
-                    warn!("SocketEvent::Close: not yet implemented");
+                    dispatcher.close_channel(ch.handle().id()).unwrap();
                 }
                 SocketEvent::NewConnection { ch, smol_handle } => {
                     let (ours, theirs) = Channel::new().unwrap();

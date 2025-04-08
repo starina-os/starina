@@ -114,22 +114,17 @@ pub fn switch_thread() -> ! {
             (current_thread, is_idle, is_runnable)
         };
 
-        // Preemptive scheduling: push the current thread back to the
-        // runqueue if it's still runnable.
-        let thread_to_enqueue = if is_runnable && !is_idle {
-            Some(current_thread.clone())
+        let next = if is_runnable && !is_idle {
+            // If the current thread is still runnable, prioritize it because
+            // it might be sending multiple messages in a row.
+            current_thread.clone()
+        } else if let Some(next) = GLOBAL_SCHEDULER.schedule() {
+            // Get the next thread to run. If the runqueue is empty, run the
+            // idle thread.
+            next
         } else {
-            None
-        };
-
-        // Get the next thread to run. If the runqueue is empty, run the
-        // idle thread.
-        let next = match GLOBAL_SCHEDULER.schedule(thread_to_enqueue) {
-            Some(next) => next,
-            None => {
-                drop(current_thread);
-                arch::idle();
-            }
+            drop(current_thread);
+            arch::idle();
         };
 
         // Try unblocking the next thread.

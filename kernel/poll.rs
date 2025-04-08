@@ -191,6 +191,14 @@ impl Poll {
         Ok(())
     }
 
+    pub fn remove(self: &SharedRef<Poll>, id: HandleId) -> Result<(), ErrorCode> {
+        let mut mutable = self.mutable.lock();
+        let listenee = mutable.listenee.remove(&id).ok_or(ErrorCode::NotFound)?;
+        listenee.handle.remove_listener(self)?;
+        mutable.ready_handles.set.remove(&id);
+        Ok(())
+    }
+
     pub fn try_wait(self: &SharedRef<Poll>, current: &SharedRef<Thread>) -> SyscallResult {
         let mut mutable = self.mutable.lock();
 
