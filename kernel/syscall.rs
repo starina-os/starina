@@ -66,6 +66,22 @@ fn poll_add(
     Ok(())
 }
 
+fn poll_remove(
+    current: &SharedRef<Thread>,
+    poll: HandleId,
+    object: HandleId,
+) -> Result<(), ErrorCode> {
+    let handles = current.process().handles().lock();
+    let poll = handles.get::<Poll>(poll)?;
+
+    if !poll.is_capable(HandleRights::WRITE) {
+        return Err(ErrorCode::NotAllowed);
+    }
+
+    poll.remove(object)?;
+    Ok(())
+}
+
 fn poll_wait(current: &SharedRef<Thread>, poll: HandleId) -> SyscallResult {
     let handles = current.process().handles().lock();
     let poll = match handles.get::<Poll>(poll) {
@@ -242,6 +258,12 @@ fn do_syscall(
             let object = HandleId::from_raw_isize(a1)?;
             let interests = Readiness::from_raw_isize(a2)?;
             poll_add(&current, poll, object, interests)?;
+            Ok(SyscallResult::Done(RetVal::new(0)))
+        }
+        SYS_POLL_REMOVE => {
+            let poll = HandleId::from_raw_isize(a0)?;
+            let object = HandleId::from_raw_isize(a1)?;
+            poll_remove(&current, poll, object)?;
             Ok(SyscallResult::Done(RetVal::new(0)))
         }
         SYS_POLL_WAIT => {
