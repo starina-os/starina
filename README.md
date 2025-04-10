@@ -2,10 +2,6 @@
 
 Starina (named after [stellina](https://en.wiktionary.org/wiki/stellina)), is a general-purpose, microkernel-based, modern operating system designed for developers. It aims to be a production-ready OS, and more importantly, a fun and easy-to-understand OS where you can enjoy the development as if you are writing a Web application.
 
-> [!NOTE]
->
-> This branch is for next generation of Starina, which is being written from scratch. The previous prototype version can be found at [this commit](https://github.com/starina-os/starina/commit/7893df4e218a23b91907f4f9cd238a6f8f5548ee).
-
 ## Goals
 
 The ultimate goal of this project is to create a production-ready OS to be a good alternative to real-world OSes. To make this happen, Starina values the following principles:
@@ -18,30 +14,32 @@ The ultimate goal of this project is to create a production-ready OS to be a goo
 
 This year, we focus on cloud computing domain, where Starina will be used as a tiny runtime for Linux containers.
 
-- [x] Prototyping an microkernel-based OS in Rust: **[https://starina.dev](https://starina.dev) is served by Starina on Linux/QEMU hypervisor!**
+- [x] Prototyping an microkernel-based OS in Rust: [https://starina.dev](https://starina.dev) is served by Starina on Linux/QEMU hypervisor!
 - [x] Redesign the OS based on lessons learned
 - [x] Rewrite from scratch
 - [x] Rust-based almost-zero-cost isolation ([Unikernel](https://en.wikipedia.org/wiki/Unikernel) style)
-- [ ] TCP/IP server (work-in-progress)
+- [x] TCP/IP server
+- [ ] Wrap up APIs **(work in progress)**
+- [ ] WSL2-like Linux compatibility layer
 - [ ] File system server
 - [ ] TypeScript API + language-based isolation (akin to WebAssembly)
 - [ ] Usermode isolation (traditional microkernel style)
 - [ ] Shell
-- [ ] WSL2-like Linux compatibility layer
 - [ ] Streamlined observability and debugging experience
 
 ## How to run
 
-```
-brew install qemu riscv64-elf-gdb
+```bash
+# Install dependencies
+brew install qemu riscv64-elf-gdb # Ubuntu: apt install qemu gdb-multiarch
 rustup override set nightly
 rustup target add riscv64gc-unknown-none-elf
 rustup component add rust-src llvm-tools
 
-# Build and run
+# Build and run (with GDB server enabled)
 ./run.sh
 
-# Attach GDB to QEMU, dump backtrace, and leave the prompt.
+# Attach GDB to QEMU and start debugging
 riscv64-elf-gdb -ex bt
 ```
 
