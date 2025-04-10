@@ -100,6 +100,16 @@ impl Dispatcher {
         Ok(sender)
     }
 
+    pub fn close_channel(&self, handle: HandleId) -> Result<(), ErrorCode> {
+        // Remove the channel from the dispatcher.
+        self.objects.write().remove(&handle);
+
+        // Tell the kernel to stop notifying us about this channel.
+        self.poll.remove(handle)?;
+
+        Ok(())
+    }
+
     pub fn add_channel(&self, channel: Channel) -> Result<(), ErrorCode> {
         let handle_id = channel.handle_id();
 
