@@ -4,9 +4,17 @@ import { google } from "@ai-sdk/google"
 import cp from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { createWriteStream } from 'node:fs';
 
 const MAX_STEPS_PER_ITERATION = 10;
+
+const ALLOWED_EXTENSIONS = [
+    ".rs",
+    ".S",
+    ".toml",
+    ".ts",
+    ".json",
+    ".sh",
+]
 
 const SYSTEM_PROMPT = `
 You are a super duper intelligent AI programmer who is an expert in Starina OS,
@@ -41,21 +49,24 @@ async function repo2markdown(repoDir: string, destPath: string) {
     const lsFiles = await cp.execSync("git ls-files", { encoding: "utf-8", cwd: repoDir });
     const files = lsFiles.trimEnd().split("\n");
 
-    const stream = createWriteStream(destPath);
-    stream.write(`# Repository contents\n`);
+    // TODO: Do not buffer the entire codebase in memory.
+    let md = `# Repository contents\n`;
     for (const file of files) {
+        if (!ALLOWED_EXTENSIONS.some((ext) => file.endsWith(ext))) {
+            continue;
+        }
+
         const filePath = path.join(repoDir, file);
         const fileStat = await fs.stat(filePath);
         if (fileStat.isFile()) {
-            const ext = path.extname(file).slice(1);
-            stream.write(`## ${file}\n\`\`\`\n`);
-            stream.write(await fs.readFile(filePath, "utf-8"));
-            stream.write(`\`\`\`\n`);
-        } else if (fileStat.isDirectory()) {
-            stream.write(`## ${file}/\n`);
+            md += `## \`${file}\`\n\`\`\`\n`;
+            md += await fs.readFile(filePath, "utf-8");
+            md += `\`\`\`\n`;
+            console.log(`[AI] wrote ${file}`);
         }
     }
-    stream.end();
+    md += `\n# End of repository contents\n`;
+    await fs.writeFile(destPath, md, "utf-8");
 }
 
 async function iterate() {
@@ -116,7 +127,7 @@ async function main() {
     const repoDir = process.cwd();
     await ensureCleanGitRepo();
 
-    const dumpPath = path.join(repoDir, "LLM.md");
+    const dumpPath = path.join(repoDir, ".LLM.md");
     console.log("Dumping repository contents to", dumpPath);
     await repo2markdown(repoDir, dumpPath);
 

@@ -2,6 +2,7 @@
 /build
 node_modules
 .gdb_history
+/.LLM.md
 *.DS_Store
 *.img
 *.tmp
