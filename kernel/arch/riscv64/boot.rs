@@ -4,7 +4,6 @@ use core::arch::naked_asm;
 use arrayvec::ArrayVec;
 
 use super::get_cpuvar;
-use super::machine::machine_init;
 use super::plic::use_plic;
 use crate::BootInfo;
 use crate::FreeRam;
@@ -53,7 +52,6 @@ unsafe extern "C" fn rust_boot(hartid: u64, dtb: *const u8) -> ! {
         core::ptr::write_bytes(bss_start as *mut u8, 0, bss_end - bss_start);
     }
 
-    machine_init();
     let cpu_id = CpuId::new(hartid.try_into().unwrap());
 
     let mut free_rams = ArrayVec::new();

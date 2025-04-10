@@ -34,6 +34,7 @@ pub use machine::console_write;
 pub use thread::Thread;
 pub use thread::enter_kernelland;
 pub use thread::enter_userland;
+pub use transition::kernel_scope;
 pub use vmspace::PAGE_SIZE;
 pub use vmspace::VmSpace;
 pub use vmspace::map_daddr;

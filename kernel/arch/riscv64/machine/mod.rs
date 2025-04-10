@@ -1,3 +1,9 @@
-mod qemu_virt;
+use crate::arch::riscv64::sbi;
 
-pub use qemu_virt::*;
+pub const NUM_CPUS_MAX: usize = 4;
+
+pub fn console_write(bytes: &[u8]) {
+    for byte in bytes {
+        sbi::console_putchar(*byte);
+    }
+}
