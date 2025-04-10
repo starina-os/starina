@@ -34,6 +34,9 @@ impl Channel {
             buffer.data().as_ptr(),
             buffer.handles().as_ptr(),
         )?;
+
+        buffer.mark_as_sent();
+
         Ok(())
     }
 
