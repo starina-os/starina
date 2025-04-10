@@ -36,16 +36,7 @@ impl Scheduler {
         Ok(())
     }
 
-    pub fn schedule(
-        &self,
-        thread_to_enqueue: Option<SharedRef<Thread>>,
-    ) -> Option<SharedRef<Thread>> {
-        let mut runqueue = self.runqueue.lock();
-
-        if let Some(thread) = thread_to_enqueue {
-            runqueue.push_back(thread);
-        }
-
-        runqueue.pop_front()
+    pub fn schedule(&self) -> Option<SharedRef<Thread>> {
+        self.runqueue.lock().pop_front()
     }
 }
