@@ -1,6 +1,12 @@
 [workspace]
 resolver = "2"
-members = ["kernel", "libs/rust/*", "apps/drivers/virtio_net", "apps/servers/tcpip"]
+members = [
+    "kernel",
+    "libs/rust/*",
+    "apps/drivers/virtio_net",
+    "apps/servers/tcpip",
+    "apps/bin/http_server",
+]
 
 [workspace.package]
 version = "0.0.0"
@@ -26,3 +32,4 @@ virtio = { path = "libs/rust/virtio" }
 
 virtio_net = { path = "apps/drivers/virtio_net" }
 tcpip = { path = "apps/servers/tcpip" }
+http_server = { path = "apps/bin/http_server" }
