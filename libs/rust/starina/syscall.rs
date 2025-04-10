@@ -71,6 +71,18 @@ pub fn poll_add(poll: HandleId, object: HandleId, interests: Readiness) -> Resul
     Ok(())
 }
 
+pub fn poll_remove(poll: HandleId, object: HandleId) -> Result<(), ErrorCode> {
+    syscall(
+        SYS_POLL_REMOVE,
+        poll.as_raw() as isize,
+        object.as_raw() as isize,
+        0,
+        0,
+        0,
+    )?;
+    Ok(())
+}
+
 pub fn poll_wait(poll: HandleId) -> Result<(HandleId, Readiness), ErrorCode> {
     let ret = syscall(SYS_POLL_WAIT, poll.as_raw() as isize, 0, 0, 0, 0)?;
     let (id, readiness) = ret.into();

@@ -18,6 +18,10 @@ impl Poll {
         syscall::poll_add(self.0.id(), object, interests)
     }
 
+    pub fn remove(&self, object: HandleId) -> Result<(), ErrorCode> {
+        syscall::poll_remove(self.0.id(), object)
+    }
+
     pub fn wait(&self) -> Result<(HandleId, Readiness), ErrorCode> {
         syscall::poll_wait(self.0.id())
     }

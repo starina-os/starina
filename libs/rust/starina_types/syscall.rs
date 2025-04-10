@@ -5,21 +5,22 @@ use crate::handle::HandleId;
 use crate::poll::Readiness;
 
 pub const SYS_CONSOLE_WRITE: u8 = 0;
-pub const SYS_POLL_CREATE: u8 = 1;
-pub const SYS_POLL_ADD: u8 = 2;
-pub const SYS_POLL_WAIT: u8 = 3;
-pub const SYS_CHANNEL_SEND: u8 = 4;
-pub const SYS_CHANNEL_RECV: u8 = 5;
-pub const SYS_HANDLE_CLOSE: u8 = 7;
-pub const SYS_FOLIO_CREATE: u8 = 8;
-pub const SYS_FOLIO_PADDR: u8 = 9;
-pub const SYS_FOLIO_CREATE_FIXED: u8 = 10;
-pub const SYS_VMSPACE_MAP: u8 = 11;
-pub const SYS_BUSIO_MAP: u8 = 12;
-pub const SYS_FOLIO_DADDR: u8 = 13;
-pub const SYS_INTERRUPT_CREATE: u8 = 14;
-pub const SYS_INTERRUPT_ACK: u8 = 15;
-pub const SYS_CHANNEL_CREATE: u8 = 16;
+pub const SYS_HANDLE_CLOSE: u8 = 1;
+pub const SYS_CHANNEL_CREATE: u8 = 2;
+pub const SYS_CHANNEL_SEND: u8 = 3;
+pub const SYS_CHANNEL_RECV: u8 = 4;
+pub const SYS_POLL_CREATE: u8 = 5;
+pub const SYS_POLL_ADD: u8 = 6;
+pub const SYS_POLL_REMOVE: u8 = 7;
+pub const SYS_POLL_WAIT: u8 = 8;
+pub const SYS_FOLIO_CREATE: u8 = 9;
+pub const SYS_FOLIO_PADDR: u8 = 10;
+pub const SYS_FOLIO_CREATE_FIXED: u8 = 11;
+pub const SYS_VMSPACE_MAP: u8 = 12;
+pub const SYS_BUSIO_MAP: u8 = 13;
+pub const SYS_FOLIO_DADDR: u8 = 14;
+pub const SYS_INTERRUPT_CREATE: u8 = 15;
+pub const SYS_INTERRUPT_ACK: u8 = 16;
 
 #[repr(C)]
 pub struct VsyscallPage {
