@@ -5,6 +5,7 @@ QEMU=${QEMU:-qemu-system-riscv64}
 
 export CARGO_TERM_HYPERLINKS=false
 cargo build \
+-v \
   ${RELEASE:+--release} \
   -Z build-std=core,alloc \
   -Z build-std-features=compiler-builtins-mem \
