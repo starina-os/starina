@@ -95,12 +95,11 @@ impl<'a> TcpIp<'a> {
     ///
     /// As it detects changes in socket states, it calls the `callback` so that
     /// we can do message passing in the main loop.
-    pub fn poll<F>(&mut self, mut callback: F)
+    pub fn poll<C, F>(&mut self, ctx: &C, mut callback: F)
     where
-        F: FnMut(SocketEvent<'_>),
+        F: FnMut(&C, SocketEvent<'_>),
     {
         loop {
-            trace!("poll");
             let result = self
                 .iface
                 .poll(now(), &mut self.device, &mut self.smol_sockets);
@@ -122,25 +121,8 @@ impl<'a> TcpIp<'a> {
                     (SocketState::Connecting { .. }, tcp::State::SynSent) => {
                         trace!("connecting socket {:?}", handle);
                     }
-                    (SocketState::Connecting { .. }, tcp::State::Established) => {
-                        trace!("established socket {:?}", handle);
-                        trace!("@@@ GET http://www.msftconnecttest.com/connecttest.txt");
-                        smol_sock
-                            .send_slice(
-                                concat!(
-                                    "GET /connecttest.txt HTTP/1.1\r\n",
-                                    "Host: www.msftconnecttest.com\r\n",
-                                    "User-Agent: Starina\r\n",
-                                    "Connection: close\r\n",
-                                    "\r\n"
-                                )
-                                .as_bytes(),
-                            )
-                            .unwrap();
-                        sock.state = SocketState::Established;
-                    }
-                    (SocketState::Connecting { .. }, state) => {
-                        trace!("unexpected socket state {:?}: {}", handle, state);
+                    (SocketState::Connecting { .. }, _state) => {
+                        todo!();
                     }
                     (
                         SocketState::Listening { .. },
@@ -158,16 +140,19 @@ impl<'a> TcpIp<'a> {
                         needs_listen.push((*listen_endpoint, sock.ch.clone()));
 
                         // The listening socket has transitioned to established.
-                        callback(SocketEvent::NewConnection {
-                            ch: &mut sock.ch,
-                            smol_handle: *handle,
-                        });
+                        callback(
+                            ctx,
+                            SocketEvent::NewConnection {
+                                ch: &mut sock.ch,
+                                smol_handle: *handle,
+                            },
+                        );
 
                         sock.state = SocketState::Established;
                     }
                     (SocketState::Listening { .. }, _) => {
                         // Inactive, closed, or unknown state. Close the socket.
-                        callback(SocketEvent::Close { ch: &sock.ch });
+                        callback(ctx, SocketEvent::Close { ch: &sock.ch });
                         sock.state = SocketState::Closed;
                     }
                     (SocketState::Established, _) if smol_sock.can_recv() => {
@@ -178,10 +163,13 @@ impl<'a> TcpIp<'a> {
                                 break;
                             }
 
-                            callback(SocketEvent::Data {
-                                ch: &sock.ch,
-                                data: &self.recv_buf[..len],
-                            });
+                            callback(
+                                ctx,
+                                SocketEvent::Data {
+                                    ch: &sock.ch,
+                                    data: &self.recv_buf[..len],
+                                },
+                            );
                         }
                     }
                     (SocketState::Established, tcp::State::Established) => {
@@ -189,7 +177,7 @@ impl<'a> TcpIp<'a> {
                     }
                     (SocketState::Established, _) => {
                         // Unknown state. Close the connection.
-                        callback(SocketEvent::Close { ch: &sock.ch });
+                        callback(ctx, SocketEvent::Close { ch: &sock.ch });
                         sock.state = SocketState::Closed;
                     }
                     (SocketState::Closed, _) => {

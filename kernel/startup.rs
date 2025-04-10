@@ -44,6 +44,11 @@ const INKERNEL_APPS: &[InKernelApp] = &[
         main: tcpip::autogen::app_main,
         spec: tcpip::autogen::APP_SPEC,
     },
+    InKernelApp {
+        name: "http_server",
+        main: http_server::autogen::app_main,
+        spec: http_server::autogen::APP_SPEC,
+    },
 ];
 
 static INSTANCES: SpinLock<Vec<Instance>> = SpinLock::new(Vec::new());

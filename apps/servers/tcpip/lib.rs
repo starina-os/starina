@@ -13,17 +13,33 @@ use smoltcp::wire::EthernetAddress;
 use smoltcp::wire::HardwareAddress;
 use smoltcp::wire::IpAddress;
 use smoltcp::wire::IpCidr;
+use smoltcp::wire::IpListenEndpoint;
 use starina::channel::Channel;
+use starina::collections::HashMap;
 use starina::eventloop::Context;
 use starina::eventloop::Dispatcher;
 use starina::eventloop::EventLoop;
+use starina::handle::HandleId;
+use starina::handle::Handleable;
+use starina::message::ConnectMsg;
 use starina::message::FramedDataMsg;
+use starina::message::OpenMsg;
+use starina::message::OpenReplyMsg;
+use starina::message::StreamDataMsg;
 use starina::prelude::*;
 use tcpip::SocketEvent;
 use tcpip::TcpIp;
 
+fn parse_addr(addr: &str) -> Option<(Ipv4Addr, u16)> {
+    let mut parts = addr.split(':');
+    let ip = parts.next()?.parse().ok()?;
+    let port = parts.next()?.parse().ok()?;
+    Some((ip, port))
+}
+
 pub struct App {
     tcpip: spin::Mutex<TcpIp<'static>>,
+    data_channels: spin::Mutex<HashMap<HandleId, smoltcp::iface::SocketHandle>>,
 }
 
 impl EventLoop<Env> for App {
@@ -50,48 +66,101 @@ impl EventLoop<Env> for App {
         let mac: [u8; 6] = [0x52, 0x54, 0x00, 0x12, 0x34, 0x56];
 
         let hwaddr = HardwareAddress::Ethernet(EthernetAddress(mac));
-        let mut tcpip = TcpIp::new(device, ip, gw_ip, hwaddr);
-
-        let (our_ch, their_ch) = Channel::new().unwrap();
-        let (sender, receiver) = our_ch.split();
-
-        let remote_endpoint = (IpAddress::v4(96, 7, 181, 39), 80).into();
-        let sock = tcpip.tcp_connect(remote_endpoint, sender).unwrap();
-
-        trace!("polling");
-        tcpip.poll(|ev| {
-            trace!("event: {:?}", ev);
-        });
-        trace!("polling done");
+        let tcpip = TcpIp::new(device, ip, gw_ip, hwaddr);
 
         Self {
             tcpip: spin::Mutex::new(tcpip),
+            data_channels: spin::Mutex::new(HashMap::new()),
         }
     }
 
-    fn on_framed_data(&self, _ctx: &Context, msg: FramedDataMsg<'_>) {
-        trace!("frame data received: {:2x?}", msg.data);
-        self.tcpip.lock().receive_packet(msg.data);
-        trace!("polling");
+    fn on_connect(&self, ctx: &Context, msg: ConnectMsg) {
+        ctx.dispatcher.add_channel(msg.handle).unwrap();
+    }
 
-        self.tcpip.lock().poll(|ev| {
+    fn on_open(&self, ctx: &Context, msg: OpenMsg<'_>) {
+        info!("got open message: {}", msg.uri);
+        match msg.uri.split_once(':') {
+            Some(("tcp-listen", rest)) => {
+                let Some((ip, port)) = parse_addr(rest) else {
+                    debug_warn!("invalid tcp-listen message: {}", msg.uri);
+                    return;
+                };
+
+                let listen_addr = match ip {
+                    Ipv4Addr::UNSPECIFIED => IpListenEndpoint { addr: None, port },
+                    _ => (ip, port).into(),
+                };
+
+                let (our_ch, their_ch) = Channel::new().unwrap();
+                let sender = ctx.dispatcher.split_and_add_channel(our_ch).unwrap();
+
+                // Have a separate scope to drop the tcpip lock as soon as possible.
+                {
+                    trace!("tcp-listen: {:?}", listen_addr);
+                    let mut tcpip = self.tcpip.lock();
+                    tcpip.tcp_listen(listen_addr, sender).unwrap();
+                }
+
+                ctx.sender.send(OpenReplyMsg { handle: their_ch }).unwrap(); // FIXME: what if backpressure happens?
+            }
+            _ => {
+                debug_warn!("unknown open message: {}", msg.uri);
+                // FIXME: How should we reply error?
+            }
+        }
+    }
+
+    fn on_stream_data(&self, ctx: &Context, msg: StreamDataMsg<'_>) {
+        let smol_handle = self
+            .data_channels
+            .lock()
+            .get(&ctx.sender.handle().id())
+            .copied()
+            .unwrap();
+        let mut tcpip = self.tcpip.lock();
+        // TODO: error handling
+        tcpip.tcp_send(smol_handle, msg.data).unwrap();
+        poll(&ctx.dispatcher, &mut *tcpip, &self.data_channels);
+    }
+
+    fn on_framed_data(&self, ctx: &Context, msg: FramedDataMsg<'_>) {
+        let mut tcpip = self.tcpip.lock();
+        tcpip.receive_packet(msg.data);
+        poll(&ctx.dispatcher, &mut *tcpip, &self.data_channels);
+    }
+}
+
+fn poll(
+    dispatcher: &Dispatcher,
+    tcpip: &mut TcpIp,
+    data_channels: &spin::Mutex<HashMap<HandleId, smoltcp::iface::SocketHandle>>,
+) {
+    tcpip.poll(
+        &(dispatcher, data_channels),
+        |(dispatcher, data_channels), ev| {
             match ev {
                 SocketEvent::Data { ch, data } => {
-                    trace!(
-                        "\n\x1b[1;33m{}\x1b[0m",
-                        core::str::from_utf8(data).unwrap_or("NON-UTF8")
-                    );
+                    ch.send(StreamDataMsg { data }).unwrap(); // FIXME: what if backpressure happens?
                 }
                 SocketEvent::Close { ch } => {
-                    warn!("SocketEvent::Close: not yet implemented");
+                    dispatcher.close_channel(ch.handle().id()).unwrap();
                 }
                 SocketEvent::NewConnection { ch, smol_handle } => {
-                    todo!()
+                    let (ours, theirs) = Channel::new().unwrap();
+
+                    data_channels.lock().insert(ours.handle_id(), smol_handle);
+                    let our_ch_sender = dispatcher
+                        .split_and_add_channel(ours)
+                        .expect("failed to get channel sender");
+
+                    ch.send(ConnectMsg { handle: theirs }).unwrap(); // FIXME: what if backpressure happens?
+
+                    // The socket has become an esblished socket, so replace the old
+                    // sender handle with a new data channel.
+                    *ch = our_ch_sender;
                 }
             }
-        });
-        trace!("polling done");
-
-        core::mem::forget(msg);
-    }
+        },
+    );
 }

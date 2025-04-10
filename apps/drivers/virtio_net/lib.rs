@@ -48,7 +48,7 @@ impl EventLoop<Env> for App {
     }
 
     fn on_framed_data(&self, _ctx: &Context, msg: FramedDataMsg<'_>) {
-        trace!("frame data received: {:2x?}", msg.data);
+        trace!("frame data received: {} bytes", msg.data.len());
         self.virtio_net.lock().transmit(msg.data);
         core::mem::forget(msg);
     }
