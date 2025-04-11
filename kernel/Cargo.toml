@@ -20,6 +20,8 @@ rustc-hash = { workspace = true }
 serde_json = { workspace = true }
 fdt-rs = { workspace = true }
 
+starina_quickjs = { workspace = true }
+
 # The kernel does not and should not use this API crate directly, but
 # specifying "in-kernel" here automatically enables the feature in all
 # in-kernel apps thanks to the feature unification feature of Cargo:

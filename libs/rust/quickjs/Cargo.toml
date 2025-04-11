@@ -1,0 +1,12 @@
+[package]
+name = "starina_quickjs"
+publish = false
+version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
+
+[lib]
+path = "lib.rs"
+
+[build-dependencies]
+cc = { workspace = true }

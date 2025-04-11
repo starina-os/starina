@@ -72,5 +72,8 @@ pub fn boot(bootinfo: BootInfo) -> ! {
     cpuvar::percpu_init(bootinfo.cpu_id);
     arch::percpu_init();
     startup::load_inkernel_apps(device_tree);
+
+    starina_quickjs::test();
+
     thread::switch_thread();
 }
