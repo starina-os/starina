@@ -29,6 +29,14 @@ fn resume_from_idle() -> ! {
     todo!()
 }
 
+pub fn halt() -> ! {
+    loop {
+        unsafe {
+            asm!("wfi");
+        }
+    }
+}
+
 pub fn idle() -> ! {
     trace!("idle");
 

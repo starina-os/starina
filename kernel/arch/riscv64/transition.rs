@@ -1,9 +1,22 @@
+use core::arch::asm;
 use core::arch::naked_asm;
 use core::mem::offset_of;
 
 use super::cpuvar::CpuVar;
 use super::interrupt::interrupt_handler;
 use super::thread::Context;
+
+pub fn kernel_scope<F, R>(f: F) -> R
+where
+    F: FnOnce() -> R,
+{
+    unsafe {
+        asm!("csrrw tp, sscratch, tp");
+        let ret = f();
+        asm!("csrrw tp, sscratch, tp");
+        ret
+    }
+}
 
 /// The entry point for traps: exceptions, interrupts, and system calls.
 #[naked]

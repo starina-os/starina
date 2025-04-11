@@ -3,6 +3,9 @@ set -eu
 
 QEMU=${QEMU:-qemu-system-riscv64}
 
+cd "$(dirname "$0")"
+
+export CARGO_TARGET_DIR=build
 export CARGO_TERM_HYPERLINKS=false
 cargo build \
   ${RELEASE:+--release} \
@@ -12,17 +15,11 @@ cargo build \
   --manifest-path kernel/Cargo.toml
 
 if [[ -n ${RELEASE:-} ]]; then
-  cp target/kernel/release/kernel starina.elf
+  cp build/kernel/release/kernel starina.elf
 else
-  cp target/kernel/debug/kernel starina.elf
+  cp build/kernel/debug/kernel starina.elf
 fi
 
-
-if [[ -n ${REPLAY:-} ]]; then
-  RR_MODE=replay
-else
-  RR_MODE=record
-fi
 
 if [[ -n ${BUILD_ONLY:-} ]]; then
   exit 0
@@ -37,5 +34,4 @@ $QEMU -machine virt -m 256 -bios default \
   -object filter-dump,id=fiter0,netdev=net0,file=virtio-net.pcap \
   -netdev user,id=net0,hostfwd=tcp:127.0.0.1:1234-:80 \
   -d cpu_reset,unimp,guest_errors,int -D qemu.log \
-  -icount shift=auto,rr=${RR_MODE},rrfile=qemu-replay.bin \
   -gdb tcp::7778 ${WAIT_FOR_GDB:+-S}
