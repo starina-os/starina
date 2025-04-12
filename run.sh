@@ -3,6 +3,9 @@ set -eu
 
 QEMU=${QEMU:-qemu-system-riscv64}
 
+cd "$(dirname "$0")"
+
+export CARGO_TARGET_DIR=build
 export CARGO_TERM_HYPERLINKS=false
 cargo build \
   ${RELEASE:+--release} \
@@ -12,9 +15,9 @@ cargo build \
   --manifest-path kernel/Cargo.toml
 
 if [[ -n ${RELEASE:-} ]]; then
-  cp target/kernel/release/kernel starina.elf
+  cp build/kernel/release/kernel starina.elf
 else
-  cp target/kernel/debug/kernel starina.elf
+  cp build/kernel/debug/kernel starina.elf
 fi
 
 
