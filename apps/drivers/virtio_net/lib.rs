@@ -39,7 +39,7 @@ impl EventLoop<Env> for App {
     }
 
     fn on_connect(&self, ctx: &Context, msg: ConnectMsg) {
-        let tcpip_ch = ctx.dispatcher.split_and_add_channel(msg.handle).unwrap();
+        let tcpip_ch = ctx.dispatcher.add_channel(msg.handle).unwrap();
         self.virtio_net.lock().update_receive(Box::new(move |data| {
             if let Err(err) = tcpip_ch.send(FramedDataMsg { data }) {
                 debug_warn!("failed to send data to tcpip: {:?}", err);

@@ -47,7 +47,7 @@ impl EventLoop<Env> for App {
         smoltcp_logger::init();
 
         let driver = dispatcher
-            .split_and_add_channel(env.driver)
+            .add_channel(env.driver)
             .expect("failed to get channel sender");
 
         info!("hello from tcpip");
@@ -93,7 +93,7 @@ impl EventLoop<Env> for App {
                 };
 
                 let (our_ch, their_ch) = Channel::new().unwrap();
-                let sender = ctx.dispatcher.split_and_add_channel(our_ch).unwrap();
+                let sender = ctx.dispatcher.add_channel(our_ch).unwrap();
 
                 // Have a separate scope to drop the tcpip lock as soon as possible.
                 {
@@ -151,7 +151,7 @@ fn poll(
 
                     data_channels.lock().insert(ours.handle_id(), smol_handle);
                     let our_ch_sender = dispatcher
-                        .split_and_add_channel(ours)
+                        .add_channel(ours)
                         .expect("failed to get channel sender");
 
                     ch.send(ConnectMsg { handle: theirs }).unwrap(); // FIXME: what if backpressure happens?

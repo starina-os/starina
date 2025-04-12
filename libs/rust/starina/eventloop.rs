@@ -93,7 +93,7 @@ impl Dispatcher {
         }
     }
 
-    pub fn split_and_add_channel(&self, channel: Channel) -> Result<ChannelSender, ErrorCode> {
+    pub fn add_channel(&self, channel: Channel) -> Result<ChannelSender, ErrorCode> {
         let handle_id = channel.handle_id();
 
         // Tell the kernel to notify us when the channel is readable.
@@ -118,22 +118,6 @@ impl Dispatcher {
 
         // Tell the kernel to stop notifying us about this channel.
         self.poll.remove(handle)?;
-
-        Ok(())
-    }
-
-    pub fn add_channel(&self, channel: Channel) -> Result<(), ErrorCode> {
-        let handle_id = channel.handle_id();
-
-        // Tell the kernel to notify us when the channel is readable.
-        self.poll.add(handle_id, Readiness::READABLE)?;
-
-        // Register the channel in the dispatcher.
-        let (sender, receiver) = channel.split();
-        let object = Object::Channel { sender, receiver };
-        self.objects
-            .write()
-            .insert(handle_id, Arc::new(spin::Mutex::new(object)));
 
         Ok(())
     }
