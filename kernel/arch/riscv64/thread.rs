@@ -166,6 +166,13 @@ pub fn enter_userland(thread: *mut crate::arch::Thread) -> ! {
     unsafe {
         asm!("csrr {0}, sstatus", out(reg) sstatus);
         sstatus |= 1 << 8; // Set SPP to go back to kernel mode
+
+        // Clear SPIE to disable interrupts while running apps.
+        //
+        // FIXME: This is a dirty hack to prevent a null pointer dereference bug in memset,
+        //        which is presumerbly caused by incorrectly saving/restoring the `a1` register.
+        sstatus &= !(1 << 5);
+
         asm!("csrw sstatus, {0}", in(reg) sstatus);
     }
 
@@ -175,7 +182,6 @@ pub fn enter_userland(thread: *mut crate::arch::Thread) -> ! {
 
             ld a1, {sepc_offset}(a0)
             csrw sepc, a1
-            ld a1, {sstatus_offset}(a0) // TODO: unnecessary?
 
             // Restore general-purpose registers.
             ld ra, {ra_offset}(a0)
@@ -215,7 +221,6 @@ pub fn enter_userland(thread: *mut crate::arch::Thread) -> ! {
             in ("a0") context as usize,
             context_offset = const offset_of!(crate::arch::CpuVar, context),
             sepc_offset = const offset_of!(Context, sepc),
-            sstatus_offset = const offset_of!(Context, sstatus),
             ra_offset = const offset_of!(Context, ra),
             sp_offset = const offset_of!(Context, sp),
             gp_offset = const offset_of!(Context, gp),
