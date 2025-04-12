@@ -1,4 +1,4 @@
-file target/kernel/debug/kernel
+file build/kernel/debug/kernel
 set confirm off
 set history save on
 set print pretty on
