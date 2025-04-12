@@ -39,7 +39,7 @@ impl EventLoop<Env> for App {
         let uri = format!("tcp-listen:0.0.0.0:80");
         tcpip.send(OpenMsg { uri: &uri }).unwrap();
 
-        dispatcher.split_and_add_channel(tcpip).unwrap();
+        dispatcher.add_channel(tcpip).unwrap();
         Self {
             state: spin::Mutex::new(CtrlState::Opening),
             connections: spin::Mutex::new(HashMap::new()),
@@ -64,7 +64,7 @@ impl EventLoop<Env> for App {
         let data_ch_id = msg.handle.handle_id();
         let sender = ctx
             .dispatcher
-            .split_and_add_channel(msg.handle)
+            .add_channel(msg.handle)
             .expect("failed to get channel sender");
         let mut connections = self.connections.lock();
         let tcp_writer = ChannelWriter::new(sender);
