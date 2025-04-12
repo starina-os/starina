@@ -61,10 +61,12 @@ pub fn current_thread() -> Ref<'static, SharedRef<Thread>> {
     arch::get_cpuvar().current_thread.borrow()
 }
 
+const NUM_CPUS_MAX: usize = 4;
+
 // Note: SpinLock is to serialize its initialization. Once initialized, it's
 //       safe to access `CpuVar` without holding the lock because it's a
 //       per-CPU storage. We still need a RefCell in mutable fields though.
-static CPUVARS: SpinLock<ArrayVec<CpuVarInit, { arch::NUM_CPUS_MAX }>> =
+static CPUVARS: SpinLock<ArrayVec<CpuVarInit, { NUM_CPUS_MAX }>> =
     SpinLock::new(ArrayVec::new_const());
 
 /// Initializes Per-CPU variables for the current CPU.

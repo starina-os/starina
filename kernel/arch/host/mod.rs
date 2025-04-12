@@ -66,8 +66,6 @@ impl Thread {
     }
 }
 
-pub const NUM_CPUS_MAX: usize = 1;
-
 pub struct CpuVar {}
 
 impl CpuVar {
