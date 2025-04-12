@@ -6,16 +6,23 @@ use core::slice;
 
 use fdt_rs::base::*;
 use fdt_rs::index::DevTreeIndex;
+use fdt_rs::index::DevTreeIndexNode;
+use fdt_rs::index::DevTreeIndexProp;
 use fdt_rs::prelude::*;
 use fdt_rs::spec::fdt_header;
 use hashbrown::HashMap;
+use starina::address::PAddr;
 use starina::device_tree::BusNode;
 use starina::device_tree::DeviceNode;
 use starina::device_tree::DeviceTree;
 use starina::device_tree::Reg;
 use starina::interrupt::IrqMatcher;
+use starina_utils::byte_size::ByteSize;
 
+use crate::allocator::GLOBAL_ALLOCATOR;
 use crate::arch::INTERRUPT_CONTROLLER;
+use crate::arch::find_free_ram;
+use crate::arch::paddr2vaddr;
 
 fn stringlist_to_vec(
     prop: &fdt_rs::index::DevTreeIndexProp<'_, '_, '_>,
@@ -73,6 +80,106 @@ fn parse_reg(
     Ok(())
 }
 
+struct RegParser<'a, 'i, 'dt> {
+    address_cells: u32,
+    size_cells: u32,
+    reg: DevTreeIndexProp<'a, 'i, 'dt>,
+    next_index: usize,
+}
+
+impl<'a, 'i, 'dt> RegParser<'a, 'i, 'dt> {
+    pub fn parse(
+        node: DevTreeIndexNode<'a, 'i, 'dt>,
+    ) -> Result<Option<RegParser<'a, 'i, 'dt>>, fdt_rs::error::DevTreeError> {
+        let mut reg = None;
+        for prop in node.props() {
+            if prop.name()? == "reg" {
+                reg = Some(prop);
+            }
+        }
+
+        let Some(reg) = reg else {
+            return Ok(None);
+        };
+
+        let mut current = Some(node);
+        while let Some(n) = current {
+            let mut address_cells = None;
+            let mut size_cells = None;
+            for prop in n.props() {
+                let prop_name = prop.name()?;
+                match prop_name {
+                    "#address-cells" => {
+                        let value = prop.u32(0)?;
+                        address_cells = Some(value);
+                    }
+                    "#size-cells" => {
+                        let value = prop.u32(0)?;
+                        size_cells = Some(value);
+                    }
+                    _ => {}
+                }
+            }
+
+            if let (Some(address_cells), Some(size_cells)) = (address_cells, size_cells) {
+                return Ok(Some(RegParser {
+                    reg,
+                    address_cells,
+                    size_cells,
+                    next_index: 0,
+                }));
+            }
+
+            current = n.parent();
+        }
+
+        Ok(None)
+    }
+}
+
+fn extract_nth_u32(reg: &DevTreeIndexProp<'_, '_, '_>, index: usize) -> u64 {
+    reg.u32(index).unwrap() as u64
+}
+
+impl<'a, 'i, 'dt> Iterator for RegParser<'a, 'i, 'dt> {
+    type Item = Reg;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.reg.u32(self.next_index).is_err() {
+            // End of the regs.
+            return None;
+        }
+
+        let addr = match self.address_cells {
+            1 => extract_nth_u32(&self.reg, self.next_index),
+            2 => {
+                let high = extract_nth_u32(&self.reg, self.next_index);
+                let low = extract_nth_u32(&self.reg, self.next_index + 1);
+                (high << 32) | low
+            }
+            _ => {
+                panic!("unsupported address cells: {}", self.address_cells);
+            }
+        };
+        self.next_index += self.address_cells as usize;
+
+        let size = match self.size_cells {
+            1 => extract_nth_u32(&self.reg, self.next_index),
+            2 => {
+                let high = extract_nth_u32(&self.reg, self.next_index);
+                let low = extract_nth_u32(&self.reg, self.next_index + 1);
+                (high << 32) | low
+            }
+            _ => {
+                panic!("unsupported size cells: {}", self.size_cells);
+            }
+        };
+
+        self.next_index += self.size_cells as usize;
+        Some(Reg { addr, size })
+    }
+}
+
 #[derive(Debug)]
 struct FoundBus {
     is_referenced: bool,
@@ -102,6 +209,48 @@ pub fn parse(dtb: *const u8) -> Result<DeviceTree, fdt_rs::error::DevTreeError> 
     let layout = DevTreeIndex::get_layout(&devtree)?;
     let mut vec = vec![0u8; layout.size() + layout.align()];
     let devtree_index = DevTreeIndex::new(devtree, vec.as_mut_slice())?;
+
+    for node in devtree_index.nodes() {
+        let mut device_type = None;
+        for prop in node.props() {
+            let prop_name = prop.name()?;
+            match prop_name {
+                "device_type" => {
+                    device_type = Some(prop.str()?);
+                }
+                _ => {}
+            }
+        }
+
+        let Some(device_type) = device_type else {
+            continue;
+        };
+
+        if device_type == "memory" {
+            let mut iter = RegParser::parse(node)?.expect("missing reg for a memory node");
+            for reg in iter {
+                let addr: usize = reg.addr.try_into().unwrap();
+                let unchecked_size = reg.size.try_into().unwrap();
+                let paddr = PAddr::new(addr);
+                find_free_ram(paddr, unchecked_size, |paddr, size| {
+                    match paddr2vaddr(paddr) {
+                        Ok(vaddr) => {
+                            debug!("free RAM: vaddr={} ({})", vaddr, ByteSize(size));
+                            let ptr = unsafe { vaddr.as_mut_ptr() };
+                            GLOBAL_ALLOCATOR.add_region(ptr, size);
+                        }
+                        Err(_) => {
+                            debug_warn!(
+                                "unmappable memory node at {} (size: {}), ignoring",
+                                paddr,
+                                unchecked_size
+                            );
+                        }
+                    }
+                });
+            }
+        }
+    }
 
     // Enumerate all buses.
     let mut found_buses = HashMap::new();

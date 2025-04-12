@@ -52,6 +52,30 @@ pub fn paddr2vaddr(paddr: PAddr) -> Result<VAddr, ErrorCode> {
     Ok(VAddr::new(paddr.as_usize()))
 }
 
+unsafe extern "C" {
+    static __kernel_start: u8;
+    static __kernel_end: u8;
+}
+
+pub fn find_free_ram<F>(paddr: PAddr, len: usize, mut callback: F)
+where
+    F: FnMut(PAddr, usize),
+{
+    let kernel_start = PAddr::new(&raw const __kernel_start as usize);
+    let kernel_end = PAddr::new(&raw const __kernel_end as usize);
+
+    if paddr < kernel_start {
+        let before_len = kernel_start.as_usize() - paddr.as_usize();
+        callback(paddr, before_len);
+    }
+
+    let end: PAddr = paddr.add(len);
+    if end > kernel_end {
+        let after_len = end.as_usize() - kernel_end.as_usize();
+        callback(kernel_end, after_len);
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(transparent)]
 struct Entry(u64);
@@ -136,9 +160,9 @@ impl PageTable {
     pub fn map_kernel_space(&mut self) -> Result<(), ErrorCode> {
         // Kernel memory
         self.do_map(
-            VAddr::new(0x8020_0000),
-            PAddr::new(0x8020_0000),
-            0x8ff00000 - 0x8020_0000,
+            VAddr::new(0x8000_0000),
+            PAddr::new(0x8000_0000),
+            0x90000000 - 0x8000_0000,
             PageProtect::READABLE | PageProtect::WRITEABLE | PageProtect::EXECUTABLE,
             true,
         )?;

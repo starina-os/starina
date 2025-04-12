@@ -12,6 +12,8 @@
 
 extern crate alloc;
 
+use core::mem::MaybeUninit;
+
 use allocator::GLOBAL_ALLOCATOR;
 use arrayvec::ArrayVec;
 use channel::Channel;
@@ -45,30 +47,20 @@ mod thread;
 mod utils;
 mod vmspace;
 
-pub struct FreeRam {
-    addr: *mut u8,
-    size: usize,
-}
+const EARLY_RAM_SIZE: usize = 256 * 1024;
+static EARLY_RAM: [MaybeUninit<u8>; EARLY_RAM_SIZE] = [MaybeUninit::uninit(); EARLY_RAM_SIZE];
 
 pub struct BootInfo {
     dtb: *const u8,
     cpu_id: CpuId,
-    free_rams: ArrayVec<FreeRam, 8>,
 }
 
 pub fn boot(bootinfo: BootInfo) -> ! {
     info!("Booting Starina...");
-    for free_ram in bootinfo.free_rams {
-        debug!(
-            "Free RAM: {:x} ({} MB)",
-            free_ram.addr as usize,
-            free_ram.size / 1024 / 1024
-        );
-        GLOBAL_ALLOCATOR.add_region(free_ram.addr, free_ram.size);
-    }
+
+    GLOBAL_ALLOCATOR.add_region(EARLY_RAM.as_ptr() as *mut _, EARLY_RAM.len());
 
     let device_tree = device_tree::parse(bootinfo.dtb).expect("failed to parse device tree");
-
     cpuvar::percpu_init(bootinfo.cpu_id);
     arch::percpu_init();
     startup::load_inkernel_apps(device_tree);

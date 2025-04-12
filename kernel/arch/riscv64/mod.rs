@@ -24,6 +24,7 @@ pub use thread::enter_userland;
 pub use transition::kernel_scope;
 pub use vmspace::PAGE_SIZE;
 pub use vmspace::VmSpace;
+pub use vmspace::find_free_ram;
 pub use vmspace::map_daddr;
 pub use vmspace::paddr2vaddr;
 pub use vmspace::unmap_daddr;
