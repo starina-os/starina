@@ -124,13 +124,6 @@ impl VmSpace {
     }
 }
 
-pub fn kernel_scope<F, R>(f: F) -> R
-where
-    F: FnOnce() -> R,
-{
-    todo!()
-}
-
 pub fn map_daddr(paddr: PAddr) -> Result<DAddr, ErrorCode> {
     todo!()
 }
