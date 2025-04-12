@@ -69,7 +69,7 @@ where
         callback(paddr, before_len);
     }
 
-    let end: PAddr = paddr.add(len);
+    let end = paddr.add(len);
     if end > kernel_end {
         let after_len = end.as_usize() - kernel_end.as_usize();
         callback(kernel_end, after_len);
