@@ -62,6 +62,10 @@ pub fn boot(bootinfo: BootInfo) -> ! {
 
     let device_tree = device_tree::parse(bootinfo.dtb).expect("failed to parse device tree");
     cpuvar::percpu_init(bootinfo.cpu_id);
+
+    trace!("js_on_wasm::try_wasm");
+    js_on_wasm::try_wasm().unwrap();
+
     arch::percpu_init();
     startup::load_inkernel_apps(device_tree);
     thread::switch_thread();

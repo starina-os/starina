@@ -19,6 +19,7 @@ hashbrown = { workspace = true }
 rustc-hash = { workspace = true }
 serde_json = { workspace = true }
 fdt-rs = { workspace = true }
+js_on_wasm = { workspace = true }
 
 # The kernel does not and should not use this API crate directly, but
 # specifying "in-kernel" here automatically enables the feature in all

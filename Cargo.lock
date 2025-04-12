@@ -192,6 +192,7 @@ dependencies = [
  "fdt-rs",
  "hashbrown",
  "http_server",
+ "js_on_wasm",
  "rustc-hash",
  "serde_json",
  "spin",
