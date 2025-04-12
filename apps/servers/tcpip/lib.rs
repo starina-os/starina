@@ -120,13 +120,13 @@ impl EventLoop<Env> for App {
         let mut tcpip = self.tcpip.lock();
         // TODO: error handling
         tcpip.tcp_send(smol_handle, msg.data).unwrap();
-        poll(&ctx.dispatcher, &mut *tcpip, &self.data_channels);
+        poll(ctx.dispatcher, &mut tcpip, &self.data_channels);
     }
 
     fn on_framed_data(&self, ctx: &Context, msg: FramedDataMsg<'_>) {
         let mut tcpip = self.tcpip.lock();
         tcpip.receive_packet(msg.data);
-        poll(&ctx.dispatcher, &mut *tcpip, &self.data_channels);
+        poll(ctx.dispatcher, &mut tcpip, &self.data_channels);
     }
 }
 

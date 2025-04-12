@@ -151,8 +151,8 @@ impl DmaBufferPool {
 
     /// Allocates a buffer.
     pub fn allocate(&mut self) -> Option<BufferId> {
-        let id = self.free_indices.pop();
-        id
+        
+        self.free_indices.pop()
     }
 
     /// Frees a buffer.

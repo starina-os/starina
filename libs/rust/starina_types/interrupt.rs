@@ -13,7 +13,7 @@ impl Irq {
 
     pub fn from_raw_isize(raw: isize) -> Result<Self, ErrorCode> {
         match u32::try_from(raw) {
-            Ok(raw) => Ok(Self(raw as u32)),
+            Ok(raw) => Ok(Self(raw)),
             Err(_) => Err(ErrorCode::InvalidArg),
         }
     }

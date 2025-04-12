@@ -53,14 +53,14 @@ fn probe(mut env: Env) -> Option<(IoBus, Box<dyn VirtioTransport>, Vec<VirtQueue
         let iobus = env.iobus.get(&node.bus).expect("missing iobus");
         let daddr = DAddr::new(node.reg[0].addr as usize);
         let len = node.reg[0].size as usize;
-        let folio = MmioFolio::create_pinned(&iobus, daddr, len).unwrap();
+        let folio = MmioFolio::create_pinned(iobus, daddr, len).unwrap();
         let mut virtio = VirtioMmio::new(folio);
         let device_type = virtio.probe();
 
         if device_type == Some(DeviceType::Net) {
             info!("found virtio-net device: {}", name);
             let mut transport = Box::new(virtio) as Box<dyn VirtioTransport>;
-            let virtqueues = transport.initialize(&iobus, 0, 2).unwrap();
+            let virtqueues = transport.initialize(iobus, 0, 2).unwrap();
             let iobus = env.iobus.remove(&node.bus).unwrap();
             let interrupt =
                 Interrupt::create(node.interrupts[0]).expect("failed to create interrupt");

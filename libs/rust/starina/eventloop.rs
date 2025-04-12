@@ -154,7 +154,7 @@ impl Dispatcher {
                     };
 
                     match msg.msginfo.kind() {
-                        kind @ _ if kind == MessageKind::Connect as usize => {
+                        kind if kind == MessageKind::Connect as usize => {
                             match unsafe {
                                 ConnectMsg::parse_unchecked(msg.msginfo, &mut msg.buffer)
                             } {
@@ -164,7 +164,7 @@ impl Dispatcher {
                                 }
                             };
                         }
-                        kind @ _ if kind == MessageKind::Open as usize => {
+                        kind if kind == MessageKind::Open as usize => {
                             match unsafe { OpenMsg::parse_unchecked(msg.msginfo, &mut msg.buffer) }
                             {
                                 Some(msg) => app.on_open(&ctx, msg),
@@ -173,7 +173,7 @@ impl Dispatcher {
                                 }
                             };
                         }
-                        kind @ _ if kind == MessageKind::OpenReply as usize => {
+                        kind if kind == MessageKind::OpenReply as usize => {
                             match unsafe {
                                 OpenReplyMsg::parse_unchecked(msg.msginfo, &mut msg.buffer)
                             } {
@@ -183,7 +183,7 @@ impl Dispatcher {
                                 }
                             };
                         }
-                        kind @ _ if kind == MessageKind::FramedData as usize => {
+                        kind if kind == MessageKind::FramedData as usize => {
                             match unsafe {
                                 FramedDataMsg::parse_unchecked(msg.msginfo, &mut msg.buffer)
                             } {
@@ -193,7 +193,7 @@ impl Dispatcher {
                                 }
                             };
                         }
-                        kind @ _ if kind == MessageKind::StreamData as usize => {
+                        kind if kind == MessageKind::StreamData as usize => {
                             match unsafe {
                                 StreamDataMsg::parse_unchecked(msg.msginfo, &mut msg.buffer)
                             } {
@@ -237,7 +237,7 @@ pub fn app_loop<E: DeserializeOwned, A: EventLoop<E>>(
         }
     };
 
-    let env: E = serde_json::from_slice(&env_json).expect("failed to parse env");
+    let env: E = serde_json::from_slice(env_json).expect("failed to parse env");
 
     let poll = Poll::create().unwrap();
     let dispatcher = Dispatcher::new(poll);

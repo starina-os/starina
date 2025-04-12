@@ -263,7 +263,7 @@ impl<'a> TcpIp<'a> {
     pub fn tcp_send(&mut self, handle: SocketHandle, data: &[u8]) -> Result<(), ErrorCode> {
         let socket = self.sockets.get_mut(&handle).ok_or(ErrorCode::NotFound)?;
 
-        if !matches!(socket.state, SocketState::Established { .. }) {
+        if !matches!(socket.state, SocketState::Established) {
             return Err(ErrorCode::InvalidState);
         }
 
