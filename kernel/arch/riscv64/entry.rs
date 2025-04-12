@@ -11,23 +11,6 @@ use super::thread::Context;
 use crate::syscall::syscall_handler;
 use crate::thread::switch_thread;
 
-pub(super) extern "C" fn do_inkernel_syscall_entry(
-    a0: isize,
-    a1: isize,
-    a2: isize,
-    a3: isize,
-    a4: isize,
-    n: isize,
-) -> ! {
-    // This is called from in-kernel apps, and tp points their own values. Switch
-    // to the kernel's tp (sscratch) before calling the syscall handler.
-    unsafe {
-        asm!("csrrw tp, sscratch, tp");
-    }
-
-    syscall_handler(a0, a1, a2, a3, a4, n);
-}
-
 #[naked]
 #[unsafe(no_mangle)]
 pub extern "C" fn inkernel_syscall_entry(
@@ -46,7 +29,7 @@ pub extern "C" fn inkernel_syscall_entry(
             "csrrw tp, sscratch, tp",
             "ld t0, {context_offset}(tp)", // Load CpuVar.arch.context
 
-            // Save general-purpose registers.
+            // Save callee-saved registers.
             "sd sp, {sp_offset}(t0)",
             "sd gp, {gp_offset}(t0)",
             "sd s0, {s0_offset}(t0)",
@@ -75,7 +58,7 @@ pub extern "C" fn inkernel_syscall_entry(
             "ld sp, {kernel_sp_offset}(tp)",
 
             // Handle the system call.
-            "j {inkernel_syscall_handler}",
+            "j {syscall_handler}",
             context_offset = const offset_of!(crate::arch::CpuVar, context),
             kernel_sp_offset = const offset_of!(crate::arch::CpuVar, kernel_sp),
             sepc_offset = const offset_of!(Context, sepc),
@@ -95,7 +78,7 @@ pub extern "C" fn inkernel_syscall_entry(
             s9_offset = const offset_of!(Context, s9),
             s10_offset = const offset_of!(Context, s10),
             s11_offset = const offset_of!(Context, s11),
-            inkernel_syscall_handler = sym do_inkernel_syscall_entry,
+            syscall_handler = sym syscall_handler,
         )
     }
 }

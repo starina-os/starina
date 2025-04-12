@@ -7,7 +7,6 @@ use core::mem::offset_of;
 use starina_types::syscall::RetVal;
 
 use crate::allocator::GLOBAL_ALLOCATOR;
-use crate::arch::riscv64::entry::do_inkernel_syscall_entry;
 
 /// Context of a thread.
 #[derive(Debug, Default)]
