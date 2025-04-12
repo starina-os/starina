@@ -36,7 +36,7 @@ impl EventLoop<Env> for App {
 
         // let uri = format!("tcp:{}:{}", env.listen_host, env.listen_port);
         info!("connecting to tcpip");
-        let uri = format!("tcp-listen:0.0.0.0:80");
+        let uri = "tcp-listen:0.0.0.0:80".to_string();
         tcpip.send(OpenMsg { uri: &uri }).unwrap();
 
         dispatcher.add_channel(tcpip).unwrap();

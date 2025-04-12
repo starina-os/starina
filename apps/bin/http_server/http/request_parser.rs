@@ -177,7 +177,7 @@ impl HttpRequestParser {
 
 #[cfg(test)]
 mod tests {
-    use starina::error::ErrorCode;
+    
 
     use super::*;
 

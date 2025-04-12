@@ -1,9 +1,5 @@
 use starina::channel::Channel;
-use starina::collections::HashMap;
 // TODO: auto geenrate this file from app.toml
-use starina::device_tree::DeviceTree;
-use starina::iobus::IoBus;
-use starina::prelude::*;
 use starina::spec::AppSpec;
 use starina::spec::EnvItem;
 use starina::spec::EnvType;

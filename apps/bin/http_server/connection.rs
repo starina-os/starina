@@ -69,7 +69,6 @@ impl<W: Writer> Conn<W> {
             Err(err) => {
                 warn!("HTTP parse error: {:?}", err);
                 // TODO: close the connection
-                return;
             }
         }
     }

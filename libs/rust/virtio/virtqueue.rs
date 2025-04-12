@@ -264,7 +264,7 @@ impl VirtQueue {
     }
 
     fn avail(&self) -> &VirtqAvail {
-        unsafe { &*self.folio.as_ref(self.avail_ring_off) }
+        unsafe { self.folio.as_ref(self.avail_ring_off) }
     }
 
     fn avail_mut(&mut self) -> &mut VirtqAvail {
@@ -278,13 +278,13 @@ impl VirtQueue {
     }
 
     fn used(&self) -> &VirtqUsed {
-        unsafe { &*self.folio.as_ref(self.used_ring_off) }
+        unsafe { self.folio.as_ref(self.used_ring_off) }
     }
 
     fn used_elem(&self, index: u16) -> &VirtqUsedElem {
         let i = (index % self.num_descs) as usize;
         let offset = self.used_ring_off + size_of::<VirtqUsed>() + i * size_of::<VirtqUsedElem>();
-        unsafe { &*self.folio.as_ref(offset) }
+        unsafe { self.folio.as_ref(offset) }
     }
 }
 
