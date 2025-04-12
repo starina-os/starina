@@ -1,16 +1,17 @@
 use core::arch::asm;
 use core::mem;
 
+use starina::address::DAddr;
 use starina_types::address::PAddr;
 use starina_types::address::VAddr;
 use starina_types::error::ErrorCode;
 use starina_types::vmspace::PageProtect;
 use starina_utils::alignment::is_aligned;
 
-use crate::arch::PAGE_SIZE;
-use crate::arch::paddr2vaddr;
 use crate::folio::Folio;
 use crate::spinlock::SpinLock;
+
+pub const PAGE_SIZE: usize = 4096;
 
 const ENTRIES_PER_TABLE: usize = 512;
 const PPN_SHIFT: usize = 12;
@@ -28,6 +29,28 @@ pub const USERSPACE_START: VAddr = VAddr::new(0x0000_000a_0000_0000);
 pub const USERSPACE_END: VAddr = VAddr::new(0x0000_000a_ffff_ffff);
 const VALLOC_START: VAddr = VAddr::new(0x0000_000b_0000_0000);
 const VALLOC_END: VAddr = VAddr::new(0x0000_000b_ffff_ffff);
+
+pub fn map_daddr(paddr: PAddr) -> Result<DAddr, ErrorCode> {
+    // We don't have IOMMU. Device will see the same address as the kernel.
+    Ok(DAddr::new(paddr.as_usize()))
+}
+
+pub fn unmap_daddr(daddr: DAddr) -> Result<(), ErrorCode> {
+    // We don't do anything in map_daddr. Nothing to unmap.
+    Ok(())
+}
+
+pub fn vaddr2paddr(vaddr: VAddr) -> Result<PAddr, ErrorCode> {
+    // Identical mapping.
+    // FIXME:
+    Ok(PAddr::new(vaddr.as_usize()))
+}
+
+pub fn paddr2vaddr(paddr: PAddr) -> Result<VAddr, ErrorCode> {
+    // Identical mapping.
+    // FIXME:
+    Ok(VAddr::new(paddr.as_usize()))
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(transparent)]
