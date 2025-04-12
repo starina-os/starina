@@ -239,8 +239,8 @@ impl OwnedMessageBuffer {
         OwnedMessageBuffer(buffer)
     }
 
-    pub fn mark_as_sent(&mut self) {
-        // Mark the handles as sent.
+    pub fn forget_handles(mut self) {
+        // TODO: Can we drop the box without calling OwnedHandle's drop?
         for handle in self.0.handles_mut() {
             *handle = HandleId::from_raw(0);
         }
