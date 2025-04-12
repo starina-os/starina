@@ -7,7 +7,7 @@ use core::mem::offset_of;
 use starina_types::syscall::RetVal;
 
 use crate::allocator::GLOBAL_ALLOCATOR;
-use crate::syscall::syscall_inkernel_handler;
+use crate::arch::riscv64::transition::inkernel_syscall_handler;
 
 /// Context of a thread.
 #[derive(Debug, Default)]
@@ -134,7 +134,7 @@ pub extern "C" fn enter_kernelland(
                 ld sp, {kernel_sp_offset}(tp)
 
                 // Handle the system call.
-                j {syscall_inkernel_handler}
+                j {inkernel_syscall_handler}
             "#,
             context_offset = const offset_of!(crate::arch::CpuVar, context),
             kernel_sp_offset = const offset_of!(crate::arch::CpuVar, kernel_sp),
@@ -155,7 +155,7 @@ pub extern "C" fn enter_kernelland(
             s9_offset = const offset_of!(Context, s9),
             s10_offset = const offset_of!(Context, s10),
             s11_offset = const offset_of!(Context, s11),
-            syscall_inkernel_handler = sym syscall_inkernel_handler,
+            inkernel_syscall_handler = sym inkernel_syscall_handler,
         )
     }
 }

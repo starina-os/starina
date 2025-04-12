@@ -330,24 +330,16 @@ fn do_syscall(
     }
 }
 
-pub extern "C" fn syscall_inkernel_handler(
-    a0: isize,
-    a1: isize,
-    a2: isize,
-    a3: isize,
-    a4: isize,
-    n: isize,
-) -> ! {
-    arch::kernel_scope(|| {
-        let current = current_thread();
-        let new_state = match do_syscall(a0, a1, a2, a3, a4, n, &current) {
-            Ok(SyscallResult::Done(value)) => ThreadState::Runnable(Some(value.into())),
-            Ok(SyscallResult::Err(err)) => ThreadState::Runnable(Some(err.into())),
-            Ok(SyscallResult::Block(state)) => state,
-            Err(err) => ThreadState::Runnable(Some(err.into())),
-        };
-        current.set_state(new_state);
-    });
+pub fn syscall_handler(a0: isize, a1: isize, a2: isize, a3: isize, a4: isize, n: isize) -> ! {
+    let current = current_thread();
+    let new_state = match do_syscall(a0, a1, a2, a3, a4, n, &current) {
+        Ok(SyscallResult::Done(value)) => ThreadState::Runnable(Some(value.into())),
+        Ok(SyscallResult::Err(err)) => ThreadState::Runnable(Some(err.into())),
+        Ok(SyscallResult::Block(state)) => state,
+        Err(err) => ThreadState::Runnable(Some(err.into())),
+    };
+    current.set_state(new_state);
+    drop(current);
 
     switch_thread();
 }

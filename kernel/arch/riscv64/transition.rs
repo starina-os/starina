@@ -5,17 +5,24 @@ use core::mem::offset_of;
 use super::cpuvar::CpuVar;
 use super::interrupt::interrupt_handler;
 use super::thread::Context;
+use crate::syscall::syscall_handler;
+use crate::thread::switch_thread;
 
-pub fn kernel_scope<F, R>(f: F) -> R
-where
-    F: FnOnce() -> R,
-{
+pub(super) extern "C" fn inkernel_syscall_handler(
+    a0: isize,
+    a1: isize,
+    a2: isize,
+    a3: isize,
+    a4: isize,
+    n: isize,
+) -> ! {
+    // This is called from in-kernel apps, and tp points their own values. Switch
+    // to the kernel's tp (sscratch) before calling the syscall handler.
     unsafe {
         asm!("csrrw tp, sscratch, tp");
-        let ret = f();
-        asm!("csrrw tp, sscratch, tp");
-        ret
     }
+
+    syscall_handler(a0, a1, a2, a3, a4, n);
 }
 
 /// The entry point for traps: exceptions, interrupts, and system calls.
