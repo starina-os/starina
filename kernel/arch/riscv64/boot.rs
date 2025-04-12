@@ -8,7 +8,7 @@ use super::plic::use_plic;
 use crate::BootInfo;
 use crate::arch::riscv64::csr::StvecMode;
 use crate::arch::riscv64::csr::write_stvec;
-use crate::arch::riscv64::transition::switch_to_kernel;
+use crate::arch::riscv64::entry::trap_entry;
 use crate::cpuvar::CpuId;
 
 // The kernel entrypoint for RISC-V machines. We expect Linux's RISC-V boot
@@ -56,7 +56,7 @@ pub fn percpu_init() {
     }
 
     unsafe {
-        write_stvec(switch_to_kernel as *const () as usize, StvecMode::Direct);
+        write_stvec(trap_entry as *const () as usize, StvecMode::Direct);
 
         let mut sie: u64;
         asm!("csrr {}, sie", out(reg) sie);

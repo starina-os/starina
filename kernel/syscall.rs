@@ -13,7 +13,7 @@ use starina_types::syscall::*;
 use starina_types::vmspace::PageProtect;
 
 use crate::arch;
-use crate::arch::enter_kernelland;
+use crate::arch::inkernel_syscall_entry;
 use crate::channel::Channel;
 use crate::cpuvar::current_thread;
 use crate::folio::Folio;

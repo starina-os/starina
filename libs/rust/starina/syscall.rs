@@ -18,7 +18,7 @@ fn syscall(
 ) -> Result<RetVal, ErrorCode> {
     if cfg!(feature = "in-kernel") {
         unsafe extern "C" {
-            fn enter_kernelland(
+            fn inkernel_syscall_entry(
                 _a0: isize,
                 _a1: isize,
                 _a2: isize,
@@ -29,7 +29,7 @@ fn syscall(
         }
 
         unsafe {
-            let ret = enter_kernelland(a0, a1, a2, a3, a4, n as isize);
+            let ret = inkernel_syscall_entry(a0, a1, a2, a3, a4, n as isize);
             if ret.as_isize() < 0 {
                 Err(ErrorCode::from(ret.as_isize()))
             } else {
