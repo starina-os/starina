@@ -3,8 +3,8 @@ use core::arch::naked_asm;
 
 use super::csr::StvecMode;
 use super::csr::write_stvec;
+use super::entry::trap_entry;
 use super::interrupt::interrupt_handler;
-use super::transition::switch_to_kernel;
 
 /// The entry point of interrupts or exceptions.
 #[naked]
@@ -22,7 +22,7 @@ unsafe extern "C" fn idle_entry() -> ! {
 
 fn resume_from_idle() -> ! {
     unsafe {
-        write_stvec(switch_to_kernel as *const () as usize, StvecMode::Direct);
+        write_stvec(trap_entry as *const () as usize, StvecMode::Direct);
     }
 
     interrupt_handler();

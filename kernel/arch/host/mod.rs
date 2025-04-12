@@ -31,7 +31,7 @@ pub fn console_write(s: &[u8]) {
 }
 
 // #[naked]
-pub extern "C" fn enter_kernelland(
+pub extern "C" fn inkernel_syscall_entry(
     _a0: isize,
     _a1: isize,
     _a2: isize,
@@ -42,7 +42,7 @@ pub extern "C" fn enter_kernelland(
     todo!()
 }
 
-pub fn enter_userland(thread: *mut crate::arch::Thread) -> ! {
+pub fn user_entry(thread: *mut crate::arch::Thread) -> ! {
     todo!()
 }
 

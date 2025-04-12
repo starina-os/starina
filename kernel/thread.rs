@@ -175,6 +175,6 @@ pub fn switch_thread() -> ! {
 
         // Execute the pending continuation if any.
         drop(current_thread);
-        arch::enter_userland(arch_thread);
+        arch::user_entry(arch_thread);
     }
 }
