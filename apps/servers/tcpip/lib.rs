@@ -9,6 +9,7 @@ use core::net::Ipv4Addr;
 
 use autogen::Env;
 use device::NetDevice;
+use smoltcp::iface::SocketHandle;
 use smoltcp::wire::EthernetAddress;
 use smoltcp::wire::HardwareAddress;
 use smoltcp::wire::IpAddress;
@@ -39,7 +40,7 @@ fn parse_addr(addr: &str) -> Option<(Ipv4Addr, u16)> {
 
 pub struct App {
     tcpip: spin::Mutex<TcpIp<'static>>,
-    data_channels: spin::Mutex<HashMap<HandleId, smoltcp::iface::SocketHandle>>,
+    data_channels: spin::Mutex<HashMap<HandleId, SocketHandle>>,
 }
 
 impl EventLoop<Env> for App {
@@ -49,8 +50,6 @@ impl EventLoop<Env> for App {
         let driver = dispatcher
             .add_channel(env.driver)
             .expect("failed to get channel sender");
-
-        info!("hello from tcpip");
 
         let transmit = move |data: &[u8]| {
             trace!("transmit {} bytes", data.len());
