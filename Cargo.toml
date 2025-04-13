@@ -35,3 +35,9 @@ js_on_wasm = { path = "libs/rust/js_on_wasm" }
 virtio_net = { path = "apps/drivers/virtio_net" }
 tcpip = { path = "apps/servers/tcpip" }
 http_server = { path = "apps/bin/http_server" }
+
+[profile.release]
+opt-level = 3
+lto = true
+debug = 1
+strip = "debuginfo"
