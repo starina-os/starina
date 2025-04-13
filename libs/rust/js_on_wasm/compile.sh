@@ -3,6 +3,7 @@ set -xue
 
 clang \
     -Oz -flto=thin -fomit-frame-pointer -fmerge-all-constants \
+    -mbulk-memory \
     --target=wasm32-wasi \
     --sysroot=/opt/homebrew/opt/wasi-libc/share/wasi-sysroot \
     -nodefaultlibs \
@@ -17,7 +18,7 @@ clang \
     -o app.stage0.wasm
 
 wizer --allow-wasi app.stage0.wasm -o app.stage1.wasm
-wasm-opt -Oz app.stage1.wasm -o app.stage2.wasm
-llvm-strip app.stage2.wasm -o app.optimized.wasm
+wasm-opt -Oz --enable-bulk-memory-opt --strip-debug --strip-dwarf app.stage1.wasm -o app.wasm
+ls -lh app.wasm
 
-rm app.stage0.wasm app.stage1.wasm app.stage2.wasm
+rm app.stage0.wasm app.stage1.wasm

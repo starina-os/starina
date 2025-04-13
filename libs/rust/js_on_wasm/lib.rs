@@ -22,12 +22,12 @@ struct IoVec {
 // In this simple example we are going to compile the below Wasm source,
 // instantiate a Wasm module from it and call its exported "hello" function.
 pub fn try_wasm() -> Result<(), wasmi::Error> {
-    let wasm = include_bytes!("app.optimized.wasm");
+    let wasm = include_bytes!("app.wasm");
     // First step is to create the Wasm execution engine with some config.
 
     let mut config = Config::default();
     config.compilation_mode(CompilationMode::Lazy);
-    // config.wasm_bulk_memory(true);
+    config.wasm_bulk_memory(true);
 
     // In this example we are using the default configuration.
     let engine = Engine::new(&config);
