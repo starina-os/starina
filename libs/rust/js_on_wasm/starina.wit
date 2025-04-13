@@ -1,0 +1,6 @@
+package local:starina;
+
+world starina {
+    export main: func();
+    import print: func(message: string);
+}
