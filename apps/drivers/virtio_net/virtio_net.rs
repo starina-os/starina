@@ -75,6 +75,10 @@ fn probe(
     None
 }
 
+pub trait Receiver {
+    fn receive(&mut self, data: &[u8]);
+}
+
 pub struct VirtioNet {
     mac_addr: [u8; 6],
     _iobus: IoBus,
@@ -84,7 +88,7 @@ pub struct VirtioNet {
     transmitq_buffers: DmaBufferPool,
     receiveq_buffers: DmaBufferPool,
     interrupt: Option<Interrupt>,
-    receive: Option<Box<dyn FnMut(&[u8]) + Send + Sync>>,
+    receiver: Option<Box<dyn Receiver + Send + Sync>>,
 }
 
 impl VirtioNet {
@@ -124,12 +128,12 @@ impl VirtioNet {
             receiveq_buffers,
             transmitq_buffers,
             interrupt: Some(interrupt),
-            receive: None,
+            receiver: None,
         }
     }
 
-    pub fn update_receive(&mut self, f: Box<dyn FnMut(&[u8]) + Send + Sync>) {
-        self.receive = Some(f);
+    pub fn set_receiver(&mut self, receiver: impl Receiver + Send + Sync + 'static) {
+        self.receiver = Some(Box::new(receiver));
     }
 
     pub fn mac_addr(&self) -> &[u8; 6] {
@@ -196,8 +200,8 @@ impl VirtioNet {
 
                     let _header = buf.read::<VirtioNetModernHeader>();
                     let payload = buf.read_bytes(read_len).unwrap();
-                    if let Some(receive) = self.receive.as_mut() {
-                        receive(payload);
+                    if let Some(receiver) = self.receiver.as_mut() {
+                        receiver.receive(payload);
                     }
                 }
             }
