@@ -179,7 +179,7 @@ pub fn try_wasm() -> Result<(), wasmi::Error> {
          written_ptr: i32|
          -> i32 {
             trace!("[wasi] fd_write: fd={}, iov={}", fd, iovs_ptr);
-            assert_eq!(fd, 1);
+            assert!(fd == 1 || fd == 2);
 
             let memory = caller.get_export("memory").unwrap().into_memory().unwrap();
             let mut written = 0;
