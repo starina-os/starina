@@ -34,8 +34,8 @@ pub fn try_wasm() -> Result<(), wasmi::Error> {
 
     // Now we can compile the above Wasm module with the given Wasm source.
     info!("[wasm] loading module");
-    // let module = unsafe { Module::new_unchecked(&engine, wasm) }?;
-    let module = Module::new(&engine, wasm)?;
+    let module = unsafe { Module::new_unchecked(&engine, wasm) }?;
+    // let module = Module::new(&engine, wasm)?;
     info!("[wasm] module loaded");
 
     // Wasm objects operate within the context of a Wasm `Store`.
