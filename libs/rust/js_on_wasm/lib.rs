@@ -5,7 +5,7 @@ use wasmi::*;
 // In this simple example we are going to compile the below Wasm source,
 // instantiate a Wasm module from it and call its exported "hello" function.
 pub fn try_wasm() -> Result<(), wasmi::Error> {
-    let wasm = include_bytes!("out/app.wasm");
+    let wasm = include_bytes!("out/app.core.wasm");
     // First step is to create the Wasm execution engine with some config.
     //
     // In this example we are using the default configuration.

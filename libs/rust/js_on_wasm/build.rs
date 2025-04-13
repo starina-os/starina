@@ -18,19 +18,20 @@ pub fn main() {
     println!("cargo:rerun-if-changed=app.js");
     println!("cargo:rerun-if-changed=starina.wit");
 
-    let _ = std::fs::remove_dir_all("out");
+    // let _ = std::fs::remove_dir_all("out");
 
-    run_with_pnpm(&[
-        "jco",
-        "componentize",
-        "--wit",
-        "starina.wit",
-        "-o",
-        "app.component.wasm",
-        "app.js",
-        "-d",
-        "all",
-    ]);
+    // run_with_pnpm(&[
+    //     "jco",
+    //     "componentize",
+    //     "--aot",
+    //     "--wit",
+    //     "starina.wit",
+    //     "-o",
+    //     "app.component.wasm",
+    //     "app.js",
+    //     "-d",
+    //     "all",
+    // ]);
 
-    run_with_pnpm(&["jco", "transpile", "app.component.wasm", "-o", "out"]);
+    // run_with_pnpm(&["jco", "transpile", "app.component.wasm", "-o", "out"]);
 }
