@@ -66,11 +66,19 @@ impl log::Log for Logger {
     fn flush(&self) {}
 
     fn log(&self, record: &log::Record) {
-        debug!(
-            "{}: {}",
-            record.module_path().unwrap_or("(unknown)"),
-            record.args()
-        );
+        if record.level() <= log::Level::Info {
+            info!(
+                "{}: {}",
+                record.module_path().unwrap_or("(unknown)"),
+                record.args()
+            );
+        } else {
+            debug!(
+                "{}: {}",
+                record.module_path().unwrap_or("(unknown)"),
+                record.args()
+            );
+        }
     }
 }
 pub fn boot(bootinfo: BootInfo) -> ! {
