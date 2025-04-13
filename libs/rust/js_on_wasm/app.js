@@ -1,3 +1,3 @@
 export function main() {
-    print("Hello from JavaScript!");
+    console.log("Hello from JavaScript!");
 }
