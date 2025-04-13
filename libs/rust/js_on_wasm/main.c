@@ -34,7 +34,7 @@ void wizer_initialize(void) {
     };
     js_std_add_helpers(ctx, 0, argv);
 
-    puts("loading script...");
+    puts("compiling JavaScript sources...");
     JSValue compiled_module = JS_Eval(ctx, APP_SCRIPT, strlen(APP_SCRIPT), "app.js", JS_EVAL_FLAG_COMPILE_ONLY);
     if (JS_IsException(compiled_module)) {
         js_std_dump_error(ctx);
@@ -42,6 +42,7 @@ void wizer_initialize(void) {
         exit(1);
     }
 
+    puts("writing bytecode into memory...");
     bytecode = JS_WriteObject(ctx, &bytecode_len, compiled_module, JS_WRITE_OBJ_BYTECODE);
     if (!bytecode) {
         js_std_dump_error(ctx);
@@ -51,10 +52,9 @@ void wizer_initialize(void) {
 
 __attribute__((export_name("wizer.resume")))
 void wizer_resume(void) {
-    puts("eval...");
     js_std_eval_binary(ctx, bytecode, bytecode_len, JS_EVAL_FLAG_STRICT);
 
-    puts("looping...");
+    puts("ready");
     int r = js_std_loop(ctx);
     if (r) {
       js_std_dump_error(ctx);
