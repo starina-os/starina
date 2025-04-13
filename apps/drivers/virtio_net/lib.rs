@@ -14,16 +14,28 @@ use virtio_net::VirtioNet;
 
 mod virtio_net;
 
+pub enum State {
+    Startup,
+    Interrupt,
+    Upstream,
+}
+
 pub struct App {
     virtio_net: spin::Mutex<VirtioNet>,
 }
 
 impl EventLoop<Env> for App {
-    fn init(dispatcher: &Dispatcher, env: Env) -> Self {
-        let mut virtio_net = VirtioNet::init_or_panic(env);
+    type State = State;
+
+    fn init(dispatcher: &Dispatcher<Self::State>, mut env: Env) -> Self {
+        dispatcher
+            .add_channel(State::Startup, env.startup_ch)
+            .unwrap();
+
+        let mut virtio_net = VirtioNet::init_or_panic(&env.device_tree, &mut env.iobus);
         let interrupt = virtio_net.take_interrupt().unwrap();
         dispatcher
-            .add_interrupt(interrupt)
+            .add_interrupt(State::Interrupt, interrupt)
             .expect("failed to add interrupt");
 
         // Update the source mac address.
@@ -38,8 +50,11 @@ impl EventLoop<Env> for App {
         }
     }
 
-    fn on_connect(&self, ctx: &Context, msg: ConnectMsg) {
-        let tcpip_ch = ctx.dispatcher.add_channel(msg.handle).unwrap();
+    fn on_connect(&self, ctx: Context<Self::State>, msg: ConnectMsg) {
+        let tcpip_ch = ctx
+            .dispatcher
+            .add_channel(State::Upstream, msg.handle)
+            .unwrap();
         self.virtio_net.lock().update_receive(Box::new(move |data| {
             if let Err(err) = tcpip_ch.send(FramedDataMsg { data }) {
                 debug_warn!("failed to send data to tcpip: {:?}", err);
@@ -47,7 +62,7 @@ impl EventLoop<Env> for App {
         }));
     }
 
-    fn on_framed_data(&self, _ctx: &Context, msg: FramedDataMsg<'_>) {
+    fn on_framed_data(&self, _ctx: Context<Self::State>, msg: FramedDataMsg<'_>) {
         trace!("frame data received: {} bytes", msg.data.len());
         self.virtio_net.lock().transmit(msg.data);
         core::mem::forget(msg);

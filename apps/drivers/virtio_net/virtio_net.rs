@@ -1,11 +1,14 @@
 use core::mem::offset_of;
 
 use starina::address::DAddr;
+use starina::collections::HashMap;
+use starina::device_tree::DeviceTree;
 use starina::folio::MmioFolio;
 use starina::info;
 use starina::interrupt::Interrupt;
 use starina::iobus::IoBus;
 use starina::prelude::Box;
+use starina::prelude::String;
 use starina::prelude::vec::Vec;
 use starina_driver_sdk::DmaBufferPool;
 use virtio::DeviceType;
@@ -14,8 +17,6 @@ use virtio::transports::mmio::VirtioMmio;
 use virtio::virtqueue::VirtQueue;
 use virtio::virtqueue::VirtqDescBuffer;
 use virtio::virtqueue::VirtqUsedChain;
-
-use crate::autogen::Env;
 
 const DMA_BUF_SIZE: usize = 4096;
 
@@ -44,13 +45,16 @@ struct VirtioNetConfig {
     supported_hash_types: u32,
 }
 
-fn probe(mut env: Env) -> Option<(IoBus, Box<dyn VirtioTransport>, Vec<VirtQueue>, Interrupt)> {
-    for (name, node) in env.device_tree.devices {
+fn probe(
+    device_tree: &DeviceTree,
+    iobus_map: &mut HashMap<String, IoBus>,
+) -> Option<(IoBus, Box<dyn VirtioTransport>, Vec<VirtQueue>, Interrupt)> {
+    for (name, node) in &device_tree.devices {
         if !node.compatible.iter().any(|c| c == "virtio,mmio") {
             continue;
         }
 
-        let iobus = env.iobus.get(&node.bus).expect("missing iobus");
+        let iobus = iobus_map.get(&node.bus).expect("missing iobus");
         let daddr = DAddr::new(node.reg[0].addr as usize);
         let len = node.reg[0].size as usize;
         let folio = MmioFolio::create_pinned(iobus, daddr, len).unwrap();
@@ -61,7 +65,7 @@ fn probe(mut env: Env) -> Option<(IoBus, Box<dyn VirtioTransport>, Vec<VirtQueue
             info!("found virtio-net device: {}", name);
             let mut transport = Box::new(virtio) as Box<dyn VirtioTransport>;
             let virtqueues = transport.initialize(iobus, 0, 2).unwrap();
-            let iobus = env.iobus.remove(&node.bus).unwrap();
+            let iobus = iobus_map.remove(&node.bus).unwrap();
             let interrupt =
                 Interrupt::create(node.interrupts[0]).expect("failed to create interrupt");
             return Some((iobus, transport, virtqueues, interrupt));
@@ -84,8 +88,9 @@ pub struct VirtioNet {
 }
 
 impl VirtioNet {
-    pub fn init_or_panic(env: Env) -> Self {
-        let (iobus, mut transport, mut virtqueues, interrupt) = probe(env).unwrap();
+    pub fn init_or_panic(device_tree: &DeviceTree, iobus_map: &mut HashMap<String, IoBus>) -> Self {
+        let (iobus, mut transport, mut virtqueues, interrupt) =
+            probe(device_tree, iobus_map).unwrap();
         assert!(transport.is_modern());
 
         let mut mac = [0; 6];
