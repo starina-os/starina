@@ -1,6 +1,7 @@
 #include <stdio.h>
+#include <unistd.h>
 
 int main(void) {
-    puts("Hello from WASM!\n");
+    puts("Hello, world from C on WASM");
     return 1;
 }

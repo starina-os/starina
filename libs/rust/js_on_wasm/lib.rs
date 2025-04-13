@@ -77,11 +77,11 @@ pub fn try_wasm() -> Result<(), wasmi::Error> {
         "fd_write",
         |mut caller: Caller<'_, HostState>,
          fd: i32,
-         iovs: i32,
+         iovs_ptr: i32,
          iovs_len: i32,
          written_ptr: i32|
          -> i32 {
-            trace!("[wasi] fd_write: fd={}, iov={}", fd, iovs);
+            trace!("[wasi] fd_write: fd={}, iov={}", fd, iovs_ptr);
             assert_eq!(fd, 1);
 
             let memory = caller.get_export("memory").unwrap().into_memory().unwrap();
@@ -93,8 +93,14 @@ pub fn try_wasm() -> Result<(), wasmi::Error> {
                     slice::from_raw_parts_mut(iov.as_mut_ptr() as *mut u8, mem::size_of::<IoVec>())
                 };
 
+                // Calculate the correct offset for each IoVec in the array
+                trace!(
+                    "[wasi][iovec] iovs_ptr={:x}, i={}/{}",
+                    iovs_ptr, i, iovs_len
+                );
+                let iov_offset = iovs_ptr + i * (mem::size_of::<IoVec>() as i32);
                 memory
-                    .read(&caller, (iovs + written).try_into().unwrap(), iov_bytes)
+                    .read(&caller, iov_offset.try_into().unwrap(), iov_bytes)
                     .unwrap();
 
                 let iov = unsafe { iov.assume_init() };
