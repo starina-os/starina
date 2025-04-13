@@ -5,7 +5,7 @@ use wasmi::*;
 // In this simple example we are going to compile the below Wasm source,
 // instantiate a Wasm module from it and call its exported "hello" function.
 pub fn try_wasm() -> Result<(), wasmi::Error> {
-    let wasm = include_bytes!("app.wasm");
+    let wasm = include_bytes!("out/app.wasm");
     // First step is to create the Wasm execution engine with some config.
     //
     // In this example we are using the default configuration.
@@ -27,7 +27,7 @@ pub fn try_wasm() -> Result<(), wasmi::Error> {
     linker.func_wrap(
         "host",
         "print",
-        |caller: Caller<'_, HostState>, message: String| {
+        |caller: Caller<'_, HostState>, param: i32| {
             panic!(
                 "Got {param} from WebAssembly and my host state is: {}",
                 caller.data()
@@ -39,7 +39,7 @@ pub fn try_wasm() -> Result<(), wasmi::Error> {
     let instance = linker.instantiate(&mut store, &module)?.start(&mut store)?;
     // Now we can finally query the exported "hello" function and call it.
     instance
-        .get_typed_func::<(), ()>(&store, "hello")?
+        .get_typed_func::<(), ()>(&store, "main")?
         .call(&mut store, ())?;
     Ok(())
 }
