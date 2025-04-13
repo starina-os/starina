@@ -55,8 +55,29 @@ pub struct BootInfo {
     cpu_id: CpuId,
 }
 
+struct Logger;
+static LOGGER: Logger = Logger;
+
+impl log::Log for Logger {
+    fn enabled(&self, _metadata: &log::Metadata) -> bool {
+        true
+    }
+
+    fn flush(&self) {}
+
+    fn log(&self, record: &log::Record) {
+        debug!(
+            "{}: {}",
+            record.module_path().unwrap_or("(unknown)"),
+            record.args()
+        );
+    }
+}
 pub fn boot(bootinfo: BootInfo) -> ! {
     info!("Booting Starina...");
+
+    log::set_logger(&LOGGER).unwrap();
+    log::set_max_level(log::LevelFilter::Trace);
 
     GLOBAL_ALLOCATOR.add_region(EARLY_RAM.as_ptr() as *mut _, EARLY_RAM.len());
 

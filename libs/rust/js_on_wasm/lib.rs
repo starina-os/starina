@@ -1,6 +1,24 @@
 #![no_std]
 
+use ::core::mem;
+use ::core::mem::MaybeUninit;
+use ::core::slice;
+use log::info;
+use log::trace;
 use wasmi::*;
+
+extern crate alloc;
+use alloc::vec::Vec;
+
+#[repr(transparent)]
+#[derive(Debug, Clone, Copy)]
+pub struct UserPtr(i32);
+
+#[repr(C)]
+struct IoVec {
+    buf: UserPtr,
+    len: u32,
+}
 
 // In this simple example we are going to compile the below Wasm source,
 // instantiate a Wasm module from it and call its exported "hello" function.
@@ -24,22 +42,98 @@ pub fn try_wasm() -> Result<(), wasmi::Error> {
     // The job of a linker is to satisfy the Wasm module's imports.
     let mut linker = <Linker<HostState>>::new(&engine);
     // We are required to define all imports before instantiating a Wasm module.
-    linker.func_wrap(
-        "host",
-        "print",
-        |caller: Caller<'_, HostState>, param: i32| {
-            panic!(
-                "Got {param} from WebAssembly and my host state is: {}",
-                caller.data()
-            );
 
-            ()
+    linker.func_wrap(
+        "wasi_snapshot_preview1",
+        "fd_close",
+        |_caller: Caller<'_, HostState>, fd: i32| -> i32 {
+            trace!("[wasi] fd_close: fd={}", fd);
+            0
         },
     )?;
+    linker.func_wrap(
+        "wasi_snapshot_preview1",
+        "fd_fdstat_get",
+        |_caller: Caller<'_, HostState>, fd: i32, buf_ptr: i32| -> i32 {
+            trace!("[wasi] fd_fdstat_get: fd={}", fd);
+            0
+        },
+    )?;
+    linker.func_wrap(
+        "wasi_snapshot_preview1",
+        "fd_seek",
+        |_caller: Caller<'_, HostState>,
+         fd: i32,
+         _offset: i64,
+         whence: i32,
+         newoffset: i32|
+         -> i32 {
+            trace!("[wasi] fd_seek: fd={}", fd);
+            0
+        },
+    )?;
+    linker.func_wrap(
+        "wasi_snapshot_preview1",
+        "fd_write",
+        |mut caller: Caller<'_, HostState>,
+         fd: i32,
+         iovs: i32,
+         iovs_len: i32,
+         written_ptr: i32|
+         -> i32 {
+            trace!("[wasi] fd_write: fd={}, iov={}", fd, iovs);
+            assert_eq!(fd, 1);
+
+            let memory = caller.get_export("memory").unwrap().into_memory().unwrap();
+            let mut written = 0;
+            for i in 0..iovs_len {
+                let mut iov: MaybeUninit<IoVec> = MaybeUninit::uninit();
+                debug_assert_eq!(mem::size_of::<IoVec>(), mem::size_of_val(&iov));
+                let iov_bytes = unsafe {
+                    slice::from_raw_parts_mut(iov.as_mut_ptr() as *mut u8, mem::size_of::<IoVec>())
+                };
+
+                memory
+                    .read(&caller, (iovs + written).try_into().unwrap(), iov_bytes)
+                    .unwrap();
+
+                let iov = unsafe { iov.assume_init() };
+                let mut buf = Vec::with_capacity(iov.len as usize);
+                buf.resize(iov.len as usize, 0);
+
+                trace!("[wasi][iovec] buf={:x}, len={}", iov.buf.0, iov.len);
+                memory
+                    .read(&caller, iov.buf.0.try_into().unwrap(), &mut buf)
+                    .unwrap();
+
+                panic!("[wasi][stdio] {}", ::core::str::from_utf8(&buf).unwrap());
+
+                let iov_len_i32: i32 = iov.len.try_into().unwrap();
+                written += iov_len_i32;
+            }
+
+            memory
+                .write(
+                    &mut caller,
+                    written_ptr.try_into().unwrap(),
+                    &written.to_le_bytes(),
+                )
+                .unwrap();
+
+            written
+        },
+    )?;
+    linker.func_wrap(
+        "wasi_snapshot_preview1",
+        "proc_exit",
+        |caller: Caller<'_, HostState>, exit_code: i32| {
+            trace!("[wasi] proc_exit: {}", exit_code);
+        },
+    )?;
+
     let instance = linker.instantiate(&mut store, &module)?.start(&mut store)?;
-    // Now we can finally query the exported "hello" function and call it.
     instance
-        .get_typed_func::<(), ()>(&store, "main")?
+        .get_typed_func::<(), ()>(&store, "_start")?
         .call(&mut store, ())?;
     Ok(())
 }

@@ -181,6 +181,7 @@ checksum = "4a5f13b858c8d314ee3e8f639011f7ccefe71f97f96e50151fb991f267928e2c"
 name = "js_on_wasm"
 version = "0.0.0"
 dependencies = [
+ "log",
  "wasmi",
 ]
 
@@ -193,6 +194,7 @@ dependencies = [
  "hashbrown",
  "http_server",
  "js_on_wasm",
+ "log",
  "rustc-hash",
  "serde_json",
  "spin",
