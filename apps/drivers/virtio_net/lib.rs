@@ -3,6 +3,7 @@
 pub mod autogen;
 
 use autogen::Env;
+use starina::channel::ChannelSender;
 use starina::eventloop::Context;
 use starina::eventloop::Dispatcher;
 use starina::eventloop::EventLoop;
@@ -13,6 +14,16 @@ use starina::prelude::*;
 use virtio_net::VirtioNet;
 
 mod virtio_net;
+
+struct ReceiverImpl(ChannelSender);
+
+impl virtio_net::Receiver for ReceiverImpl {
+    fn receive(&mut self, data: &[u8]) {
+        if let Err(err) = self.0.send(FramedDataMsg { data }) {
+            debug_warn!("failed to forward a packet to upstream: {:?}", err);
+        }
+    }
+}
 
 pub enum State {
     Startup,
@@ -51,21 +62,17 @@ impl EventLoop<Env> for App {
     }
 
     fn on_connect(&self, ctx: Context<Self::State>, msg: ConnectMsg) {
-        let tcpip_ch = ctx
+        let upstream = ctx
             .dispatcher
             .add_channel(State::Upstream, msg.handle)
             .unwrap();
-        self.virtio_net.lock().update_receive(Box::new(move |data| {
-            if let Err(err) = tcpip_ch.send(FramedDataMsg { data }) {
-                debug_warn!("failed to send data to tcpip: {:?}", err);
-            }
-        }));
+
+        self.virtio_net.lock().set_receiver(ReceiverImpl(upstream));
     }
 
     fn on_framed_data(&self, _ctx: Context<Self::State>, msg: FramedDataMsg<'_>) {
         trace!("frame data received: {} bytes", msg.data.len());
         self.virtio_net.lock().transmit(msg.data);
-        core::mem::forget(msg);
     }
 
     fn on_interrupt(&self, interrupt: &Interrupt) {
