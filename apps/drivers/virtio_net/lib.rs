@@ -46,7 +46,7 @@ impl EventLoop<Env> for App {
         // Look for and initialize the virtio-net device.
         let mut virtio_net = VirtioNet::init_or_panic(&env.device_tree, &mut env.iobus);
 
-        // Acquire the device's interrupt line.
+        // Start watching for interrupts.
         let interrupt = virtio_net.take_interrupt().unwrap();
         dispatcher
             .add_interrupt(State::Interrupt, interrupt)
