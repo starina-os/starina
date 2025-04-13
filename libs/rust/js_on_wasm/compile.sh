@@ -8,9 +8,9 @@ clang \
     --sysroot=/opt/homebrew/opt/wasi-libc/share/wasi-sysroot \
     -nodefaultlibs \
     -L libclang_rt.builtins-wasm32-wasi-24.0/ \
+    -D_GNU_SOURCE \
     -DQJS_BUILD_LIBC \
     -D_WASI_EMULATED_SIGNAL \
-    -D_GNU_SOURCE \
     -lwasi-emulated-signal \
     -lc \
     -lclang_rt.builtins-wasm32 \
