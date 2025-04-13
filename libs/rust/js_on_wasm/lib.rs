@@ -26,7 +26,8 @@ pub fn try_wasm() -> Result<(), wasmi::Error> {
     // First step is to create the Wasm execution engine with some config.
 
     let mut config = Config::default();
-    config.compilation_mode(CompilationMode::LazyTranslation);
+    config.compilation_mode(CompilationMode::Lazy);
+    // config.wasm_bulk_memory(true);
 
     //
     // In this example we are using the default configuration.

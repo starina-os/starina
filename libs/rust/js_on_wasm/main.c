@@ -21,8 +21,9 @@ JSValue val;
 
 bool initialized = false;
 
-__attribute__((export_name("wizer.initialize")))
-void wizer_initialize(void) {
+// __attribute__((export_name("wizer.initialize")))
+// void wizer_initialize(void) {
+int main(void) {
     puts("initializing quickjs...");
     rt = JS_NewRuntime();
     js_std_set_worker_new_context_func(JS_NewCustomContext);
@@ -35,10 +36,10 @@ void wizer_initialize(void) {
     };
     js_std_add_helpers(ctx, 0, argv);
     initialized = true;
-}
+// }
 
-__attribute__((export_name("wizer.resume")))
-int wizer_resume(void) {
+// __attribute__((export_name("wizer.resume")))
+// int wizer_resume(void) {
     puts("eval...");
     JS_Eval(ctx, APP_SCRIPT, strlen(APP_SCRIPT), "app.js", JS_EVAL_FLAG_STRICT);
 
