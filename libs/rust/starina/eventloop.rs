@@ -26,40 +26,81 @@ use crate::tls;
 pub trait EventLoop<E>: Send + Sync {
     type State: Send + Sync;
 
+    /// Initializes an application.
+    ///
+    /// This is an equivalent to the `main` function in a normal Rust program,
+    /// but in a component-like way.
     fn init(dispatcher: &Dispatcher<Self::State>, env: E) -> Self
     where
         Self: Sized;
 
+    /// `connect` message handler.
+    ///
+    /// This message is used when a new channel connection is established to
+    /// the application. `msg.handle` is the handle of the new channel.
+    ///
+    /// This is so-called *passive open*, while `open-reply` message is
+    /// *active open*. Close the channel immediately if you don't want
+    /// to accept the connection.
+    ///
+    /// Examples:
+    ///
+    /// - Kernel sends this message when the app is a server and a new client
+    ///   connection is established.
+    /// - TCP/IP server sends this message when a new TCP connection is
+    ///   established to a listening socket.
     #[allow(unused_variables)]
     fn on_connect(&self, ctx: Context<Self::State>, msg: ConnectMsg) {
         debug_warn!("ignored connect message");
     }
 
+    /// `open` message handler.
+    ///
+    /// This is an equivalent to the `open(2)` system call in UNIX. Servers
+    /// reply with `open-reply` message with the handle of the new channel
+    /// to use the opened resource such as files, TCP sockets, etc.
     #[allow(unused_variables)]
     fn on_open(&self, ctx: Context<Self::State>, msg: OpenMsg<'_>) {
         debug_warn!("ignored open message");
     }
 
+    /// `open-reply` message handler.
+    ///
+    /// This is so-called *active open*, while `connect` message is
+    /// *passive open*.
+    ///
+    /// This message is used to reply to the `open` message. The `msg.handle`
+    /// is the handle of the new channel representing the opened resource.
     #[allow(unused_variables)]
     fn on_open_reply(&self, ctx: Context<Self::State>, msg: OpenReplyMsg) {
         debug_warn!("ignored open-reply message");
     }
 
+    /// `framed-data` message handler.
+    ///
+    /// This message is used for datagram-like data transfers such as UDP,
+    /// network packets, etc.
     #[allow(unused_variables)]
     fn on_framed_data(&self, _ctx: Context<Self::State>, _msg: FramedDataMsg<'_>) {
         debug_warn!("ignored framed data message");
     }
 
+    /// `stream-data` message handler.
+    ///
+    /// This message is used for byte-stream-like data transfers such as TCP,
+    /// stdio/stderr, UNIX pipes, etc.
     #[allow(unused_variables)]
     fn on_stream_data(&self, _ctx: Context<Self::State>, _msg: StreamDataMsg<'_>) {
         debug_warn!("ignored stream data message");
     }
 
+    // Callback for unknown messages.
     #[allow(unused_variables)]
     fn on_unknown_message(&self, ctx: Context<Self::State>, msg: AnyMessage) {
         debug_warn!("ignored message: {}", msg.msginfo.kind());
     }
 
+    /// Interrupt handler.
     #[allow(unused_variables)]
     fn on_interrupt(&self, interrupt: &Interrupt) {
         debug_warn!("ignored interrupt");

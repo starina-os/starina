@@ -43,13 +43,16 @@ impl EventLoop<Env> for App {
             .add_channel(State::Startup, env.startup_ch)
             .unwrap();
 
+        // Look for and initialize the virtio-net device.
         let mut virtio_net = VirtioNet::init_or_panic(&env.device_tree, &mut env.iobus);
+
+        // Acquire the device's interrupt line.
         let interrupt = virtio_net.take_interrupt().unwrap();
         dispatcher
             .add_interrupt(State::Interrupt, interrupt)
             .expect("failed to add interrupt");
 
-        // Update the source mac address.
+        // Read its MAC address.
         let mac = virtio_net.mac_addr();
         debug!(
             "MAC address: {:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}",
