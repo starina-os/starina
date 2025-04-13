@@ -3,7 +3,7 @@
 #include "quickjs.h"
 #include "quickjs-libc.h"
 
-#include "app.bytecode.h"
+const char *APP_SCRIPT = "console.log('Hello from JS:', 40+2)\n";
 
 static JSContext *JS_NewCustomContext(JSRuntime *rt)
 {
@@ -20,7 +20,7 @@ int main(void) {
     JSContext *ctx;
     JSValue val;
 
-    puts("starting quickjs...\n");
+    puts("starting quickjs...");
 
     rt = JS_NewRuntime();
     js_std_set_worker_new_context_func(JS_NewCustomContext);
@@ -32,7 +32,11 @@ int main(void) {
         NULL
     };
     js_std_add_helpers(ctx, 0, argv);
-    js_std_eval_binary(ctx, qjsc_app, qjsc_app_size, 0);
+
+    puts("eval...");
+    JS_Eval(ctx, APP_SCRIPT, strlen(APP_SCRIPT), "app.js", JS_EVAL_FLAG_STRICT);
+
+    puts("looping...");
     int r = js_std_loop(ctx);
     if (r) {
       js_std_dump_error(ctx);

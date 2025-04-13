@@ -209,7 +209,10 @@ pub fn try_wasm() -> Result<(), wasmi::Error> {
                     .read(&caller, iov.buf.0.try_into().unwrap(), &mut buf)
                     .unwrap();
 
-                info!("[wasi][stdio] {}", ::core::str::from_utf8(&buf).unwrap());
+                info!(
+                    "[wasi][stdio] \x1b[1;33m{}\x1b[0m",
+                    ::core::str::from_utf8(&buf).unwrap()
+                );
 
                 let iov_len_i32: i32 = iov.len.try_into().unwrap();
                 written += iov_len_i32;
