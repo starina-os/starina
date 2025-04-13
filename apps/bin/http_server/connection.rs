@@ -30,6 +30,12 @@ pub struct Conn {
     request_parser: HttpRequestParser,
 }
 
+impl Default for Conn {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Conn {
     pub fn new() -> Self {
         Self {
@@ -45,8 +51,8 @@ impl Conn {
                     Part::Request {
                         method,
                         path,
-                        headers,
-                        first_body,
+                        headers: _headers,
+                        first_body: _first_body,
                     } => {
                         // TODO: backpressure
                         let mut response_writer = HttpResponseWriter::new(writer);
@@ -58,7 +64,7 @@ impl Conn {
                             .unwrap();
                         drop(response_writer);
                     }
-                    Part::Body { chunk } => {
+                    Part::Body { chunk: _chunk } => {
                         // Do something.
                     }
                 }

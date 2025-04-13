@@ -9,7 +9,6 @@ use smoltcp::socket::tcp;
 use smoltcp::time::Instant;
 use smoltcp::wire::HardwareAddress;
 use smoltcp::wire::IpCidr;
-use smoltcp::wire::IpEndpoint;
 use smoltcp::wire::IpListenEndpoint;
 use starina::channel::ChannelSender;
 use starina::collections::HashMap;
@@ -25,7 +24,6 @@ fn now() -> Instant {
 
 #[derive(Debug, PartialEq, Eq)]
 enum SocketState {
-    Connecting { remote_endpoint: IpEndpoint },
     Listening { listen_endpoint: IpListenEndpoint },
     Established,
     Closed,
@@ -60,7 +58,6 @@ pub struct TcpIp<'a> {
     device: NetDevice,
     recv_buf: Vec<u8>,
     iface: Interface,
-    next_ephemeral_port: u16,
 }
 
 impl<'a> TcpIp<'a> {
@@ -86,7 +83,6 @@ impl<'a> TcpIp<'a> {
             smol_sockets,
             sockets: HashMap::new(),
             recv_buf: vec![0; 1514],
-            next_ephemeral_port: 49152,
         }
     }
 
@@ -118,12 +114,6 @@ impl<'a> TcpIp<'a> {
             for (handle, sock) in self.sockets.iter_mut() {
                 let smol_sock = self.smol_sockets.get_mut::<tcp::Socket>(sock.smol_handle);
                 match (&mut sock.state, smol_sock.state()) {
-                    (SocketState::Connecting { .. }, tcp::State::SynSent) => {
-                        trace!("connecting socket {:?}", handle);
-                    }
-                    (SocketState::Connecting { .. }, _state) => {
-                        todo!();
-                    }
                     (
                         SocketState::Listening { .. },
                         tcp::State::Listen | tcp::State::SynReceived,
@@ -218,37 +208,6 @@ impl<'a> TcpIp<'a> {
                 state: SocketState::Listening { listen_endpoint },
             },
         );
-    }
-
-    fn get_ephemeral_port(&mut self) -> Result<u16, ErrorCode> {
-        let port = self.next_ephemeral_port;
-        self.next_ephemeral_port += 1;
-        Ok(port)
-    }
-
-    pub fn tcp_connect(
-        &mut self,
-        remote_endpoint: IpEndpoint,
-        ch: ChannelSender,
-    ) -> Result<(), ErrorCode> {
-        let rx_buf = tcp::SocketBuffer::new(vec![0; 8192]);
-        let tx_buf = tcp::SocketBuffer::new(vec![0; 8192]);
-        let mut sock = tcp::Socket::new(rx_buf, tx_buf);
-        let our_port = self.get_ephemeral_port()?;
-        sock.connect(self.iface.context(), remote_endpoint, our_port)
-            .unwrap(); // FIXME:
-
-        let handle = self.smol_sockets.add(sock);
-        self.sockets.insert(
-            handle,
-            Socket {
-                ch,
-                smol_handle: handle,
-                state: SocketState::Connecting { remote_endpoint },
-            },
-        );
-
-        Ok(())
     }
 
     pub fn tcp_listen(
