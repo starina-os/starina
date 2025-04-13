@@ -8,4 +8,4 @@ edition = { workspace = true }
 path = "./lib.rs"
 
 [dependencies]
-wasmi = { version = "0.44.0", default-features = false }
+wasmi = { version = "0.44.0", default-features = false, features = ["simd"] }
