@@ -34,7 +34,8 @@ pub fn try_wasm() -> Result<(), wasmi::Error> {
 
     // Now we can compile the above Wasm module with the given Wasm source.
     info!("[wasm] loading module");
-    let module = unsafe { Module::new_unchecked(&engine, wasm) }?;
+    // let module = unsafe { Module::new_unchecked(&engine, wasm) }?;
+    let module = Module::new(&engine, wasm)?;
     info!("[wasm] module loaded");
 
     // Wasm objects operate within the context of a Wasm `Store`.
@@ -235,11 +236,31 @@ pub fn try_wasm() -> Result<(), wasmi::Error> {
             info!("[wasi] proc_exit: {}", exit_code);
         },
     )?;
+    linker.func_wrap(
+        "wasi_snapshot_preview1",
+        "args_get",
+        |_caller: Caller<'_, HostState>, _argv: i32, _argv_buf: i32| -> i32 {
+            info!("[wasi] args_get");
+            0
+        },
+    )?;
+    linker.func_wrap(
+        "wasi_snapshot_preview1",
+        "args_sizes_get",
+        |_caller: Caller<'_, HostState>, _argc_ptr: i32, _argv_buf_size_ptr: i32| -> u32 {
+            info!("[wasi] args_sizes_get");
+            0
+        },
+    )?;
 
     info!("[wasm] instantiating module");
     let instance = linker.instantiate(&mut store, &module)?.start(&mut store)?;
-    instance
-        .get_typed_func::<(), ()>(&store, "_start")?
-        .call(&mut store, ())?;
+
+    info!("[wasm] getting wizer.resume");
+    let resume_func = instance.get_typed_func::<(), ()>(&store, "wizer.resume")?;
+
+    info!("[wasm] calling module");
+    resume_func.call(&mut store, ())?;
+
     Ok(())
 }

@@ -16,7 +16,5 @@ clang \
     quickjs-amalgam.c main.c \
     -o app.stage0.wasm
 
-# wizer --allow-wasi app.stage0.wasm -o app.stage1.wasm
-mv app.stage0.wasm app.stage1.wasm
-
-wasm-opt -O3 app.stage1.wasm -o app.optimized.wasm
+wizer --allow-wasi app.stage0.wasm -o app.stage1.wasm
+wasm-opt -Oz app.stage1.wasm -o app.optimized.wasm

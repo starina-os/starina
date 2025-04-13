@@ -1,17 +1,17 @@
 use std::process::Command;
 
-fn run_with_pnpm(args: &[&str]) {
-    let mut command = Command::new("pnpm");
-    command.args(args);
-    let status = command.status().expect("failed to execute pnpm");
-    if !status.success() {
-        panic!(
-            "pnpm command failed with status {}: {}",
-            status,
-            args.join(" ")
-        );
-    }
-}
+// fn run_with_pnpm(args: &[&str]) {
+//     let mut command = Command::new("pnpm");
+//     command.args(args);
+//     let status = command.status().expect("failed to execute pnpm");
+//     if !status.success() {
+//         panic!(
+//             "pnpm command failed with status {}: {}",
+//             status,
+//             args.join(" ")
+//         );
+//     }
+// }
 
 pub fn main() {
     println!("cargo:rerun-if-changed=build.rs");
