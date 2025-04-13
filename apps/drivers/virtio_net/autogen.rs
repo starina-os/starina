@@ -1,3 +1,4 @@
+use starina::channel::Channel;
 use starina::collections::HashMap;
 // TODO: auto geenrate this file from app.toml
 use starina::device_tree::DeviceTree;
@@ -14,6 +15,7 @@ use crate::App;
 
 #[derive(serde::Deserialize)]
 pub struct Env {
+    pub startup_ch: Channel,
     pub iobus: HashMap<String, IoBus>,
     pub device_tree: DeviceTree,
 }

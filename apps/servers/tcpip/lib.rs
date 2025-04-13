@@ -16,12 +16,9 @@ use smoltcp::wire::IpAddress;
 use smoltcp::wire::IpCidr;
 use smoltcp::wire::IpListenEndpoint;
 use starina::channel::Channel;
-use starina::collections::HashMap;
 use starina::eventloop::Context;
 use starina::eventloop::Dispatcher;
 use starina::eventloop::EventLoop;
-use starina::handle::HandleId;
-use starina::handle::Handleable;
 use starina::message::ConnectMsg;
 use starina::message::FramedDataMsg;
 use starina::message::OpenMsg;
@@ -38,18 +35,30 @@ fn parse_addr(addr: &str) -> Option<(Ipv4Addr, u16)> {
     Some((ip, port))
 }
 
+#[derive(Debug)]
+pub enum State {
+    Startup,
+    Driver,
+    Control,
+    Listen,
+    Data { smol_handle: SocketHandle },
+}
+
 pub struct App {
     tcpip: spin::Mutex<TcpIp<'static>>,
-    data_channels: spin::Mutex<HashMap<HandleId, SocketHandle>>,
 }
 
 impl EventLoop<Env> for App {
-    fn init(dispatcher: &Dispatcher, env: Env) -> Self {
+    type State = State;
+
+    fn init(dispatcher: &Dispatcher<Self::State>, env: Env) -> Self {
         smoltcp_logger::init();
 
-        let driver = dispatcher
-            .add_channel(env.driver)
-            .expect("failed to get channel sender");
+        dispatcher
+            .add_channel(State::Startup, env.startup_ch)
+            .unwrap();
+
+        let driver = dispatcher.add_channel(State::Driver, env.driver).unwrap();
 
         let transmit = move |data: &[u8]| {
             trace!("transmit {} bytes", data.len());
@@ -69,15 +78,16 @@ impl EventLoop<Env> for App {
 
         Self {
             tcpip: spin::Mutex::new(tcpip),
-            data_channels: spin::Mutex::new(HashMap::new()),
         }
     }
 
-    fn on_connect(&self, ctx: &Context, msg: ConnectMsg) {
-        ctx.dispatcher.add_channel(msg.handle).unwrap();
+    fn on_connect(&self, ctx: Context<Self::State>, msg: ConnectMsg) {
+        ctx.dispatcher
+            .add_channel(State::Control, msg.handle)
+            .unwrap();
     }
 
-    fn on_open(&self, ctx: &Context, msg: OpenMsg<'_>) {
+    fn on_open(&self, ctx: Context<Self::State>, msg: OpenMsg<'_>) {
         info!("got open message: {}", msg.uri);
         match msg.uri.split_once(':') {
             Some(("tcp-listen", rest)) => {
@@ -92,7 +102,7 @@ impl EventLoop<Env> for App {
                 };
 
                 let (our_ch, their_ch) = Channel::new().unwrap();
-                let sender = ctx.dispatcher.add_channel(our_ch).unwrap();
+                let sender = ctx.dispatcher.add_channel(State::Listen, our_ch).unwrap();
 
                 // Have a separate scope to drop the tcpip lock as soon as possible.
                 {
@@ -110,56 +120,46 @@ impl EventLoop<Env> for App {
         }
     }
 
-    fn on_stream_data(&self, ctx: &Context, msg: StreamDataMsg<'_>) {
-        let smol_handle = self
-            .data_channels
-            .lock()
-            .get(&ctx.sender.handle().id())
-            .copied()
-            .unwrap();
+    fn on_stream_data(&self, ctx: Context<Self::State>, msg: StreamDataMsg<'_>) {
+        let State::Data { smol_handle } = &ctx.state else {
+            debug_warn!("stream data from unexpected state: {:?}", ctx.state);
+            return;
+        };
+
         let mut tcpip = self.tcpip.lock();
         // TODO: error handling
-        tcpip.tcp_send(smol_handle, msg.data).unwrap();
-        poll(ctx.dispatcher, &mut tcpip, &self.data_channels);
+        tcpip.tcp_send(*smol_handle, msg.data).unwrap();
+        poll(ctx.dispatcher, &mut tcpip);
     }
 
-    fn on_framed_data(&self, ctx: &Context, msg: FramedDataMsg<'_>) {
+    fn on_framed_data(&self, ctx: Context<Self::State>, msg: FramedDataMsg<'_>) {
         let mut tcpip = self.tcpip.lock();
         tcpip.receive_packet(msg.data);
-        poll(ctx.dispatcher, &mut tcpip, &self.data_channels);
+        poll(ctx.dispatcher, &mut tcpip);
     }
 }
 
-fn poll(
-    dispatcher: &Dispatcher,
-    tcpip: &mut TcpIp,
-    data_channels: &spin::Mutex<HashMap<HandleId, smoltcp::iface::SocketHandle>>,
-) {
-    tcpip.poll(
-        &(dispatcher, data_channels),
-        |(dispatcher, data_channels), ev| {
-            match ev {
-                SocketEvent::Data { ch, data } => {
-                    ch.send(StreamDataMsg { data }).unwrap(); // FIXME: what if backpressure happens?
-                }
-                SocketEvent::Close { ch } => {
-                    dispatcher.close_channel(ch.handle().id()).unwrap();
-                }
-                SocketEvent::NewConnection { ch, smol_handle } => {
-                    let (ours, theirs) = Channel::new().unwrap();
-
-                    data_channels.lock().insert(ours.handle_id(), smol_handle);
-                    let our_ch_sender = dispatcher
-                        .add_channel(ours)
-                        .expect("failed to get channel sender");
-
-                    ch.send(ConnectMsg { handle: theirs }).unwrap(); // FIXME: what if backpressure happens?
-
-                    // The socket has become an esblished socket, so replace the old
-                    // sender handle with a new data channel.
-                    *ch = our_ch_sender;
-                }
+fn poll(dispatcher: &Dispatcher<State>, tcpip: &mut TcpIp) {
+    tcpip.poll(&dispatcher, |dispatcher, ev| {
+        match ev {
+            SocketEvent::Data { ch, data } => {
+                ch.send(StreamDataMsg { data }).unwrap(); // FIXME: what if backpressure happens?
             }
-        },
-    );
+            SocketEvent::Close { ch } => {
+                dispatcher.close_channel(ch.handle().id()).unwrap();
+            }
+            SocketEvent::NewConnection { ch, smol_handle } => {
+                let (ours, theirs) = Channel::new().unwrap();
+                let our_ch_sender = dispatcher
+                    .add_channel(State::Data { smol_handle }, ours)
+                    .expect("failed to get channel sender");
+
+                ch.send(ConnectMsg { handle: theirs }).unwrap(); // FIXME: what if backpressure happens?
+
+                // The socket has become an esblished socket, so replace the old
+                // sender handle with a new data channel.
+                *ch = our_ch_sender;
+            }
+        }
+    });
 }

@@ -10,6 +10,7 @@ use crate::App;
 
 #[derive(serde::Deserialize)]
 pub struct Env {
+    pub startup_ch: Channel,
     pub driver: Channel,
 }
 

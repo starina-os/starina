@@ -1,3 +1,5 @@
+use core::fmt;
+
 use starina::channel::ChannelSender;
 use starina::error::ErrorCode;
 use starina::message::StreamDataMsg;
@@ -8,15 +10,15 @@ use crate::http::request_parser::Part;
 use crate::http::response_writer::HttpResponseWriter;
 use crate::http::response_writer::Writer;
 
-pub struct ChannelWriter(ChannelSender);
+pub struct ChannelWriter<'a>(&'a ChannelSender);
 
-impl ChannelWriter {
-    pub fn new(tcpip_sender: ChannelSender) -> Self {
+impl<'a> ChannelWriter<'a> {
+    pub fn new(tcpip_sender: &'a ChannelSender) -> Self {
         Self(tcpip_sender)
     }
 }
 
-impl Writer for ChannelWriter {
+impl<'a> Writer for ChannelWriter<'a> {
     type Error = ErrorCode;
 
     fn write(&mut self, buf: &[u8]) -> Result<(), Self::Error> {
@@ -24,20 +26,18 @@ impl Writer for ChannelWriter {
     }
 }
 
-pub struct Conn<W: Writer> {
-    response_writer: Option<HttpResponseWriter<W>>,
+pub struct Conn {
     request_parser: HttpRequestParser,
 }
 
-impl<W: Writer> Conn<W> {
-    pub fn new(writer: W) -> Self {
+impl Conn {
+    pub fn new() -> Self {
         Self {
-            response_writer: Some(HttpResponseWriter::new(writer)),
             request_parser: HttpRequestParser::new(),
         }
     }
 
-    pub fn on_tcp_data(&mut self, chunk: &[u8]) {
+    pub fn on_tcp_data<W: Writer>(&mut self, writer: W, chunk: &[u8]) {
         match self.request_parser.parse_chunk(chunk) {
             Ok(Some(part)) => {
                 warn!("{:?}", part);
@@ -49,7 +49,7 @@ impl<W: Writer> Conn<W> {
                         first_body,
                     } => {
                         // TODO: backpressure
-                        let mut response_writer = self.response_writer.take().unwrap();
+                        let mut response_writer = HttpResponseWriter::new(writer);
                         response_writer.set_header("server", "Starina").unwrap();
                         response_writer.set_header("connection", "close").unwrap();
                         response_writer.write_status(200).unwrap();
@@ -71,5 +71,11 @@ impl<W: Writer> Conn<W> {
                 // TODO: close the connection
             }
         }
+    }
+}
+
+impl fmt::Debug for Conn {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Conn").finish()
     }
 }

@@ -163,19 +163,16 @@ pub fn load_inkernel_apps(device_tree: DeviceTree) {
             env.insert(item.name.into(), value);
         }
 
-        let startup_ch = if let Some(ch) = server_channels.get(app.name) {
+        if let Some(ch) = server_channels.get(app.name) {
             let handle = Handle::new(ch.clone(), HandleRights::READ | HandleRights::WRITE);
             let handle_id = KERNEL_PROCESS.handles().lock().insert(handle).unwrap();
-            handle_id
-        } else {
-            HandleId::from_raw(0)
+            env.insert("startup_ch".into(), serde_json::json!(handle_id.as_raw()));
         };
 
         let env_str = serde_json::to_string(&env).unwrap();
         let vsyscall_page = Box::new(VsyscallPage {
             environ_ptr: env_str.as_ptr(),
             environ_len: env_str.len(),
-            startup_ch,
         });
 
         let arg = unsafe { &*vsyscall_page as *const VsyscallPage } as usize;

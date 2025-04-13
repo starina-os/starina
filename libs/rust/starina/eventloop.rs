@@ -10,7 +10,6 @@ use crate::channel::ChannelSender;
 use crate::error::ErrorCode;
 use crate::handle::HandleId;
 use crate::handle::Handleable;
-use crate::handle::OwnedHandle;
 use crate::interrupt::Interrupt;
 use crate::message::AnyMessage;
 use crate::message::ConnectMsg;
@@ -25,37 +24,39 @@ use crate::poll::Readiness;
 use crate::tls;
 
 pub trait EventLoop<E>: Send + Sync {
-    fn init(dispatcher: &Dispatcher, env: E) -> Self
+    type State: Send + Sync;
+
+    fn init(dispatcher: &Dispatcher<Self::State>, env: E) -> Self
     where
         Self: Sized;
 
     #[allow(unused_variables)]
-    fn on_connect(&self, ctx: &Context, msg: ConnectMsg) {
+    fn on_connect(&self, ctx: Context<Self::State>, msg: ConnectMsg) {
         debug_warn!("ignored connect message");
     }
 
     #[allow(unused_variables)]
-    fn on_open(&self, ctx: &Context, msg: OpenMsg<'_>) {
+    fn on_open(&self, ctx: Context<Self::State>, msg: OpenMsg<'_>) {
         debug_warn!("ignored open message");
     }
 
     #[allow(unused_variables)]
-    fn on_open_reply(&self, ctx: &Context, msg: OpenReplyMsg) {
+    fn on_open_reply(&self, ctx: Context<Self::State>, msg: OpenReplyMsg) {
         debug_warn!("ignored open-reply message");
     }
 
     #[allow(unused_variables)]
-    fn on_framed_data(&self, _ctx: &Context, _msg: FramedDataMsg<'_>) {
+    fn on_framed_data(&self, _ctx: Context<Self::State>, _msg: FramedDataMsg<'_>) {
         debug_warn!("ignored framed data message");
     }
 
     #[allow(unused_variables)]
-    fn on_stream_data(&self, _ctx: &Context, _msg: StreamDataMsg<'_>) {
+    fn on_stream_data(&self, _ctx: Context<Self::State>, _msg: StreamDataMsg<'_>) {
         debug_warn!("ignored stream data message");
     }
 
     #[allow(unused_variables)]
-    fn on_unknown_message(&self, ctx: &Context, msg: AnyMessage) {
+    fn on_unknown_message(&self, ctx: Context<Self::State>, msg: AnyMessage) {
         debug_warn!("ignored message: {}", msg.msginfo.kind());
     }
 
@@ -75,17 +76,23 @@ pub enum Object {
     },
 }
 
-pub struct Context<'a> {
+pub struct Context<'a, St> {
     pub sender: &'a ChannelSender,
-    pub dispatcher: &'a Dispatcher,
+    pub dispatcher: &'a Dispatcher<St>,
+    pub state: &'a mut St,
 }
 
-pub struct Dispatcher {
+pub struct ObjectWithState<St> {
+    pub object: Object,
+    pub state: spin::Mutex<St>,
+}
+
+pub struct Dispatcher<St> {
     poll: Poll,
-    objects: spin::RwLock<HashMap<HandleId, Arc<spin::Mutex<Object>>>>,
+    objects: spin::RwLock<HashMap<HandleId, Arc<ObjectWithState<St>>>>,
 }
 
-impl Dispatcher {
+impl<St> Dispatcher<St> {
     pub fn new(poll: Poll) -> Self {
         Self {
             poll,
@@ -93,7 +100,7 @@ impl Dispatcher {
         }
     }
 
-    pub fn add_channel(&self, channel: Channel) -> Result<ChannelSender, ErrorCode> {
+    pub fn add_channel(&self, state: St, channel: Channel) -> Result<ChannelSender, ErrorCode> {
         let handle_id = channel.handle_id();
 
         // Tell the kernel to notify us when the channel is readable.
@@ -105,9 +112,13 @@ impl Dispatcher {
             sender: sender.clone(),
             receiver,
         };
-        self.objects
-            .write()
-            .insert(handle_id, Arc::new(spin::Mutex::new(object)));
+        self.objects.write().insert(
+            handle_id,
+            Arc::new(ObjectWithState {
+                object,
+                state: spin::Mutex::new(state),
+            }),
+        );
 
         Ok(sender)
     }
@@ -122,35 +133,41 @@ impl Dispatcher {
         Ok(())
     }
 
-    pub fn add_interrupt(&self, interrupt: Interrupt) -> Result<(), ErrorCode> {
+    pub fn add_interrupt(&self, state: St, interrupt: Interrupt) -> Result<(), ErrorCode> {
         let handle_id = interrupt.handle_id();
         self.poll.add(handle_id, Readiness::READABLE)?;
         let object = Object::Interrupt { interrupt };
-        self.objects
-            .write()
-            .insert(handle_id, Arc::new(spin::Mutex::new(object)));
+        self.objects.write().insert(
+            handle_id,
+            Arc::new(ObjectWithState {
+                object,
+                state: spin::Mutex::new(state),
+            }),
+        );
 
         Ok(())
     }
 
-    fn wait_and_dispatch<E>(&self, app: &impl EventLoop<E>) {
+    fn wait_and_dispatch<E>(&self, app: &impl EventLoop<E, State = St>) {
         let (handle, readiness) = self.poll.wait().unwrap();
 
-        // TODO: Let poll API return an opaque pointer to the object so that
-        //       we don't need to have this read-write lock.
-        let object_lock = {
-            let objects = self.objects.read();
-            objects.get(&handle).cloned().expect("object not found")
+        let object = {
+            let objects_lock = self.objects.read();
+            objects_lock
+                .get(&handle)
+                .cloned()
+                .expect("object not found")
         };
 
-        let object = object_lock.lock();
-        match &*object {
+        match &object.object {
             Object::Channel { receiver, sender } => {
                 if readiness.contains(Readiness::READABLE) {
                     let mut msg = receiver.recv().unwrap();
+                    let mut state_lock = object.state.lock();
                     let ctx = Context {
                         sender,
                         dispatcher: self,
+                        state: &mut *state_lock,
                     };
 
                     match msg.msginfo.kind() {
@@ -158,18 +175,18 @@ impl Dispatcher {
                             match unsafe {
                                 ConnectMsg::parse_unchecked(msg.msginfo, &mut msg.buffer)
                             } {
-                                Some(msg) => app.on_connect(&ctx, msg),
+                                Some(msg) => app.on_connect(ctx, msg),
                                 None => {
-                                    app.on_unknown_message(&ctx, msg);
+                                    app.on_unknown_message(ctx, msg);
                                 }
                             };
                         }
                         kind if kind == MessageKind::Open as usize => {
                             match unsafe { OpenMsg::parse_unchecked(msg.msginfo, &mut msg.buffer) }
                             {
-                                Some(msg) => app.on_open(&ctx, msg),
+                                Some(msg) => app.on_open(ctx, msg),
                                 None => {
-                                    app.on_unknown_message(&ctx, msg);
+                                    app.on_unknown_message(ctx, msg);
                                 }
                             };
                         }
@@ -177,9 +194,9 @@ impl Dispatcher {
                             match unsafe {
                                 OpenReplyMsg::parse_unchecked(msg.msginfo, &mut msg.buffer)
                             } {
-                                Some(msg) => app.on_open_reply(&ctx, msg),
+                                Some(msg) => app.on_open_reply(ctx, msg),
                                 None => {
-                                    app.on_unknown_message(&ctx, msg);
+                                    app.on_unknown_message(ctx, msg);
                                 }
                             };
                         }
@@ -187,9 +204,9 @@ impl Dispatcher {
                             match unsafe {
                                 FramedDataMsg::parse_unchecked(msg.msginfo, &mut msg.buffer)
                             } {
-                                Some(msg) => app.on_framed_data(&ctx, msg),
+                                Some(msg) => app.on_framed_data(ctx, msg),
                                 None => {
-                                    app.on_unknown_message(&ctx, msg);
+                                    app.on_unknown_message(ctx, msg);
                                 }
                             };
                         }
@@ -197,9 +214,9 @@ impl Dispatcher {
                             match unsafe {
                                 StreamDataMsg::parse_unchecked(msg.msginfo, &mut msg.buffer)
                             } {
-                                Some(msg) => app.on_stream_data(&ctx, msg),
+                                Some(msg) => app.on_stream_data(ctx, msg),
                                 None => {
-                                    app.on_unknown_message(&ctx, msg);
+                                    app.on_unknown_message(ctx, msg);
                                 }
                             };
                         }
@@ -228,25 +245,11 @@ pub fn app_loop<E: DeserializeOwned, A: EventLoop<E>>(
         core::slice::from_raw_parts(ptr, len)
     };
 
-    let startup_ch = unsafe {
-        let id = (*vsyscall).startup_ch;
-        if id.as_raw() == 0 {
-            None
-        } else {
-            Some(Channel::from_handle(OwnedHandle::from_raw(id)))
-        }
-    };
-
     let env: E = serde_json::from_slice(env_json).expect("failed to parse env");
 
     let poll = Poll::create().unwrap();
     let dispatcher = Dispatcher::new(poll);
-
-    if let Some(ch) = startup_ch {
-        dispatcher.add_channel(ch).unwrap();
-    }
-
-    let app = A::init(&dispatcher, env);
+    let app: A = A::init(&dispatcher, env);
 
     loop {
         dispatcher.wait_and_dispatch(&app);
