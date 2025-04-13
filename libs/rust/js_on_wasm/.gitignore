@@ -1,1 +1,4 @@
 /out
+/quickjs
+/libclang_rt*
+*.bytecode.h

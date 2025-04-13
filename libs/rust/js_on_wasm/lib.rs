@@ -25,9 +25,14 @@ struct IoVec {
 pub fn try_wasm() -> Result<(), wasmi::Error> {
     let wasm = include_bytes!("app.wasm");
     // First step is to create the Wasm execution engine with some config.
+
+    let mut config = Config::default();
+    config.compilation_mode(CompilationMode::LazyTranslation);
+
     //
     // In this example we are using the default configuration.
-    let engine = Engine::default();
+    let engine = Engine::new(&config);
+
     // Now we can compile the above Wasm module with the given Wasm source.
     let module = Module::new(&engine, wasm)?;
 
@@ -112,7 +117,7 @@ pub fn try_wasm() -> Result<(), wasmi::Error> {
                     .read(&caller, iov.buf.0.try_into().unwrap(), &mut buf)
                     .unwrap();
 
-                panic!("[wasi][stdio] {}", ::core::str::from_utf8(&buf).unwrap());
+                info!("[wasi][stdio] {}", ::core::str::from_utf8(&buf).unwrap());
 
                 let iov_len_i32: i32 = iov.len.try_into().unwrap();
                 written += iov_len_i32;
