@@ -17,7 +17,8 @@ static JSContext *JS_NewCustomContext(JSRuntime *rt)
 
 JSRuntime *rt;
 JSContext *ctx;
-JSValue val;
+uint8_t *bytecode;
+size_t bytecode_len;
 
 __attribute__((export_name("wizer.initialize")))
 void wizer_initialize(void) {
@@ -32,18 +33,33 @@ void wizer_initialize(void) {
         NULL
     };
     js_std_add_helpers(ctx, 0, argv);
+
+    puts("loading script...");
+    JSValue compiled_module = JS_Eval(ctx, APP_SCRIPT, strlen(APP_SCRIPT), "app.js", JS_EVAL_FLAG_COMPILE_ONLY);
+    if (JS_IsException(compiled_module)) {
+        js_std_dump_error(ctx);
+        JS_FreeValue(ctx, compiled_module);
+        exit(1);
+    }
+
+    bytecode = JS_WriteObject(ctx, &bytecode_len, compiled_module, JS_WRITE_OBJ_BYTECODE);
+    if (!bytecode) {
+        js_std_dump_error(ctx);
+        exit(1);
+    }
 }
 
 __attribute__((export_name("wizer.resume")))
 void wizer_resume(void) {
-    JS_Eval(ctx, APP_SCRIPT, strlen(APP_SCRIPT), "app.js", JS_EVAL_FLAG_STRICT);
+    puts("eval...");
+    js_std_eval_binary(ctx, bytecode, bytecode_len, JS_EVAL_FLAG_STRICT);
 
     puts("looping...");
     int r = js_std_loop(ctx);
     if (r) {
       js_std_dump_error(ctx);
     }
-    js_std_free_handlers(rt);
-    JS_FreeContext(ctx);
-    JS_FreeRuntime(rt);
+    // js_std_free_handlers(rt);
+    // JS_FreeContext(ctx);
+    // JS_FreeRuntime(rt);
 }

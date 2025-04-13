@@ -8,5 +8,7 @@ edition = { workspace = true }
 path = "./lib.rs"
 
 [dependencies]
-wasmi = { version = "0.44.0", default-features = false, features = ["simd"] }
+wasmi = { version = "0.44.0", default-features = false, features = [
+    "hash-collections",
+] }
 log = { workspace = true }
