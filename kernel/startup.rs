@@ -12,6 +12,7 @@ use starina::handle::HandleId;
 use starina::handle::HandleRights;
 use starina::message::MessageInfo;
 use starina::message::MessageKind;
+use starina::spec::AppImage;
 use starina::spec::DeviceMatch;
 use starina::spec::EnvType;
 use starina::spec::ExportItem;
@@ -29,26 +30,13 @@ use crate::thread::Thread;
 
 struct InKernelApp {
     name: &'static str,
-    main: fn(vsyscall: *const VsyscallPage),
     spec: AppSpec,
 }
 
-const INKERNEL_APPS: &[InKernelApp] = &[
-    InKernelApp {
-        name: "virtio_net",
-        main: virtio_net::autogen::app_main,
-        spec: virtio_net::autogen::APP_SPEC,
-    },
-    InKernelApp {
-        name: "tcpip",
-        main: tcpip::autogen::app_main,
-        spec: tcpip::autogen::APP_SPEC,
-    },
-    InKernelApp {
-        name: "http_server",
-        main: http_server::autogen::app_main,
-        spec: http_server::autogen::APP_SPEC,
-    },
+const INKERNEL_APPS: &[AppSpec] = &[
+    virtio_net::autogen::APP_SPEC,
+    tcpip::autogen::APP_SPEC,
+    http_server::autogen::APP_SPEC,
 ];
 
 static INSTANCES: SpinLock<Vec<Instance>> = SpinLock::new(Vec::new());
@@ -62,13 +50,13 @@ pub fn load_inkernel_apps(device_tree: DeviceTree) {
     let mut instances = INSTANCES.lock();
     let mut server_channels = HashMap::new();
     let mut client_channels = HashMap::new();
-    for app in INKERNEL_APPS {
-        for export in app.spec.exports {
+    for spec in INKERNEL_APPS {
+        for export in spec.exports {
             match export {
                 ExportItem::Service { name } => {
                     let (ch1, ch2) = Channel::new().unwrap();
                     assert!(
-                        server_channels.insert(app.name, ch1).is_none(),
+                        server_channels.insert(spec.name, ch1).is_none(),
                         "multiple exports are not yet supported"
                     );
                     client_channels.insert(*name, ch2);
@@ -77,10 +65,10 @@ pub fn load_inkernel_apps(device_tree: DeviceTree) {
         }
     }
 
-    for app in INKERNEL_APPS {
-        info!("startup: starting \"{}\"", app.name);
+    for spec in INKERNEL_APPS {
+        info!("startup: starting \"{}\"", spec.name);
         let mut env = serde_json::Map::new();
-        for item in app.spec.env {
+        for item in spec.env {
             let value = match item.ty {
                 EnvType::IoBusMap => {
                     let mut buses = HashMap::new();
@@ -124,7 +112,7 @@ pub fn load_inkernel_apps(device_tree: DeviceTree) {
                 EnvType::Service { name } => {
                     let ch = match client_channels.get(name) {
                         Some(ch) => ch.clone(),
-                        None => panic!("service not found: {} (requested by {})", name, app.name),
+                        None => panic!("service not found: {} (requested by {})", name, spec.name),
                     };
 
                     // Enqueue a connect message to the server.
@@ -163,7 +151,7 @@ pub fn load_inkernel_apps(device_tree: DeviceTree) {
             env.insert(item.name.into(), value);
         }
 
-        if let Some(ch) = server_channels.get(app.name) {
+        if let Some(ch) = server_channels.get(spec.name) {
             let handle = Handle::new(ch.clone(), HandleRights::READ | HandleRights::WRITE);
             let handle_id = KERNEL_PROCESS.handles().lock().insert(handle).unwrap();
             env.insert("startup_ch".into(), serde_json::json!(handle_id.as_raw()));
@@ -176,7 +164,12 @@ pub fn load_inkernel_apps(device_tree: DeviceTree) {
         });
 
         let arg = unsafe { &*vsyscall_page as *const VsyscallPage } as usize;
-        let thread = Thread::new_inkernel(app.main as usize, arg as usize).unwrap();
+        let thread = match spec.image {
+            AppImage::Native { entrypoint } => {
+                Thread::new_inkernel(entrypoint as usize, arg as usize).unwrap()
+            }
+        };
+
         GLOBAL_SCHEDULER.push(thread);
         instances.push(Instance {
             vsyscall_page,

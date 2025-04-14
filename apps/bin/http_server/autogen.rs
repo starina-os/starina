@@ -1,4 +1,5 @@
 use starina::channel::Channel;
+use starina::spec::AppImage;
 // TODO: auto geenrate this file from app.toml
 use starina::spec::AppSpec;
 use starina::spec::EnvItem;
@@ -15,6 +16,8 @@ pub struct Env {
 }
 
 pub const APP_SPEC: AppSpec = AppSpec {
+    name: "http_server",
+    image: AppImage::Native { entrypoint },
     env: &[EnvItem {
         name: "tcpip",
         ty: EnvType::Service { name: "tcpip" },
@@ -22,6 +25,6 @@ pub const APP_SPEC: AppSpec = AppSpec {
     exports: &[],
 };
 
-pub fn app_main(vsyscall: *const VsyscallPage) {
+extern "C" fn entrypoint(vsyscall: *const VsyscallPage) -> ! {
     starina::eventloop::app_loop::<Env, App>("http_server", vsyscall);
 }
