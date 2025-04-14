@@ -21,6 +21,9 @@ pub fn main() {
         PathBuf::from(std::env::var_os("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR not set"));
     let out_dir = package_dir.join("deps");
 
+    let app_wasm_path = package_dir.join("app.wasm");
+    std::fs::remove_file(&app_wasm_path).ok();
+
     let quickjs_dir = out_dir.join("quickjs");
     if !quickjs_dir.exists() {
         download_and_extract(QUICKJS_URL, &quickjs_dir, None);
@@ -60,27 +63,26 @@ pub fn main() {
         .arg("-lc")
         .arg("-lclang_rt.builtins-wasm32")
         .arg("-o")
-        .arg(out_dir.join("libunoptimized.wasm.a"))
-        .current_dir(&out_dir)
+        .arg(out_dir.join("unoptimized.wasm"))
         .status()
         .expect("failed to execute clang");
 
     if !clang_status.success() {
         panic!("clang exited with status: {}", clang_status);
     }
-    let unoptimized_wasm = fs::read(out_dir.join("libunoptimized.wasm.a"))
-        .expect("failed to load unoptimized WASM file");
 
+    let unoptimized_wasm =
+        fs::read(out_dir.join("unoptimized.wasm")).expect("failed to load unoptimized WASM file");
+
+    eprintln!("Running wizer");
     let wizered_wasm = Wizer::new()
+        .wasm_bulk_memory(true)
         .allow_wasi(true)
         .unwrap()
         .run(&unoptimized_wasm)
         .expect("wizer failed");
 
-    eprintln!("Running wizer");
-    // let wizered_wasm_path = out_dir.join("wizered.wasm");
-    let wizered_wasm_path = package_dir.join("app.wasm");
-    fs::write(wizered_wasm_path, wizered_wasm).unwrap();
+    fs::write(&app_wasm_path, wizered_wasm).unwrap();
 }
 
 static TEMP_DIR: LazyLock<PathBuf> = LazyLock::new(|| {

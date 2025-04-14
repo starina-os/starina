@@ -54,7 +54,18 @@ __attribute__((export_name("wizer.resume")))
 void wizer_resume(void) {
     js_std_eval_binary(ctx, bytecode, bytecode_len, JS_EVAL_FLAG_STRICT);
 
-    puts("ready");
+    puts("executing JavaScript...");
+    JSValue global = JS_GetGlobalObject(ctx);
+    JSValue main_fn = JS_GetPropertyStr(ctx, global, "main");
+    if (JS_IsFunction(ctx, main_fn)) {
+        JSValue result = JS_Call(ctx, main_fn, global, 0, NULL);
+        if (JS_IsException(result)) {
+            js_std_dump_error(ctx);
+        }
+        JS_FreeValue(ctx, result);
+    }
+    puts("main called");
+
     int r = js_std_loop(ctx);
     if (r) {
       js_std_dump_error(ctx);

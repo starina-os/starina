@@ -46,6 +46,7 @@ impl Runner {
     }
 
     pub fn run(mut self) {
+        info!("Running WASM app");
         let run_func = self
             .instance
             .get_typed_func::<(), ()>(&self.store, "wizer.resume")
