@@ -35,9 +35,10 @@ struct InKernelApp {
 }
 
 const INKERNEL_APPS: &[AppSpec] = &[
-    virtio_net::autogen::APP_SPEC,
-    tcpip::autogen::APP_SPEC,
-    http_server::autogen::APP_SPEC,
+    // virtio_net::autogen::APP_SPEC,
+    // tcpip::autogen::APP_SPEC,
+    // http_server::autogen::APP_SPEC,
+    hello_from_javascript::autogen::APP_SPEC,
 ];
 
 static INSTANCES: SpinLock<Vec<Instance>> = SpinLock::new(Vec::new());

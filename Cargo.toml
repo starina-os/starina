@@ -6,6 +6,7 @@ members = [
     "apps/drivers/virtio_net",
     "apps/servers/tcpip",
     "apps/bin/http_server",
+    "apps/bin/hello_from_javascript",
 ]
 
 [workspace.package]
@@ -26,6 +27,9 @@ wasmi = { version = "0.44.0", default-features = false, features = [
     "hash-collections",
 ] }
 
+cc = "1.2.19"
+wizer = "8"
+
 kernel = { path = "kernel" }
 starina = { path = "libs/rust/starina" }
 starina_types = { path = "libs/rust/starina_types" }
@@ -36,3 +40,10 @@ virtio = { path = "libs/rust/virtio" }
 virtio_net = { path = "apps/drivers/virtio_net" }
 tcpip = { path = "apps/servers/tcpip" }
 http_server = { path = "apps/bin/http_server" }
+hello_from_javascript = { path = "apps/bin/hello_from_javascript" }
+
+[profile.release]
+opt-level = 3
+lto = true
+debug = 1
+strip = "debuginfo"
