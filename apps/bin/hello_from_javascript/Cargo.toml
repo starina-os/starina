@@ -10,3 +10,7 @@ path = "lib.rs"
 
 [dependencies]
 starina = { workspace = true }
+
+[build-dependencies]
+cc = { workspace = true }
+wizer = { workspace = true }
