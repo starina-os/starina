@@ -58,4 +58,5 @@ impl Runner {
 pub extern "C" fn app_entrypoint(runner_ptr: *mut Runner) {
     let mut runner = unsafe { Box::from_raw(runner_ptr) };
     runner.run();
+    panic!("WASM app exited");
 }

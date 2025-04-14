@@ -9,6 +9,7 @@ export CARGO_TARGET_DIR=build
 export CARGO_TERM_HYPERLINKS=false
 cargo build \
   ${RELEASE:+--release} \
+  --features "${FEATURES:-}" \
   -Z build-std=core,alloc \
   -Z build-std-features=compiler-builtins-mem \
   --target kernel/arch/riscv64/kernel.json \
