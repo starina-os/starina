@@ -23,6 +23,9 @@ pub enum AppImage {
     Native {
         entrypoint: extern "C" fn(vsyscall: *const VsyscallPage) -> !,
     },
+    Wasm {
+        wasm: &'static [u8],
+    },
 }
 
 pub struct AppSpec {
