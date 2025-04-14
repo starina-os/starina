@@ -25,8 +25,11 @@ void wizer_initialize(void) {
     puts("initializing quickjs...");
     rt = JS_NewRuntime();
     js_std_set_worker_new_context_func(JS_NewCustomContext);
+    puts("js_std_init_handlers");
     js_std_init_handlers(rt);
+    puts("JS_SetModuleLoaderFunc");
     JS_SetModuleLoaderFunc(rt, NULL, js_module_loader, NULL);
+    puts("JS_NewContext");
     ctx = JS_NewCustomContext(rt);
 
     char *argv[] = {
@@ -48,6 +51,8 @@ void wizer_initialize(void) {
         js_std_dump_error(ctx);
         exit(1);
     }
+
+    fflush(stdout);
 }
 
 __attribute__((export_name("wizer.resume")))

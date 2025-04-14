@@ -40,13 +40,14 @@ pub fn main() {
     }
 
     eprintln!("Compiling with clang");
-    let clang_status = Command::new("clang")
+    let unoptimized_wasm_path = out_dir.join("unoptimized.wasm");
+    let clang_status = Command::new("/opt/homebrew/opt/llvm/bin/clang")
         .arg(package_dir.join("main.c"))
         .arg(quickjs_dir.join("quickjs-amalgam.c"))
         .arg("-I")
         .arg(&quickjs_dir)
         .arg("-std=c23")
-        .arg("-Oz")
+        .arg("-O2")
         .arg("-flto=thin")
         .arg("-fomit-frame-pointer")
         .arg("-fmerge-all-constants")
@@ -55,7 +56,7 @@ pub fn main() {
         .arg(&format!("--sysroot={}", sysroot_dir.display()))
         .arg("-nodefaultlibs")
         .arg("-L")
-        .arg(&rt_dir.display().to_string())
+        .arg(&rt_dir)
         .arg("-D_GNU_SOURCE")
         .arg("-DQJS_BUILD_LIBC")
         .arg("-D_WASI_EMULATED_SIGNAL")
@@ -63,7 +64,7 @@ pub fn main() {
         .arg("-lc")
         .arg("-lclang_rt.builtins-wasm32")
         .arg("-o")
-        .arg(out_dir.join("unoptimized.wasm"))
+        .arg(&unoptimized_wasm_path)
         .status()
         .expect("failed to execute clang");
 
@@ -75,14 +76,28 @@ pub fn main() {
         fs::read(out_dir.join("unoptimized.wasm")).expect("failed to load unoptimized WASM file");
 
     eprintln!("Running wizer");
-    let wizered_wasm = Wizer::new()
-        .wasm_bulk_memory(true)
-        .allow_wasi(true)
-        .unwrap()
-        .run(&unoptimized_wasm)
-        .expect("wizer failed");
+    eprintln!("unoptimized_wasm: {}", unoptimized_wasm_path.display());
+    let wizer_status = Command::new("wizer")
+        .arg("--allow-wasi")
+        .arg(unoptimized_wasm_path)
+        .arg("-o")
+        .arg(&app_wasm_path)
+        .status()
+        .expect("failed to execute wizer");
 
-    fs::write(&app_wasm_path, wizered_wasm).unwrap();
+    if !wizer_status.success() {
+        panic!("wizer exited with status: {}", wizer_status);
+    }
+    eprintln!("Wizer finished successfully");
+
+    // let wizered_wasm = Wizer::new()
+    //     .wasm_bulk_memory(true)
+    //     .allow_wasi(true)
+    //     .unwrap()
+    //     .run(&unoptimized_wasm)
+    //     .expect("wizer failed");
+    //
+    // fs::write(&app_wasm_path, wizered_wasm).unwrap();
 }
 
 static TEMP_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
@@ -101,10 +116,8 @@ fn download_and_extract(url: &str, dest_dir: &Path, strip_components: Option<u32
         .arg("-o")
         .arg(&download_file_path)
         .arg(url)
-        .spawn()
-        .expect("failed to download file with curl")
-        .wait()
-        .unwrap();
+        .status()
+        .expect("failed to download file with curl");
 
     if !curl_status.success() {
         panic!("curl exited with non-zero status: {}", curl_status);
@@ -140,10 +153,8 @@ fn download_and_extract(url: &str, dest_dir: &Path, strip_components: Option<u32
                 .arg(strip_components.unwrap_or(0).to_string())
                 .arg("-C")
                 .arg(dest_dir)
-                .spawn()
+                .status()
                 .expect("failed to extract file with tar")
-                .wait()
-                .unwrap()
         }
         FileType::Zip => {
             debug_assert!(
@@ -156,10 +167,8 @@ fn download_and_extract(url: &str, dest_dir: &Path, strip_components: Option<u32
                 .arg(&download_file_path)
                 .arg("-d")
                 .arg(dest_dir)
-                .spawn()
+                .status()
                 .expect("failed to extract file with unzip")
-                .wait()
-                .unwrap()
         }
     };
 
