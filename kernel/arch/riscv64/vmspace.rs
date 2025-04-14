@@ -64,10 +64,11 @@ where
     let kernel_start = PAddr::new(&raw const __kernel_start as usize);
     let kernel_end = PAddr::new(&raw const __kernel_end as usize);
 
-    if paddr < kernel_start {
-        let before_len = kernel_start.as_usize() - paddr.as_usize();
-        callback(paddr, before_len);
-    }
+    // FIXME:
+    // if paddr < kernel_start {
+    //     let before_len = kernel_start.as_usize() - paddr.as_usize();
+    //     callback(paddr, before_len);
+    // }
 
     let end = paddr.add(len);
     if end > kernel_end {
