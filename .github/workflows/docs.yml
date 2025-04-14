@@ -62,7 +62,7 @@ jobs:
       working-directory: docs
 
     - name: Build docs
-      run: make docs
+      run: pnpm build
       working-directory: docs
 
     - uses: actions/upload-artifact@v4
