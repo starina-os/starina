@@ -4,6 +4,7 @@ use starina::collections::HashMap;
 use starina::device_tree::DeviceTree;
 use starina::iobus::IoBus;
 use starina::prelude::*;
+use starina::spec::AppImage;
 use starina::spec::AppSpec;
 use starina::spec::DeviceMatch;
 use starina::spec::EnvItem;
@@ -21,6 +22,8 @@ pub struct Env {
 }
 
 pub const APP_SPEC: AppSpec = AppSpec {
+    name: "virtio_net",
+    image: AppImage::Native { entrypoint },
     env: &[
         EnvItem {
             name: "device_tree",
@@ -38,6 +41,6 @@ pub const APP_SPEC: AppSpec = AppSpec {
     }],
 };
 
-pub fn app_main(vsyscall: *const VsyscallPage) {
+extern "C" fn entrypoint(vsyscall: *const VsyscallPage) -> ! {
     starina::eventloop::app_loop::<Env, App>("virtio-net", vsyscall);
 }

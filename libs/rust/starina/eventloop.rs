@@ -277,7 +277,7 @@ impl<St> Dispatcher<St> {
 pub fn app_loop<E: DeserializeOwned, A: EventLoop<E>>(
     program_name: &'static str,
     vsyscall: *const VsyscallPage,
-) {
+) -> ! {
     tls::init_thread_local(program_name);
 
     let env_json = unsafe {
