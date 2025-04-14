@@ -27,6 +27,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 
 [[package]]
+name = "bitflags"
+version = "2.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5c8214115b7bf84099f1309324e63141d4c5d7cc26862f97a0a857dbefe165bd"
+
+[[package]]
 name = "byteorder"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -53,7 +59,7 @@ version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "548d977b6da32fa1d1fda2876453da1e7df63ad0304c8b3dae4dbe7b96f39b78"
 dependencies = [
- "bitflags",
+ "bitflags 1.3.2",
  "defmt-macros",
 ]
 
@@ -78,6 +84,12 @@ checksum = "10d60334b3b2e7c9d91ef8150abfb6fa4c1c39ebbcf4a81c2e346aad939fee3e"
 dependencies = [
  "thiserror",
 ]
+
+[[package]]
+name = "downcast-rs"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ea8a8b81cacc08888170eef4d13b775126db426d0b348bee9d18c2c1eaf123cf"
 
 [[package]]
 name = "endian-type-rs"
@@ -151,6 +163,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "hello_from_javascript"
+version = "0.0.0"
+dependencies = [
+ "starina",
+]
+
+[[package]]
 name = "http_server"
 version = "0.0.0"
 dependencies = [
@@ -160,10 +179,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "indexmap"
+version = "2.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cea70ddb795996207ad57735b50c5982d8844f38ba9ee5f1aedcfb708a2aa11e"
+dependencies = [
+ "equivalent",
+ "hashbrown",
+]
+
+[[package]]
 name = "itoa"
 version = "1.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4a5f13b858c8d314ee3e8f639011f7ccefe71f97f96e50151fb991f267928e2c"
+
+[[package]]
+name = "js_on_wasm"
+version = "0.0.0"
+dependencies = [
+ "log",
+ "wasmi",
+]
 
 [[package]]
 name = "kernel"
@@ -172,6 +209,7 @@ dependencies = [
  "arrayvec",
  "fdt-rs",
  "hashbrown",
+ "hello_from_javascript",
  "http_server",
  "rustc-hash",
  "serde_json",
@@ -181,7 +219,14 @@ dependencies = [
  "starina_utils",
  "tcpip",
  "virtio_net",
+ "wasmi",
 ]
+
+[[package]]
+name = "libm"
+version = "0.2.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8355be11b20d696c8f18f6cc018c4e372165b1fa8126cef092399c9951984ffa"
 
 [[package]]
 name = "lock_api"
@@ -219,6 +264,12 @@ checksum = "043175f069eda7b85febe4a74abbaeff828d9f8b448515d3151a14a3542811aa"
 dependencies = [
  "autocfg",
 ]
+
+[[package]]
+name = "multi-stash"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "685a9ac4b61f4e728e1d2c6a7844609c16527aeb5e6c865915c08e619c16410f"
 
 [[package]]
 name = "num-derive"
@@ -364,12 +415,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "smallvec"
+version = "1.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8917285742e9f3e1683f0a9c4e6b57960b7314d0b08d30d1ecd426713ee2eee9"
+
+[[package]]
 name = "smoltcp"
 version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dad095989c1533c1c266d9b1e8d70a1329dd3723c3edac6d03bbd67e7bf6f4bb"
 dependencies = [
- "bitflags",
+ "bitflags 1.3.2",
  "byteorder",
  "cfg-if",
  "defmt 0.3.100",
@@ -431,6 +488,15 @@ name = "static_assertions"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
+
+[[package]]
+name = "string-interner"
+version = "0.19.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "23de088478b31c349c9ba67816fa55d9355232d63c3afea8bf513e31f0f1d2c0"
+dependencies = [
+ "hashbrown",
+]
 
 [[package]]
 name = "syn"
@@ -515,4 +581,60 @@ dependencies = [
  "starina",
  "starina_driver_sdk",
  "virtio",
+]
+
+[[package]]
+name = "wasmi"
+version = "0.44.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7bdd371943f36290dbb9abe6c66d6f134d0d04a04e841db1350323f9ce0bf853"
+dependencies = [
+ "arrayvec",
+ "multi-stash",
+ "smallvec",
+ "spin",
+ "wasmi_collections",
+ "wasmi_core",
+ "wasmi_ir",
+ "wasmparser",
+]
+
+[[package]]
+name = "wasmi_collections"
+version = "0.44.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5c4e8dc4d2633828f8d5889be2cb08f6aa3e96173d36ae39e0f13e4e68c85420"
+dependencies = [
+ "hashbrown",
+ "string-interner",
+]
+
+[[package]]
+name = "wasmi_core"
+version = "0.44.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e11b21ca7ed6e97e8b88c4f87849ac9dacfef19b1e612fe6f0d571a907738c4f"
+dependencies = [
+ "downcast-rs",
+ "libm",
+]
+
+[[package]]
+name = "wasmi_ir"
+version = "0.44.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "564cebf11f3ba5c708aeff606ca396322c28e742f2142be3c760caac1038d9ab"
+dependencies = [
+ "wasmi_core",
+]
+
+[[package]]
+name = "wasmparser"
+version = "0.227.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0f51cad774fb3c9461ab9bccc9c62dfb7388397b5deda31bf40e8108ccd678b2"
+dependencies = [
+ "bitflags 2.9.0",
+ "hashbrown",
+ "indexmap",
 ]

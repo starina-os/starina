@@ -1,5 +1,6 @@
 /target
 /build
+node_modules
 .gdb_history
 *.DS_Store
 *.img
@@ -9,3 +10,4 @@
 *.map
 *.pcap
 *.bin
+*.wasm

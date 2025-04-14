@@ -9,6 +9,10 @@ edition = { workspace = true }
 name = "kernel"
 path = "main.rs"
 
+[features]
+default = []
+wasm = ["dep:wasmi"]
+
 [dependencies]
 starina_types = { workspace = true }
 starina_utils = { workspace = true }
@@ -19,6 +23,9 @@ hashbrown = { workspace = true }
 rustc-hash = { workspace = true }
 serde_json = { workspace = true }
 fdt-rs = { workspace = true }
+hello_from_javascript = { workspace = true }
+
+wasmi = { workspace = true, optional = true }
 
 # The kernel does not and should not use this API crate directly, but
 # specifying "in-kernel" here automatically enables the feature in all

@@ -6,6 +6,7 @@ members = [
     "apps/drivers/virtio_net",
     "apps/servers/tcpip",
     "apps/bin/http_server",
+    "apps/bin/hello_from_javascript",
 ]
 
 [workspace.package]
@@ -22,6 +23,10 @@ serde = { version = "1", default-features = false }
 serde_json = { version = "1", default-features = false, features = ["alloc"] }
 serde_bytes = { version = "0.11.17", default-features = false }
 fdt-rs = { version = "0", default-features = false }
+log = "0.4"
+wasmi = { version = "0.44.0", default-features = false, features = [
+    "hash-collections",
+] }
 
 kernel = { path = "kernel" }
 starina = { path = "libs/rust/starina" }
@@ -33,3 +38,11 @@ virtio = { path = "libs/rust/virtio" }
 virtio_net = { path = "apps/drivers/virtio_net" }
 tcpip = { path = "apps/servers/tcpip" }
 http_server = { path = "apps/bin/http_server" }
+hello_from_javascript = { path = "apps/bin/hello_from_javascript" }
+
+
+[profile.release]
+opt-level = 3
+lto = true
+debug = 1
+strip = "debuginfo"
