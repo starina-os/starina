@@ -4,6 +4,7 @@ import { defineConfig } from 'vitepress'
 export default defineConfig({
     title: "Starina Documentation",
     description: "Learn Starina",
+    cleanUrls: true,
     themeConfig: {
         nav: [
             { text: 'Home', link: '/' },
