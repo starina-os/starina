@@ -1104,14 +1104,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "js_on_wasm"
-version = "0.0.0"
-dependencies = [
- "log",
- "wasmi",
-]
-
-[[package]]
 name = "kernel"
 version = "0.0.0"
 dependencies = [
