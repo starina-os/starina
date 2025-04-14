@@ -35,7 +35,7 @@ void wizer_initialize(void) {
     js_std_add_helpers(ctx, 0, argv);
 
     puts("compiling JavaScript sources...");
-    JSValue compiled_module = JS_Eval(ctx, script, sizeof(script), "app.js", JS_EVAL_FLAG_COMPILE_ONLY);
+    JSValue compiled_module = JS_Eval(ctx, script, sizeof(script), "app.js", JS_EVAL_FLAG_COMPILE_ONLY | JS_EVAL_TYPE_MODULE);
     if (JS_IsException(compiled_module)) {
         js_std_dump_error(ctx);
         JS_FreeValue(ctx, compiled_module);

@@ -36,8 +36,6 @@ pub fn main() {
         download_and_extract(SYSROOT_URL, &sysroot_dir, Some(1));
     }
 
-    eprintln!("Compiling quickjs");
-
     eprintln!("Compiling with clang");
     let clang_status = Command::new("clang")
         .arg(package_dir.join("main.c"))
