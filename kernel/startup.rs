@@ -22,6 +22,7 @@ use starina_types::spec::AppSpec;
 use crate::channel::Channel;
 use crate::handle::Handle;
 use crate::iobus::NOMMU_IOBUS;
+use crate::isolation;
 use crate::isolation::IsolationHeap;
 use crate::process::KERNEL_PROCESS;
 use crate::scheduler::GLOBAL_SCHEDULER;
@@ -167,6 +168,20 @@ pub fn load_inkernel_apps(device_tree: DeviceTree) {
         let thread = match spec.image {
             AppImage::Native { entrypoint } => {
                 Thread::new_inkernel(entrypoint as usize, arg as usize).unwrap()
+            }
+            AppImage::Wasm { wasm } => {
+                #[cfg(feature = "wasm")]
+                {
+                    use isolation::wasm::Runner;
+                    use isolation::wasm::app_entrypoint;
+
+                    let runner = Runner::init(wasm).expect("failed to initialize a WASM app");
+                    let runner_ptr = Box::into_raw(Box::new(runner));
+                    Thread::new_inkernel(app_entrypoint as usize, runner_ptr as usize).unwrap()
+                }
+
+                #[cfg(not(feature = "wasm"))]
+                panic!("WASM support is not enabled");
             }
         };
 

@@ -22,6 +22,9 @@ serde = { version = "1", default-features = false }
 serde_json = { version = "1", default-features = false, features = ["alloc"] }
 serde_bytes = { version = "0.11.17", default-features = false }
 fdt-rs = { version = "0", default-features = false }
+wasmi = { version = "0.44.0", default-features = false, features = [
+    "hash-collections",
+] }
 
 kernel = { path = "kernel" }
 starina = { path = "libs/rust/starina" }
