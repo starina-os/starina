@@ -23,7 +23,7 @@ unsafe extern "C" fn riscv64_boot(hartid: u64, dtb: *const u8) -> ! {
     unsafe {
         naked_asm!(
             // Note: Don't modify a0, a1 registers here: they are used as arguments to
-            //       riscv64_boot.
+            //       rust_boot.
             "mv ra, zero",
             "mv fp, zero",
             "la sp, __boot_stack_top",
