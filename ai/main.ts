@@ -1,4 +1,4 @@
-import { tool, streamText } from 'ai';
+import { tool, streamText, Message, CoreMessage } from 'ai';
 import { z } from 'zod';
 import { google } from "@ai-sdk/google"
 import cp from "node:child_process";
@@ -20,6 +20,12 @@ const SYSTEM_PROMPT = `
 You are a super duper intelligent AI programmer who is an expert in Starina OS,
 a modern general-purpose microkernel-based operating system.
 
+You're given the entire repository contents of Starina OS. Assume that all questions
+and tasks are for Starina unless specified otherwise.
+
+When you are given a task which requires you to write code, follow the conventions
+and idioms of the codebase.
+
 You will be given an assignment from me, your friendly colleague. You will
 understand the requirements, read the codebase, edit the code, try it out using
 given tools, fix build errors, run-time errors, and logical errors, and anything
@@ -30,10 +36,18 @@ long-time colleague who knows you're good at making things work and at joking ar
 `.trim();
 
 class PrettyLogger {
+    #startedAt = Date.now();
+    #firstWrite = true;
     endsWithNewline: boolean | null = null;
     constructor() { }
 
     chat(chunk: string) {
+        if (this.#firstWrite) {
+            const elapsed = ((Date.now() - this.#startedAt) / 1000).toFixed(2);
+            console.log(`[AI] thought for ${elapsed} seconds`);
+            this.#firstWrite = false;
+        }
+
         process.stdout.write(chunk);
         this.endsWithNewline = chunk.endsWith("\n");
     }
@@ -45,7 +59,7 @@ class PrettyLogger {
     }
 }
 
-async function repo2markdown(repoDir: string, destPath: string) {
+async function repo2markdown(repoDir: string): Promise<string> {
     const lsFiles = await cp.execSync("git ls-files", { encoding: "utf-8", cwd: repoDir });
     const files = lsFiles.trimEnd().split("\n");
 
@@ -62,57 +76,80 @@ async function repo2markdown(repoDir: string, destPath: string) {
             md += `## \`${file}\`\n\`\`\`\n`;
             md += await fs.readFile(filePath, "utf-8");
             md += `\`\`\`\n`;
-            console.log(`[AI] wrote ${file}`);
         }
     }
     md += `\n# End of repository contents\n`;
-    await fs.writeFile(destPath, md, "utf-8");
+    return md;
 }
 
-async function iterate() {
-    console.log(`[AI] thinking ...`);
-    const model = google("gemini-1.5-pro-002");
-    const logger = new PrettyLogger();
-    try {
-        const { textStream } = await streamText({
-            model,
-            system: SYSTEM_PROMPT,
-            maxSteps: MAX_STEPS_PER_ITERATION,
-            tools: {
-                run: tool({
-                    description: "Build and start running Starina on QEMU. QEMU will be kept running in the background so that you can attach GDB to it.",
-                    parameters: z.object({
-                    }),
-                    execute: async (input) => {
-                    },
-                }),
-                attachDebugger: tool({
-                    description: "Attach GDB to the running QEMU instance. You must run the `run` tool first to start QEMU.",
-                    parameters: z.object({
-                    }),
-                    execute: async (input) => {
-                    }
-                }),
-                textEditor: tool({
-                    description: "Read and edit the codebase.",
-                    parameters: z.object({
-                        filePath: z.string(),
-                        content: z.string(),
-                    }),
-                    execute: async (input) => {
+class AI {
+    #messages: CoreMessage[] = [];
 
-                    },
-                }),
-            },
+    constructor(prompt: string, repoText: string) {
+        this.#messages.push({
+            role: "system",
+            content: `Here is the official Starina repository contents. Use it to answer the questions and complete the tasks.\n` +
+                repoText
+        })
+        this.#messages.push({
+            role: "user",
+            content: prompt,
         });
+    }
 
-        for await (const chunk of textStream) {
-            logger.chat(chunk);
+    async iterate() {
+        console.log(`[AI] thinking ...`);
+        const logger = new PrettyLogger();
+        try {
+            const { textStream } = await streamText({
+                // model: google("gemini-2.5-pro-exp-03-25"),
+                model: google('gemini-1.5-pro-latest'),
+                system: SYSTEM_PROMPT,
+                maxSteps: MAX_STEPS_PER_ITERATION,
+                messages: this.#messages,
+                tools: {
+                    // run: tool({
+                    //     description: "Build and start running Starina on QEMU. QEMU will be kept running in the background so that you can attach GDB to it.",
+                    //     parameters: z.object({
+                    //     }),
+                    //     execute: async (input) => {
+                    //     },
+                    // }),
+                    // attachDebugger: tool({
+                    //     description: "Attach GDB to the running QEMU instance. You must run the `run` tool first to start QEMU.",
+                    //     parameters: z.object({
+                    //     }),
+                    //     execute: async (input) => {
+                    //     }
+                    // }),
+                    // textEditor: tool({
+                    //     description: "Read and edit the codebase.",
+                    //     parameters: z.object({
+                    //         filePath: z.string(),
+                    //         content: z.string(),
+                    //     }),
+                    //     execute: async (input) => {
+
+                    //     },
+                    // }),
+                },
+            });
+
+            let responseText = "";
+            for await (const chunk of textStream) {
+                logger.chat(chunk);
+                responseText += chunk;
+            }
+
+            this.#messages.push({
+                role: "assistant",
+                content: responseText,
+            });
+        } catch (error) {
+            throw error;
+        } finally {
+            logger.end();
         }
-    } catch (error) {
-        throw error;
-    } finally {
-        logger.end();
     }
 }
 
@@ -124,15 +161,19 @@ async function ensureCleanGitRepo() {
 }
 
 async function main() {
-    const repoDir = process.cwd();
+    const repoDir = path.resolve(import.meta.dirname, "..");
     await ensureCleanGitRepo();
 
-    const dumpPath = path.join(repoDir, ".LLM.md");
-    console.log("Dumping repository contents to", dumpPath);
-    await repo2markdown(repoDir, dumpPath);
+    console.log(`Loading repository contents ...`);
+    const repoText = await repo2markdown(repoDir);
 
-    await iterate();
-    // const { textStream } = await streamText({
+    const prompt = process.argv.slice(2).join(" ");
+    if (!prompt) {
+        throw new Error("Please provide a prompt as argument.");
+    }
+
+    const aiInstance = new AI(prompt, repoText);
+    await aiInstance.iterate();
 }
 
 main().catch((error) => {
