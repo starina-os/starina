@@ -70,7 +70,7 @@ async function repo2markdown(repoDir: string): Promise<string> {
             continue;
         }
 
-        if (md.length > 4 * 1024 * 1024) {
+        if (md.length > 2 * 1024 * 1024) {
             throw new Error("Repository contents too large. Aborting just in case.");
         }
 
@@ -126,16 +126,17 @@ class AI {
                     //     execute: async (input) => {
                     //     }
                     // }),
-                    // textEditor: tool({
-                    //     description: "Read and edit the codebase.",
-                    //     parameters: z.object({
-                    //         filePath: z.string(),
-                    //         content: z.string(),
-                    //     }),
-                    //     execute: async (input) => {
-
-                    //     },
-                    // }),
+                    writeFile: tool({
+                        description: "Write a file. The file will be created if it doesn't exist, or overwritten if it does.",
+                        parameters: z.object({
+                            filePath: z.string(),
+                            content: z.string(),
+                        }),
+                        execute: async ({ filePath, content }) => {
+                            console.log(`[tool:writeFile] ${filePath} (${content.length} bytes)`);
+                            await fs.writeFile(filePath, content, 'utf-8');
+                        },
+                    }),
                 },
             });
 
