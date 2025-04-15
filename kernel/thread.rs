@@ -19,6 +19,7 @@ static NUM_THREADS: AtomicUsize = AtomicUsize::new(0);
 pub enum ThreadState {
     Runnable(Option<RetVal>),
     BlockedByPoll(SharedRef<Poll>),
+    Exited,
 }
 
 struct Mutable {
@@ -150,6 +151,9 @@ pub fn switch_thread() -> ! {
                             continue 'next_thread;
                         }
                     }
+                }
+                ThreadState::Exited => {
+                    continue 'next_thread;
                 }
                 ThreadState::Runnable(retval) => *retval,
             };
