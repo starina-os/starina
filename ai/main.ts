@@ -70,6 +70,10 @@ async function repo2markdown(repoDir: string): Promise<string> {
             continue;
         }
 
+        if (md.length > 4 * 1024 * 1024) {
+            throw new Error("Repository contents too large. Aborting just in case.");
+        }
+
         const filePath = path.join(repoDir, file);
         const fileStat = await fs.stat(filePath);
         if (fileStat.isFile()) {
