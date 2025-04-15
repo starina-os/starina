@@ -43,6 +43,7 @@ rustup component add rust-src llvm-tools
 |------|--------|------|
 | `BUILD_ONLY` | `1` | Do not start QEMU after building the OS. |
 | `QEMU` | `/path/to/qemu` | QEMU binary path. Default is `qemu-system-riscv64`. |
+| `WASM` | `1` | Enable WebAssembly-based isolation (experimental). `apps/bin/hello_wasm` is a sample app. |
 | `RELEASE` | `1` | Build in release mode. Default is debug mode. |
 
 ## Debugging with GDB

@@ -39,20 +39,16 @@ impl Runner {
         wasi::link_wasi(&mut linker);
 
         let instance = linker.instantiate(&mut store, &module)?.start(&mut store)?;
-        let resume_func = instance.get_typed_func::<(), ()>(&store, "wizer.resume")?;
-        resume_func.call(&mut store, ())?;
-
         Ok(Runner { store, instance })
     }
 
     pub fn run(mut self) {
-        info!("Running WASM app");
-        let run_func = self
+        let start_func = self
             .instance
-            .get_typed_func::<(), ()>(&self.store, "wizer.resume")
-            .expect("failed to get wizer.resume");
+            .get_typed_func::<(), ()>(&self.store, "_start")
+            .expect("failed to get _start");
 
-        run_func.call(&mut self.store, ()).unwrap();
+        start_func.call(&mut self.store, ()).unwrap();
     }
 }
 

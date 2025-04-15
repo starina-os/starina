@@ -6,6 +6,7 @@ members = [
     "apps/drivers/virtio_net",
     "apps/servers/tcpip",
     "apps/bin/http_server",
+    "apps/bin/hello_wasm",
 ]
 
 [workspace.package]
@@ -36,3 +37,4 @@ virtio = { path = "libs/rust/virtio" }
 virtio_net = { path = "apps/drivers/virtio_net" }
 tcpip = { path = "apps/servers/tcpip" }
 http_server = { path = "apps/bin/http_server" }
+hello_wasm = { path = "apps/bin/hello_wasm" }
