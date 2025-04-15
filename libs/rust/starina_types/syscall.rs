@@ -21,6 +21,7 @@ pub const SYS_BUSIO_MAP: u8 = 13;
 pub const SYS_FOLIO_DADDR: u8 = 14;
 pub const SYS_INTERRUPT_CREATE: u8 = 15;
 pub const SYS_INTERRUPT_ACK: u8 = 16;
+pub const SYS_THREAD_EXIT: u8 = 17;
 
 #[repr(C)]
 pub struct VsyscallPage {

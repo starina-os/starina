@@ -238,6 +238,10 @@ fn do_syscall(
     current: &SharedRef<Thread>,
 ) -> Result<SyscallResult, ErrorCode> {
     match n as u8 {
+        SYS_THREAD_EXIT => {
+            debug_warn!("thread exit");
+            Ok(SyscallResult::Block(ThreadState::Exited))
+        }
         SYS_HANDLE_CLOSE => {
             let handle = HandleId::from_raw_isize(a0)?;
             let ret = handle_close(&current, handle)?;
