@@ -87,9 +87,11 @@ async function repo2markdown(repoDir: string): Promise<string> {
 }
 
 class AI {
+    #repoDir: string;
     #messages: CoreMessage[] = [];
 
-    constructor(prompt: string, repoText: string) {
+    constructor(repoDir: string, prompt: string, repoText: string) {
+        this.#repoDir = repoDir;
         this.#messages.push({
             role: "system",
             content: `Here is the official Starina repository contents. Use it to answer the questions and complete the tasks.\n` +
@@ -134,7 +136,12 @@ class AI {
                         }),
                         execute: async ({ filePath, content }) => {
                             console.log(`[tool:writeFile] ${filePath} (${content.length} bytes)`);
-                            await fs.writeFile(filePath, content, 'utf-8');
+                            const dest = path.join(this.#repoDir, filePath);
+                            if (!dest.startsWith(this.#repoDir)) {
+                                throw new Error(`LLM requested to write outside of the repository: ${dest}`);
+                            }
+
+                            await fs.writeFile(dest, content, 'utf-8');
                         },
                     }),
                 },
@@ -177,7 +184,7 @@ async function main() {
         throw new Error("Please provide a prompt as argument.");
     }
 
-    const aiInstance = new AI(prompt, repoText);
+    const aiInstance = new AI(repoDir, prompt, repoText);
     await aiInstance.iterate();
 }
 
