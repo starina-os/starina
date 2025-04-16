@@ -28,34 +28,12 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: 22
+        cache: 'pnpm'
 
     - name: Set up pnpm
       uses: pnpm/action-setup@v4
       with:
         version: 9
-
-    - name: Set up Rust
-      run: |
-        rustup toolchain install nightly
-        rustup default nightly
-        rustup component add rust-src
-
-    - name: Cache Cargo dependencies
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          build/target
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-cargo-
-
-    - name: Cache build artifacts
-      uses: actions/cache@v4
-      with:
-        path: build
-        key: ${{ runner.os }}-build-${{ hashFiles('**/*.rs', '**/Cargo.toml', '**/Cargo.lock', 'Makefile') }}
 
     - name: Install VitePress
       run: pnpm install
