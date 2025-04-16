@@ -8,11 +8,11 @@ If you found something wrong or inaccurate, please open an issue or a pull reque
 
 ## Userspace-First Design
 
-This is vague but the most important philosophy of Starina. Starina is designed to be a userspace-first microkernel, which means we design how we want to write applications and OS components in userspace, instead of achieving the most ideal kernel design.
+This is vague but the most important philosophy of Starina. Starina is designed to be a userspace-first microkernel, which means we prioritize how we want to develop applications and OS components in userspace, instead of achieving the most ideal kernel design. That is, **developer experience is the top priority**.
 
-This means the kernel may sometimes have some nasty hacks to make things work for now. For example, the current kernel does dynamic memory allocation in the kernel, which makes it more monolithic than other strict microkernels. However, until we really need to do that, we prefer to keep it intuitive for newbies.
+This means the kernel may sometimes have some nasty hacks to make things work for now. For example, the current kernel does dynamic memory allocation in the kernel, which is less ideal compared to other strict microkernels. However, we prefer to keep it intuitive for newbies until we really have to optimize it. That is, we make it work first, and make it better incrementally.
 
-The opposite of this is what I call "kernel-first" design. seL4 is a good example of this. seL4 is an extremely strict design. I'm saying *strict* not because it's formally verified, but because [its API](https://docs.sel4.systems/projects/sel4/api-doc.html) is super minimal. You may notice that it exposes low-level hardware details directly (e.g. `seL4_X86_PageTable` and `seL4_ARM_PageTable`) and has no dynamic memory allocation API. This lack of abstractions makes the kernel minimal, and gives you the freedom to implement your own abstractions.
+The opposite of this is what I call "kernel-first" design. seL4 is a good example of this. seL4 is an extremely strict design. I'm saying *strict* not because it's formally verified, but because [its API](https://docs.sel4.systems/projects/sel4/api-doc.html) is super minimal. You may notice that it exposes low-level hardware details directly (e.g. `seL4_X86_PageTable` and `seL4_ARM_PageTable`) and has no dynamic memory allocation API. This lack of abstractions makes the kernel minimal, and gives you the freedom to implement your own abstractions. Starina is designed to be more flexible and user-friendly, allowing developers to focus on building applications without getting bogged down by kernel's implementation details.
 
 ## Multiple Process Isolation Mechanisms
 
