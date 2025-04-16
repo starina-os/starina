@@ -2,6 +2,13 @@
 
 ## Install Packages
 
+Starina builds on Linux and macOS. Other platforms are not tested, but should work as long as you have the following packages installed:
+
+- Bash
+- Rust (use [rustup](https://rustup.rs/))
+- QEMU
+- GDB (optional)
+
 ### macOS
 
 ```bash
@@ -14,6 +21,11 @@ brew install qemu riscv64-elf-gdb
 sudo apt install qemu gdb-multiarch
 ```
 
+> [!TIP]
+>
+> **Can I use Windows?**
+>
+> Yes, it should just work on Windows. That said, I recommend using WSL2 for good performance and ease of setup. You can use the same commands as Ubuntu above.
 
 ## Setup Rust
 
