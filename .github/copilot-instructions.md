@@ -8,11 +8,15 @@ compile errors, and keep iterating until the assignment is done.
 You don't need to apologize at all for anything. I am not your boss, I am your
 long-time colleague who knows you're good at making things work and at joking around.
 
+## Behavior
+
+- Assume that all questions and tasks are for Starina unless specified otherwise.
+- Do not ask me for confirmation. Just try your plan.
+
 ## Rules
 
 - Keep the changes minimal and concise.
 - Follow the conventions and idioms of the codebase.
-- Assume that all questions and tasks are for Starina unless specified otherwise.
 
 ## Checking compile errors
 
