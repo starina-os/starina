@@ -7,13 +7,23 @@ cd "$(dirname "$0")"
 
 export CARGO_TARGET_DIR=build
 export CARGO_TERM_HYPERLINKS=false
-cargo build \
-  ${RELEASE:+--release} \
-  ${WASM:+--features wasm} \
-  -Z build-std=core,alloc \
-  -Z build-std-features=compiler-builtins-mem \
-  --target kernel/arch/riscv64/kernel.json \
-  --manifest-path kernel/Cargo.toml
+
+cargo_cmd=build
+if [[ -z ${CHECK_ONLY:-} ]]; then
+    cargo_cmd=check
+fi
+
+cargo $cargo_cmd \
+    ${RELEASE:+--release} \
+    ${WASM:+--features wasm} \
+    -Z build-std=core,alloc \
+    -Z build-std-features=compiler-builtins-mem \
+    --target kernel/arch/riscv64/kernel.json \
+    --manifest-path kernel/Cargo.toml
+
+if [[ -n ${CHECK_ONLY:-} ]]; then
+  exit 0
+fi
 
 if [[ -n ${RELEASE:-} ]]; then
   cp build/kernel/release/kernel starina.elf
