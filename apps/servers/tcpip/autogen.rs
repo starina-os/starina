@@ -8,6 +8,7 @@ use starina::spec::ExportItem;
 use starina::syscall::VsyscallPage;
 
 use crate::App;
+use crate::State;
 
 #[derive(serde::Deserialize)]
 pub struct Env {
@@ -28,5 +29,5 @@ pub const APP_SPEC: AppSpec = AppSpec {
 };
 
 extern "C" fn entrypoint(vsyscall: *const VsyscallPage) -> ! {
-    starina::eventloop::app_loop::<Env, App>("tcpip", vsyscall);
+    starina::eventloop::app_loop::<Env, State, App>("tcpip", vsyscall);
 }

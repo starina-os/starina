@@ -2,7 +2,6 @@
 
 pub mod autogen;
 
-use autogen::Env;
 use starina::channel::ChannelSender;
 use starina::eventloop::Context;
 use starina::eventloop::Dispatcher;
@@ -35,10 +34,11 @@ pub struct App {
     virtio_net: spin::Mutex<VirtioNet>,
 }
 
-impl EventLoop<Env> for App {
+impl EventLoop for App {
+    type Env = autogen::Env;
     type State = State;
 
-    fn init(dispatcher: &Dispatcher<Self::State>, mut env: Env) -> Self {
+    fn init(dispatcher: &dyn Dispatcher<Self::State>, mut env: Self::Env) -> Self {
         dispatcher
             .add_channel(State::Startup, env.startup_ch)
             .unwrap();
