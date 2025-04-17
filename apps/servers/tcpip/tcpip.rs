@@ -91,7 +91,7 @@ impl<'a> TcpIp<'a> {
     ///
     /// As it detects changes in socket states, it calls the `callback` so that
     /// we can do message passing in the main loop.
-    pub fn poll<C, F>(&mut self, ctx: &C, mut callback: F)
+    pub fn poll<C: ?Sized, F>(&mut self, ctx: &C, mut callback: F)
     where
         F: FnMut(&C, SocketEvent<'_>),
     {

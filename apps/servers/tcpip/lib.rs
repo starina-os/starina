@@ -7,7 +7,6 @@ mod tcpip;
 
 use core::net::Ipv4Addr;
 
-use autogen::Env;
 use device::NetDevice;
 use smoltcp::iface::SocketHandle;
 use smoltcp::wire::EthernetAddress;
@@ -44,14 +43,15 @@ pub enum State {
     Data { smol_handle: SocketHandle },
 }
 
-pub struct App {
-    tcpip: spin::Mutex<TcpIp<'static>>,
+pub struct App<'a> {
+    tcpip: spin::Mutex<TcpIp<'a>>,
 }
 
-impl EventLoop<Env> for App {
+impl<'a> EventLoop for App<'a> {
+    type Env = autogen::Env;
     type State = State;
 
-    fn init(dispatcher: &Dispatcher<Self::State>, env: Env) -> Self {
+    fn init(dispatcher: &dyn Dispatcher<Self::State>, env: Self::Env) -> Self {
         smoltcp_logger::init();
 
         dispatcher
@@ -139,8 +139,8 @@ impl EventLoop<Env> for App {
     }
 }
 
-fn poll(dispatcher: &Dispatcher<State>, tcpip: &mut TcpIp) {
-    tcpip.poll(&dispatcher, |dispatcher, ev| {
+fn poll<'a>(dispatcher: &dyn Dispatcher<State>, tcpip: &mut TcpIp<'a>) {
+    tcpip.poll(dispatcher, |dispatcher, ev| {
         match ev {
             SocketEvent::Data { ch, data } => {
                 ch.send(StreamDataMsg { data }).unwrap(); // FIXME: what if backpressure happens?

@@ -4,7 +4,6 @@ pub mod autogen;
 mod connection;
 mod http;
 
-use autogen::Env;
 use connection::ChannelWriter;
 use connection::Conn;
 use starina::eventloop::Context;
@@ -34,10 +33,11 @@ pub struct App {
     state: spin::Mutex<AppState>,
 }
 
-impl EventLoop<Env> for App {
+impl EventLoop for App {
+    type Env = autogen::Env;
     type State = State;
 
-    fn init(dispatcher: &Dispatcher<Self::State>, env: Env) -> Self {
+    fn init(dispatcher: &dyn Dispatcher<Self::State>, env: Self::Env) -> Self {
         let tcpip = env.tcpip;
 
         // let uri = format!("tcp:{}:{}", env.listen_host, env.listen_port);

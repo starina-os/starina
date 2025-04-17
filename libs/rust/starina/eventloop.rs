@@ -23,14 +23,27 @@ use crate::poll::Poll;
 use crate::poll::Readiness;
 use crate::tls;
 
-pub trait EventLoop<E>: Send + Sync {
+/// Trait defining the Dispatcher interface for EventLoop applications
+pub trait Dispatcher<St> {
+    /// Add a channel to the dispatcher
+    fn add_channel(&self, state: St, channel: Channel) -> Result<ChannelSender, ErrorCode>;
+
+    /// Close a channel
+    fn close_channel(&self, handle: HandleId) -> Result<(), ErrorCode>;
+
+    /// Add an interrupt to the dispatcher
+    fn add_interrupt(&self, state: St, interrupt: Interrupt) -> Result<(), ErrorCode>;
+}
+
+pub trait EventLoop: Send + Sync {
+    type Env;
     type State: Send + Sync;
 
     /// Initializes an application.
     ///
     /// This is an equivalent to the `main` function in a normal Rust program,
     /// but in a component-like way.
-    fn init(dispatcher: &Dispatcher<Self::State>, env: E) -> Self
+    fn init(dispatcher: &dyn Dispatcher<Self::State>, env: Self::Env) -> Self
     where
         Self: Sized;
 
@@ -119,7 +132,7 @@ pub enum Object {
 
 pub struct Context<'a, St> {
     pub sender: &'a ChannelSender,
-    pub dispatcher: &'a Dispatcher<St>,
+    pub dispatcher: &'a dyn Dispatcher<St>,
     pub state: &'a mut St,
 }
 
@@ -128,12 +141,13 @@ pub struct ObjectWithState<St> {
     pub state: spin::Mutex<St>,
 }
 
-pub struct Dispatcher<St> {
+/// A dispatcher that uses `Poll` to wait for events.
+pub struct PollDispatcher<St> {
     poll: Poll,
     objects: spin::RwLock<HashMap<HandleId, Arc<ObjectWithState<St>>>>,
 }
 
-impl<St> Dispatcher<St> {
+impl<St> PollDispatcher<St> {
     pub fn new(poll: Poll) -> Self {
         Self {
             poll,
@@ -141,55 +155,7 @@ impl<St> Dispatcher<St> {
         }
     }
 
-    pub fn add_channel(&self, state: St, channel: Channel) -> Result<ChannelSender, ErrorCode> {
-        let handle_id = channel.handle_id();
-
-        // Tell the kernel to notify us when the channel is readable.
-        self.poll.add(handle_id, Readiness::READABLE)?;
-
-        // Register the channel in the dispatcher.
-        let (sender, receiver) = channel.split();
-        let object = Object::Channel {
-            sender: sender.clone(),
-            receiver,
-        };
-        self.objects.write().insert(
-            handle_id,
-            Arc::new(ObjectWithState {
-                object,
-                state: spin::Mutex::new(state),
-            }),
-        );
-
-        Ok(sender)
-    }
-
-    pub fn close_channel(&self, handle: HandleId) -> Result<(), ErrorCode> {
-        // Remove the channel from the dispatcher.
-        self.objects.write().remove(&handle);
-
-        // Tell the kernel to stop notifying us about this channel.
-        self.poll.remove(handle)?;
-
-        Ok(())
-    }
-
-    pub fn add_interrupt(&self, state: St, interrupt: Interrupt) -> Result<(), ErrorCode> {
-        let handle_id = interrupt.handle_id();
-        self.poll.add(handle_id, Readiness::READABLE)?;
-        let object = Object::Interrupt { interrupt };
-        self.objects.write().insert(
-            handle_id,
-            Arc::new(ObjectWithState {
-                object,
-                state: spin::Mutex::new(state),
-            }),
-        );
-
-        Ok(())
-    }
-
-    fn wait_and_dispatch<E>(&self, app: &impl EventLoop<E, State = St>) {
+    fn wait_and_dispatch<E>(&self, app: &impl EventLoop<Env = E, State = St>) {
         let (handle, readiness) = self.poll.wait().unwrap();
 
         let object = {
@@ -274,10 +240,62 @@ impl<St> Dispatcher<St> {
     }
 }
 
-pub fn app_loop<E: DeserializeOwned, A: EventLoop<E>>(
-    program_name: &'static str,
-    vsyscall: *const VsyscallPage,
-) -> ! {
+impl<St> Dispatcher<St> for PollDispatcher<St> {
+    fn add_channel(&self, state: St, channel: Channel) -> Result<ChannelSender, ErrorCode> {
+        let handle_id = channel.handle_id();
+
+        // Tell the kernel to notify us when the channel is readable.
+        self.poll.add(handle_id, Readiness::READABLE)?;
+
+        // Register the channel in the dispatcher.
+        let (sender, receiver) = channel.split();
+        let object = Object::Channel {
+            sender: sender.clone(),
+            receiver,
+        };
+        self.objects.write().insert(
+            handle_id,
+            Arc::new(ObjectWithState {
+                object,
+                state: spin::Mutex::new(state),
+            }),
+        );
+
+        Ok(sender)
+    }
+
+    fn close_channel(&self, handle: HandleId) -> Result<(), ErrorCode> {
+        // Remove the channel from the dispatcher.
+        self.objects.write().remove(&handle);
+
+        // Tell the kernel to stop notifying us about this channel.
+        self.poll.remove(handle)?;
+
+        Ok(())
+    }
+
+    fn add_interrupt(&self, state: St, interrupt: Interrupt) -> Result<(), ErrorCode> {
+        let handle_id = interrupt.handle_id();
+        self.poll.add(handle_id, Readiness::READABLE)?;
+        let object = Object::Interrupt { interrupt };
+        self.objects.write().insert(
+            handle_id,
+            Arc::new(ObjectWithState {
+                object,
+                state: spin::Mutex::new(state),
+            }),
+        );
+
+        Ok(())
+    }
+}
+
+pub fn app_loop<Env, St, A>(program_name: &'static str, vsyscall: *const VsyscallPage) -> !
+where
+    Env: DeserializeOwned,
+    St: Send + Sync,
+    A: EventLoop<Env = Env, State = St>,
+{
     tls::init_thread_local(program_name);
 
     let env_json = unsafe {
@@ -286,10 +304,10 @@ pub fn app_loop<E: DeserializeOwned, A: EventLoop<E>>(
         core::slice::from_raw_parts(ptr, len)
     };
 
-    let env: E = serde_json::from_slice(env_json).expect("failed to parse env");
+    let env: Env = serde_json::from_slice(env_json).expect("failed to parse env");
 
     let poll = Poll::create().unwrap();
-    let dispatcher = Dispatcher::new(poll);
+    let dispatcher = PollDispatcher::new(poll);
     let app: A = A::init(&dispatcher, env);
 
     loop {
