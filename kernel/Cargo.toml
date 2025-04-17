@@ -11,7 +11,7 @@ path = "main.rs"
 
 [features]
 default = []
-wasm = ["dep:wasmi"]
+wasm = ["dep:wasmi", "dep:hello_wasm"]
 
 [dependencies]
 starina_types = { workspace = true }
@@ -35,4 +35,4 @@ starina = { workspace = true, features = ["in-kernel"] }
 virtio_net = { workspace = true }
 tcpip = { workspace = true }
 http_server = { workspace = true }
-hello_wasm = { workspace = true }
+hello_wasm = { workspace = true, optional = true }
