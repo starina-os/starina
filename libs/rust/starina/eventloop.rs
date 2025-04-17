@@ -1,4 +1,5 @@
 use alloc::sync::Arc;
+use core::marker::PhantomData;
 
 use hashbrown::HashMap;
 use serde::de::DeserializeOwned;
@@ -33,6 +34,54 @@ pub trait Dispatcher<St> {
 
     /// Add an interrupt to the dispatcher
     fn add_interrupt(&self, state: St, interrupt: Interrupt) -> Result<(), ErrorCode>;
+}
+
+pub struct Completer<M>
+where
+    M: for<'a> Messageable<'a>,
+{
+    sender: ChannelSender,
+    _pd: PhantomData<M>,
+    #[cfg(debug_assertions)]
+    sent: bool,
+}
+
+impl<M> Completer<M>
+where
+    M: for<'a> Messageable<'a>,
+{
+    fn new(sender: ChannelSender) -> Self {
+        Self {
+            sender,
+            _pd: PhantomData,
+            #[cfg(debug_assertions)]
+            sent: false,
+        }
+    }
+
+    pub fn reply(mut self, message: M) -> Result<(), ErrorCode> {
+        #[cfg(debug_assertions)]
+        {
+            self.sent = true;
+        }
+
+        self.sender.send(message)
+    }
+}
+
+impl<M> Drop for Completer<M>
+where
+    M: for<'a> Messageable<'a>,
+{
+    fn drop(&mut self) {
+        #[cfg(debug_assertions)]
+        if !self.sent {
+            panic!(
+                "completer is dropped without replying {}",
+                core::any::type_name::<M>()
+            );
+        }
+    }
 }
 
 pub trait EventLoop: Send + Sync {
@@ -73,7 +122,12 @@ pub trait EventLoop: Send + Sync {
     /// reply with `open-reply` message with the handle of the new channel
     /// to use the opened resource such as files, TCP sockets, etc.
     #[allow(unused_variables)]
-    fn on_open(&self, ctx: Context<Self::State>, msg: OpenMsg<'_>) {
+    fn on_open(
+        &self,
+        ctx: Context<Self::State>,
+        completer: Completer<OpenReplyMsg>,
+        msg: OpenMsg<'_>,
+    ) {
         debug_warn!("ignored open message");
     }
 
@@ -191,7 +245,10 @@ impl<St> PollDispatcher<St> {
                         kind if kind == MessageKind::Open as usize => {
                             match unsafe { OpenMsg::parse_unchecked(msg.msginfo, &mut msg.buffer) }
                             {
-                                Some(msg) => app.on_open(ctx, msg),
+                                Some(msg) => {
+                                    let completer = Completer::new(ctx.sender.clone());
+                                    app.on_open(ctx, completer, msg)
+                                }
                                 None => {
                                     app.on_unknown_message(ctx, msg);
                                 }

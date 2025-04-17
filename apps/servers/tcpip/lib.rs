@@ -15,6 +15,7 @@ use smoltcp::wire::IpAddress;
 use smoltcp::wire::IpCidr;
 use smoltcp::wire::IpListenEndpoint;
 use starina::channel::Channel;
+use starina::eventloop::Completer;
 use starina::eventloop::Context;
 use starina::eventloop::Dispatcher;
 use starina::eventloop::EventLoop;
@@ -87,7 +88,12 @@ impl<'a> EventLoop for App<'a> {
             .unwrap();
     }
 
-    fn on_open(&self, ctx: Context<Self::State>, msg: OpenMsg<'_>) {
+    fn on_open(
+        &self,
+        ctx: Context<Self::State>,
+        completer: Completer<OpenReplyMsg>,
+        msg: OpenMsg<'_>,
+    ) {
         info!("got open message: {}", msg.uri);
         match msg.uri.split_once(':') {
             Some(("tcp-listen", rest)) => {
@@ -111,7 +117,7 @@ impl<'a> EventLoop for App<'a> {
                     tcpip.tcp_listen(listen_addr, sender).unwrap();
                 }
 
-                ctx.sender.send(OpenReplyMsg { handle: their_ch }).unwrap(); // FIXME: what if backpressure happens?
+                completer.reply(OpenReplyMsg { handle: their_ch }).unwrap(); // FIXME: what if backpressure happens?
             }
             _ => {
                 debug_warn!("unknown open message: {}", msg.uri);
