@@ -32,9 +32,6 @@ This year, we focus on cloud computing domain, where Starina will be used as a t
 ```bash
 # Install dependencies
 brew install qemu riscv64-elf-gdb # Ubuntu: apt install qemu gdb-multiarch
-rustup override set nightly
-rustup target add riscv64gc-unknown-none-elf
-rustup component add rust-src llvm-tools
 
 # Build and run (with GDB server enabled)
 ./run.sh

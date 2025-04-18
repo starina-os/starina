@@ -1,0 +1,4 @@
+[toolchain]
+channel = "nightly"
+components = ["rust-src", "llvm-tools"]
+targets = ["riscv64gc-unknown-none-elf"]
