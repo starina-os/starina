@@ -16,6 +16,7 @@ fi
 cargo $cargo_cmd \
     ${RELEASE:+--release} \
     ${WASM:+--features wasm} \
+    ${EXIT_ON_IDLE:+--features exit-on-idle} \
     -Z build-std=core,alloc \
     -Z build-std-features=compiler-builtins-mem \
     --target kernel/arch/riscv64/kernel.json \
@@ -45,6 +46,7 @@ fi
 echo -e "\nStarting QEMU..."
 $QEMU -machine virt -m 256 -bios default \
   -kernel starina.elf \
+  -semihosting \
   -nographic -serial mon:stdio --no-reboot \
   -global virtio-mmio.force-legacy=false \
   -device virtio-net-device,netdev=net0,bus=virtio-mmio-bus.0 \
