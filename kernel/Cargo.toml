@@ -12,6 +12,7 @@ path = "main.rs"
 [features]
 default = []
 wasm = ["dep:wasmi", "dep:hello_wasm"]
+exit-on-idle = []
 
 [dependencies]
 starina_types = { workspace = true }
