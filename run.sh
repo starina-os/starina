@@ -14,7 +14,7 @@ export CARGO_TARGET_DIR=build
 export CARGO_TERM_HYPERLINKS=false
 
 cargo_cmd=build
-if [[ -z ${CHECK_ONLY:-} ]]; then
+if [[ -n ${CHECK_ONLY:-} ]]; then
     cargo_cmd=check
 fi
 
