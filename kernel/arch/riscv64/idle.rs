@@ -47,10 +47,9 @@ pub fn halt() -> ! {
 
         unsafe {
             asm!(
-                ".option push",
-
-                ".option norvc", // Do not use compact instructions.
                 ".balign 16",
+                ".option push",
+                ".option norvc", // Do not use compact instructions.
 
                 // Special sequence to trigger a semihosting syscall.
                 "slli x0, x0, 0x1f",
