@@ -1,6 +1,11 @@
 #!/bin/bash
 set -eu
 
+# V=1
+if [[ -n ${V:-} ]]; then
+  set -x
+fi
+
 QEMU=${QEMU:-qemu-system-riscv64}
 
 cd "$(dirname "$0")"
@@ -14,6 +19,7 @@ if [[ -z ${CHECK_ONLY:-} ]]; then
 fi
 
 cargo $cargo_cmd \
+    ${V:+-v} \
     ${RELEASE:+--release} \
     ${WASM:+--features wasm} \
     ${EXIT_ON_IDLE:+--features exit-on-idle} \
