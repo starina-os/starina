@@ -65,6 +65,16 @@ pub enum MessageKind {
     FramedData = 6,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[repr(transparent)]
+pub struct CallId(pub u32);
+
+impl From<u32> for CallId {
+    fn from(value: u32) -> Self {
+        CallId(value)
+    }
+}
+
 pub trait Messageable<'a> {
     fn kind() -> MessageKind;
     fn write(self, buffer: &mut MessageBuffer) -> Result<MessageInfo, ErrorCode>;
@@ -72,6 +82,8 @@ pub trait Messageable<'a> {
     where
         Self: Sized;
 }
+
+pub trait MessageableWithCallId<'a> {}
 
 pub const URI_LEN_MAX: usize = 1024;
 
@@ -108,12 +120,15 @@ impl<'a> Messageable<'a> for ConnectMsg {
 }
 
 struct RawOpen {
+    call_id: CallId,
     uri: [u8; URI_LEN_MAX],
 }
 
 pub struct OpenMsg<'a> {
     pub uri: &'a str,
 }
+
+impl<'a> MessageableWithCallId<'a> for OpenMsg<'a> {}
 
 impl<'a> Messageable<'a> for OpenMsg<'a> {
     fn kind() -> MessageKind {
@@ -132,6 +147,7 @@ impl<'a> Messageable<'a> for OpenMsg<'a> {
             return Err(ErrorCode::TooLongUri);
         }
 
+        todo!("call id");
         raw.uri[..self.uri.len()].copy_from_slice(self.uri.as_bytes());
         Ok(MessageInfo::new(
             MessageKind::Open as i32,
@@ -144,6 +160,8 @@ impl<'a> Messageable<'a> for OpenMsg<'a> {
 pub struct OpenReplyMsg {
     pub handle: Channel,
 }
+
+impl<'a> MessageableWithCallId<'a> for OpenReplyMsg {}
 
 impl<'a> Messageable<'a> for OpenReplyMsg {
     fn kind() -> MessageKind {

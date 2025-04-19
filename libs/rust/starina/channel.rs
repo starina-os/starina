@@ -5,7 +5,9 @@ use crate::handle::HandleId;
 use crate::handle::Handleable;
 use crate::handle::OwnedHandle;
 use crate::message::AnyMessage;
+use crate::message::CallId;
 use crate::message::Messageable;
+use crate::message::MessageableWithCallId;
 use crate::message::OwnedMessageBuffer;
 use crate::syscall;
 
@@ -38,6 +40,22 @@ impl Channel {
         buffer.forget_handles();
 
         Ok(())
+    }
+
+    pub fn call<'a>(
+        &self,
+        call_id: CallId,
+        msg: impl MessageableWithCallId<'a>,
+    ) -> Result<(), ErrorCode> {
+        todo!()
+    }
+
+    pub fn reply<'a>(
+        &self,
+        call_id: CallId,
+        msg: impl MessageableWithCallId<'a>,
+    ) -> Result<(), ErrorCode> {
+        todo!()
     }
 
     pub fn recv(&self) -> Result<AnyMessage, ErrorCode> {
@@ -86,6 +104,22 @@ pub struct ChannelReceiver(Arc<Channel>);
 impl ChannelSender {
     pub fn send<'a>(&self, writer: impl Messageable<'a>) -> Result<(), ErrorCode> {
         self.0.send(writer)
+    }
+
+    pub fn call<'a>(
+        &self,
+        call_id: CallId,
+        msg: impl MessageableWithCallId<'a>,
+    ) -> Result<(), ErrorCode> {
+        self.0.call(call_id, msg)
+    }
+
+    pub fn reply<'a>(
+        &self,
+        call_id: CallId,
+        msg: impl MessageableWithCallId<'a>,
+    ) -> Result<(), ErrorCode> {
+        self.0.reply(call_id, msg)
     }
 
     pub fn handle(&self) -> &OwnedHandle {

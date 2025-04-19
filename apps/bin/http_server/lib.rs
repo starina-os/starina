@@ -9,6 +9,7 @@ use connection::Conn;
 use starina::eventloop::Context;
 use starina::eventloop::Dispatcher;
 use starina::eventloop::EventLoop;
+use starina::message::CallId;
 use starina::message::ConnectMsg;
 use starina::message::OpenMsg;
 use starina::message::OpenReplyMsg;
@@ -19,6 +20,11 @@ use starina::prelude::*;
 enum AppState {
     Opening,
     Ready,
+}
+
+#[repr(u32)]
+enum CallContext {
+    Listen = 1,
 }
 
 #[derive(Debug)]
@@ -43,7 +49,9 @@ impl EventLoop for App {
         // let uri = format!("tcp:{}:{}", env.listen_host, env.listen_port);
         info!("connecting to tcpip");
         let uri = "tcp-listen:0.0.0.0:80".to_string();
-        tcpip.send(OpenMsg { uri: &uri }).unwrap();
+
+        let call_id = CallId::from(CallContext::Listen);
+        tcpip.call(call_id, OpenMsg { uri: &uri }).unwrap();
 
         dispatcher.add_channel(State::Tcpip, tcpip).unwrap();
         Self {
@@ -51,7 +59,7 @@ impl EventLoop for App {
         }
     }
 
-    fn on_open_reply(&self, ctx: Context<Self::State>, msg: OpenReplyMsg) {
+    fn on_open_reply(&self, ctx: Context<Self::State>, call_id: CallId, msg: OpenReplyMsg) {
         info!("got open-reply");
 
         // FIXME: Check txid

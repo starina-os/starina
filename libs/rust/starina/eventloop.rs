@@ -13,10 +13,12 @@ use crate::handle::HandleId;
 use crate::handle::Handleable;
 use crate::interrupt::Interrupt;
 use crate::message::AnyMessage;
+use crate::message::CallId;
 use crate::message::ConnectMsg;
 use crate::message::FramedDataMsg;
 use crate::message::MessageKind;
 use crate::message::Messageable;
+use crate::message::MessageableWithCallId;
 use crate::message::OpenMsg;
 use crate::message::OpenReplyMsg;
 use crate::message::StreamDataMsg;
@@ -38,8 +40,9 @@ pub trait Dispatcher<St> {
 
 pub struct Completer<M>
 where
-    M: for<'a> Messageable<'a>,
+    M: for<'a> MessageableWithCallId<'a>,
 {
+    call_id: CallId,
     sender: ChannelSender,
     _pd: PhantomData<M>,
     #[cfg(debug_assertions)]
@@ -48,10 +51,11 @@ where
 
 impl<M> Completer<M>
 where
-    M: for<'a> Messageable<'a>,
+    M: for<'a> MessageableWithCallId<'a>,
 {
-    fn new(sender: ChannelSender) -> Self {
+    fn new(call_id: CallId, sender: ChannelSender) -> Self {
         Self {
+            call_id,
             sender,
             _pd: PhantomData,
             #[cfg(debug_assertions)]
@@ -65,13 +69,13 @@ where
             self.sent = true;
         }
 
-        self.sender.send(message)
+        self.sender.reply(self.call_id, message)
     }
 }
 
 impl<M> Drop for Completer<M>
 where
-    M: for<'a> Messageable<'a>,
+    M: for<'a> MessageableWithCallId<'a>,
 {
     fn drop(&mut self) {
         #[cfg(debug_assertions)]
@@ -139,7 +143,7 @@ pub trait EventLoop: Send + Sync {
     /// This message is used to reply to the `open` message. The `msg.handle`
     /// is the handle of the new channel representing the opened resource.
     #[allow(unused_variables)]
-    fn on_open_reply(&self, ctx: Context<Self::State>, msg: OpenReplyMsg) {
+    fn on_open_reply(&self, ctx: Context<Self::State>, call_id: CallId, msg: OpenReplyMsg) {
         debug_warn!("ignored open-reply message");
     }
 
@@ -246,7 +250,7 @@ impl<St> PollDispatcher<St> {
                             match unsafe { OpenMsg::parse_unchecked(msg.msginfo, &mut msg.buffer) }
                             {
                                 Some(msg) => {
-                                    let completer = Completer::new(ctx.sender.clone());
+                                    let completer = Completer::new(todo!(), ctx.sender.clone());
                                     app.on_open(ctx, completer, msg)
                                 }
                                 None => {
@@ -258,7 +262,7 @@ impl<St> PollDispatcher<St> {
                             match unsafe {
                                 OpenReplyMsg::parse_unchecked(msg.msginfo, &mut msg.buffer)
                             } {
-                                Some(msg) => app.on_open_reply(ctx, msg),
+                                Some(msg) => app.on_open_reply(ctx, todo!(), msg),
                                 None => {
                                     app.on_unknown_message(ctx, msg);
                                 }
