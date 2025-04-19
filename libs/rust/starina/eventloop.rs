@@ -249,8 +249,8 @@ impl<St> PollDispatcher<St> {
                         kind if kind == MessageKind::Open as usize => {
                             match unsafe { OpenMsg::parse_unchecked(msg.msginfo, &mut msg.buffer) }
                             {
-                                Some(msg) => {
-                                    let completer = Completer::new(todo!(), ctx.sender.clone());
+                                Some((msg, call_id)) => {
+                                    let completer = Completer::new(call_id, ctx.sender.clone());
                                     app.on_open(ctx, completer, msg)
                                 }
                                 None => {
@@ -262,7 +262,7 @@ impl<St> PollDispatcher<St> {
                             match unsafe {
                                 OpenReplyMsg::parse_unchecked(msg.msginfo, &mut msg.buffer)
                             } {
-                                Some(msg) => app.on_open_reply(ctx, todo!(), msg),
+                                Some((msg, call_id)) => app.on_open_reply(ctx, call_id, msg),
                                 None => {
                                     app.on_unknown_message(ctx, msg);
                                 }

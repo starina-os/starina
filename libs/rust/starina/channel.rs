@@ -47,7 +47,16 @@ impl Channel {
         call_id: CallId,
         msg: impl MessageableWithCallId<'a>,
     ) -> Result<(), ErrorCode> {
-        todo!()
+        let mut buffer = OwnedMessageBuffer::alloc();
+        let msginfo = msg.write(call_id, &mut buffer)?;
+        syscall::channel_send(
+            self.0.id(),
+            msginfo,
+            buffer.data().as_ptr(),
+            buffer.handles().as_ptr(),
+        )?;
+        buffer.forget_handles();
+        Ok(())
     }
 
     pub fn reply<'a>(
@@ -55,7 +64,16 @@ impl Channel {
         call_id: CallId,
         msg: impl MessageableWithCallId<'a>,
     ) -> Result<(), ErrorCode> {
-        todo!()
+        let mut buffer = OwnedMessageBuffer::alloc();
+        let msginfo = msg.write(call_id, &mut buffer)?;
+        syscall::channel_send(
+            self.0.id(),
+            msginfo,
+            buffer.data().as_ptr(),
+            buffer.handles().as_ptr(),
+        )?;
+        buffer.forget_handles();
+        Ok(())
     }
 
     pub fn recv(&self) -> Result<AnyMessage, ErrorCode> {

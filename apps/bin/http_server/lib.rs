@@ -22,11 +22,6 @@ enum AppState {
     Ready,
 }
 
-#[repr(u32)]
-enum CallContext {
-    Listen = 1,
-}
-
 #[derive(Debug)]
 pub enum State {
     Startup,
@@ -50,7 +45,7 @@ impl EventLoop for App {
         info!("connecting to tcpip");
         let uri = "tcp-listen:0.0.0.0:80".to_string();
 
-        let call_id = CallId::from(CallContext::Listen);
+        let call_id = CallId::from(1);
         tcpip.call(call_id, OpenMsg { uri: &uri }).unwrap();
 
         dispatcher.add_channel(State::Tcpip, tcpip).unwrap();
