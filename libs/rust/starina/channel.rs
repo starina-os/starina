@@ -5,8 +5,10 @@ use crate::handle::HandleId;
 use crate::handle::Handleable;
 use crate::handle::OwnedHandle;
 use crate::message::AnyMessage;
-use crate::message::Messageable;
+use crate::message::CallId;
+use crate::message::OneWayMessage;
 use crate::message::OwnedMessageBuffer;
+use crate::message::RequestReplyMessage;
 use crate::syscall;
 
 #[derive(Debug)]
@@ -24,7 +26,7 @@ impl Channel {
         Self(handle)
     }
 
-    pub fn send<'a>(&self, msg: impl Messageable<'a>) -> Result<(), ErrorCode> {
+    pub fn send<'a>(&self, msg: impl OneWayMessage<'a>) -> Result<(), ErrorCode> {
         let mut buffer = OwnedMessageBuffer::alloc();
         let msginfo = msg.write(&mut buffer)?;
 
@@ -37,6 +39,32 @@ impl Channel {
 
         buffer.forget_handles();
 
+        Ok(())
+    }
+
+    pub fn call<'a>(&self, call_id: CallId, msg: impl RequestReplyMessage<'a>) -> Result<(), ErrorCode> {
+        let mut buffer = OwnedMessageBuffer::alloc();
+        let msginfo = msg.write(call_id, &mut buffer)?;
+        syscall::channel_send(
+            self.0.id(),
+            msginfo,
+            buffer.data().as_ptr(),
+            buffer.handles().as_ptr(),
+        )?;
+        buffer.forget_handles();
+        Ok(())
+    }
+
+    pub fn reply<'a>(&self, call_id: CallId, msg: impl RequestReplyMessage<'a>) -> Result<(), ErrorCode> {
+        let mut buffer = OwnedMessageBuffer::alloc();
+        let msginfo = msg.write(call_id, &mut buffer)?;
+        syscall::channel_send(
+            self.0.id(),
+            msginfo,
+            buffer.data().as_ptr(),
+            buffer.handles().as_ptr(),
+        )?;
+        buffer.forget_handles();
         Ok(())
     }
 
@@ -84,8 +112,16 @@ pub struct ChannelSender(Arc<Channel>);
 pub struct ChannelReceiver(Arc<Channel>);
 
 impl ChannelSender {
-    pub fn send<'a>(&self, writer: impl Messageable<'a>) -> Result<(), ErrorCode> {
+    pub fn send<'a>(&self, writer: impl OneWayMessage<'a>) -> Result<(), ErrorCode> {
         self.0.send(writer)
+    }
+
+    pub fn call<'a>(&self, call_id: CallId, msg: impl RequestReplyMessage<'a>) -> Result<(), ErrorCode> {
+        self.0.call(call_id, msg)
+    }
+
+    pub fn reply<'a>(&self, call_id: CallId, msg: impl RequestReplyMessage<'a>) -> Result<(), ErrorCode> {
+        self.0.reply(call_id, msg)
     }
 
     pub fn handle(&self) -> &OwnedHandle {
