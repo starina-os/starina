@@ -32,6 +32,16 @@ impl From<u32> for CallId {
     }
 }
 
+fn parse_str(s: &[u8]) -> Option<&str> {
+    // Check if the slice is valid ASCII string.
+    if s.iter().all(|&b| b.is_ascii()) {
+        // SAFETY: The slice is valid UTF-8.
+        Some(unsafe { core::str::from_utf8_unchecked(s) })
+    } else {
+        None
+    }
+}
+
 pub struct MessageBuffer {
     data: [MaybeUninit<u8>; MESSAGE_DATA_LEN_MAX],
     handles: [MaybeUninit<HandleId>; MESSAGE_NUM_HANDLES_MAX],
@@ -76,19 +86,20 @@ impl Sendable for (CallId, OpenMsg<'_>) {
     ) -> Result<MessageInfo, ErrorCode> {
         let (call_id, OpenMsg { uri }) = self;
 
-        let uri_len = uri.len();
-        if uri_len > URI_LEN_MAX {
+        if uri.len() > URI_LEN_MAX {
             return Err(ErrorCode::TooLongUri);
         }
 
-        unsafe {
-            let raw = data.as_mut_ptr() as *mut RawOpen;
-            (*raw).call_id = call_id;
-            (*raw).uri[..uri_len].copy_from_slice(uri.as_bytes());
-        };
+        let raw = unsafe { &mut *(data.as_mut_ptr() as *mut RawOpen) };
+        raw.call_id = call_id;
+        raw.uri[..uri.len()].copy_from_slice(uri.as_bytes());
 
-        let data_len = size_of::<CallId>() as u16 + uri_len as u16;
-        Ok(MessageInfo::new(MessageKind::Open as i32, data_len, 0))
+        let data_len = size_of::<CallId>() + uri.len();
+        Ok(MessageInfo::new(
+            MessageKind::Open as i32,
+            data_len as u16,
+            0,
+        ))
     }
 }
 
@@ -98,11 +109,10 @@ impl Receivable for (CallId, OpenMsg<'_>) {
         data: &[MaybeUninit<u8>; MESSAGE_DATA_LEN_MAX],
         _handles: &[MaybeUninit<HandleId>; MESSAGE_NUM_HANDLES_MAX],
     ) -> Option<Self> {
-        let uri_len = msginfo.data_len() as usize - size_of::<CallId>();
-        let raw = data.as_ptr() as *const RawOpen;
-        let uri = unsafe { core::str::from_utf8_unchecked(&(*raw).uri[..uri_len]) };
-        let call_id = unsafe { (*raw).call_id };
-        Some((call_id, OpenMsg { uri }))
+        let raw = unsafe { &*(data.as_ptr() as *const RawOpen) };
+        let uri_len = msginfo.data_len().checked_sub(size_of::<CallId>())?;
+        let uri = parse_str(&raw.uri[..uri_len])?;
+        Some((raw.call_id, OpenMsg { uri }))
     }
 }
 
@@ -118,18 +128,19 @@ impl Sendable for (CallId, OpenReplyMsg) {
         handles: &mut [MaybeUninit<HandleId>; MESSAGE_NUM_HANDLES_MAX],
     ) -> Result<MessageInfo, ErrorCode> {
         let (call_id, OpenReplyMsg { handle }) = self;
-        unsafe {
-            let raw = data.as_mut_ptr() as *mut RawOpenReply;
-            (*raw).call_id = call_id;
-        }
+
+        let raw = unsafe { &mut *(data.as_mut_ptr() as *mut RawOpenReply) };
+        raw.call_id = call_id;
 
         handles[0].write(handle.handle_id());
-
-        // Avoid dropping the handle. It will be moved to the receiver.
         core::mem::forget(handle);
 
-        let data_len = core::mem::size_of::<RawOpenReply>() as u16;
-        Ok(MessageInfo::new(MessageKind::OpenReply as i32, data_len, 1))
+        let data_len = size_of::<RawOpenReply>();
+        Ok(MessageInfo::new(
+            MessageKind::OpenReply as i32,
+            data_len as u16,
+            1,
+        ))
     }
 }
 
@@ -139,8 +150,8 @@ impl Receivable for (CallId, OpenReplyMsg) {
         data: &[MaybeUninit<u8>; MESSAGE_DATA_LEN_MAX],
         handles: &[MaybeUninit<HandleId>; MESSAGE_NUM_HANDLES_MAX],
     ) -> Option<Self> {
-        let raw = data.as_ptr() as *const RawOpenReply;
-        let call_id = unsafe { (*raw).call_id };
+        let raw = unsafe { &*(data.as_ptr() as *const RawOpenReply) };
+        let call_id = raw.call_id;
         let handle_id = unsafe { handles[0].assume_init() };
 
         let handle = OwnedHandle::from_raw(handle_id);
