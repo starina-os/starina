@@ -42,7 +42,11 @@ impl Channel {
         Ok(())
     }
 
-    pub fn call<'a>(&self, call_id: CallId, msg: impl RequestReplyMessage<'a>) -> Result<(), ErrorCode> {
+    pub fn call<'a>(
+        &self,
+        call_id: CallId,
+        msg: impl RequestReplyMessage<'a>,
+    ) -> Result<(), ErrorCode> {
         let mut buffer = OwnedMessageBuffer::alloc();
         let msginfo = msg.write(call_id, &mut buffer)?;
         syscall::channel_send(
@@ -55,7 +59,11 @@ impl Channel {
         Ok(())
     }
 
-    pub fn reply<'a>(&self, call_id: CallId, msg: impl RequestReplyMessage<'a>) -> Result<(), ErrorCode> {
+    pub fn reply<'a>(
+        &self,
+        call_id: CallId,
+        msg: impl RequestReplyMessage<'a>,
+    ) -> Result<(), ErrorCode> {
         let mut buffer = OwnedMessageBuffer::alloc();
         let msginfo = msg.write(call_id, &mut buffer)?;
         syscall::channel_send(
@@ -116,11 +124,19 @@ impl ChannelSender {
         self.0.send(writer)
     }
 
-    pub fn call<'a>(&self, call_id: CallId, msg: impl RequestReplyMessage<'a>) -> Result<(), ErrorCode> {
+    pub fn call<'a>(
+        &self,
+        call_id: CallId,
+        msg: impl RequestReplyMessage<'a>,
+    ) -> Result<(), ErrorCode> {
         self.0.call(call_id, msg)
     }
 
-    pub fn reply<'a>(&self, call_id: CallId, msg: impl RequestReplyMessage<'a>) -> Result<(), ErrorCode> {
+    pub fn reply<'a>(
+        &self,
+        call_id: CallId,
+        msg: impl RequestReplyMessage<'a>,
+    ) -> Result<(), ErrorCode> {
         self.0.reply(call_id, msg)
     }
 
