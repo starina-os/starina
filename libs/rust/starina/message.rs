@@ -198,7 +198,7 @@ impl<'a> RequestReplyMessage<'a> for OpenReplyMsg {
         ))
     }
     unsafe fn parse_unchecked(
-        msginfo: MessageInfo,
+        _msginfo: MessageInfo,
         buffer: &'a mut MessageBuffer,
     ) -> Option<(Self, CallId)> {
         let handle = buffer.handles[0];
