@@ -55,6 +55,8 @@ impl EventLoop for App {
     }
 
     fn on_open_reply(&self, ctx: Context<Self::State>, call_id: CallId, msg: OpenReplyMsg) {
+        assert_eq!(call_id, CallId::from(1));
+
         info!("got open-reply");
 
         // FIXME: Check txid
