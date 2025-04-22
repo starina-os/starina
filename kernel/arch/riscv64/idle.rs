@@ -7,7 +7,7 @@ use super::entry::trap_entry;
 use super::interrupt::interrupt_handler;
 
 /// The entry point of interrupts or exceptions.
-#[naked]
+#[unsafe(naked)]
 #[repr(align(4))]
 unsafe extern "C" fn idle_entry() -> ! {
     unsafe {

@@ -18,7 +18,7 @@ use crate::cpuvar::CpuId;
 //   - a1: The address of the device tree blob.
 #[unsafe(no_mangle)]
 #[unsafe(link_section = ".text.boot")]
-#[naked]
+#[unsafe(naked)]
 unsafe extern "C" fn riscv64_boot(hartid: u64, dtb: *const u8) -> ! {
     unsafe {
         naked_asm!(
