@@ -11,7 +11,7 @@ use super::thread::Context;
 use crate::syscall::syscall_handler;
 use crate::thread::switch_thread;
 
-#[naked]
+#[unsafe(naked)]
 #[unsafe(no_mangle)]
 pub extern "C" fn inkernel_syscall_entry(
     _a0: isize,
@@ -84,7 +84,7 @@ pub extern "C" fn inkernel_syscall_entry(
 }
 
 /// The entry point for traps: exceptions, interrupts, and system calls.
-#[naked]
+#[unsafe(naked)]
 #[repr(align(4))]
 pub unsafe extern "C" fn trap_entry() -> ! {
     unsafe {

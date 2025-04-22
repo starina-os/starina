@@ -30,7 +30,7 @@ pub fn console_write(s: &[u8]) {
     std::io::stdout().write_all(s).unwrap();
 }
 
-// #[naked]
+// #[unsafe(naked)]
 pub extern "C" fn inkernel_syscall_entry(
     _a0: isize,
     _a1: isize,
