@@ -1,14 +1,17 @@
 use alloc::sync::Arc;
 
+use starina_types::message::MessageInfo;
+
 use crate::error::ErrorCode;
 use crate::handle::HandleId;
 use crate::handle::Handleable;
 use crate::handle::OwnedHandle;
 use crate::message::AnyMessage;
 use crate::message::CallId;
-use crate::message::OneWayMessage;
+use crate::message::Callable;
 use crate::message::OwnedMessageBuffer;
-use crate::message::RequestReplyMessage;
+use crate::message::Replyable;
+use crate::message::Sendable;
 use crate::syscall;
 
 #[derive(Debug)]
@@ -26,55 +29,41 @@ impl Channel {
         Self(handle)
     }
 
-    pub fn send<'a>(&self, msg: impl OneWayMessage<'a>) -> Result<(), ErrorCode> {
+    pub fn send(&self, msg: impl Sendable) -> Result<(), ErrorCode> {
         let mut buffer = OwnedMessageBuffer::alloc();
-        let msginfo = msg.write(&mut buffer)?;
-
-        syscall::channel_send(
-            self.0.id(),
-            msginfo,
-            buffer.data().as_ptr(),
-            buffer.handles().as_ptr(),
-        )?;
-
-        buffer.forget_handles();
-
-        Ok(())
+        let msginfo = msg.serialize_to_buffer(&mut buffer)?;
+        self.do_send(msginfo, buffer)
     }
 
-    pub fn call<'a>(&self, call_id: CallId, msg: impl RequestReplyMessage<'a>) -> Result<(), ErrorCode> {
+    pub fn call(&self, call_id: CallId, msg: impl Callable) -> Result<(), ErrorCode> {
         let mut buffer = OwnedMessageBuffer::alloc();
-        let msginfo = msg.write(call_id, &mut buffer)?;
-        syscall::channel_send(
-            self.0.id(),
-            msginfo,
-            buffer.data().as_ptr(),
-            buffer.handles().as_ptr(),
-        )?;
-        buffer.forget_handles();
-        Ok(())
+        let msginfo = msg.serialize_to_buffer(call_id, &mut buffer)?;
+        self.do_send(msginfo, buffer)
     }
 
-    pub fn reply<'a>(&self, call_id: CallId, msg: impl RequestReplyMessage<'a>) -> Result<(), ErrorCode> {
+    pub fn reply(&self, call_id: CallId, msg: impl Replyable) -> Result<(), ErrorCode> {
         let mut buffer = OwnedMessageBuffer::alloc();
-        let msginfo = msg.write(call_id, &mut buffer)?;
+        let msginfo = msg.serialize_to_buffer(call_id, &mut buffer)?;
+        self.do_send(msginfo, buffer)
+    }
+
+    fn do_send(&self, msginfo: MessageInfo, buffer: OwnedMessageBuffer) -> Result<(), ErrorCode> {
         syscall::channel_send(
             self.0.id(),
             msginfo,
-            buffer.data().as_ptr(),
-            buffer.handles().as_ptr(),
+            buffer.data_ptr(),
+            buffer.handles_ptr(),
         )?;
+
         buffer.forget_handles();
+
         Ok(())
     }
 
     pub fn recv(&self) -> Result<AnyMessage, ErrorCode> {
         let mut buffer = OwnedMessageBuffer::alloc();
-        let msginfo = syscall::channel_recv(
-            self.0.id(),
-            buffer.data_mut().as_mut_ptr(),
-            buffer.handles_mut().as_mut_ptr(),
-        )?;
+        let msginfo =
+            syscall::channel_recv(self.0.id(), buffer.data_mut_ptr(), buffer.handles_mut_ptr())?;
 
         let msg = unsafe { AnyMessage::new(buffer, msginfo) };
         Ok(msg)
@@ -112,15 +101,11 @@ pub struct ChannelSender(Arc<Channel>);
 pub struct ChannelReceiver(Arc<Channel>);
 
 impl ChannelSender {
-    pub fn send<'a>(&self, writer: impl OneWayMessage<'a>) -> Result<(), ErrorCode> {
-        self.0.send(writer)
+    pub fn send(&self, msg: impl Sendable) -> Result<(), ErrorCode> {
+        self.0.send(msg)
     }
 
-    pub fn call<'a>(&self, call_id: CallId, msg: impl RequestReplyMessage<'a>) -> Result<(), ErrorCode> {
-        self.0.call(call_id, msg)
-    }
-
-    pub fn reply<'a>(&self, call_id: CallId, msg: impl RequestReplyMessage<'a>) -> Result<(), ErrorCode> {
+    pub fn reply(&self, call_id: CallId, msg: impl Replyable) -> Result<(), ErrorCode> {
         self.0.reply(call_id, msg)
     }
 

@@ -43,10 +43,10 @@ impl EventLoop for App {
 
         // let uri = format!("tcp:{}:{}", env.listen_host, env.listen_port);
         info!("connecting to tcpip");
-        let uri = "tcp-listen:0.0.0.0:80".to_string();
+        let uri = b"tcp-listen:0.0.0.0:80";
 
         let call_id = CallId::from(1);
-        tcpip.call(call_id, OpenMsg { uri: &uri }).unwrap();
+        tcpip.call(call_id, OpenMsg { uri }).unwrap();
 
         dispatcher.add_channel(State::Tcpip, tcpip).unwrap();
         Self {

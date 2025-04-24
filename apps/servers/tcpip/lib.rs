@@ -94,11 +94,12 @@ impl<'a> EventLoop for App<'a> {
         completer: Completer<OpenReplyMsg>,
         msg: OpenMsg<'_>,
     ) {
-        info!("got open message: {}", msg.uri);
-        match msg.uri.split_once(':') {
+        let uri = core::str::from_utf8(msg.uri).unwrap();
+        info!("got open message: {}", uri);
+        match uri.split_once(':') {
             Some(("tcp-listen", rest)) => {
                 let Some((ip, port)) = parse_addr(rest) else {
-                    debug_warn!("invalid tcp-listen message: {}", msg.uri);
+                    debug_warn!("invalid tcp-listen message: {}", uri);
                     return;
                 };
 
@@ -120,7 +121,7 @@ impl<'a> EventLoop for App<'a> {
                 completer.reply(OpenReplyMsg { handle: their_ch }).unwrap(); // FIXME: what if backpressure happens?
             }
             _ => {
-                debug_warn!("unknown open message: {}", msg.uri);
+                debug_warn!("unknown open message: {}", uri);
                 // FIXME: How should we reply error?
             }
         }
