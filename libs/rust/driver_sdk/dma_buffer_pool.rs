@@ -151,7 +151,6 @@ impl DmaBufferPool {
 
     /// Allocates a buffer.
     pub fn allocate(&mut self) -> Option<BufferId> {
-        
         self.free_indices.pop()
     }
 
