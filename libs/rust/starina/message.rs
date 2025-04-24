@@ -1,6 +1,10 @@
 use alloc::boxed::Box;
+use core::mem;
+use core::mem::MaybeUninit;
 use core::ops::Deref;
 use core::ops::DerefMut;
+use core::ptr;
+use core::slice;
 
 use starina_types::error::ErrorCode;
 use starina_types::handle::HandleId;
@@ -10,50 +14,6 @@ use crate::channel::Channel;
 use crate::handle::Handleable;
 use crate::handle::OwnedHandle;
 use crate::syscall;
-
-pub struct MessageBuffer {
-    data: [u8; MESSAGE_DATA_LEN_MAX],
-    handles: [HandleId; MESSAGE_NUM_HANDLES_MAX],
-}
-
-impl MessageBuffer {
-    pub fn zeroed() -> Self {
-        Self {
-            data: [0; MESSAGE_DATA_LEN_MAX],
-            handles: [HandleId::from_raw(0); MESSAGE_NUM_HANDLES_MAX],
-        }
-    }
-
-    pub const fn data(&self) -> &[u8] {
-        &self.data
-    }
-
-    pub const fn handles(&self) -> &[HandleId] {
-        &self.handles
-    }
-
-    pub fn data_mut(&mut self) -> &mut [u8] {
-        &mut self.data
-    }
-
-    pub fn handles_mut(&mut self) -> &mut [HandleId] {
-        &mut self.handles
-    }
-
-    pub unsafe fn data_as_ref<T>(&self) -> &T {
-        debug_assert!(size_of::<T>() <= MESSAGE_DATA_LEN_MAX);
-        debug_assert!(self.data.as_ptr().is_aligned_to(align_of::<T>()));
-
-        unsafe { &*(self.data.as_ptr() as *const T) }
-    }
-
-    pub unsafe fn data_as_mut<T>(&mut self) -> &mut T {
-        debug_assert!(size_of::<T>() <= MESSAGE_DATA_LEN_MAX);
-        debug_assert!(self.data.as_ptr().is_aligned_to(align_of::<T>()));
-
-        unsafe { &mut *(self.data.as_mut_ptr() as *mut T) }
-    }
-}
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 #[repr(u8)]
@@ -75,147 +35,318 @@ impl From<u32> for CallId {
     }
 }
 
-pub trait MessageCommon {
-    fn kind() -> MessageKind;
-}
-pub trait OneWayMessage<'a>: MessageCommon {
-    fn write(self, buffer: &mut MessageBuffer) -> Result<MessageInfo, ErrorCode>;
-    unsafe fn parse_unchecked(msginfo: MessageInfo, buffer: &'a mut MessageBuffer) -> Option<Self>
-    where
-        Self: Sized;
+pub struct MessageBuffer {
+    data: [MaybeUninit<u8>; MESSAGE_DATA_LEN_MAX],
+    handles: [HandleId; MESSAGE_NUM_HANDLES_MAX],
 }
 
-pub trait RequestReplyMessage<'a>: MessageCommon {
-    fn write(self, call_id: CallId, buffer: &mut MessageBuffer) -> Result<MessageInfo, ErrorCode>;
-    unsafe fn parse_unchecked(
+impl MessageBuffer {
+    const fn new() -> Self {
+        Self {
+            data: [const { MaybeUninit::uninit() }; MESSAGE_DATA_LEN_MAX],
+            handles: [HandleId::from_raw(0); MESSAGE_NUM_HANDLES_MAX],
+        }
+    }
+
+    pub fn data_ptr(&self) -> *const u8 {
+        self.data.as_ptr() as *const u8
+    }
+
+    pub fn data_mut_ptr(&mut self) -> *mut u8 {
+        self.data.as_mut_ptr() as *mut u8
+    }
+
+    pub fn handles_ptr(&self) -> *const HandleId {
+        self.handles.as_ptr() as *const HandleId
+    }
+
+    pub fn handles_mut_ptr(&mut self) -> *mut HandleId {
+        self.handles.as_mut_ptr() as *mut HandleId
+    }
+}
+
+pub struct DataWriter<'a> {
+    data: &'a mut [MaybeUninit<u8>; MESSAGE_DATA_LEN_MAX],
+    offset: usize,
+}
+
+impl<'a> DataWriter<'a> {
+    fn new(data: &'a mut [MaybeUninit<u8>; MESSAGE_DATA_LEN_MAX]) -> Self {
+        DataWriter { data, offset: 0 }
+    }
+
+    fn header_only<T: Copy>(self, header: T) -> u16 {
+        let len = size_of::<T>();
+
+        debug_assert!(len <= self.data.len());
+        debug_assert_eq!(self.offset, 0);
+
+        let data_ptr = self.data.as_mut_ptr();
+        unsafe { ptr::write(data_ptr as *mut T, header) };
+
+        len as u16
+    }
+
+    fn header_then_bytes<H: Copy>(self, header: H, bytes: &[u8]) -> u16 {
+        let len = size_of::<H>() + bytes.len();
+
+        debug_assert!(len <= self.data.len());
+        debug_assert_eq!(self.offset, 0);
+
+        let data_ptr = self.data.as_mut_ptr();
+        unsafe {
+            ptr::write(data_ptr as *mut H, header);
+            ptr::copy_nonoverlapping(
+                bytes.as_ptr(),
+                (data_ptr as *mut u8).add(size_of::<H>()),
+                bytes.len(),
+            );
+        }
+
+        len as u16
+    }
+
+    fn bytes_only(self, bytes: &[u8]) -> u16 {
+        let len = bytes.len();
+
+        debug_assert!(len <= self.data.len());
+        debug_assert_eq!(self.offset, 0);
+
+        let data_ptr = self.data.as_mut_ptr();
+        unsafe {
+            ptr::copy_nonoverlapping(bytes.as_ptr(), data_ptr as *mut u8, len);
+        }
+
+        len as u16
+    }
+}
+
+pub struct HandlesWriter<'a> {
+    handles: &'a mut [HandleId; MESSAGE_NUM_HANDLES_MAX],
+}
+
+impl<'a> HandlesWriter<'a> {
+    fn new(handles: &'a mut [HandleId; MESSAGE_NUM_HANDLES_MAX]) -> Self {
+        HandlesWriter { handles }
+    }
+
+    fn write<H: Handleable>(&mut self, index: usize, handle: H) {
+        let handle_id = handle.handle_id();
+
+        // Avoid dropping the handle; it will be moved to the peer channel.
+        mem::forget(handle);
+
+        self.handles[index] = handle_id;
+    }
+}
+
+pub struct DataReader<'a> {
+    data: &'a [MaybeUninit<u8>; MESSAGE_DATA_LEN_MAX],
+}
+
+impl<'a> DataReader<'a> {
+    fn new(data: &'a [MaybeUninit<u8>; MESSAGE_DATA_LEN_MAX]) -> Self {
+        DataReader { data }
+    }
+
+    fn header_only<T: Copy>(self, msginfo: MessageInfo) -> &'a T {
+        debug_assert_eq!(size_of::<T>(), msginfo.data_len() as usize);
+
+        let data_ptr = self.data.as_ptr() as *const T;
+        let data = unsafe { &*data_ptr };
+        data
+    }
+
+    fn header_then_bytes<H: Copy>(self, msginfo: MessageInfo) -> Option<(&'a H, &'a [u8])> {
+        let bytes_len = msginfo.data_len().checked_sub(size_of::<H>())?;
+        let data_ptr = self.data.as_ptr() as *const u8;
+        let header = unsafe { &*(data_ptr as *const H) };
+        let bytes = unsafe {
+            let bytes_ptr = data_ptr.add(size_of::<H>());
+            slice::from_raw_parts(bytes_ptr, bytes_len)
+        };
+        Some((header, bytes))
+    }
+
+    fn bytes_only(self, msginfo: MessageInfo) -> Option<&'a [u8]> {
+        let bytes_len = msginfo.data_len();
+        let data_ptr = self.data.as_ptr() as *const u8;
+        let bytes = unsafe { slice::from_raw_parts(data_ptr, bytes_len) };
+        Some(bytes)
+    }
+}
+
+pub struct HandlesReader<'a> {
+    handles: &'a mut [HandleId; MESSAGE_NUM_HANDLES_MAX],
+}
+
+impl<'a> HandlesReader<'a> {
+    fn new(handles: &'a mut [HandleId; MESSAGE_NUM_HANDLES_MAX]) -> Self {
+        HandlesReader { handles }
+    }
+
+    fn as_channel<const I: usize>(&mut self, msginfo: MessageInfo) -> Channel {
+        debug_assert!(I < msginfo.num_handles() as usize);
+
+        let handle_id = self.handles[I];
+
+        // Mark as moved.
+        self.handles[I] = HandleId::from_raw(0);
+
+        let handle = OwnedHandle::from_raw(handle_id);
+        let channel = Channel::from_handle(handle);
+        channel
+    }
+}
+
+pub trait Sendable: Sized {
+    fn serialize(
+        self,
+        data: DataWriter<'_>,
+        handles: HandlesWriter<'_>,
+    ) -> Result<MessageInfo, ErrorCode>;
+
+    fn serialize_to_buffer(self, buffer: &mut MessageBuffer) -> Result<MessageInfo, ErrorCode> {
+        let data = DataWriter::new(&mut buffer.data);
+        let handles = HandlesWriter::new(&mut buffer.handles);
+        self.serialize(data, handles)
+    }
+}
+
+pub trait Replyable: Sized {
+    fn serialize(
+        self,
+        call_id: CallId,
+        data: DataWriter<'_>,
+        handles: HandlesWriter<'_>,
+    ) -> Result<MessageInfo, ErrorCode>;
+
+    fn serialize_to_buffer(
+        self,
+        call_id: CallId,
+        buffer: &mut MessageBuffer,
+    ) -> Result<MessageInfo, ErrorCode> {
+        let data = DataWriter::new(&mut buffer.data);
+        let handles = HandlesWriter::new(&mut buffer.handles);
+        self.serialize(call_id, data, handles)
+    }
+}
+
+pub trait Callable: Sized {
+    fn serialize(
+        self,
+        call_id: CallId,
+        data: DataWriter<'_>,
+        handles: HandlesWriter<'_>,
+    ) -> Result<MessageInfo, ErrorCode>;
+
+    fn serialize_to_buffer(
+        self,
+        call_id: CallId,
+        buffer: &mut MessageBuffer,
+    ) -> Result<MessageInfo, ErrorCode> {
+        let data = DataWriter::new(&mut buffer.data);
+        let handles = HandlesWriter::new(&mut buffer.handles);
+        self.serialize(call_id, data, handles)
+    }
+}
+
+pub trait Receivable<'a>: Sized {
+    fn deserialize(
+        msginfo: MessageInfo,
+        data: DataReader<'a>,
+        handles: HandlesReader<'a>,
+    ) -> Option<Self>;
+
+    fn deserialize_from_buffer(
         msginfo: MessageInfo,
         buffer: &'a mut MessageBuffer,
-    ) -> Option<(Self, CallId)>
-    where
-        Self: Sized;
-}
-
-pub const URI_LEN_MAX: usize = 1024;
-
-pub struct ConnectMsg {
-    pub handle: Channel,
-}
-
-impl<'a> MessageCommon for ConnectMsg {
-    fn kind() -> MessageKind {
-        MessageKind::Connect
-    }
-}
-
-impl<'a> OneWayMessage<'a> for ConnectMsg {
-    fn write(self, buffer: &mut MessageBuffer) -> Result<MessageInfo, ErrorCode> {
-        let handle = self.handle;
-        buffer.handles[0] = handle.handle_id();
-
-        // Avoid dropping the handle. It will be moved to the channel.
-        core::mem::forget(handle);
-
-        Ok(MessageInfo::new(MessageKind::Connect as i32, 0, 1))
-    }
-
-    unsafe fn parse_unchecked(
-        _msginfo: MessageInfo,
-        buffer: &'a mut MessageBuffer,
     ) -> Option<Self> {
-        let handle = buffer.handles[0];
-        buffer.handles[0] = HandleId::from_raw(0); // Avoid dropping the handle.
-
-        Some(ConnectMsg {
-            handle: Channel::from_handle(OwnedHandle::from_raw(handle)),
-        })
+        let data = DataReader::new(&buffer.data);
+        let handles = HandlesReader::new(&mut buffer.handles);
+        Self::deserialize(msginfo, data, handles)
     }
-}
-
-struct RawOpen {
-    call_id: CallId,
-    uri: [u8; URI_LEN_MAX],
 }
 
 pub struct OpenMsg<'a> {
-    pub uri: &'a str,
+    pub uri: &'a [u8],
 }
 
-impl<'a> RequestReplyMessage<'a> for OpenMsg<'a> {
-    fn write(self, call_id: CallId, buffer: &mut MessageBuffer) -> Result<MessageInfo, ErrorCode> {
-        let raw = unsafe { buffer.data_as_mut::<RawOpen>() };
-        if self.uri.len() > URI_LEN_MAX {
-            return Err(ErrorCode::TooLongUri);
-        }
-
-        raw.call_id = call_id;
-        raw.uri[..self.uri.len()].copy_from_slice(self.uri.as_bytes());
-        Ok(MessageInfo::new(
-            MessageKind::Open as i32,
-            self.uri.len() as u16,
-            0,
-        ))
+impl Callable for OpenMsg<'_> {
+    fn serialize(
+        self,
+        call_id: CallId,
+        data: DataWriter<'_>,
+        _handles: HandlesWriter<'_>,
+    ) -> Result<MessageInfo, ErrorCode> {
+        let len = data.header_then_bytes(call_id, self.uri);
+        Ok(MessageInfo::new(MessageKind::Open as i32, len, 0))
     }
+}
 
-    unsafe fn parse_unchecked(
+impl<'a> Receivable<'a> for (CallId, OpenMsg<'a>) {
+    fn deserialize(
         msginfo: MessageInfo,
-        buffer: &'a mut MessageBuffer,
-    ) -> Option<(Self, CallId)> {
-        let raw = unsafe { buffer.data_as_ref::<RawOpen>() };
-        let uri = unsafe { core::str::from_utf8_unchecked(&raw.uri[..msginfo.data_len()]) };
-        Some((OpenMsg { uri }, raw.call_id))
+        data: DataReader<'a>,
+        _handles: HandlesReader<'a>,
+    ) -> Option<Self> {
+        let (call_id, uri) = data.header_then_bytes(msginfo)?;
+        Some((*call_id, OpenMsg { uri }))
     }
-}
-
-impl<'a> MessageCommon for OpenMsg<'a> {
-    fn kind() -> MessageKind {
-        MessageKind::Open
-    }
-}
-
-struct RawOpenReply {
-    call_id: CallId,
 }
 
 pub struct OpenReplyMsg {
     pub handle: Channel,
 }
 
-impl<'a> RequestReplyMessage<'a> for OpenReplyMsg {
-    fn write(self, call_id: CallId, buffer: &mut MessageBuffer) -> Result<MessageInfo, ErrorCode> {
-        let handle = self.handle;
-        buffer.handles[0] = handle.handle_id();
-
-        let raw = unsafe { buffer.data_as_mut::<RawOpenReply>() };
-        raw.call_id = call_id;
-
-        // Avoid dropping the handle. It will be moved to the channel.
-        core::mem::forget(handle);
-
-        Ok(MessageInfo::new(
-            MessageKind::OpenReply as i32,
-            size_of::<RawOpenReply>() as u16,
-            1,
-        ))
-    }
-    unsafe fn parse_unchecked(
-        _msginfo: MessageInfo,
-        buffer: &'a mut MessageBuffer,
-    ) -> Option<(Self, CallId)> {
-        let handle = buffer.handles[0];
-        buffer.handles[0] = HandleId::from_raw(0); // Avoid dropping the handle.
-
-        Some((
-            OpenReplyMsg {
-                handle: Channel::from_handle(OwnedHandle::from_raw(handle)),
-            },
-            unsafe { buffer.data_as_ref::<RawOpenReply>() }.call_id,
-        ))
+impl<'a> Receivable<'a> for (CallId, OpenReplyMsg) {
+    fn deserialize(
+        msginfo: MessageInfo,
+        data: DataReader<'a>,
+        mut handles: HandlesReader<'a>,
+    ) -> Option<Self> {
+        let call_id = data.header_only(msginfo);
+        let handle = handles.as_channel::<0>(msginfo);
+        Some((*call_id, OpenReplyMsg { handle }))
     }
 }
 
-impl<'a> MessageCommon for OpenReplyMsg {
-    fn kind() -> MessageKind {
-        MessageKind::OpenReply
+impl Replyable for OpenReplyMsg {
+    fn serialize(
+        self,
+        call_id: CallId,
+        data: DataWriter<'_>,
+        mut handles: HandlesWriter<'_>,
+    ) -> Result<MessageInfo, ErrorCode> {
+        let len = data.header_only(call_id);
+        handles.write(0, self.handle);
+        Ok(MessageInfo::new(MessageKind::OpenReply as i32, len, 1))
+    }
+}
+
+pub struct ConnectMsg {
+    pub handle: Channel,
+}
+
+impl Sendable for ConnectMsg {
+    fn serialize(
+        self,
+        _data: DataWriter<'_>,
+        mut handles: HandlesWriter<'_>,
+    ) -> Result<MessageInfo, ErrorCode> {
+        handles.write(0, self.handle);
+        Ok(MessageInfo::new(MessageKind::Connect as i32, 0, 1))
+    }
+}
+
+impl<'a> Receivable<'a> for ConnectMsg {
+    fn deserialize(
+        msginfo: MessageInfo,
+        _data: DataReader<'a>,
+        mut handles: HandlesReader<'a>,
+    ) -> Option<Self> {
+        let handle = handles.as_channel::<0>(msginfo);
+        Some(ConnectMsg { handle })
     }
 }
 
@@ -223,29 +354,25 @@ pub struct FramedDataMsg<'a> {
     pub data: &'a [u8],
 }
 
-impl<'a> MessageCommon for FramedDataMsg<'a> {
-    fn kind() -> MessageKind {
-        MessageKind::FramedData
+impl Sendable for FramedDataMsg<'_> {
+    fn serialize(
+        self,
+        data: DataWriter<'_>,
+        _handles: HandlesWriter<'_>,
+    ) -> Result<MessageInfo, ErrorCode> {
+        let len = data.bytes_only(self.data);
+        Ok(MessageInfo::new(MessageKind::FramedData as i32, len, 0))
     }
 }
 
-impl<'a> OneWayMessage<'a> for FramedDataMsg<'a> {
-    unsafe fn parse_unchecked(msginfo: MessageInfo, buffer: &'a mut MessageBuffer) -> Option<Self> {
-        let data = &buffer.data[..msginfo.data_len()];
-        Some(FramedDataMsg { data })
-    }
-
-    fn write(self, buffer: &mut MessageBuffer) -> Result<MessageInfo, ErrorCode> {
-        if self.data.len() > buffer.data.len() {
-            return Err(ErrorCode::TooLarge);
-        }
-
-        buffer.data[..self.data.len()].copy_from_slice(self.data);
-        Ok(MessageInfo::new(
-            MessageKind::FramedData as i32,
-            self.data.len() as u16,
-            0,
-        ))
+impl<'a> Receivable<'a> for FramedDataMsg<'a> {
+    fn deserialize(
+        msginfo: MessageInfo,
+        data: DataReader<'a>,
+        _handles: HandlesReader<'a>,
+    ) -> Option<Self> {
+        let bytes = data.bytes_only(msginfo)?;
+        Some(FramedDataMsg { data: bytes })
     }
 }
 
@@ -253,29 +380,25 @@ pub struct StreamDataMsg<'a> {
     pub data: &'a [u8],
 }
 
-impl<'a> MessageCommon for StreamDataMsg<'a> {
-    fn kind() -> MessageKind {
-        MessageKind::StreamData
+impl Sendable for StreamDataMsg<'_> {
+    fn serialize(
+        self,
+        data: DataWriter<'_>,
+        _handles: HandlesWriter<'_>,
+    ) -> Result<MessageInfo, ErrorCode> {
+        let len = data.bytes_only(self.data);
+        Ok(MessageInfo::new(MessageKind::StreamData as i32, len, 0))
     }
 }
 
-impl<'a> OneWayMessage<'a> for StreamDataMsg<'a> {
-    unsafe fn parse_unchecked(msginfo: MessageInfo, buffer: &'a mut MessageBuffer) -> Option<Self> {
-        let data = &buffer.data[..msginfo.data_len()];
-        Some(StreamDataMsg { data })
-    }
-
-    fn write(self, buffer: &mut MessageBuffer) -> Result<MessageInfo, ErrorCode> {
-        if self.data.len() > buffer.data.len() {
-            return Err(ErrorCode::TooLarge);
-        }
-
-        buffer.data[..self.data.len()].copy_from_slice(self.data);
-        Ok(MessageInfo::new(
-            MessageKind::StreamData as i32,
-            self.data.len() as u16,
-            0,
-        ))
+impl<'a> Receivable<'a> for StreamDataMsg<'a> {
+    fn deserialize(
+        msginfo: MessageInfo,
+        data: DataReader<'a>,
+        _handles: HandlesReader<'a>,
+    ) -> Option<Self> {
+        let bytes = data.bytes_only(msginfo)?;
+        Some(StreamDataMsg { data: bytes })
     }
 }
 
@@ -285,15 +408,12 @@ impl OwnedMessageBuffer {
     pub fn alloc() -> Self {
         // TODO: Have a thread-local buffer pool.
         // TODO: Use `MaybeUninit` to unnecesarily zero-fill the buffer.
-        let buffer = Box::new(MessageBuffer::zeroed());
+        let buffer = Box::new(MessageBuffer::new());
         OwnedMessageBuffer(buffer)
     }
 
     pub fn forget_handles(mut self) {
-        // TODO: Can we drop the box without calling OwnedHandle's drop?
-        for handle in self.0.handles_mut() {
-            *handle = HandleId::from_raw(0);
-        }
+        self.0.handles.fill(HandleId::from_raw(0));
     }
 }
 
@@ -314,9 +434,9 @@ impl DerefMut for OwnedMessageBuffer {
 impl Drop for OwnedMessageBuffer {
     fn drop(&mut self) {
         // Drop handles.
-        for handle in self.0.handles() {
-            if handle.as_raw() != 0 {
-                if let Err(e) = syscall::handle_close(*handle) {
+        for handle_id in self.0.handles {
+            if handle_id.as_raw() != 0 {
+                if let Err(e) = syscall::handle_close(handle_id) {
                     debug_warn!("failed to close handle: {:?}", e);
                 }
             }

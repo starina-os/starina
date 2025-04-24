@@ -17,10 +17,10 @@ use crate::message::CallId;
 use crate::message::ConnectMsg;
 use crate::message::FramedDataMsg;
 use crate::message::MessageKind;
-use crate::message::OneWayMessage;
 use crate::message::OpenMsg;
 use crate::message::OpenReplyMsg;
-use crate::message::RequestReplyMessage;
+use crate::message::Receivable;
+use crate::message::Replyable;
 use crate::message::StreamDataMsg;
 use crate::poll::Poll;
 use crate::poll::Readiness;
@@ -40,7 +40,7 @@ pub trait Dispatcher<St> {
 
 pub struct Completer<M>
 where
-    M: for<'a> RequestReplyMessage<'a>,
+    M: Replyable,
 {
     call_id: CallId,
     sender: ChannelSender,
@@ -51,7 +51,7 @@ where
 
 impl<M> Completer<M>
 where
-    M: for<'a> RequestReplyMessage<'a>,
+    M: Replyable,
 {
     fn new(call_id: CallId, sender: ChannelSender) -> Self {
         Self {
@@ -75,7 +75,7 @@ where
 
 impl<M> Drop for Completer<M>
 where
-    M: for<'a> RequestReplyMessage<'a>,
+    M: Replyable,
 {
     fn drop(&mut self) {
         #[cfg(debug_assertions)]
@@ -215,13 +215,9 @@ impl<St> PollDispatcher<St> {
 
     fn wait_and_dispatch<E>(&self, app: &impl EventLoop<Env = E, State = St>) {
         let (handle, readiness) = self.poll.wait().unwrap();
-
         let object = {
-            let objects_lock = self.objects.read();
-            objects_lock
-                .get(&handle)
-                .cloned()
-                .expect("object not found")
+            let objects = self.objects.read();
+            objects.get(&handle).cloned().expect("object not found")
         };
 
         match &object.object {
@@ -237,9 +233,8 @@ impl<St> PollDispatcher<St> {
 
                     match msg.msginfo.kind() {
                         kind if kind == MessageKind::Connect as usize => {
-                            match unsafe {
-                                ConnectMsg::parse_unchecked(msg.msginfo, &mut msg.buffer)
-                            } {
+                            match Receivable::deserialize_from_buffer(msg.msginfo, &mut msg.buffer)
+                            {
                                 Some(msg) => app.on_connect(ctx, msg),
                                 None => {
                                     app.on_unknown_message(ctx, msg);
@@ -247,9 +242,9 @@ impl<St> PollDispatcher<St> {
                             };
                         }
                         kind if kind == MessageKind::Open as usize => {
-                            match unsafe { OpenMsg::parse_unchecked(msg.msginfo, &mut msg.buffer) }
+                            match Receivable::deserialize_from_buffer(msg.msginfo, &mut msg.buffer)
                             {
-                                Some((msg, call_id)) => {
+                                Some((call_id, msg)) => {
                                     let completer = Completer::new(call_id, ctx.sender.clone());
                                     app.on_open(ctx, completer, msg)
                                 }
@@ -259,19 +254,17 @@ impl<St> PollDispatcher<St> {
                             };
                         }
                         kind if kind == MessageKind::OpenReply as usize => {
-                            match unsafe {
-                                OpenReplyMsg::parse_unchecked(msg.msginfo, &mut msg.buffer)
-                            } {
-                                Some((msg, call_id)) => app.on_open_reply(ctx, call_id, msg),
+                            match Receivable::deserialize_from_buffer(msg.msginfo, &mut msg.buffer)
+                            {
+                                Some((call_id, msg)) => app.on_open_reply(ctx, call_id, msg),
                                 None => {
                                     app.on_unknown_message(ctx, msg);
                                 }
                             };
                         }
                         kind if kind == MessageKind::FramedData as usize => {
-                            match unsafe {
-                                FramedDataMsg::parse_unchecked(msg.msginfo, &mut msg.buffer)
-                            } {
+                            match Receivable::deserialize_from_buffer(msg.msginfo, &mut msg.buffer)
+                            {
                                 Some(msg) => app.on_framed_data(ctx, msg),
                                 None => {
                                     app.on_unknown_message(ctx, msg);
@@ -279,9 +272,8 @@ impl<St> PollDispatcher<St> {
                             };
                         }
                         kind if kind == MessageKind::StreamData as usize => {
-                            match unsafe {
-                                StreamDataMsg::parse_unchecked(msg.msginfo, &mut msg.buffer)
-                            } {
+                            match Receivable::deserialize_from_buffer(msg.msginfo, &mut msg.buffer)
+                            {
                                 Some(msg) => app.on_stream_data(ctx, msg),
                                 None => {
                                     app.on_unknown_message(ctx, msg);
