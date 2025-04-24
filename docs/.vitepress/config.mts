@@ -15,7 +15,14 @@ export default defineConfig({
             { text: 'Getting Started', link: '/getting-started' },
             { text: 'Comparison with Others', link: '/comparison-with-others' },
             {
-                text: 'Contributors Guide', items: [
+                text: 'Concepts',
+                items: [
+                    { text: 'Channel', link: '/concepts/channel' },
+                ],
+            },
+            {
+                text: 'Contributors Guide',
+                items: [
                     { text: 'Kernel Development', link: '/contributors-guide/kernel-development.md' },
                     { text: 'Porting', link: '/contributors-guide/porting.md' },
                 ]
