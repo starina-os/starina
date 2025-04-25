@@ -11,7 +11,6 @@ path = "main.rs"
 
 [features]
 default = []
-wasm = ["dep:wasmi", "dep:hello_wasm"]
 exit-on-idle = []
 
 [dependencies]
@@ -25,8 +24,6 @@ rustc-hash = { workspace = true }
 serde_json = { workspace = true }
 fdt-rs = { workspace = true }
 
-wasmi = { workspace = true, optional = true }
-
 # The kernel does not and should not use this API crate directly, but
 # specifying "in-kernel" here automatically enables the feature in all
 # in-kernel apps thanks to the feature unification feature of Cargo:
@@ -36,4 +33,3 @@ starina = { workspace = true, features = ["in-kernel"] }
 virtio_net = { workspace = true }
 tcpip = { workspace = true }
 http_server = { workspace = true }
-hello_wasm = { workspace = true, optional = true }

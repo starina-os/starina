@@ -21,7 +21,6 @@ fi
 cargo $cargo_cmd \
     ${V:+-v} \
     ${RELEASE:+--release} \
-    ${WASM:+--features wasm} \
     ${EXIT_ON_IDLE:+--features exit-on-idle} \
     -Z build-std=core,alloc \
     -Z build-std-features=compiler-builtins-mem \

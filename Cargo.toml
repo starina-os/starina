@@ -6,7 +6,6 @@ members = [
     "apps/drivers/virtio_net",
     "apps/servers/tcpip",
     "apps/bin/http_server",
-    "apps/bin/hello_wasm",
 ]
 
 [workspace.package]
@@ -24,9 +23,6 @@ serde_json = { version = "1", default-features = false, features = ["alloc"] }
 serde_bytes = { version = "0.11.17", default-features = false }
 toml = "0.8.20"
 fdt-rs = { version = "0", default-features = false }
-wasmi = { version = "0.44.0", default-features = false, features = [
-    "hash-collections",
-] }
 
 kernel = { path = "kernel" }
 starina = { path = "libs/rust/starina" }
@@ -39,4 +35,3 @@ virtio = { path = "libs/rust/virtio" }
 virtio_net = { path = "apps/drivers/virtio_net" }
 tcpip = { path = "apps/servers/tcpip" }
 http_server = { path = "apps/bin/http_server" }
-hello_wasm = { path = "apps/bin/hello_wasm" }
