@@ -1,6 +1,5 @@
 [package]
-name = "hello_wasm"
-publish = false
+name = "starina_build_sdk"
 version = { workspace = true }
 authors = { workspace = true }
 edition = { workspace = true }
@@ -9,8 +8,6 @@ edition = { workspace = true }
 path = "lib.rs"
 
 [dependencies]
+serde_json = { workspace = true }
 starina = { workspace = true }
-
-[build-dependencies]
-wasmer = "5.0.4"
-starina_build_sdk = { workspace = true }
+toml = { workspace = true }

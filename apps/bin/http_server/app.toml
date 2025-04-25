@@ -1,0 +1,9 @@
+name = "http_server"
+
+[env]
+tcpip = { type = "service", service = "tcpip" }
+
+# Empty exports array since this app doesn't export any services
+[[exports]]
+type = "service"
+service = "http_server"

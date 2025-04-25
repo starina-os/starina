@@ -1,0 +1,8 @@
+name = "tcpip"
+
+[env]
+driver = { type = "service", service = "device/ethernet" }
+
+[[exports]]
+type = "service"
+service = "tcpip"

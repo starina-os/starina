@@ -6,6 +6,7 @@ use crate::folio::Folio;
 use crate::handle::OwnedHandle;
 use crate::syscall;
 
+#[derive(Debug)]
 pub struct IoBus {
     handle: OwnedHandle,
 }
