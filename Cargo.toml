@@ -22,6 +22,7 @@ spin = "0.9.8"
 serde = { version = "1", default-features = false }
 serde_json = { version = "1", default-features = false, features = ["alloc"] }
 serde_bytes = { version = "0.11.17", default-features = false }
+toml = "0.8.20"
 fdt-rs = { version = "0", default-features = false }
 wasmi = { version = "0.44.0", default-features = false, features = [
     "hash-collections",
@@ -32,6 +33,7 @@ starina = { path = "libs/rust/starina" }
 starina_types = { path = "libs/rust/starina_types" }
 starina_utils = { path = "libs/rust/starina_utils" }
 starina_driver_sdk = { path = "libs/rust/driver_sdk" }
+starina_build_sdk = { path = "libs/rust/build_sdk" }
 virtio = { path = "libs/rust/virtio" }
 
 virtio_net = { path = "apps/drivers/virtio_net" }

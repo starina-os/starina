@@ -1,0 +1,9 @@
+name = "virtio_net"
+
+[env]
+device_tree = { type = "devicetree", matches = ["virtio,mmio"] }
+iobus = { type = "iobusmap" }
+
+[[exports]]
+type = "service"
+service = "device/ethernet"

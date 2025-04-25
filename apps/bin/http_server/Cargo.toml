@@ -5,9 +5,9 @@ version = { workspace = true }
 authors = { workspace = true }
 edition = { workspace = true }
 
-[lib]
-path = "lib.rs"
-
 [dependencies]
 starina = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
+
+[build-dependencies]
+starina_build_sdk = { workspace = true }
