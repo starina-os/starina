@@ -2,9 +2,6 @@ use alloc::vec::Vec;
 
 use starina_types::error::ErrorCode;
 
-#[cfg(feature = "wasm")]
-pub mod wasm;
-
 pub enum Isolation {
     InKernel,
 }
