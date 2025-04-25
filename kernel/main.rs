@@ -1,7 +1,6 @@
 #![cfg_attr(target_os = "none", no_std)]
 #![cfg_attr(target_os = "none", no_main)]
 #![cfg_attr(test, feature(test))]
-#![feature(naked_functions)]
 #![feature(arbitrary_self_types)]
 #![feature(coerce_unsized)]
 #![feature(unsize)]
