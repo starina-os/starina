@@ -23,6 +23,8 @@ pub enum MessageKind {
     OpenReply = 4,
     StreamData = 5,
     FramedData = 6,
+    Abort = 7,
+    Error = 8,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -399,6 +401,78 @@ impl<'a> Receivable<'a> for StreamDataMsg<'a> {
     ) -> Option<Self> {
         let bytes = data.bytes_only(msginfo)?;
         Some(StreamDataMsg { data: bytes })
+    }
+}
+
+#[derive(Clone, Copy)]
+#[repr(C)]
+struct RawAbort {
+    call_id: CallId,
+    reason: ErrorCode,
+}
+
+pub struct AbortMsg {
+    pub reason: ErrorCode,
+}
+
+impl Replyable for AbortMsg {
+    fn serialize(
+        self,
+        call_id: CallId,
+        data: DataWriter<'_>,
+        _handles: HandlesWriter<'_>,
+    ) -> Result<MessageInfo, ErrorCode> {
+        let len = data.header_only(RawAbort {
+            call_id,
+            reason: self.reason,
+        });
+        Ok(MessageInfo::new(MessageKind::Abort as i32, len as u16, 0))
+    }
+}
+
+impl<'a> Receivable<'a> for (CallId, AbortMsg) {
+    fn deserialize(
+        msginfo: MessageInfo,
+        data: DataReader<'a>,
+        _handles: HandlesReader<'a>,
+    ) -> Option<Self> {
+        let raw: &RawAbort = data.header_only(msginfo);
+        Some((raw.call_id, AbortMsg { reason: raw.reason }))
+    }
+}
+
+#[derive(Clone, Copy)]
+#[repr(C)]
+struct RawError {
+    reason: ErrorCode,
+}
+
+#[derive(Debug, Clone)]
+pub struct ErrorMsg {
+    pub reason: ErrorCode,
+}
+
+impl Sendable for ErrorMsg {
+    fn serialize(
+        self,
+        data: DataWriter<'_>,
+        _handles: HandlesWriter<'_>,
+    ) -> Result<MessageInfo, ErrorCode> {
+        let len = data.header_only(RawError {
+            reason: self.reason,
+        });
+        Ok(MessageInfo::new(MessageKind::Error as i32, len as u16, 0))
+    }
+}
+
+impl<'a> Receivable<'a> for ErrorMsg {
+    fn deserialize(
+        msginfo: MessageInfo,
+        data: DataReader<'a>,
+        _handles: HandlesReader<'a>,
+    ) -> Option<Self> {
+        let raw: &RawError = data.header_only(msginfo);
+        Some(ErrorMsg { reason: raw.reason })
     }
 }
 
