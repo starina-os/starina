@@ -15,6 +15,7 @@ use starina::message::OpenMsg;
 use starina::message::OpenReplyMsg;
 use starina::message::StreamDataMsg;
 use starina::prelude::*;
+use starina::sync::Mutex;
 
 #[derive(Debug)]
 enum AppState {
@@ -31,7 +32,7 @@ pub enum State {
 }
 
 pub struct App {
-    state: spin::Mutex<AppState>,
+    state: Mutex<AppState>,
 }
 
 impl EventLoop for App {
@@ -50,7 +51,7 @@ impl EventLoop for App {
 
         dispatcher.add_channel(State::Tcpip, tcpip).unwrap();
         Self {
-            state: spin::Mutex::new(AppState::Opening),
+            state: Mutex::new(AppState::Opening),
         }
     }
 

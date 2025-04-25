@@ -898,7 +898,6 @@ name = "http_server"
 version = "0.0.0"
 dependencies = [
  "serde",
- "spin",
  "starina",
 ]
 
@@ -2071,7 +2070,6 @@ dependencies = [
  "log",
  "serde",
  "smoltcp",
- "spin",
  "starina",
 ]
 
@@ -2295,7 +2293,6 @@ name = "virtio_net"
 version = "0.0.0"
 dependencies = [
  "serde",
- "spin",
  "starina",
  "starina_driver_sdk",
  "virtio",

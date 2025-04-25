@@ -11,6 +11,3 @@ path = "lib.rs"
 [dependencies]
 starina = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
-
-# FIXME:
-spin = { workspace = true }

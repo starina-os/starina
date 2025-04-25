@@ -13,6 +13,3 @@ starina = { workspace = true }
 starina_driver_sdk = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 virtio = { workspace = true }
-
-# TODO: Provide mutex in starina
-spin = { workspace = true }
