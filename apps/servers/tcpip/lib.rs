@@ -25,6 +25,7 @@ use starina::message::OpenMsg;
 use starina::message::OpenReplyMsg;
 use starina::message::StreamDataMsg;
 use starina::prelude::*;
+use starina::sync::Mutex;
 use tcpip::SocketEvent;
 use tcpip::TcpIp;
 
@@ -45,7 +46,7 @@ pub enum State {
 }
 
 pub struct App<'a> {
-    tcpip: spin::Mutex<TcpIp<'a>>,
+    tcpip: Mutex<TcpIp<'a>>,
 }
 
 impl<'a> EventLoop for App<'a> {
@@ -78,7 +79,7 @@ impl<'a> EventLoop for App<'a> {
         let tcpip = TcpIp::new(device, ip, gw_ip, hwaddr);
 
         Self {
-            tcpip: spin::Mutex::new(tcpip),
+            tcpip: Mutex::new(tcpip),
         }
     }
 

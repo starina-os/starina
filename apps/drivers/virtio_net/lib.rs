@@ -10,6 +10,7 @@ use starina::interrupt::Interrupt;
 use starina::message::ConnectMsg;
 use starina::message::FramedDataMsg;
 use starina::prelude::*;
+use starina::sync::Mutex;
 use virtio_net::VirtioNet;
 
 mod virtio_net;
@@ -31,7 +32,7 @@ pub enum State {
 }
 
 pub struct App {
-    virtio_net: spin::Mutex<VirtioNet>,
+    virtio_net: Mutex<VirtioNet>,
 }
 
 impl EventLoop for App {
@@ -60,7 +61,7 @@ impl EventLoop for App {
         );
 
         Self {
-            virtio_net: spin::Mutex::new(virtio_net),
+            virtio_net: Mutex::new(virtio_net),
         }
     }
 

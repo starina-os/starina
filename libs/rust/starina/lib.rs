@@ -21,6 +21,8 @@ pub mod interrupt;
 pub mod iobus;
 pub mod message;
 pub mod poll;
+pub mod sync;
+
 pub mod prelude;
 pub mod syscall;
 pub mod tls;
