@@ -12,9 +12,11 @@ use crate::error::ErrorCode;
 use crate::handle::HandleId;
 use crate::handle::Handleable;
 use crate::interrupt::Interrupt;
+use crate::message::AbortMsg;
 use crate::message::AnyMessage;
 use crate::message::CallId;
 use crate::message::ConnectMsg;
+use crate::message::ErrorMsg;
 use crate::message::FramedDataMsg;
 use crate::message::MessageKind;
 use crate::message::OpenMsg;
@@ -70,6 +72,15 @@ where
         }
 
         self.sender.reply(self.call_id, message)
+    }
+
+    pub fn abort(mut self, error: ErrorCode) -> Result<(), ErrorCode> {
+        #[cfg(debug_assertions)]
+        {
+            self.sent = true;
+        }
+
+        self.sender.reply(self.call_id, AbortMsg { reason: error })
     }
 }
 
@@ -165,6 +176,23 @@ pub trait EventLoop: Send + Sync {
         debug_warn!("ignored stream data message");
     }
 
+    /// `abort` message handler.
+    ///
+    /// This is an error response while `open` and other messages with the call ID.
+    #[allow(unused_variables)]
+    fn on_abort(&self, ctx: Context<Self::State>, call_id: CallId, msg: AbortMsg) {
+        debug_warn!("ignored abort message");
+    }
+
+    /// `error` message handler.
+    ///
+    /// This is an error message which appears in data channels
+    /// (`framed-data` and `stream-data`).
+    #[allow(unused_variables)]
+    fn on_error(&self, ctx: Context<Self::State>, msg: ErrorMsg) {
+        debug_warn!("ignored error message: {:?}", msg);
+    }
+
     // Callback for unknown messages.
     #[allow(unused_variables)]
     fn on_unknown_message(&self, ctx: Context<Self::State>, msg: AnyMessage) {
@@ -232,6 +260,7 @@ impl<St> PollDispatcher<St> {
                     };
 
                     match msg.msginfo.kind() {
+                        // FIXME: Verify the # of handles too.
                         kind if kind == MessageKind::Connect as usize => {
                             match Receivable::deserialize_from_buffer(msg.msginfo, &mut msg.buffer)
                             {
@@ -275,6 +304,24 @@ impl<St> PollDispatcher<St> {
                             match Receivable::deserialize_from_buffer(msg.msginfo, &mut msg.buffer)
                             {
                                 Some(msg) => app.on_stream_data(ctx, msg),
+                                None => {
+                                    app.on_unknown_message(ctx, msg);
+                                }
+                            };
+                        }
+                        kind if kind == MessageKind::Abort as usize => {
+                            match Receivable::deserialize_from_buffer(msg.msginfo, &mut msg.buffer)
+                            {
+                                Some((call_id, msg)) => app.on_abort(ctx, call_id, msg),
+                                None => {
+                                    app.on_unknown_message(ctx, msg);
+                                }
+                            };
+                        }
+                        kind if kind == MessageKind::Error as usize => {
+                            match Receivable::deserialize_from_buffer(msg.msginfo, &mut msg.buffer)
+                            {
+                                Some(msg) => app.on_error(ctx, msg),
                                 None => {
                                     app.on_unknown_message(ctx, msg);
                                 }
