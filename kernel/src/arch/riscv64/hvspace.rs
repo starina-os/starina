@@ -55,8 +55,8 @@ impl Entry {
 struct Table([Entry; ENTRIES_PER_TABLE]);
 
 impl Table {
-    pub fn get_mut_by_vaddr(&mut self, vaddr: GPAddr, level: usize) -> &mut Entry {
-        let index = (vaddr.as_usize() >> (12 + 9 * level)) & 0x1ff;
+    pub fn get_mut_by_gpaddr(&mut self, gpaddr: GPAddr, level: usize) -> &mut Entry {
+        let index = (gpaddr.as_usize() >> (12 + 9 * level)) & 0x1ff;
         &mut self.0[index]
     }
 }
@@ -89,7 +89,11 @@ impl HvPageTable {
         len: usize,
         prot: PageProtect,
     ) -> Result<(), ErrorCode> {
-        // trace!("map: {:08x} -> {:08x}", vaddr.as_usize(), paddr.as_usize());
+        trace!(
+            "hvspace map: {:08x} -> {:08x}",
+            gpaddr.as_usize(),
+            paddr.as_usize()
+        );
         assert!(is_aligned(gpaddr.as_usize(), PAGE_SIZE));
         assert!(is_aligned(paddr.as_usize(), PAGE_SIZE));
         assert!(is_aligned(len, PAGE_SIZE));
@@ -154,7 +158,7 @@ impl HvPageTable {
 
         let mut table = self.paddr2table(self.l0_table.paddr())?;
         for level in (1..=3).rev() {
-            let entry = table.get_mut_by_vaddr(gpaddr, level);
+            let entry = table.get_mut_by_gpaddr(gpaddr, level);
             if !entry.is_valid() {
                 // Allocate a new table.
                 let new_table = Folio::alloc(size_of::<Table>())?;
@@ -174,7 +178,7 @@ impl HvPageTable {
             table = self.paddr2table(next_table_paddr)?;
         }
 
-        let entry = table.get_mut_by_vaddr(gpaddr, 0);
+        let entry = table.get_mut_by_gpaddr(gpaddr, 0);
         if entry.is_valid() {
             return Err(ErrorCode::AlreadyMapped);
         }

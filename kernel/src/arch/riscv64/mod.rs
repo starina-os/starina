@@ -58,7 +58,7 @@ pub fn hypervisor_test() {
     let mut hvspace = hvspace::HvSpace::new().unwrap();
     hvspace
         .map(
-            GPAddr::new(0x8000_0000),
+            GPAddr::new(0x8000_c000),
             folio.paddr(),
             folio.len(),
             PageProtect::READABLE | PageProtect::WRITEABLE | PageProtect::EXECUTABLE,
@@ -82,6 +82,7 @@ pub fn hypervisor_test() {
     // We're ready to run the guest code.
 
     unsafe {
+        info!("hgatp: {:#016x}", hvspace.hgatp());
         asm!(
             "csrw hgatp, {0}",
             in(reg) hvspace.hgatp(),
@@ -99,7 +100,7 @@ pub fn hypervisor_test() {
         hstatus |= 1 << 8;
         asm!("csrw hstatus, {0}", in(reg) hstatus);
 
-        let sepc: u64 = 0x8000_0000;
+        let sepc: u64 = 0x8000c000;
         asm!("csrw sepc, {0}", in(reg) sepc);
 
         // Set the SPP bit to 0 to enter S-mode.
