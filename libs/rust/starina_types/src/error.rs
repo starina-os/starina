@@ -24,11 +24,12 @@ pub enum ErrorCode {
     NotADevice = -21,
     AlreadyMapped = -22,
     InvalidState = -23,
+    InvalidUri = -24,
 }
 
 impl From<isize> for ErrorCode {
     fn from(value: isize) -> Self {
-        if (-23..0).contains(&value) {
+        if (-24..0).contains(&value) {
             unsafe { core::mem::transmute(value) }
         } else {
             ErrorCode::InvalidErrorCode
