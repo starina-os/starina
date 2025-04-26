@@ -49,7 +49,7 @@ if [[ -n ${BUILD_ONLY:-} ]]; then
 fi
 
 echo -e "\nStarting QEMU..."
-$QEMU -machine virt -m 256 -bios default \
+$QEMU -machine virt -cpu rv64,h=true -m 256 -bios default \
   -kernel starina.elf \
   -semihosting \
   -nographic -serial mon:stdio --no-reboot \

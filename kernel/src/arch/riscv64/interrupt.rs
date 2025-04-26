@@ -52,6 +52,10 @@ pub extern "C" fn interrupt_handler() -> ! {
         (false, 12) => "instruction page fault",
         (false, 13) => "load page fault",
         (false, 15) => "store/AMO page fault",
+        (false, 20) => "instruction guest-page fault",
+        (false, 21) => "load guest-page fault",
+        (false, 22) => "virtual instruction",
+        (false, 23) => "store/AMO guest-page fault",
         _ => "unknown",
     };
 
