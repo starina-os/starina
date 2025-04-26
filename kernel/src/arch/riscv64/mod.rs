@@ -99,6 +99,15 @@ pub fn hypervisor_test() {
         hstatus |= 1 << 8;
         asm!("csrw hstatus, {0}", in(reg) hstatus);
 
+        let sepc: u64 = 0x8000_0000;
+        asm!("csrw sepc, {0}", in(reg) sepc);
+
+        // Set the SPP bit to 0 to enter S-mode.
+        let mut sstatus: u64;
+        asm!("csrr {0}, sstatus", out(reg) sstatus);
+        sstatus |= 1 << 8;
+        asm!("csrw sstatus, {0}", in(reg) sstatus);
+
         info!("entering guest mode...");
         asm!("sret");
     }
