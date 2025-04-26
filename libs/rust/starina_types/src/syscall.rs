@@ -22,6 +22,10 @@ pub const SYS_FOLIO_DADDR: u8 = 14;
 pub const SYS_INTERRUPT_CREATE: u8 = 15;
 pub const SYS_INTERRUPT_ACK: u8 = 16;
 pub const SYS_THREAD_EXIT: u8 = 17;
+pub const SYS_HVSPACE_CREATE: u8 = 18;
+pub const SYS_HVSPACE_MAP: u8 = 19;
+pub const SYS_VCPU_CREATE: u8 = 20;
+pub const SYS_VCPU_RUN: u8 = 21;
 
 #[repr(C)]
 pub struct VsyscallPage {

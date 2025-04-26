@@ -5,6 +5,7 @@ use starina_types::error::ErrorCode;
 use starina_types::syscall::RetVal;
 
 use crate::arch;
+use crate::arch::VmSpace;
 use crate::poll::Poll;
 use crate::process::KERNEL_PROCESS;
 use crate::process::Process;
@@ -12,6 +13,7 @@ use crate::refcount::SharedRef;
 use crate::scheduler::GLOBAL_SCHEDULER;
 use crate::spinlock::SpinLock;
 use crate::syscall::SyscallResult;
+use crate::vcpu::VCpu;
 
 static NUM_THREADS: AtomicUsize = AtomicUsize::new(0);
 
@@ -19,6 +21,8 @@ static NUM_THREADS: AtomicUsize = AtomicUsize::new(0);
 pub enum ThreadState {
     Runnable(Option<RetVal>),
     BlockedByPoll(SharedRef<Poll>),
+    RunVCpu(SharedRef<VCpu>),
+    InVCpu(SharedRef<VCpu>),
     Exited,
 }
 
@@ -128,12 +132,15 @@ pub fn switch_thread() -> ! {
             arch::idle();
         };
 
+        // Make the next thread the current thread.
+        *current_thread = next;
+
         // Try unblocking the next thread.
         let arch_thread = {
-            let mut next_mutable = next.mutable.lock();
-            let retval = match &next_mutable.state {
+            let mut mutable = current_thread.mutable.lock();
+            let retval = match &mutable.state {
                 ThreadState::BlockedByPoll(poll) => {
-                    match poll.try_wait(&next) {
+                    match poll.try_wait(&current_thread) {
                         SyscallResult::Done(result) => {
                             // We've got an event. Resume the thread with a return
                             // value.
@@ -147,10 +154,20 @@ pub fn switch_thread() -> ! {
                         SyscallResult::Block(new_state) => {
                             // The thread is still blocked. We'll retry when the
                             // poll wakes us up again...
-                            next_mutable.state = new_state;
+                            mutable.state = new_state;
                             continue 'next_thread;
                         }
                     }
+                }
+                ThreadState::RunVCpu(vcpu) => {
+                    mutable.state = ThreadState::InVCpu(vcpu.clone());
+                    drop(mutable);
+                    arch::vcpu_entry();
+                }
+                ThreadState::InVCpu(vcpu) => {
+                    mutable.state = ThreadState::Runnable(None);
+                    // The return value from vcpu_run syscall.
+                    Some(RetVal::new(0))
                 }
                 ThreadState::Exited => {
                     continue 'next_thread;
@@ -160,7 +177,7 @@ pub fn switch_thread() -> ! {
 
             // The thread is runnable. Get ready to restore the thread's context.
             unsafe {
-                let arch = next_mutable.arch_thread_ptr();
+                let arch = mutable.arch_thread_ptr();
 
                 // If we're returning from a system call, set the return value.
                 if let Some(retval) = retval {
@@ -172,10 +189,7 @@ pub fn switch_thread() -> ! {
         };
 
         // Switch to the next thread's address space.
-        next.process().vmspace().switch();
-
-        // Make the next thread the current thread.
-        *current_thread = next;
+        current_thread.process().vmspace().switch();
 
         // Execute the pending continuation if any.
         drop(current_thread);

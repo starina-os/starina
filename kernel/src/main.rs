@@ -31,6 +31,7 @@ mod cpuvar;
 mod device_tree;
 mod folio;
 mod handle;
+mod hvspace;
 mod interrupt;
 mod iobus;
 mod isolation;
@@ -44,6 +45,7 @@ mod startup;
 mod syscall;
 mod thread;
 mod utils;
+mod vcpu;
 mod vmspace;
 
 const EARLY_RAM_SIZE: usize = 256 * 1024;
