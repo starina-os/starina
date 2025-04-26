@@ -74,13 +74,15 @@ where
         self.sender.reply(self.call_id, message)
     }
 
-    pub fn abort(mut self, error: ErrorCode) -> Result<(), ErrorCode> {
+    pub fn abort(mut self, error: ErrorCode) {
         #[cfg(debug_assertions)]
         {
             self.sent = true;
         }
 
-        self.sender.reply(self.call_id, AbortMsg { reason: error })
+        if let Err(err) = self.sender.reply(self.call_id, AbortMsg { reason: error }) {
+            debug_warn!("failed to send abort message: {:?}", err);
+        }
     }
 }
 

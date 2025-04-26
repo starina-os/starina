@@ -15,11 +15,13 @@ use smoltcp::wire::IpAddress;
 use smoltcp::wire::IpCidr;
 use smoltcp::wire::IpListenEndpoint;
 use starina::channel::Channel;
+use starina::error::ErrorCode;
 use starina::eventloop::Completer;
 use starina::eventloop::Context;
 use starina::eventloop::Dispatcher;
 use starina::eventloop::EventLoop;
 use starina::message::ConnectMsg;
+use starina::message::ErrorMsg;
 use starina::message::FramedDataMsg;
 use starina::message::OpenMsg;
 use starina::message::OpenReplyMsg;
@@ -97,45 +99,50 @@ impl<'a> EventLoop for App<'a> {
     ) {
         let uri = core::str::from_utf8(msg.uri).unwrap();
         info!("got open message: {}", uri);
-        match uri.split_once(':') {
-            Some(("tcp-listen", rest)) => {
-                let Some((ip, port)) = parse_addr(rest) else {
-                    debug_warn!("invalid tcp-listen message: {}", uri);
-                    return;
-                };
+        let Some(("tcp-listen", rest)) = uri.split_once(':') else {
+            completer.abort(ErrorCode::InvalidUri);
+            return;
+        };
 
-                let listen_addr = match ip {
-                    Ipv4Addr::UNSPECIFIED => IpListenEndpoint { addr: None, port },
-                    _ => (ip, port).into(),
-                };
+        let Some((ip, port)) = parse_addr(rest) else {
+            debug_warn!("invalid tcp-listen message: {}", uri);
+            completer.abort(ErrorCode::InvalidUri);
+            return;
+        };
 
-                let (our_ch, their_ch) = Channel::new().unwrap();
-                let sender = ctx.dispatcher.add_channel(State::Listen, our_ch).unwrap();
+        let listen_addr = match ip {
+            Ipv4Addr::UNSPECIFIED => IpListenEndpoint { addr: None, port },
+            _ => (ip, port).into(),
+        };
 
-                // Have a separate scope to drop the tcpip lock as soon as possible.
-                {
-                    trace!("tcp-listen: {:?}", listen_addr);
-                    let mut tcpip = self.tcpip.lock();
-                    tcpip.tcp_listen(listen_addr, sender).unwrap();
-                }
+        let (our_ch, their_ch) = Channel::new().unwrap();
+        let sender = ctx.dispatcher.add_channel(State::Listen, our_ch).unwrap();
 
-                completer.reply(OpenReplyMsg { handle: their_ch }).unwrap(); // FIXME: what if backpressure happens?
-            }
-            _ => {
-                debug_warn!("unknown open message: {}", uri);
-                // FIXME: How should we reply error?
-            }
+        // Have a separate scope to drop the tcpip lock as soon as possible.
+        {
+            trace!("tcp-listen: {:?}", listen_addr);
+            let mut tcpip = self.tcpip.lock();
+            tcpip.tcp_listen(listen_addr, sender).unwrap();
+        }
+
+        if let Err(err) = completer.reply(OpenReplyMsg { handle: their_ch }) {
+            debug_warn!("failed to send open reply message: {:?}", err);
         }
     }
 
     fn on_stream_data(&self, ctx: Context<Self::State>, msg: StreamDataMsg<'_>) {
         let State::Data { smol_handle } = &ctx.state else {
             debug_warn!("stream data from unexpected state: {:?}", ctx.state);
+            if let Err(err) = ctx.sender.send(ErrorMsg {
+                reason: ErrorCode::InvalidState,
+            }) {
+                debug_warn!("failed to send error message: {:?}", err);
+            }
             return;
         };
 
         let mut tcpip = self.tcpip.lock();
-        // TODO: error handling
+        // FIXME: backpressure
         tcpip.tcp_send(*smol_handle, msg.data).unwrap();
         poll(ctx.dispatcher, &mut tcpip);
     }
