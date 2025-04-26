@@ -142,6 +142,8 @@ extern "C" fn vcpu_trap_handler(context: *mut Context) -> ! {
     trace!("exited from vCPU");
 
     unsafe {
+        debug_assert!((*context).cpuvar_ptr != 0);
+
         set_cpuvar((*context).cpuvar_ptr as *const CpuVar);
         write_stvec(trap_entry as *const () as usize, StvecMode::Direct);
     }
@@ -188,8 +190,33 @@ pub extern "C" fn vcpu_trap_entry() -> ! {
             "sd t5, {t5_offset}(a0)",
             "sd t6, {t6_offset}(a0)",
 
-            "csrr a1, sscratch",
-            "sd a1, {a0_offset}(a0)",
+            "csrr t0, vsstatus",
+            "sd t0, {vsstatus_offset}(a0)",
+            "csrr t0, vsepc",
+            "sd t0, {vsepc_offset}(a0)",
+            "csrr t0, vscause",
+            "sd t0, {vscause_offset}(a0)",
+            "csrr t0, vstval",
+            "sd t0, {vstval_offset}(a0)",
+            "csrr t0, vsie",
+            "sd t0, {vsie_offset}(a0)",
+            "csrr t0, vstvec",
+            "sd t0, {vstvec_offset}(a0)",
+            "csrr t0, vsscratch",
+            "sd t0, {vsscratch_offset}(a0)",
+            "csrr t0, vsatp",
+            "sd t0, {vsatp_offset}(a0)",
+            "csrr t0, hstatus",
+            "sd t0, {hstatus_offset}(a0)",
+            "csrr t0, hvip",
+            "sd t0, {hvip_offset}(a0)",
+            "csrr t0, sstatus",
+            "sd t0, {sstatus_offset}(a0)",
+            "csrr t0, sepc",
+            "sd t0, {sepc_offset}(a0)",
+
+            "csrr t0, sscratch",
+            "sd t0, {a0_offset}(a0)",
 
             "j {vcpu_trap_handler}",
 
@@ -225,6 +252,18 @@ pub extern "C" fn vcpu_trap_entry() -> ! {
             t4_offset = const offset_of!(Context, state.t4),
             t5_offset = const offset_of!(Context, state.t5),
             t6_offset = const offset_of!(Context, state.t6),
+            vsstatus_offset = const offset_of!(Context, state.vsstatus),
+            vsepc_offset = const offset_of!(Context, state.vsepc),
+            vscause_offset = const offset_of!(Context, state.vscause),
+            vstval_offset = const offset_of!(Context, state.vstval),
+            vsie_offset = const offset_of!(Context, state.vsie),
+            vstvec_offset = const offset_of!(Context, state.vstvec),
+            vsscratch_offset = const offset_of!(Context, state.vsscratch),
+            vsatp_offset = const offset_of!(Context, state.vsatp),
+            hstatus_offset = const offset_of!(Context, hstatus),
+            hvip_offset = const offset_of!(Context, hvip),
+            sstatus_offset = const offset_of!(Context, sstatus),
+            sepc_offset = const offset_of!(Context, sepc),
         );
     };
 }
