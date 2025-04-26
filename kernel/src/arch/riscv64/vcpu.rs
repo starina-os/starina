@@ -7,6 +7,7 @@ use starina::error::ErrorCode;
 use super::get_cpuvar;
 use crate::arch::riscv64::csr::StvecMode;
 use crate::arch::riscv64::csr::write_stvec;
+use crate::arch::riscv64::entry::trap_entry;
 use crate::arch::set_cpuvar;
 use crate::cpuvar::CpuVar;
 use crate::hvspace::HvSpace;
@@ -46,11 +47,23 @@ pub struct VCpuState {
     pub t4: u64,
     pub t5: u64,
     pub t6: u64,
+    pub vsstatus: u64,
+    pub vsepc: u64,
+    pub vscause: u64,
+    pub vstval: u64,
+    pub vsie: u64,
+    pub vstvec: u64,
+    pub vsscratch: u64,
+    pub vsatp: u64,
 }
 
 struct Context {
     state: VCpuState,
     cpuvar_ptr: u64,
+    hvip: u64,
+    hstatus: u64,
+    sstatus: u64,
+    sepc: u64,
 }
 
 pub struct VCpu {
@@ -59,12 +72,19 @@ pub struct VCpu {
 }
 
 impl VCpu {
-    pub fn new(hvspace: &HvSpace) -> Result<VCpu, ErrorCode> {
+    pub fn new(hvspace: &HvSpace, entry: usize) -> Result<VCpu, ErrorCode> {
+        let hstatus = 1 << 7; // SPV
+        let sstatus = 1 << 8; // SPP
+
         let context = Context {
             state: VCpuState {
                 ..Default::default()
             },
             cpuvar_ptr: 0,
+            hvip: 0,
+            sstatus: 0,
+            sepc: entry as u64,
+            hstatus,
         };
 
         Ok(VCpu {
@@ -77,36 +97,42 @@ impl VCpu {
 pub fn vcpu_entry(vcpu_ptr: *mut VCpu) -> ! {
     let cpuvar = get_cpuvar() as *const CpuVar;
     unsafe {
-        (*vcpu_ptr).context.cpuvar_ptr = cpuvar as u64;
+        let context = &mut (*vcpu_ptr).context;
+        context.cpuvar_ptr = cpuvar as u64;
 
-        asm!("csrw sscratch, {}", in(reg) &raw const (*vcpu_ptr).context);
         write_stvec(vcpu_trap_entry as *const () as usize, StvecMode::Direct);
 
+        // Restore VS-mode CSRs
         asm!(
-            "csrw hgatp, {0}",
-            in(reg) (*vcpu_ptr).hgatp,
+            "csrw sscratch, {sscratch}",
+            "csrw sstatus, {sstatus}",
+            "csrw sepc, {sepc}",
+            "csrw vsstatus, {vsstatus}",
+            "csrw vsie, {vsie}",
+            "csrw vstvec, {vstvec}",
+            "csrw vsscratch, {vsscratch}",
+            "csrw vsatp, {vsatp}",
+            "csrw vscause, {vscause}",
+            "csrw vstval, {vstval}",
+            "csrw hgatp, {hgatp}",
+            "csrw hstatus, {hstatus}",
+            "csrw hvip, {hvip}",
+            "sret",
+            sscratch = in(reg) &raw const context,
+            sstatus = in(reg) context.sstatus,
+            sepc = in(reg) context.sepc,
+            vsstatus = in(reg) context.state.vsstatus,
+            vsie = in(reg) context.state.vsie,
+            vstvec = in(reg) context.state.vstvec,
+            vsscratch = in(reg) context.state.vsscratch,
+            vsatp = in(reg) context.state.vsatp,
+            vscause = in(reg) context.state.vscause,
+            vstval = in(reg) context.state.vstval,
+            hgatp = in(reg) (*vcpu_ptr).hgatp,
+            hstatus = in(reg) context.hstatus,
+            hvip = in(reg) context.hvip,
             options(nostack),
         );
-
-        // Prepare CSRs to go back to VS mode.
-        let mut hstatus: u64;
-        asm!("csrr {0}, hstatus", out(reg) hstatus);
-        // SPV
-        hstatus |= 1 << 7;
-        // SPVP
-        hstatus |= 1 << 8;
-        asm!("csrw hstatus, {0}", in(reg) hstatus);
-
-        let sepc: u64 = 0x8000c000;
-        asm!("csrw sepc, {0}", in(reg) sepc);
-
-        // Set the SPP bit to 0 to enter S-mode.
-        let mut sstatus: u64;
-        asm!("csrr {0}, sstatus", out(reg) sstatus);
-        sstatus |= 1 << 8;
-        asm!("csrw sstatus, {0}", in(reg) sstatus);
-
-        asm!("sret");
     }
 
     unreachable!();
@@ -117,7 +143,9 @@ extern "C" fn vcpu_trap_handler(context: *mut Context) -> ! {
 
     unsafe {
         set_cpuvar((*context).cpuvar_ptr as *const CpuVar);
+        write_stvec(trap_entry as *const () as usize, StvecMode::Direct);
     }
+
     // TODO: restore CPU var (tp)
     switch_thread();
 }

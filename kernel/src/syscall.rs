@@ -260,10 +260,11 @@ fn hvspace_map(
 fn vcpu_create(
     current: &SharedRef<Thread>,
     hvspace_handle: HandleId,
+    entry: usize,
 ) -> Result<HandleId, ErrorCode> {
     let mut handle_table = current.process().handles().lock();
     let hvspace = handle_table.get::<HvSpace>(hvspace_handle)?;
-    let vcpu = VCpu::new(hvspace.into_object())?;
+    let vcpu = VCpu::new(hvspace.into_object(), entry)?;
     let handle = Handle::new(SharedRef::new(vcpu)?, HandleRights::EXEC);
     let handle_id = handle_table.insert(handle)?;
     Ok(handle_id)
@@ -394,7 +395,8 @@ fn do_syscall(
         }
         SYS_VCPU_CREATE => {
             let hvspace_handle = HandleId::from_raw_isize(a0)?;
-            let ret = vcpu_create(&current, hvspace_handle)?;
+            let entry = a1 as usize;
+            let ret = vcpu_create(&current, hvspace_handle, entry)?;
             Ok(SyscallResult::Done(ret.into()))
         }
         SYS_VCPU_RUN => {

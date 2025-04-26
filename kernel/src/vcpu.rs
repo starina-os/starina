@@ -22,8 +22,8 @@ pub struct VCpu {
 }
 
 impl VCpu {
-    pub fn new(hvspace: SharedRef<HvSpace>) -> Result<VCpu, ErrorCode> {
-        let arch = arch::VCpu::new(&hvspace)?;
+    pub fn new(hvspace: SharedRef<HvSpace>, entry: usize) -> Result<VCpu, ErrorCode> {
+        let arch = arch::VCpu::new(&hvspace, entry)?;
         Ok(VCpu { hvspace, arch })
     }
 
