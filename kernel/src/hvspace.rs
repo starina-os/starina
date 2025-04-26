@@ -22,6 +22,10 @@ impl HvSpace {
         Ok(HvSpace { arch })
     }
 
+    pub fn arch(&self) -> &arch::HvSpace {
+        &self.arch
+    }
+
     pub fn map(
         &self,
         gpaddr: GPAddr,

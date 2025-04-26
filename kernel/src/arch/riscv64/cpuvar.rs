@@ -34,7 +34,7 @@ pub fn get_cpuvar() -> &'static crate::cpuvar::CpuVar {
     unsafe { &*cpuvar }
 }
 
-pub fn set_cpuvar(cpuvar: *mut crate::cpuvar::CpuVar) {
+pub fn set_cpuvar(cpuvar: *const crate::cpuvar::CpuVar) {
     // Store the address of the current CPU's `CpuVar` to `tp`.
     unsafe {
         asm!("mv tp, {}", in(reg) cpuvar);

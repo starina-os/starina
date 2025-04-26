@@ -23,8 +23,13 @@ pub struct VCpu {
 
 impl VCpu {
     pub fn new(hvspace: SharedRef<HvSpace>) -> Result<VCpu, ErrorCode> {
-        let arch = arch::VCpu::new()?;
+        let arch = arch::VCpu::new(&hvspace)?;
         Ok(VCpu { hvspace, arch })
+    }
+
+    // FIXME:
+    pub unsafe fn arch_vcpu_ptr(&self) -> *mut arch::VCpu {
+        &raw const self.arch as *mut _
     }
 
     pub fn run(&self, current: &SharedRef<Thread>) -> ! {

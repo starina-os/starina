@@ -84,6 +84,11 @@ impl Thread {
 
     pub fn set_state(self: &SharedRef<Thread>, new_state: ThreadState) {
         let mut mutable = self.mutable.lock();
+        debug_assert!(matches!(
+            mutable.state,
+            ThreadState::Runnable(_) | ThreadState::BlockedByPoll(_)
+        ));
+
         let was_blocked = !matches!(mutable.state, ThreadState::Runnable(_));
 
         // Update the thread's state.
@@ -160,9 +165,12 @@ pub fn switch_thread() -> ! {
                     }
                 }
                 ThreadState::RunVCpu(vcpu) => {
+                    // Keep at least one reference to vcpu in the state to keep alive.
+                    let vcpu_ptr = unsafe { vcpu.arch_vcpu_ptr() };
                     mutable.state = ThreadState::InVCpu(vcpu.clone());
                     drop(mutable);
-                    arch::vcpu_entry();
+                    drop(current_thread);
+                    arch::vcpu_entry(vcpu_ptr);
                 }
                 ThreadState::InVCpu(vcpu) => {
                     mutable.state = ThreadState::Runnable(None);
