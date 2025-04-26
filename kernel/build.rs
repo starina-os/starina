@@ -14,7 +14,7 @@ pub fn main() {
 }
 
 fn generate_linker_script(out_dir: &Path, arch: &str) {
-    let template_path = PathBuf::from(format!("arch/{}/kernel.ld", arch));
+    let template_path = PathBuf::from(format!("src/arch/{}/kernel.ld", arch));
     let dest_path = out_dir.join("linker_script.ld");
     let ld = fs::read_to_string(&template_path).expect("failed to read linker script");
     // TODO: Apply a template engine here.

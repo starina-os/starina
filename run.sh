@@ -24,7 +24,7 @@ cargo $cargo_cmd \
     ${EXIT_ON_IDLE:+--features exit-on-idle} \
     -Z build-std=core,alloc \
     -Z build-std-features=compiler-builtins-mem \
-    --target kernel/arch/riscv64/kernel.json \
+    --target kernel/src/arch/riscv64/kernel.json \
     --manifest-path kernel/Cargo.toml
 
 if [[ -n ${CHECK_ONLY:-} ]]; then
