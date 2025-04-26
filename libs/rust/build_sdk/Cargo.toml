@@ -4,9 +4,6 @@ version = { workspace = true }
 authors = { workspace = true }
 edition = { workspace = true }
 
-[lib]
-path = "lib.rs"
-
 [dependencies]
 serde_json = { workspace = true }
 starina = { workspace = true }

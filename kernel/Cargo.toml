@@ -5,10 +5,6 @@ version = { workspace = true }
 authors = { workspace = true }
 edition = { workspace = true }
 
-[[bin]]
-name = "kernel"
-path = "main.rs"
-
 [features]
 default = []
 exit-on-idle = []
