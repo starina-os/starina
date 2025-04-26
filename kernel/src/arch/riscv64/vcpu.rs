@@ -148,7 +148,6 @@ extern "C" fn vcpu_trap_handler(context: *mut Context) -> ! {
         write_stvec(trap_entry as *const () as usize, StvecMode::Direct);
     }
 
-    // TODO: restore CPU var (tp)
     switch_thread();
 }
 
