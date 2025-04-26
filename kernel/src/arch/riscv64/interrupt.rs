@@ -47,7 +47,7 @@ pub extern "C" fn interrupt_handler() -> ! {
         (false, 7) => "store/AMO access fault",
         (false, 8) => "environment call from U-mode",
         (false, 9) => "environment call from S-mode",
-        (false, 10) => "reserved",
+        (false, 10) => "Environment call from VS-mode",
         (false, 11) => "environment call from M-mode",
         (false, 12) => "instruction page fault",
         (false, 13) => "load page fault",

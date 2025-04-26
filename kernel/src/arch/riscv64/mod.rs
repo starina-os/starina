@@ -67,7 +67,7 @@ pub fn hypervisor_test() {
 
     const BOOT_CODE: &[u32] = &[
         // "wfi"
-        0x10500073,
+        0x00000073,
     ];
 
     // Copy the boot code to the guest memory.
@@ -75,7 +75,7 @@ pub fn hypervisor_test() {
         core::ptr::copy_nonoverlapping(
             BOOT_CODE.as_ptr(),
             guest_memory.as_mut_ptr() as *mut u32,
-            BOOT_CODE.len() as usize / 4,
+            BOOT_CODE.len(),
         );
     };
 

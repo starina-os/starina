@@ -131,7 +131,7 @@ impl HvPageTable {
         assert!(is_aligned(gpaddr.as_usize(), PAGE_SIZE));
         assert!(is_aligned(paddr.as_usize(), PAGE_SIZE));
 
-        let mut leaf_flags = PTE_V;
+        let mut leaf_flags = PTE_V | PTE_U;
         if prot.contains(PageProtect::READABLE) {
             leaf_flags |= PTE_R;
         }
@@ -140,9 +140,6 @@ impl HvPageTable {
         }
         if prot.contains(PageProtect::EXECUTABLE) {
             leaf_flags |= PTE_X;
-        }
-        if prot.contains(PageProtect::USER) {
-            leaf_flags |= PTE_U;
         }
 
         if leaf_flags & (PTE_R | PTE_W | PTE_X) == 0 {
