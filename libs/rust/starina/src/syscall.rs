@@ -7,6 +7,7 @@ use starina_types::interrupt::IrqMatcher;
 use starina_types::message::MessageInfo;
 use starina_types::poll::Readiness;
 pub use starina_types::syscall::*;
+use starina_types::vcpu::VCpuExit;
 use starina_types::vmspace::PageProtect;
 
 fn syscall(
@@ -241,7 +242,7 @@ pub fn sys_vcpu_create(hvspace: HandleId, entry: usize) -> Result<HandleId, Erro
     Ok(id)
 }
 
-pub fn sys_vcpu_run(vcpu: HandleId) -> Result<(), ErrorCode> {
-    syscall(SYS_VCPU_RUN, vcpu.as_raw() as isize, 0, 0, 0, 0)?;
+pub fn sys_vcpu_run(vcpu: HandleId, exit: *mut VCpuExit) -> Result<(), ErrorCode> {
+    syscall(SYS_VCPU_RUN, vcpu.as_raw() as isize, exit as isize, 0, 0, 0)?;
     Ok(())
 }

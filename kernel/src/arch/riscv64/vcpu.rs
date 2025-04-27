@@ -11,6 +11,8 @@ use crate::arch::riscv64::entry::trap_entry;
 use crate::arch::set_cpuvar;
 use crate::cpuvar::CpuVar;
 use crate::hvspace::HvSpace;
+use crate::isolation::IsolationHeapMut;
+use crate::spinlock::SpinLock;
 use crate::thread::switch_thread;
 
 #[repr(C)]
@@ -63,8 +65,13 @@ struct Context {
     vsatp: u64,
 }
 
+struct Mutable {
+    exit: Option<IsolationHeapMut>,
+}
+
 pub struct VCpu {
     context: Context,
+    mutable: SpinLock<Mutable>,
 }
 
 impl VCpu {
@@ -82,14 +89,31 @@ impl VCpu {
             ..Default::default()
         };
 
-        Ok(VCpu { context })
+        let mutable = Mutable { exit: None };
+
+        Ok(VCpu {
+            context,
+            mutable: SpinLock::new(mutable),
+        })
+    }
+
+    pub fn update(&self, exit: IsolationHeapMut) -> Result<(), ErrorCode> {
+        trace!("exit update");
+        let mut mutable = self.mutable.lock();
+        if mutable.exit.is_some() {
+            debug_warn!("vCPU already in use");
+            return Err(ErrorCode::InUse);
+        }
+
+        mutable.exit = Some(exit);
+        Ok(())
     }
 }
 
-pub fn vcpu_entry(vcpu_ptr: *mut VCpu) -> ! {
+pub fn vcpu_entry(vcpu: *mut VCpu) -> ! {
     let cpuvar = get_cpuvar() as *const CpuVar;
     unsafe {
-        let context = &mut (*vcpu_ptr).context;
+        let context = &mut (*vcpu).context;
         context.cpuvar_ptr = cpuvar as u64;
 
         write_stvec(vcpu_trap_entry as *const () as usize, StvecMode::Direct);
@@ -110,7 +134,7 @@ pub fn vcpu_entry(vcpu_ptr: *mut VCpu) -> ! {
             "csrw hstatus, {hstatus}",
             "csrw hvip, {hvip}",
             "sret",
-            sscratch = in(reg) context as *const _ as u64,
+            sscratch = in(reg) vcpu as *const _ as u64,
             sstatus = in(reg) context.sstatus,
             sepc = in(reg) context.sepc,
             vsstatus = in(reg) context.vsstatus,
@@ -130,7 +154,9 @@ pub fn vcpu_entry(vcpu_ptr: *mut VCpu) -> ! {
     unreachable!();
 }
 
-extern "C" fn vcpu_trap_handler(context: *mut Context) -> ! {
+extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
+    let context = unsafe { &raw mut (*vcpu).context };
+
     let scause: u64;
     let stval: u64;
     unsafe {
@@ -181,6 +207,11 @@ extern "C" fn vcpu_trap_handler(context: *mut Context) -> ! {
     unsafe {
         set_cpuvar((*context).cpuvar_ptr as *const CpuVar);
         write_stvec(trap_entry as *const () as usize, StvecMode::Direct);
+    }
+
+    {
+        let mut mutable = unsafe { (*vcpu).mutable.lock() };
+        let exit = mutable.exit.take().unwrap();
     }
 
     switch_thread();
@@ -255,49 +286,49 @@ pub extern "C" fn vcpu_trap_entry() -> ! {
             "j {vcpu_trap_handler}",
 
             vcpu_trap_handler = sym vcpu_trap_handler,
-            ra_offset = const offset_of!(Context, ra),
-            sp_offset = const offset_of!(Context, sp),
-            gp_offset = const offset_of!(Context, gp),
-            tp_offset = const offset_of!(Context, tp),
-            t0_offset = const offset_of!(Context, t0),
-            t1_offset = const offset_of!(Context, t1),
-            t2_offset = const offset_of!(Context, t2),
-            s0_offset = const offset_of!(Context, s0),
-            s1_offset = const offset_of!(Context, s1),
-            a0_offset = const offset_of!(Context, a0),
-            a1_offset = const offset_of!(Context, a1),
-            a2_offset = const offset_of!(Context, a2),
-            a3_offset = const offset_of!(Context, a3),
-            a4_offset = const offset_of!(Context, a4),
-            a5_offset = const offset_of!(Context, a5),
-            a6_offset = const offset_of!(Context, a6),
-            a7_offset = const offset_of!(Context, a7),
-            s2_offset = const offset_of!(Context, s2),
-            s3_offset = const offset_of!(Context, s3),
-            s4_offset = const offset_of!(Context, s4),
-            s5_offset = const offset_of!(Context, s5),
-            s6_offset = const offset_of!(Context, s6),
-            s7_offset = const offset_of!(Context, s7),
-            s8_offset = const offset_of!(Context, s8),
-            s9_offset = const offset_of!(Context, s9),
-            s10_offset = const offset_of!(Context, s10),
-            s11_offset = const offset_of!(Context, s11),
-            t3_offset = const offset_of!(Context, t3),
-            t4_offset = const offset_of!(Context, t4),
-            t5_offset = const offset_of!(Context, t5),
-            t6_offset = const offset_of!(Context, t6),
-            vsstatus_offset = const offset_of!(Context, vsstatus),
-            vsepc_offset = const offset_of!(Context, vsepc),
-            vscause_offset = const offset_of!(Context, vscause),
-            vstval_offset = const offset_of!(Context, vstval),
-            vsie_offset = const offset_of!(Context, vsie),
-            vstvec_offset = const offset_of!(Context, vstvec),
-            vsscratch_offset = const offset_of!(Context, vsscratch),
-            vsatp_offset = const offset_of!(Context, vsatp),
-            hstatus_offset = const offset_of!(Context, hstatus),
-            hvip_offset = const offset_of!(Context, hvip),
-            sstatus_offset = const offset_of!(Context, sstatus),
-            sepc_offset = const offset_of!(Context, sepc),
+            ra_offset = const offset_of!(VCpu, context.ra),
+            sp_offset = const offset_of!(VCpu, context.sp),
+            gp_offset = const offset_of!(VCpu, context.gp),
+            tp_offset = const offset_of!(VCpu, context.tp),
+            t0_offset = const offset_of!(VCpu, context.t0),
+            t1_offset = const offset_of!(VCpu, context.t1),
+            t2_offset = const offset_of!(VCpu, context.t2),
+            s0_offset = const offset_of!(VCpu, context.s0),
+            s1_offset = const offset_of!(VCpu, context.s1),
+            a0_offset = const offset_of!(VCpu, context.a0),
+            a1_offset = const offset_of!(VCpu, context.a1),
+            a2_offset = const offset_of!(VCpu, context.a2),
+            a3_offset = const offset_of!(VCpu, context.a3),
+            a4_offset = const offset_of!(VCpu, context.a4),
+            a5_offset = const offset_of!(VCpu, context.a5),
+            a6_offset = const offset_of!(VCpu, context.a6),
+            a7_offset = const offset_of!(VCpu, context.a7),
+            s2_offset = const offset_of!(VCpu, context.s2),
+            s3_offset = const offset_of!(VCpu, context.s3),
+            s4_offset = const offset_of!(VCpu, context.s4),
+            s5_offset = const offset_of!(VCpu, context.s5),
+            s6_offset = const offset_of!(VCpu, context.s6),
+            s7_offset = const offset_of!(VCpu, context.s7),
+            s8_offset = const offset_of!(VCpu, context.s8),
+            s9_offset = const offset_of!(VCpu, context.s9),
+            s10_offset = const offset_of!(VCpu, context.s10),
+            s11_offset = const offset_of!(VCpu, context.s11),
+            t3_offset = const offset_of!(VCpu, context.t3),
+            t4_offset = const offset_of!(VCpu, context.t4),
+            t5_offset = const offset_of!(VCpu, context.t5),
+            t6_offset = const offset_of!(VCpu, context.t6),
+            vsstatus_offset = const offset_of!(VCpu, context.vsstatus),
+            vsepc_offset = const offset_of!(VCpu, context.vsepc),
+            vscause_offset = const offset_of!(VCpu, context.vscause),
+            vstval_offset = const offset_of!(VCpu, context.vstval),
+            vsie_offset = const offset_of!(VCpu, context.vsie),
+            vstvec_offset = const offset_of!(VCpu, context.vstvec),
+            vsscratch_offset = const offset_of!(VCpu, context.vsscratch),
+            vsatp_offset = const offset_of!(VCpu, context.vsatp),
+            hstatus_offset = const offset_of!(VCpu, context.hstatus),
+            hvip_offset = const offset_of!(VCpu, context.hvip),
+            sstatus_offset = const offset_of!(VCpu, context.sstatus),
+            sepc_offset = const offset_of!(VCpu, context.sepc),
         );
     };
 }

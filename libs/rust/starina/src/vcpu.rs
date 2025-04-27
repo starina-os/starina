@@ -1,4 +1,5 @@
 use starina_types::handle::HandleId;
+pub use starina_types::vcpu::*;
 
 use crate::error::ErrorCode;
 use crate::handle::Handleable;
@@ -19,8 +20,8 @@ impl VCpu {
         })
     }
 
-    pub fn run(&self) -> Result<(), ErrorCode> {
-        syscall::sys_vcpu_run(self.handle.id())?;
+    pub fn run(&self, exit: &mut VCpuExit) -> Result<(), ErrorCode> {
+        syscall::sys_vcpu_run(self.handle.id(), exit as *mut _)?;
         Ok(())
     }
 }

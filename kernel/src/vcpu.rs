@@ -2,10 +2,12 @@ use core::fmt;
 
 use starina::error::ErrorCode;
 use starina::poll::Readiness;
+use starina_types::vcpu::VCpuExit;
 
 use crate::arch;
 use crate::handle::Handleable;
 use crate::hvspace::HvSpace;
+use crate::isolation::IsolationHeapMut;
 use crate::poll::Listener;
 use crate::poll::Poll;
 use crate::refcount::SharedRef;
@@ -32,8 +34,8 @@ impl VCpu {
         &raw const self.arch as *mut _
     }
 
-    pub fn run(&self, current: &SharedRef<Thread>) -> ! {
-        todo!()
+    pub fn update(&self, exit: IsolationHeapMut) -> Result<(), ErrorCode> {
+        self.arch.update(exit)
     }
 }
 

@@ -9,6 +9,7 @@ use starina::folio::Folio;
 use starina::hvspace::HvSpace;
 use starina::prelude::*;
 use starina::vcpu::VCpu;
+use starina::vcpu::VCpuExit;
 use starina::vmspace::PageProtect;
 use starina::vmspace::VmSpace;
 
@@ -63,7 +64,8 @@ impl EventLoop for App {
             .unwrap();
 
         let vcpu = VCpu::new(&hvspace, GUEST_ENTRY).unwrap();
-        vcpu.run().unwrap();
+        let mut exit = VCpuExit::new();
+        vcpu.run(&mut exit).unwrap();
 
         panic!("vcpu.run() returned");
 

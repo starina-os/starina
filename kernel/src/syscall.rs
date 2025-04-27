@@ -11,6 +11,7 @@ use starina_types::message::MESSAGE_NUM_HANDLES_MAX;
 use starina_types::message::MessageInfo;
 use starina_types::poll::Readiness;
 use starina_types::syscall::*;
+use starina_types::vcpu::VCpuExit;
 use starina_types::vmspace::PageProtect;
 
 use crate::arch;
@@ -281,12 +282,19 @@ fn vcpu_create(
     Ok(handle_id)
 }
 
-fn vcpu_run(current: &SharedRef<Thread>, vcpu_handle: HandleId) -> Result<ThreadState, ErrorCode> {
+fn vcpu_run(
+    current: &SharedRef<Thread>,
+    vcpu_handle: HandleId,
+    exit: IsolationHeapMut,
+) -> Result<ThreadState, ErrorCode> {
     let mut handle_table = current.process().handles().lock();
     let vcpu = handle_table.get::<VCpu>(vcpu_handle)?;
     if !vcpu.is_capable(HandleRights::EXEC) {
         return Err(ErrorCode::NotAllowed);
     }
+
+    // FIXME: Better isolation heap API
+    vcpu.update(exit)?;
 
     let new_state = ThreadState::RunVCpu(vcpu.into_object());
     Ok(new_state)
@@ -417,7 +425,11 @@ fn do_syscall(
         }
         SYS_VCPU_RUN => {
             let vcpu_handle = HandleId::from_raw_isize(a0)?;
-            let new_state = vcpu_run(&current, vcpu_handle)?;
+            let exit = IsolationHeapMut::InKernel {
+                ptr: a1 as *mut u8,
+                len: size_of::<VCpuExit>(),
+            };
+            let new_state = vcpu_run(&current, vcpu_handle, exit)?;
             Ok(SyscallResult::Block(new_state))
         }
         _ => {
