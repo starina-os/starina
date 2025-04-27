@@ -69,13 +69,14 @@ pub struct VCpu {
 
 impl VCpu {
     pub fn new(hvspace: &HvSpace, entry: usize) -> Result<VCpu, ErrorCode> {
+        let sepc = entry as u64;
         let hstatus = 1 << 7; // SPV
         let sstatus = 1 << 8; // SPP
         let hgatp = hvspace.arch().hgatp();
 
         let context = Context {
             sstatus,
-            sepc: entry as u64,
+            sepc,
             hgatp,
             hstatus,
             ..Default::default()

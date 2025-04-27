@@ -119,7 +119,7 @@ pub fn switch_thread() -> ! {
             let is_idle = SharedRef::ptr_eq(&*current_thread, &cpuvar.idle_thread);
             let is_runnable = matches!(
                 current_thread.mutable.lock().state,
-                ThreadState::Runnable(_)
+                ThreadState::Runnable(_) | ThreadState::RunVCpu(_) | ThreadState::InVCpu(_)
             );
             (current_thread, is_idle, is_runnable)
         };
@@ -173,6 +173,7 @@ pub fn switch_thread() -> ! {
                     arch::vcpu_entry(vcpu_ptr);
                 }
                 ThreadState::InVCpu(vcpu) => {
+                    trace!("leaving vCPU");
                     mutable.state = ThreadState::Runnable(None);
                     // The return value from vcpu_run syscall.
                     Some(RetVal::new(0))
