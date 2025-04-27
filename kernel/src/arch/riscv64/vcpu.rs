@@ -17,6 +17,7 @@ use crate::thread::switch_thread;
 #[derive(Default)]
 struct Context {
     cpuvar_ptr: u64,
+    hgatp: u64,
     hvip: u64,
     hstatus: u64,
     sstatus: u64,
@@ -64,25 +65,23 @@ struct Context {
 
 pub struct VCpu {
     context: Context,
-    hgatp: u64,
 }
 
 impl VCpu {
     pub fn new(hvspace: &HvSpace, entry: usize) -> Result<VCpu, ErrorCode> {
         let hstatus = 1 << 7; // SPV
         let sstatus = 1 << 8; // SPP
+        let hgatp = hvspace.arch().hgatp();
 
         let context = Context {
             sstatus,
             sepc: entry as u64,
+            hgatp,
             hstatus,
             ..Default::default()
         };
 
-        Ok(VCpu {
-            hgatp: hvspace.arch().hgatp(),
-            context,
-        })
+        Ok(VCpu { context })
     }
 }
 
@@ -120,7 +119,7 @@ pub fn vcpu_entry(vcpu_ptr: *mut VCpu) -> ! {
             vsatp = in(reg) context.vsatp,
             vscause = in(reg) context.vscause,
             vstval = in(reg) context.vstval,
-            hgatp = in(reg) (*vcpu_ptr).hgatp,
+            hgatp = in(reg) context.hgatp,
             hstatus = in(reg) context.hstatus,
             hvip = in(reg) context.hvip,
             options(nostack),
