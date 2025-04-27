@@ -26,7 +26,7 @@ impl EventLoop for App {
         info!("starting");
 
         const GUEST_MEMORY_SIZE: usize = 0x1000;
-        const GUEST_ENTRY: usize = 0x8000_d000;
+        const GUEST_ENTRY: usize = 0x8000_a000;
 
         let folio = Folio::alloc(4096).unwrap();
         let vaddr = VmSpace::map_anywhere_current(
@@ -39,16 +39,13 @@ impl EventLoop for App {
         let guest_memory: &mut [u8] =
             unsafe { core::slice::from_raw_parts_mut(vaddr.as_mut_ptr(), GUEST_MEMORY_SIZE) };
 
-        const BOOT_CODE: &[u32] = &[
-            // "ecall"
-            0x00000073,
-        ];
+        const BOOT_CODE: &[u8] = include_bytes!("../../../../guest.bin");
 
         // Copy the boot code to the guest memory.
         unsafe {
             core::ptr::copy_nonoverlapping(
                 BOOT_CODE.as_ptr(),
-                guest_memory.as_mut_ptr() as *mut u32,
+                guest_memory.as_mut_ptr(),
                 BOOT_CODE.len(),
             );
         };
