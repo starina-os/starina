@@ -26,11 +26,12 @@ pub enum ErrorCode {
     InvalidState = -23,
     InvalidUri = -24,
     AlreadyHeld = -25,
+    TooSmall = -26,
 }
 
 impl From<isize> for ErrorCode {
     fn from(value: isize) -> Self {
-        if (-25..0).contains(&value) {
+        if (-26..0).contains(&value) {
             unsafe { core::mem::transmute(value) }
         } else {
             ErrorCode::InvalidErrorCode
