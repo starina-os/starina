@@ -221,8 +221,8 @@ pub fn sys_hvspace_map(
         handle.as_raw() as isize,
         gpaddr.as_usize() as isize,
         folio.as_raw() as isize,
-        prot.as_raw() as isize,
         len.try_into().unwrap(),
+        prot.as_raw() as isize,
     )?;
     Ok(())
 }

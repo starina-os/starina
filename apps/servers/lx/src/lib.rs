@@ -25,6 +25,7 @@ impl EventLoop for App {
         info!("starting");
 
         const GUEST_MEMORY_SIZE: usize = 0x1000;
+        const GUEST_ENTRY: usize = 0x8000_d000;
 
         let folio = Folio::alloc(4096).unwrap();
         let vaddr = VmSpace::map_anywhere_current(
@@ -54,14 +55,14 @@ impl EventLoop for App {
         let hvspace = HvSpace::new().unwrap();
         hvspace
             .map(
-                GPAddr::new(0x8000_c000),
+                GPAddr::new(GUEST_ENTRY),
                 &folio,
                 GUEST_MEMORY_SIZE,
                 PageProtect::READABLE | PageProtect::WRITEABLE | PageProtect::EXECUTABLE,
             )
             .unwrap();
 
-        let vcpu = VCpu::new(&hvspace, 0).unwrap();
+        let vcpu = VCpu::new(&hvspace, GUEST_ENTRY).unwrap();
         vcpu.run().unwrap();
 
         panic!("vcpu.run() returned");

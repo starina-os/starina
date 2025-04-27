@@ -82,7 +82,7 @@ impl VCpu {
             },
             cpuvar_ptr: 0,
             hvip: 0,
-            sstatus: 0,
+            sstatus,
             sepc: entry as u64,
             hstatus,
         };
@@ -139,7 +139,52 @@ pub fn vcpu_entry(vcpu_ptr: *mut VCpu) -> ! {
 }
 
 extern "C" fn vcpu_trap_handler(context: *mut Context) -> ! {
-    trace!("exited from vCPU");
+    let scause: u64;
+    let stval: u64;
+    unsafe {
+        asm!("csrr {}, scause", out(reg) scause);
+        asm!("csrr {}, stval", out(reg) stval);
+    }
+
+    let is_intr = scause & (1 << 63) != 0;
+    let code = scause & !(1 << 63);
+    let scause_str = match (is_intr, code) {
+        (true, 0) => "user software interrupt",
+        (true, 1) => "supervisor software interrupt",
+        (true, 2) => "hypervisor software interrupt",
+        (true, 3) => "machine software interrupt",
+        (true, 4) => "user timer interrupt",
+        (true, 5) => "supervisor timer interrupt",
+        (true, 6) => "hypervisor timer interrupt",
+        (true, 7) => "machine timer interrupt",
+        (true, 8) => "user external interrupt",
+        (true, 9) => "supervisor external interrupt",
+        (true, 10) => "hypervisor external interrupt",
+        (true, 11) => "machine external interrupt",
+        (false, 0) => "instruction address misaligned",
+        (false, 1) => "instruction access fault",
+        (false, 2) => "illegal instruction",
+        (false, 3) => "breakpoint",
+        (false, 4) => "load address misaligned",
+        (false, 5) => "load access fault",
+        (false, 6) => "store/AMO address misaligned",
+        (false, 7) => "store/AMO access fault",
+        (false, 8) => "environment call from U-mode",
+        (false, 9) => "environment call from S-mode",
+        (false, 10) => "Environment call from VS-mode",
+        (false, 11) => "environment call from M-mode",
+        (false, 12) => "instruction page fault",
+        (false, 13) => "load page fault",
+        (false, 15) => "store/AMO page fault",
+        (false, 20) => "instruction guest-page fault",
+        (false, 21) => "load guest-page fault",
+        (false, 22) => "virtual instruction",
+        (false, 23) => "store/AMO guest-page fault",
+        _ => "unknown",
+    };
+
+    let scause_code = scause & 0x7ff;
+    trace!("exited from vCPU: {}", scause_str);
 
     unsafe {
         debug_assert!((*context).cpuvar_ptr != 0);

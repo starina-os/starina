@@ -23,7 +23,7 @@ pub struct Env {
 pub const APP_SPEC: ParsedAppSpec = ParsedAppSpec {
     name: "lx",
     env: &[],
-    exports: &[],
+    exports: &[ParsedExportItem::Service { service: "lx" }],
     entrypoint,
 };
 

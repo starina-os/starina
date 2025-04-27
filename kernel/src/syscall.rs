@@ -366,7 +366,7 @@ fn do_syscall(
             Ok(SyscallResult::Done(ret.into()))
         }
         SYS_FOLIO_ALLOC => {
-            let len = a1 as usize;
+            let len = a0 as usize;
             let ret = folio_alloc(&current, len)?;
             Ok(SyscallResult::Done(ret.into()))
         }
