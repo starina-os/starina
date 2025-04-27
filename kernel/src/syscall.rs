@@ -189,6 +189,16 @@ pub fn vmspace_map(
     Ok(vaddr)
 }
 
+pub fn folio_alloc(current: &SharedRef<Thread>, len: usize) -> Result<HandleId, ErrorCode> {
+    let folio = Folio::alloc(len)?;
+    let handle: Handle<Folio> = Handle::new(
+        SharedRef::new(folio)?,
+        HandleRights::READ | HandleRights::WRITE | HandleRights::MAP,
+    );
+    let handle_id = current.process().handles().lock().insert(handle)?;
+    Ok(handle_id)
+}
+
 pub fn folio_daddr(current: &SharedRef<Thread>, handle: HandleId) -> Result<DAddr, ErrorCode> {
     let mut handle_table = current.process().handles().lock();
     let folio = handle_table.get::<Folio>(handle)?;
@@ -219,7 +229,8 @@ fn interrupt_create(
     irq_matcher: IrqMatcher,
 ) -> Result<HandleId, ErrorCode> {
     let interrupt = Interrupt::attach(irq_matcher)?;
-    let handle = Handle::new(interrupt, HandleRights::READ | HandleRights::WRITE);
+    let handle: Handle<Interrupt> =
+        Handle::new(interrupt, HandleRights::READ | HandleRights::WRITE);
     let handle_id = current.process().handles().lock().insert(handle)?;
     Ok(handle_id)
 }
@@ -352,6 +363,11 @@ fn do_syscall(
             let folio = HandleId::from_raw_isize(a1)?;
             let prot = PageProtect::from_raw_isize(a2)?;
             let ret = vmspace_map(&current, handle, folio, prot)?;
+            Ok(SyscallResult::Done(ret.into()))
+        }
+        SYS_FOLIO_ALLOC => {
+            let len = a1 as usize;
+            let ret = folio_alloc(&current, len)?;
             Ok(SyscallResult::Done(ret.into()))
         }
         SYS_FOLIO_DADDR => {

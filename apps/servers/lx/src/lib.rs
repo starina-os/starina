@@ -2,9 +2,15 @@
 
 pub mod autogen;
 
+use starina::address::GPAddr;
 use starina::eventloop::Dispatcher;
 use starina::eventloop::EventLoop;
+use starina::folio::Folio;
+use starina::hvspace::HvSpace;
 use starina::prelude::*;
+use starina::vcpu::VCpu;
+use starina::vmspace::PageProtect;
+use starina::vmspace::VmSpace;
 
 #[derive(Debug)]
 pub enum State {}
@@ -18,6 +24,48 @@ impl EventLoop for App {
     fn init(_dispatcher: &dyn Dispatcher<Self::State>, _env: Self::Env) -> Self {
         info!("starting");
 
-        Self {}
+        const GUEST_MEMORY_SIZE: usize = 0x1000;
+
+        let folio = Folio::alloc(4096).unwrap();
+        let vaddr = VmSpace::map_anywhere_current(
+            &folio,
+            GUEST_MEMORY_SIZE,
+            PageProtect::READABLE | PageProtect::WRITEABLE,
+        )
+        .unwrap();
+
+        let guest_memory: &mut [u8] =
+            unsafe { core::slice::from_raw_parts_mut(vaddr.as_mut_ptr(), GUEST_MEMORY_SIZE) };
+
+        const BOOT_CODE: &[u32] = &[
+            // "ecall"
+            0x00000073,
+        ];
+
+        // Copy the boot code to the guest memory.
+        unsafe {
+            core::ptr::copy_nonoverlapping(
+                BOOT_CODE.as_ptr(),
+                guest_memory.as_mut_ptr() as *mut u32,
+                BOOT_CODE.len(),
+            );
+        };
+
+        let hvspace = HvSpace::new().unwrap();
+        hvspace
+            .map(
+                GPAddr::new(0x8000_c000),
+                &folio,
+                GUEST_MEMORY_SIZE,
+                PageProtect::READABLE | PageProtect::WRITEABLE | PageProtect::EXECUTABLE,
+            )
+            .unwrap();
+
+        let vcpu = VCpu::new(&hvspace, 0).unwrap();
+        vcpu.run().unwrap();
+
+        panic!("vcpu.run() returned");
+
+        // Self {}
     }
 }

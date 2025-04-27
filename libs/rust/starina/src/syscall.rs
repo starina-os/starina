@@ -1,4 +1,5 @@
 use starina_types::address::DAddr;
+use starina_types::address::GPAddr;
 use starina_types::address::VAddr;
 use starina_types::error::ErrorCode;
 use starina_types::handle::HandleId;
@@ -151,6 +152,13 @@ pub fn iobus_map(iobus: HandleId, daddr: Option<DAddr>, len: usize) -> Result<Ha
     Ok(id)
 }
 
+pub fn folio_alloc(len: usize) -> Result<HandleId, ErrorCode> {
+    let ret = syscall(SYS_FOLIO_ALLOC, len.try_into().unwrap(), 0, 0, 0, 0)?;
+    // SAFETY: The syscall returns a valid handle ID.
+    let id = unsafe { HandleId::from_raw_isize(ret.as_isize()).unwrap_unchecked() };
+    Ok(id)
+}
+
 pub fn folio_daddr(handle: HandleId) -> Result<DAddr, ErrorCode> {
     let ret = syscall(SYS_FOLIO_DADDR, handle.as_raw() as isize, 0, 0, 0, 0)?;
     // SAFETY: The syscall returns a valid device address.
@@ -192,5 +200,48 @@ pub fn interrupt_create(irq_matcher: IrqMatcher) -> Result<HandleId, ErrorCode> 
 
 pub fn interrupt_ack(handle: HandleId) -> Result<(), ErrorCode> {
     syscall(SYS_INTERRUPT_ACK, handle.as_raw() as isize, 0, 0, 0, 0)?;
+    Ok(())
+}
+
+pub fn sys_hvspace_create() -> Result<HandleId, ErrorCode> {
+    let ret = syscall(SYS_HVSPACE_CREATE, 0, 0, 0, 0, 0)?;
+    let id = unsafe { HandleId::from_raw_isize(ret.as_isize()).unwrap_unchecked() };
+    Ok(id)
+}
+
+pub fn sys_hvspace_map(
+    handle: HandleId,
+    gpaddr: GPAddr,
+    folio: HandleId,
+    len: usize,
+    prot: PageProtect,
+) -> Result<(), ErrorCode> {
+    syscall(
+        SYS_HVSPACE_MAP,
+        handle.as_raw() as isize,
+        gpaddr.as_usize() as isize,
+        folio.as_raw() as isize,
+        prot.as_raw() as isize,
+        len.try_into().unwrap(),
+    )?;
+    Ok(())
+}
+
+pub fn sys_vcpu_create(hvspace: HandleId, entry: usize) -> Result<HandleId, ErrorCode> {
+    let ret = syscall(
+        SYS_VCPU_CREATE,
+        hvspace.as_raw() as isize,
+        entry.try_into().unwrap(),
+        0,
+        0,
+        0,
+    )?;
+    // SAFETY: The syscall returns a valid handle ID.
+    let id = unsafe { HandleId::from_raw_isize(ret.as_isize()).unwrap_unchecked() };
+    Ok(id)
+}
+
+pub fn sys_vcpu_run(vcpu: HandleId) -> Result<(), ErrorCode> {
+    syscall(SYS_VCPU_RUN, vcpu.as_raw() as isize, 0, 0, 0, 0)?;
     Ok(())
 }
