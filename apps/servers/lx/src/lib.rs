@@ -62,10 +62,10 @@ impl EventLoop for App {
 
         let vcpu = VCpu::new(&hvspace, GUEST_ENTRY).unwrap();
         let mut exit = VCpuExit::new();
-        vcpu.run(&mut exit).unwrap();
-
-        panic!("vcpu.run() returned");
-
+        loop {
+            trace!("entering vcpu.run");
+            vcpu.run(&mut exit).unwrap();
+        }
         // Self {}
     }
 }

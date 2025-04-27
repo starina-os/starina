@@ -10,6 +10,7 @@ use crate::arch::riscv64::csr::write_stvec;
 use crate::arch::riscv64::entry::trap_entry;
 use crate::arch::set_cpuvar;
 use crate::cpuvar::CpuVar;
+use crate::cpuvar::current_thread;
 use crate::hvspace::HvSpace;
 use crate::isolation::IsolationHeapMut;
 use crate::spinlock::SpinLock;
@@ -206,7 +207,18 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
 
     unsafe {
         set_cpuvar((*context).cpuvar_ptr as *const CpuVar);
+        asm!("csrw sscratch, {}", in(reg) (*context).cpuvar_ptr);
         write_stvec(trap_entry as *const () as usize, StvecMode::Direct);
+    }
+
+    if scause_code == 10 && unsafe { (*context).a7 } == 1 {
+        let ch = unsafe { (*context).a0 } as u8 as char;
+        info!("vCPU putchar: '{}'", ch);
+        unsafe {
+            (*context).sepc += 4; // size of ecall
+        }
+    } else {
+        panic!()
     }
 
     {
