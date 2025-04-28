@@ -39,8 +39,8 @@ RUN mkdir -p /rootfs/tmp
 RUN mkdir -p /rootfs/var
 COPY --from=lxinit-builder /lxinit /rootfs/lxinit
 
-RUN cpio -o -H newc -A -F /rootfs/initramfs.cpio < /dev/null
-RUN lz4 -9 /rootfs/initramfs.cpio /initramfs.cpio.lz4
+RUN cpio -o -H newc -A -F /initramfs.cpio < /dev/null
+RUN lz4 -9 /initramfs.cpio /initramfs.cpio.lz4
 
 FROM ubuntu:24.04 AS kernel-builder
 
