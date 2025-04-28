@@ -39,8 +39,7 @@ RUN mkdir -p /rootfs/tmp
 RUN mkdir -p /rootfs/var
 COPY --from=lxinit-builder /lxinit /rootfs/lxinit
 
-RUN cpio -o -H newc -A -F /initramfs.cpio < /dev/null
-RUN lz4 -9 /initramfs.cpio /initramfs.cpio.lz4
+RUN find . -print0 | cpio --null -o --format=newc | lz4 -9 > /initramfs.cpio.lz4
 
 FROM ubuntu:24.04 AS kernel-builder
 
@@ -60,11 +59,16 @@ RUN apt-get update && apt-get install -y \
     gcc-riscv64-linux-gnu \
     binutils-riscv64-linux-gnu
 
+RUN apt-get install -y \
+    bc
+RUN apt-get install -y \
+    cpio
+
 ADD linux.riscv64.config .config
 COPY --from=initramfs-builder /initramfs.cpio.lz4 /initramfs.cpio.lz4
 
-RUN make ARCH=riscv CROSS_COMPILE=riscv64-linux-gnu- olddefconfig
-RUN make ARCH=riscv CROSS_COMPILE=riscv64-linux-gnu- -j$(nproc)
+RUN make ARCH=riscv CROSS_COMPILE=riscv64-linux-gnu- -j$(nproc) \
+        olddefconfig Image
 
 FROM ubuntu:24.04
 RUN mkdir -p /build
