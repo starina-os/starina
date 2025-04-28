@@ -11,10 +11,16 @@ RUN mkdir -p /app
 ADD lxinit /app
 WORKDIR /app
 
-RUN rustup target add riscv64gc-unknown-linux-gnu
+RUN rustup target add riscv64gc-unknown-linux-musl
+
+RUN apt-get update && apt-get install -y \
+    gcc-riscv64-linux-gnu \
+    binutils-riscv64-linux-gnu
+
+ENV CARGO_TARGET_RISCV64GC_UNKNOWN_LINUX_GNU_LINKER="riscv64-unknown-linux-gnu-gcc"
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/app/target \
-    cargo build --release --target riscv64gc-unknown-linux-gnu
+    cargo build --release --target riscv64gc-unknown-linux-musl
 
 FROM ubuntu:24.04 AS initramfs-builder
 
@@ -48,10 +54,16 @@ RUN apt-get update && apt-get install -y \
 RUN curl -fSL -o linux.tar.xz https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.12.25.tar.xz
 RUN mkdir -p linux && tar -xf linux.tar.xz -C linux --strip-components=1
 WORKDIR /linux
+
+RUN apt-get update && apt-get install -y \
+    gcc-riscv64-linux-gnu \
+    binutils-riscv64-linux-gnu
+
 ADD linux.riscv64.config .config
 COPY --from=initramfs-builder /initramfs.cpio.lz4 /initramfs.cpio.lz4
-RUN make olddefconfig
-RUN make -j$(nproc)
+
+RUN make ARCH=riscv CROSS_COMPILE=riscv64-linux-gnu- olddefconfig
+RUN make ARCH=riscv CROSS_COMPILE=riscv64-linux-gnu- -j$(nproc)
 
 FROM ubuntu:24.04
 RUN mkdir -p /build
