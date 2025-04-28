@@ -3,6 +3,10 @@
 #   docker build -t lx-builder -f Dockerfile .
 #   docker run -v $PWD:/lx -it lx-builder cp /build/linux.elf /lx/linux.elf
 #
+
+#
+#  init builder
+#
 FROM rust:1.86 AS lxinit-builder
 
 RUN mkdir -p /app
@@ -23,6 +27,9 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
     && cp /app/target/riscv64gc-unknown-linux-musl/release/lxinit /lxinit \
     && riscv64-linux-gnu-strip /lxinit
 
+#
+#  initramfs builder
+#
 FROM ubuntu:24.04 AS initramfs-builder
 
 RUN apt-get update && apt-get install -y \
@@ -42,6 +49,9 @@ COPY --from=lxinit-builder /lxinit /rootfs/lxinit
 WORKDIR /rootfs
 RUN find . -print0 | cpio --null -o --format=newc | lz4 -9 > /initramfs.cpio.lz4
 
+#
+#  Kernel builder
+#
 FROM ubuntu:24.04 AS kernel-builder
 
 RUN apt-get update && apt-get install -y \
@@ -71,6 +81,9 @@ RUN make ARCH=riscv CROSS_COMPILE=riscv64-linux-gnu- -j$(nproc) \
 RUN cp /linux/vmlinux /linux.elf
 RUN riscv64-linux-gnu-strip /linux.elf
 
+#
+#  Final stage
+#
 FROM ubuntu:24.04
 RUN mkdir -p /build
 COPY --from=kernel-builder /linux.elf /build/linux.elf
