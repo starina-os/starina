@@ -1,9 +1,7 @@
 # Builds a minimal Linux distro for Starina on Linux.
 #
-# Tip: How to edit the kernel config:
-#
-#   docker build -t lx-kernel-builder --target kernel-builder -f Dockerfile .
-#   docker run -v $PWD:/lx -it lx-kernel-builder bash -c "make -C /linux menuconfig && cp /linux/.config /lx/linux.riscv64.config"
+#   docker build -t lx-builder -f Dockerfile .
+#   docker run -v $PWD:/lx -it lx-builder cp /build/linux.elf /lx/linux.elf
 #
 FROM rust:1.86 AS lxinit-builder
 
@@ -18,10 +16,12 @@ RUN apt-get update && apt-get install -y \
     binutils-riscv64-linux-gnu
 
 ENV CARGO_TARGET_RISCV64GC_UNKNOWN_LINUX_MUSL_LINKER="riscv64-linux-gnu-gcc"
+ENV CARGO_PROFILE_RELEASE_OPT_LEVEL=z
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/app/target \
     cargo build --release --target riscv64gc-unknown-linux-musl \
-    && cp /app/target/riscv64gc-unknown-linux-musl/release/lxinit /lxinit
+    && cp /app/target/riscv64gc-unknown-linux-musl/release/lxinit /lxinit \
+    && riscv64-linux-gnu-strip /lxinit
 
 FROM ubuntu:24.04 AS initramfs-builder
 
@@ -39,6 +39,7 @@ RUN mkdir -p /rootfs/tmp
 RUN mkdir -p /rootfs/var
 COPY --from=lxinit-builder /lxinit /rootfs/lxinit
 
+WORKDIR /rootfs
 RUN find . -print0 | cpio --null -o --format=newc | lz4 -9 > /initramfs.cpio.lz4
 
 FROM ubuntu:24.04 AS kernel-builder
@@ -57,20 +58,20 @@ WORKDIR /linux
 
 RUN apt-get update && apt-get install -y \
     gcc-riscv64-linux-gnu \
-    binutils-riscv64-linux-gnu
-
-RUN apt-get install -y \
-    bc
-RUN apt-get install -y \
+    binutils-riscv64-linux-gnu \
+    bc \
     cpio
 
 ADD linux.riscv64.config .config
 COPY --from=initramfs-builder /initramfs.cpio.lz4 /initramfs.cpio.lz4
 
 RUN make ARCH=riscv CROSS_COMPILE=riscv64-linux-gnu- -j$(nproc) \
-        olddefconfig Image
+        olddefconfig vmlinux
+
+RUN cp /linux/vmlinux /linux.elf
+RUN riscv64-linux-gnu-strip /linux.elf
 
 FROM ubuntu:24.04
 RUN mkdir -p /build
-COPY --from=kernel-builder /linux/arch/riscv/boot/Image /build/linux.elf
+COPY --from=kernel-builder /linux.elf /build/linux.elf
 CMD ["/bin/bash"]
