@@ -1,3 +1,4 @@
+use alloc::vec::Vec;
 use core::arch::asm;
 use core::arch::naked_asm;
 use core::mem::offset_of;
@@ -66,8 +67,35 @@ struct Context {
     vsatp: u64,
 }
 
+struct ConsolePrinter {
+    buf: Vec<u8>,
+}
+
+impl ConsolePrinter {
+    pub fn new() -> Self {
+        Self { buf: Vec::new() }
+    }
+
+    pub fn putchar(&mut self, ch: u8) {
+        match ch {
+            b'\n' => {
+                info!(
+                    "vCPU: \x1b[1;35m{}\x1b[0m",
+                    str::from_utf8(&self.buf).unwrap_or("(non-UTF-8 data)")
+                );
+                self.buf.clear();
+            }
+            b'\r' => {
+                // Do nothing.
+            }
+            _ => self.buf.push(ch),
+        }
+    }
+}
+
 struct Mutable {
     exit: Option<IsolationHeapMut>,
+    printer: ConsolePrinter,
 }
 
 pub struct VCpu {
@@ -90,7 +118,10 @@ impl VCpu {
             ..Default::default()
         };
 
-        let mutable = Mutable { exit: None };
+        let mutable = Mutable {
+            exit: None,
+            printer: ConsolePrinter::new(),
+        };
 
         Ok(VCpu {
             context,
@@ -121,9 +152,16 @@ pub fn vcpu_entry(vcpu: *mut VCpu) -> ! {
 
         // Restore VS-mode CSRs
         asm!(
+            "csrw hgatp, {hgatp}",
+            "hfence.gvma",
+
+            "csrw hstatus, {hstatus}",
+            "csrw hvip, {hvip}",
+
             "csrw sscratch, {sscratch}",
             "csrw sstatus, {sstatus}",
             "csrw sepc, {sepc}",
+
             "csrw vsstatus, {vsstatus}",
             "csrw vsie, {vsie}",
             "csrw vstvec, {vstvec}",
@@ -131,10 +169,10 @@ pub fn vcpu_entry(vcpu: *mut VCpu) -> ! {
             "csrw vsatp, {vsatp}",
             "csrw vscause, {vscause}",
             "csrw vstval, {vstval}",
-            "csrw hgatp, {hgatp}",
-            "csrw hstatus, {hstatus}",
-            "csrw hvip, {hvip}",
             "sret",
+            hgatp = in(reg) context.hgatp,
+            hstatus = in(reg) context.hstatus,
+            hvip = in(reg) context.hvip,
             sscratch = in(reg) vcpu as *const _ as u64,
             sstatus = in(reg) context.sstatus,
             sepc = in(reg) context.sepc,
@@ -145,9 +183,6 @@ pub fn vcpu_entry(vcpu: *mut VCpu) -> ! {
             vsatp = in(reg) context.vsatp,
             vscause = in(reg) context.vscause,
             vstval = in(reg) context.vstval,
-            hgatp = in(reg) context.hgatp,
-            hstatus = in(reg) context.hstatus,
-            hvip = in(reg) context.hvip,
             options(nostack),
         );
     }
@@ -211,18 +246,18 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
         write_stvec(trap_entry as *const () as usize, StvecMode::Direct);
     }
 
-    if scause_code == 10 && unsafe { (*context).a7 } == 1 {
-        let ch = unsafe { (*context).a0 } as u8 as char;
-        info!("vCPU putchar: '{}'", ch);
-        unsafe {
-            (*context).sepc += 4; // size of ecall
-        }
-    } else {
-        panic!()
-    }
-
     {
         let mut mutable = unsafe { (*vcpu).mutable.lock() };
+        if scause_code == 10 && unsafe { (*context).a7 } == 1 {
+            let ch = unsafe { (*context).a0 } as u8;
+            mutable.printer.putchar(ch);
+            unsafe {
+                (*context).sepc += 4; // size of ecall
+            }
+        } else {
+            panic!()
+        }
+
         let exit = mutable.exit.take().unwrap();
     }
 

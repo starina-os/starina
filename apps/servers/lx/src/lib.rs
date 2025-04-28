@@ -1,7 +1,9 @@
 #![no_std]
 
 pub mod autogen;
+mod device_tree;
 
+use device_tree::build_fdt;
 use starina::address::GPAddr;
 use starina::eventloop::Dispatcher;
 use starina::eventloop::EventLoop;
@@ -35,6 +37,8 @@ impl EventLoop for App {
             PageProtect::READABLE | PageProtect::WRITEABLE,
         )
         .unwrap();
+
+        let fdt = build_fdt().expect("failed to build device tree");
 
         let guest_memory: &mut [u8] =
             unsafe { core::slice::from_raw_parts_mut(vaddr.as_mut_ptr(), GUEST_MEMORY_SIZE) };

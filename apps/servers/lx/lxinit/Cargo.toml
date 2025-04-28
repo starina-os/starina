@@ -1,0 +1,8 @@
+[package]
+name = "lxinit"
+publish = false
+version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
+
+[dependencies]

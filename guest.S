@@ -17,6 +17,11 @@ _start:
     li a7, 1
     ecall
 
+    # print '\n'
+    li a0, '\n'
+    li a7, 1
+    ecall
+
     # Exit with unimp instruction
     unimp
 
