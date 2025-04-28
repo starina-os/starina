@@ -6,6 +6,7 @@ members = [
     "apps/drivers/virtio_net",
     "apps/servers/tcpip",
     "apps/servers/lx",
+    "apps/servers/lx/lxinit",
     "apps/bin/http_server",
 ]
 
