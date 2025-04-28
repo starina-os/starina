@@ -18,7 +18,7 @@ RUN apt-get update && apt-get install -y \
 RUN curl -fSL -o linux.tar.xz https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.12.25.tar.xz
 RUN mkdir -p linux && tar -xf linux.tar.xz -C linux --strip-components=1
 WORKDIR /linux
-# ADD linux.riscv64.config .config
+ADD linux.riscv64.config .config
 # RUN make olddefconfig
 # RUN make -j$(nproc)
 
