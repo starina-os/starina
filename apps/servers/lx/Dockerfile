@@ -17,10 +17,11 @@ RUN apt-get update && apt-get install -y \
     gcc-riscv64-linux-gnu \
     binutils-riscv64-linux-gnu
 
-ENV CARGO_TARGET_RISCV64GC_UNKNOWN_LINUX_GNU_LINKER="riscv64-unknown-linux-gnu-gcc"
+ENV CARGO_TARGET_RISCV64GC_UNKNOWN_LINUX_MUSL_LINKER="riscv64-linux-gnu-gcc"
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/app/target \
-    cargo build --release --target riscv64gc-unknown-linux-musl
+    cargo build --release --target riscv64gc-unknown-linux-musl \
+    && cp /app/target/riscv64gc-unknown-linux-musl/release/lxinit /lxinit
 
 FROM ubuntu:24.04 AS initramfs-builder
 
@@ -36,7 +37,7 @@ RUN mkdir -p /rootfs/proc
 RUN mkdir -p /rootfs/sys
 RUN mkdir -p /rootfs/tmp
 RUN mkdir -p /rootfs/var
-COPY --from=lxinit-builder /app/target/release/lxinit /rootfs/lxinit
+COPY --from=lxinit-builder /lxinit /rootfs/lxinit
 
 RUN cpio -o -H newc -A -F /rootfs/initramfs.cpio < /dev/null
 RUN lz4 -9 /rootfs/initramfs.cpio /initramfs.cpio.lz4
