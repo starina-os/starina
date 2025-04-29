@@ -44,10 +44,6 @@ pub struct RiscvImageHeader {
 /// https://www.kernel.org/doc/Documentation/arm64/booting.txt
 const IMAGE_ALIGN: usize = 2 * 1024 * 1024;
 
-fn align_up(size: usize, align: usize) -> usize {
-    (size + align - 1) & !(align - 1)
-}
-
 pub fn load_riscv_image(ram: &mut Ram, image: &[u8]) -> Result<GPAddr, Error> {
     if image.len() < size_of::<RiscvImageHeader>() {
         return Err(Error::TooShortImage);
@@ -65,6 +61,8 @@ pub fn load_riscv_image(ram: &mut Ram, image: &[u8]) -> Result<GPAddr, Error> {
     let (ram_slice, gpaddr) = ram
         .allocate(kernel_size as usize, IMAGE_ALIGN)
         .map_err(Error::AllocRam)?;
+
+    debug_assert!(gpaddr.as_usize() % IMAGE_ALIGN == 0,);
 
     trace!(
         "loaded image at gpaddr={}, len={}KiB",
