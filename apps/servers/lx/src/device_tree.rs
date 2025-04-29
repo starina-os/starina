@@ -2,7 +2,7 @@ use starina::prelude::*;
 use vm_fdt::FdtWriter;
 
 const GUEST_RAM_START: u64 = 0x80000000; // Standard QEMU virt machine RAM start
-const GUEST_RAM_SIZE: u64 = 128 * 1024 * 1024; // 128 MiB RAM, adjust as needed
+const GUEST_RAM_SIZE: u64 = 64 * 1024 * 1024; // 64 MiB RAM, adjust as needed
 const GUEST_NUM_CPUS: u32 = 1; // Number of virtual CPUs
 const GUEST_HART_ID_BASE: u32 = 0; // Starting Hart ID
 const GUEST_TIMEBASE_FREQ: u64 = 10_000_000; // QEMU virt default timer frequency (10 MHz)

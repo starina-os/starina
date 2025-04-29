@@ -52,7 +52,7 @@ RUN find . -print0 | cpio --null -o --format=newc | lz4 -9 > /initramfs.cpio.lz4
 #
 #  Kernel builder
 #
-FROM ubuntu:24.04 AS kernel-builder
+FROM ubuntu:24.04
 
 RUN apt-get update && apt-get install -y \
     curl \
@@ -60,32 +60,13 @@ RUN apt-get update && apt-get install -y \
     libncurses-dev \
     flex \
     bison \
-    libelf-dev
-
-RUN curl -fSL -o linux.tar.xz https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.12.25.tar.xz
-RUN mkdir -p linux && tar -xf linux.tar.xz -C linux --strip-components=1
-WORKDIR /linux
-
-RUN apt-get update && apt-get install -y \
-    gcc-riscv64-linux-gnu \
-    binutils-riscv64-linux-gnu \
     bc \
-    cpio
+    cpio \
+    libelf-dev \
+    gcc-riscv64-linux-gnu \
+    binutils-riscv64-linux-gnu
 
-ADD linux.riscv64.config .config
 COPY --from=initramfs-builder /initramfs.cpio.lz4 /initramfs.cpio.lz4
 
-RUN make ARCH=riscv CROSS_COMPILE=riscv64-linux-gnu- -j$(nproc) \
-        olddefconfig Image
-
-RUN cp /linux/vmlinux /linux.elf
-RUN cp /linux/arch/riscv/boot/Image /linux.bin
-
-#
-#  Final stage
-#
-FROM ubuntu:24.04
-RUN mkdir -p /build
-COPY --from=kernel-builder /linux.bin /build/linux.bin
-COPY --from=kernel-builder /linux.elf /build/linux.elf
-CMD ["/bin/bash"]
+CMD make -C /lx/linux ARCH=riscv CROSS_COMPILE=riscv64-linux-gnu- -j$(nproc) \
+        olddefconfig Image && cp /lx/linux/arch/riscv/boot/Image /lx/linux.bin
