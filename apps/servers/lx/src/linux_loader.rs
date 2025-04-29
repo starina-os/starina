@@ -34,19 +34,17 @@ pub struct RiscvImageHeader {
     reserved3: u32,
 }
 
-pub fn load_riscv_image(hvspace: &mut HvSpace, image: &[u8]) -> Result<GPAddr, Error> {
+pub fn load_riscv_image(hvspace: &HvSpace, image: &[u8]) -> Result<GPAddr, Error> {
     if image.len() < size_of::<RiscvImageHeader>() {
         return Err(Error::TooShortImage);
     }
 
     let header = unsafe { &*(image.as_ptr() as *const RiscvImageHeader) };
-    if header.magic != 0x644d5241 || header.magic2 != 0x05534352 {
+    info!("header: {:x?}", header);
+    let magic = u64::from_le(header.magic);
+    let magic2 = u32::from_le(header.magic2);
+    if magic != 0x5643534952 || magic2 != 0x5435352 {
         return Err(Error::InvalidMagic);
-    }
-
-    let image_size = header.image_size as usize;
-    if image.len() < image_size {
-        return Err(Error::TooShortImage);
     }
 
     let text_offset = u64::from_le(header.text_offset);

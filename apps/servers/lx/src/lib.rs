@@ -32,12 +32,12 @@ impl EventLoop for App {
 
         // Prepare the guest memory.
         let hvspace = HvSpace::new().unwrap();
-        let entry = linux_loader::load_riscv_image(&mut hvspace, LINUX_ELF).unwrap();
+        let entry = linux_loader::load_riscv_image(&hvspace, LINUX_ELF).unwrap();
 
         let fdt = build_fdt().expect("failed to build device tree");
 
         // Create a vCPU and run it.
-        let vcpu = VCpu::new(&hvspace, entry).unwrap();
+        let vcpu = VCpu::new(&hvspace, entry.as_usize()).unwrap();
         let mut exit = VCpuExit::new();
         loop {
             trace!("entering vcpu.run");
