@@ -18,7 +18,7 @@ use crate::spinlock::SpinLock;
 use crate::thread::switch_thread;
 
 #[repr(C)]
-#[derive(Default)]
+#[derive(Debug, Default)]
 struct Context {
     cpuvar_ptr: u64,
     hgatp: u64,
@@ -154,6 +154,10 @@ pub fn vcpu_entry(vcpu: *mut VCpu) -> ! {
     unsafe {
         let context = &mut (*vcpu).context;
         context.cpuvar_ptr = cpuvar as u64;
+
+        unsafe {
+            info!("context: {:#x?}", (*context));
+        }
 
         write_stvec(vcpu_trap_entry as *const () as usize, StvecMode::Direct);
 
@@ -320,10 +324,11 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
     }
 
     trace!(
-        "VM exit: {} (sepc={:x}, htval={:x})",
+        "VM exit: {} (sepc={:x}, htval={:x}, stval={:x})",
         scause_str,
         unsafe { (*context).sepc },
-        htval
+        htval,
+        stval
     );
 
     unsafe {
