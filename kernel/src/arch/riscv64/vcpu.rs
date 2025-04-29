@@ -174,7 +174,7 @@ pub fn vcpu_entry(vcpu: *mut VCpu) -> ! {
         let context = &mut (*vcpu).context;
         context.cpuvar_ptr = cpuvar as u64;
 
-        info!("vcpu_entry: sepc={:x}", context.sepc);
+        // info!("vcpu_entry: sepc={:x}", context.sepc);
 
         write_stvec(vcpu_trap_entry as *const () as usize, StvecMode::Direct);
 
@@ -349,18 +349,50 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
     {
         let mut mutable = unsafe { (*vcpu).mutable.lock() };
         if scause_code == 10 && unsafe { (*context).a7 } == 1 {
-            info!("ecall: a0={:x}", unsafe { (*context).a0 });
+            // info!("ecall: a0={:x}", unsafe { (*context).a0 });
             let ch = unsafe { (*context).a0 } as u8;
             mutable.printer.putchar(ch);
             unsafe {
                 (*context).sepc += 4; // size of ecall
             }
         } else if scause == 10 {
-            info!(
-                "ecall: a0={:x}, sepc={:x}",
-                unsafe { (*context).a0 },
-                unsafe { (*context).sepc }
-            );
+            // a7 encodes the SBI extension ID (EID),
+            // a6 encodes the SBI function ID (FID) for a given extension ID encoded in a7 for any SBI extension defined in or after SBI v0.2.
+            // info!(
+            //     "ecall: a0={:x}, eid={:x}, fid={:x}, sepc={:x}",
+            //     unsafe { (*context).a0 },
+            //     unsafe { (*context).a7 },
+            //     unsafe { (*context).a6 },
+            //     unsafe { (*context).sepc }
+            // );
+
+            let fid = unsafe { (*context).a6 };
+            let eid = unsafe { (*context).a7 };
+            let result = match (eid, fid) {
+                //  Get SBI specification version
+                (0x10, 0) => {
+                    // trace!("SBI: get spec version");
+                    //  version 0.1
+                    Ok(0x01)
+                }
+                _ => {
+                    panic!("SBI: unknown eid={:x}, fid={:x}", eid, fid);
+                }
+            };
+
+            let (error, value) = match result {
+                Ok(value) => (0, value),
+                Err(error) => (error, 0),
+            };
+
+            unsafe {
+                (*context).sepc += 4; // size of ecall
+            }
+
+            unsafe {
+                (*context).a0 = error;
+                (*context).a1 = value;
+            }
         } else {
             panic!(
                 "VM exit: {} (sepc={:x}, htval={:x}, stval={:x})",
