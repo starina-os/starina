@@ -377,7 +377,22 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
                 }
                 // Probe SBI extension
                 (0x10, 3) => {
-                    // Not available.
+                    // 0 means the extension is not supported.
+                    Ok(0)
+                }
+                // Get machine vendor ID
+                (0x10, 4) => {
+                    // "0 is always a legal value for this CSR" as per SBI spec.
+                    Ok(0)
+                }
+                // Get machine architecture ID
+                (0x10, 5) => {
+                    // "0 is always a legal value for this CSR" as per SBI spec.
+                    Ok(0)
+                }
+                // Get machine implementation ID
+                (0x10, 6) => {
+                    // "0 is always a legal value for this CSR" as per SBI spec.
                     Ok(0)
                 }
                 _ => {
