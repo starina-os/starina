@@ -18,6 +18,10 @@ pub enum Error {
     OutOfRam,
 }
 
+fn align_up(size: usize, align: usize) -> usize {
+    (size + align - 1) & !(align - 1)
+}
+
 pub struct Ram {
     folio: Folio,
     gpaddr: GPAddr,
@@ -46,12 +50,12 @@ impl Ram {
     }
 
     pub fn allocate(&mut self, size: usize, align: usize) -> Result<(&mut [u8], GPAddr), Error> {
-        if self.free_offset + size > self.size {
+        let free_start = align_up(self.free_offset, align);
+        if free_start + size > self.size {
             return Err(Error::OutOfRam);
         }
 
-        let free_start = self.free_offset;
-        self.free_offset += size;
+        self.free_offset = free_start + size;
 
         let gpaddr = self.gpaddr.checked_add(free_start).unwrap();
         let slice = &mut self.bytes_mut()[free_start..free_start + size];

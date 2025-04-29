@@ -62,7 +62,7 @@ pub fn load_riscv_image(ram: &mut Ram, image: &[u8]) -> Result<GPAddr, Error> {
         .allocate(kernel_size as usize, IMAGE_ALIGN)
         .map_err(Error::AllocRam)?;
 
-    debug_assert!(gpaddr.as_usize() % IMAGE_ALIGN == 0,);
+    debug_assert!(gpaddr.as_usize() % IMAGE_ALIGN == 0);
 
     trace!(
         "loaded image at gpaddr={}, len={}KiB",
