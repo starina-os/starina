@@ -62,13 +62,16 @@ pub fn build_fdt() -> Result<Vec<u8>, vm_fdt::Error> {
         fdt.property_string("status", "okay")?;
         // Specify the supported RISC-V ISA extensions
         fdt.property_string("riscv,isa-base", "rv64i")?;
-        fdt.property_string_list("riscv,isa-extensions", vec![
-            "i".to_string(),
-            "m".to_string(),
-            "a".to_string(),
-            "f".to_string(),
-            "d".to_string(),
-        fdt.property_string_list("riscv,isa-extensions", vec!["i", "m", "a", "f", "d", "c"])?;
+        fdt.property_string_list(
+            "riscv,isa-extensions",
+            vec![
+                "i".to_string(),
+                "m".to_string(),
+                "a".to_string(),
+                "f".to_string(),
+                "d".to_string(),
+            ],
+        )?;
         // Specify the MMU type (e.g., Sv39, Sv48)
         fdt.property_string("mmu-type", GUEST_MMU_TYPE)?;
 
