@@ -37,7 +37,7 @@ impl EventLoop for App {
 
         let mut ram = Ram::new(GUEST_RAM_ADDR, GUEST_RAM_SIZE).unwrap();
         let fdt = build_fdt().expect("failed to build device tree");
-        let (fdt_slice, _) = ram.allocate(fdt.len(), 4096).unwrap();
+        let (fdt_slice, fdt_gpaddr) = ram.allocate(fdt.len(), 4096).unwrap();
         fdt_slice[..fdt.len()].copy_from_slice(&fdt);
 
         // Prepare the guest memory.
@@ -46,8 +46,15 @@ impl EventLoop for App {
         let mut guest_memory = GuestMemory::new().unwrap();
         guest_memory.add_ram(ram).unwrap();
 
-        // Create a vCPU and run it.
-        let vcpu = VCpu::new(guest_memory.hvspace(), entry.as_usize()).unwrap();
+        // Fill registers that Linux expects:
+        //
+        // > $a0 to contain the hartid of the current core.
+        // > $a1 to contain the address of the devicetree in memory.
+        // > https://www.kernel.org/doc/html/next/riscv/boot.html
+        let a0 = 0; // hartid
+        let a1 = fdt_gpaddr.as_usize(); // fdt address
+
+        let vcpu = VCpu::new(guest_memory.hvspace(), entry.as_usize(), a0, a1).unwrap();
         let mut exit = VCpuExit::new();
         loop {
             trace!("entering vcpu.run");

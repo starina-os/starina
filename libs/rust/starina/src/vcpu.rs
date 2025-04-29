@@ -13,8 +13,8 @@ pub struct VCpu {
 }
 
 impl VCpu {
-    pub fn new(hvspace: &HvSpace, entry: usize) -> Result<Self, ErrorCode> {
-        let id = syscall::sys_vcpu_create(hvspace.handle_id(), entry)?;
+    pub fn new(hvspace: &HvSpace, entry: usize, a0: usize, a1: usize) -> Result<Self, ErrorCode> {
+        let id = syscall::sys_vcpu_create(hvspace.handle_id(), entry, a0, a1)?;
         Ok(Self {
             handle: OwnedHandle::from_raw(id),
         })

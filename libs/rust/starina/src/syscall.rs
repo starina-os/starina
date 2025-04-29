@@ -228,13 +228,18 @@ pub fn sys_hvspace_map(
     Ok(())
 }
 
-pub fn sys_vcpu_create(hvspace: HandleId, entry: usize) -> Result<HandleId, ErrorCode> {
+pub fn sys_vcpu_create(
+    hvspace: HandleId,
+    entry: usize,
+    a0: usize,
+    a1: usize,
+) -> Result<HandleId, ErrorCode> {
     let ret = syscall(
         SYS_VCPU_CREATE,
         hvspace.as_raw() as isize,
         entry.try_into().unwrap(),
-        0,
-        0,
+        a0.try_into().unwrap(),
+        a1.try_into().unwrap(),
         0,
     )?;
     // SAFETY: The syscall returns a valid handle ID.
