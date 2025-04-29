@@ -238,7 +238,16 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
     };
 
     let scause_code = scause & 0x7ff;
-    trace!("exited from vCPU: {}", scause_str);
+
+    let mut htval: u64;
+    unsafe {
+        asm!("csrr {}, htval", out(reg) htval);
+    }
+
+    trace!(
+        "VM exit: {} (sepc={}, htval={})",
+        scause_str, context.sepc, htval
+    );
 
     unsafe {
         set_cpuvar((*context).cpuvar_ptr as *const CpuVar);
