@@ -25,7 +25,7 @@ pub fn build_fdt() -> Result<Vec<u8>, vm_fdt::Error> {
     // Kernel command line. 'console=hvc0' directs printk to OpenSBI console.
     // 'earlycon=sbi' enables very early messages via SBI before full console setup.
     // Add rootfs, init path etc. as needed, e.g. "root=/dev/vda rw"
-    fdt.property_string("bootargs", "console=hvc0 earlycon=sbi panic=-1")?;
+    fdt.property_string("bootargs", "console=hvc0 earlycon=sbi earlyprintk panic=-1")?;
     // (Optional but good practice) Specify path to console device if needed,
     // but hvc0 often doesn't require an explicit FDT node if handled purely via SBI.
     // fdt.property_string("stdout-path", "/soc/serial@10000000")?; // Example if UART existed
