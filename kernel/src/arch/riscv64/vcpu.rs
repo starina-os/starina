@@ -23,6 +23,7 @@ struct Context {
     cpuvar_ptr: u64,
     hgatp: u64,
     hvip: u64,
+    hedeleg: u64,
     hstatus: u64,
     sstatus: u64,
     sepc: u64,
@@ -115,11 +116,26 @@ impl VCpu {
         let sstatus = 1 << 8; // SPP
         let hgatp = hvspace.arch().hgatp();
 
+        let mut hedeleg = 0;
+        hedeleg |= 1 << 0; // Instruction address misaligned
+        hedeleg |= 1 << 1; // Instruction access fault
+        hedeleg |= 1 << 2; // Illegal instruction
+        hedeleg |= 1 << 3; // Breakpoint
+        hedeleg |= 1 << 4; // Load address misaligned
+        hedeleg |= 1 << 5; // Load access fault
+        hedeleg |= 1 << 6; // Store/AMO address misaligned
+        hedeleg |= 1 << 7; // Store/AMO access fault
+        hedeleg |= 1 << 8; // Environment call from U-mode
+        hedeleg |= 1 << 12; // Instruction page fault
+        hedeleg |= 1 << 13; // Load page fault
+        hedeleg |= 1 << 15; // Store/AMO page fault
+
         let context = Context {
             sstatus,
             sepc,
             hgatp,
             hstatus,
+            hedeleg,
             a0: arg0 as u64,
             a1: arg1 as u64,
             ..Default::default()
@@ -163,6 +179,7 @@ pub fn vcpu_entry(vcpu: *mut VCpu) -> ! {
 
             "csrw hstatus, {hstatus}",
             "csrw hvip, {hvip}",
+            "csrw hedeleg, {hedeleg}",
 
             "csrw sscratch, {sscratch}",
             "csrw sstatus, {sstatus}",
@@ -215,6 +232,7 @@ pub fn vcpu_entry(vcpu: *mut VCpu) -> ! {
             hgatp = in(reg) context.hgatp,
             hstatus = in(reg) context.hstatus,
             hvip = in(reg) context.hvip,
+            hedeleg = in(reg) context.hedeleg,
             sscratch = in(reg) vcpu as *const _ as u64,
             sstatus = in(reg) context.sstatus,
             sepc = in(reg) context.sepc,
