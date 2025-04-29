@@ -17,9 +17,12 @@ use crate::isolation::IsolationHeapMut;
 use crate::spinlock::SpinLock;
 use crate::thread::switch_thread;
 
+const CONTEXT_MAGIC: u64 = 0xc000ffee;
+
 #[repr(C)]
 #[derive(Debug, Default)]
 struct Context {
+    magic: u64,
     cpuvar_ptr: u64,
     hgatp: u64,
     hvip: u64,
@@ -120,17 +123,18 @@ impl VCpu {
         hedeleg |= 1 << 0; // Instruction address misaligned
         hedeleg |= 1 << 1; // Instruction access fault
         hedeleg |= 1 << 2; // Illegal instruction
-        hedeleg |= 1 << 3; // Breakpoint
-        hedeleg |= 1 << 4; // Load address misaligned
-        hedeleg |= 1 << 5; // Load access fault
-        hedeleg |= 1 << 6; // Store/AMO address misaligned
-        hedeleg |= 1 << 7; // Store/AMO access fault
-        hedeleg |= 1 << 8; // Environment call from U-mode
+        // hedeleg |= 1 << 3; // Breakpoint FIXME: This is for my debug safe to revert
+        // hedeleg |= 1 << 4; // Load address misaligned
+        // hedeleg |= 1 << 5; // Load access fault
+        // hedeleg |= 1 << 6; // Store/AMO address misaligned
+        // hedeleg |= 1 << 7; // Store/AMO access fault
+        // hedeleg |= 1 << 8; // Environment call from U-mode
         hedeleg |= 1 << 12; // Instruction page fault
-        hedeleg |= 1 << 13; // Load page fault
-        hedeleg |= 1 << 15; // Store/AMO page fault
+        // hedeleg |= 1 << 13; // Load page fault
+        // hedeleg |= 1 << 15; // Store/AMO page fault
 
         let context = Context {
+            magic: CONTEXT_MAGIC,
             sstatus,
             sepc,
             hgatp,
@@ -169,6 +173,8 @@ pub fn vcpu_entry(vcpu: *mut VCpu) -> ! {
     unsafe {
         let context = &mut (*vcpu).context;
         context.cpuvar_ptr = cpuvar as u64;
+
+        info!("vcpu_entry: sepc={:x}", context.sepc);
 
         write_stvec(vcpu_trap_entry as *const () as usize, StvecMode::Direct);
 
@@ -337,19 +343,24 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
     }
 
     unsafe {
-        set_cpuvar((*context).cpuvar_ptr as *const CpuVar);
-        asm!("csrw sscratch, {}", in(reg) (*context).cpuvar_ptr);
         write_stvec(trap_entry as *const () as usize, StvecMode::Direct);
     }
 
     {
         let mut mutable = unsafe { (*vcpu).mutable.lock() };
         if scause_code == 10 && unsafe { (*context).a7 } == 1 {
+            info!("ecall: a0={:x}", unsafe { (*context).a0 });
             let ch = unsafe { (*context).a0 } as u8;
             mutable.printer.putchar(ch);
             unsafe {
                 (*context).sepc += 4; // size of ecall
             }
+        } else if scause == 10 {
+            info!(
+                "ecall: a0={:x}, sepc={:x}",
+                unsafe { (*context).a0 },
+                unsafe { (*context).sepc }
+            );
         } else {
             panic!(
                 "VM exit: {} (sepc={:x}, htval={:x}, stval={:x})",
@@ -432,6 +443,11 @@ pub extern "C" fn vcpu_trap_entry() -> ! {
             "csrr t0, sscratch",
             "sd t0, {a0_offset}(a0)",
 
+            // Restore the CpuVar pointer.
+            "ld tp, {cpuvar_ptr_offset}(a0)",
+            "csrw sscratch, tp",
+
+            "ld sp, {kernel_sp_offset}(tp)",
             "j {vcpu_trap_handler}",
 
             vcpu_trap_handler = sym vcpu_trap_handler,
@@ -478,6 +494,8 @@ pub extern "C" fn vcpu_trap_entry() -> ! {
             hvip_offset = const offset_of!(VCpu, context.hvip),
             sstatus_offset = const offset_of!(VCpu, context.sstatus),
             sepc_offset = const offset_of!(VCpu, context.sepc),
+            cpuvar_ptr_offset = const offset_of!(VCpu, context.cpuvar_ptr),
+            kernel_sp_offset = const offset_of!(CpuVar, arch.kernel_sp),
         );
     };
 }
