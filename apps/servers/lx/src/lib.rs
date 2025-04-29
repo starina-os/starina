@@ -11,13 +11,9 @@ use guest_memory::Ram;
 use starina::address::GPAddr;
 use starina::eventloop::Dispatcher;
 use starina::eventloop::EventLoop;
-use starina::folio::Folio;
-use starina::hvspace::HvSpace;
 use starina::prelude::*;
 use starina::vcpu::VCpu;
 use starina::vcpu::VCpuExit;
-use starina::vmspace::PageProtect;
-use starina::vmspace::VmSpace;
 
 #[derive(Debug)]
 pub enum State {}

@@ -78,6 +78,7 @@ COPY --from=initramfs-builder /initramfs.cpio.lz4 /initramfs.cpio.lz4
 RUN make ARCH=riscv CROSS_COMPILE=riscv64-linux-gnu- -j$(nproc) \
         olddefconfig Image
 
+RUN cp /linux/vmlinux /linux.elf
 RUN cp /linux/arch/riscv/boot/Image /linux.bin
 
 #
@@ -86,4 +87,5 @@ RUN cp /linux/arch/riscv/boot/Image /linux.bin
 FROM ubuntu:24.04
 RUN mkdir -p /build
 COPY --from=kernel-builder /linux.bin /build/linux.bin
+COPY --from=kernel-builder /linux.elf /build/linux.elf
 CMD ["/bin/bash"]

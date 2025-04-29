@@ -59,6 +59,8 @@ impl Ram {
 
         let gpaddr = self.gpaddr.checked_add(free_start).unwrap();
         let slice = &mut self.bytes_mut()[free_start..free_start + size];
+
+        trace!("RAM: allocated {} bytes at {}", size, gpaddr);
         Ok((slice, gpaddr))
     }
 
