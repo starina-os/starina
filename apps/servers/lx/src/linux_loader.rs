@@ -1,5 +1,6 @@
 use starina::address::GPAddr;
 use starina::error::ErrorCode;
+use starina::prelude::*;
 
 use crate::guest_memory::Ram;
 
@@ -13,12 +14,17 @@ pub enum Error {
 }
 
 /// <https://www.kernel.org/doc/html/v5.5/riscv/boot-image-header.html>
+/// <https://www.kernel.org/doc/Documentation/arm64/booting.txt>
 #[derive(Debug)]
 #[repr(C)]
 pub struct RiscvImageHeader {
     code0: u32,
     code1: u32,
     text_offset: u64,
+    /// The size of kernel memory, beyond the kernel image itself.
+    ///
+    /// > At least image_size bytes from the start of the image must be free for
+    /// > use by the kernel.
     image_size: u64,
     flags: u64,
     version: u32,
@@ -53,11 +59,6 @@ pub fn load_riscv_image(
         return Err(Error::InvalidMagic);
     }
 
-    let image_size: usize = u64::from_le(header.image_size).try_into().unwrap();
-    if image_size > image.len() {
-        return Err(Error::InvalidImageSize);
-    }
-
     // Load the image to "text_offset bytes from a 2MB aligned base address
     // anywhere in usable system RAM"
     // https://www.kernel.org/doc/Documentation/arm64/booting.txt
@@ -65,7 +66,7 @@ pub fn load_riscv_image(
     let text_offset: usize = u64::from_le(header.text_offset).try_into().unwrap();
     let offset = align_up(base, 2 * 1024 * 1024) + text_offset - base;
 
-    ram.bytes_mut()[offset..offset + image_size].copy_from_slice(&image[..image_size]);
+    ram.bytes_mut()[offset..offset + image.len()].copy_from_slice(&image[..image.len()]);
     let image_gpaddr = guest_memory_base.checked_add(offset).unwrap();
     Ok(image_gpaddr)
 }
