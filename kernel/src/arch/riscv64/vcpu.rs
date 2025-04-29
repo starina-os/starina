@@ -155,10 +155,6 @@ pub fn vcpu_entry(vcpu: *mut VCpu) -> ! {
         let context = &mut (*vcpu).context;
         context.cpuvar_ptr = cpuvar as u64;
 
-        unsafe {
-            info!("context: {:#x?}", (*context));
-        }
-
         write_stvec(vcpu_trap_entry as *const () as usize, StvecMode::Direct);
 
         // Restore VS-mode CSRs
