@@ -123,15 +123,15 @@ impl VCpu {
         hedeleg |= 1 << 0; // Instruction address misaligned
         hedeleg |= 1 << 1; // Instruction access fault
         hedeleg |= 1 << 2; // Illegal instruction
-        // hedeleg |= 1 << 3; // Breakpoint FIXME: This is for my debug safe to revert
-        // hedeleg |= 1 << 4; // Load address misaligned
-        // hedeleg |= 1 << 5; // Load access fault
-        // hedeleg |= 1 << 6; // Store/AMO address misaligned
-        // hedeleg |= 1 << 7; // Store/AMO access fault
-        // hedeleg |= 1 << 8; // Environment call from U-mode
+        hedeleg |= 1 << 3; // Breakpoint
+        hedeleg |= 1 << 4; // Load address misaligned
+        hedeleg |= 1 << 5; // Load access fault
+        hedeleg |= 1 << 6; // Store/AMO address misaligned
+        hedeleg |= 1 << 7; // Store/AMO access fault
+        hedeleg |= 1 << 8; // Environment call from U-mode
         hedeleg |= 1 << 12; // Instruction page fault
-        // hedeleg |= 1 << 13; // Load page fault
-        // hedeleg |= 1 << 15; // Store/AMO page fault
+        hedeleg |= 1 << 13; // Load page fault
+        hedeleg |= 1 << 15; // Store/AMO page fault
 
         let context = Context {
             magic: CONTEXT_MAGIC,
@@ -374,6 +374,11 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
                     // trace!("SBI: get spec version");
                     //  version 0.1
                     Ok(0x01)
+                }
+                // Probe SBI extension
+                (0x10, 3) => {
+                    // Not available.
+                    Ok(0)
                 }
                 _ => {
                     panic!("SBI: unknown eid={:x}, fid={:x}", eid, fid);
