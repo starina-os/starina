@@ -12,10 +12,3 @@ vm-fdt = { workspace = true, features = ["alloc"] }
 
 [build-dependencies]
 starina_build_sdk = { workspace = true }
-
-[profile.release]
-lto = true
-codegen-units = 1
-panic = "abort"
-strip = true
-opt-level = "z"

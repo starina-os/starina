@@ -2,6 +2,7 @@
 
 pub mod autogen;
 mod device_tree;
+mod linux_loader;
 
 use device_tree::build_fdt;
 use starina::address::GPAddr;
@@ -27,44 +28,16 @@ impl EventLoop for App {
     fn init(_dispatcher: &dyn Dispatcher<Self::State>, _env: Self::Env) -> Self {
         info!("starting");
 
-        const GUEST_MEMORY_SIZE: usize = 0x1000;
-        const GUEST_ENTRY: usize = 0x8000_a000;
+        const LINUX_ELF: &[u8] = include_bytes!("../linux.bin");
 
-        let folio = Folio::alloc(4096).unwrap();
-        let vaddr = VmSpace::map_anywhere_current(
-            &folio,
-            GUEST_MEMORY_SIZE,
-            PageProtect::READABLE | PageProtect::WRITEABLE,
-        )
-        .unwrap();
+        // Prepare the guest memory.
+        let hvspace = HvSpace::new().unwrap();
+        let entry = linux_loader::load_riscv_image(&mut hvspace, LINUX_ELF).unwrap();
 
         let fdt = build_fdt().expect("failed to build device tree");
 
-        let guest_memory: &mut [u8] =
-            unsafe { core::slice::from_raw_parts_mut(vaddr.as_mut_ptr(), GUEST_MEMORY_SIZE) };
-
-        const BOOT_CODE: &[u8] = include_bytes!("../../../../guest.bin");
-
-        // Copy the boot code to the guest memory.
-        unsafe {
-            core::ptr::copy_nonoverlapping(
-                BOOT_CODE.as_ptr(),
-                guest_memory.as_mut_ptr(),
-                BOOT_CODE.len(),
-            );
-        };
-
-        let hvspace = HvSpace::new().unwrap();
-        hvspace
-            .map(
-                GPAddr::new(GUEST_ENTRY),
-                &folio,
-                GUEST_MEMORY_SIZE,
-                PageProtect::READABLE | PageProtect::WRITEABLE | PageProtect::EXECUTABLE,
-            )
-            .unwrap();
-
-        let vcpu = VCpu::new(&hvspace, GUEST_ENTRY).unwrap();
+        // Create a vCPU and run it.
+        let vcpu = VCpu::new(&hvspace, entry).unwrap();
         let mut exit = VCpuExit::new();
         loop {
             trace!("entering vcpu.run");
