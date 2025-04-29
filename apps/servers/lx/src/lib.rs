@@ -27,7 +27,7 @@ impl EventLoop for App {
     fn init(_dispatcher: &dyn Dispatcher<Self::State>, _env: Self::Env) -> Self {
         info!("starting");
 
-        const LINUX_ELF: &[u8] = include_bytes!("../linux.bin");
+        const LINUX_ELF: &[u8] = include_bytes!("../linux/arch/riscv/boot/Image");
         const GUEST_RAM_SIZE: usize = 64 * 1024 * 1024; // 64MB
         const GUEST_RAM_ADDR: GPAddr = GPAddr::new(0x80000000);
 

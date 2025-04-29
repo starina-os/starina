@@ -69,4 +69,4 @@ RUN apt-get update && apt-get install -y \
 COPY --from=initramfs-builder /initramfs.cpio.lz4 /initramfs.cpio.lz4
 
 CMD make -C /lx/linux ARCH=riscv CROSS_COMPILE=riscv64-linux-gnu- -j$(nproc) \
-        olddefconfig Image && cp /lx/linux/arch/riscv/boot/Image /lx/linux.bin
+        olddefconfig Image
