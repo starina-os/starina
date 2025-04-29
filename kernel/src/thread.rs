@@ -173,7 +173,6 @@ pub fn switch_thread() -> ! {
                     arch::vcpu_entry(vcpu_ptr);
                 }
                 ThreadState::InVCpu(vcpu) => {
-                    trace!("leaving vCPU");
                     mutable.state = ThreadState::Runnable(None);
                     // The return value from vcpu_run syscall.
                     Some(RetVal::new(0))

@@ -137,7 +137,6 @@ impl VCpu {
     }
 
     pub fn update(&self, exit: IsolationHeapMut) -> Result<(), ErrorCode> {
-        trace!("exit update");
         let mut mutable = self.mutable.lock();
         if mutable.exit.is_some() {
             debug_warn!("vCPU already in use");
@@ -319,14 +318,6 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
         asm!("csrr {}, htval", out(reg) htval);
     }
 
-    trace!(
-        "VM exit: {} (sepc={:x}, htval={:x}, stval={:x})",
-        scause_str,
-        unsafe { (*context).sepc },
-        htval,
-        stval
-    );
-
     unsafe {
         set_cpuvar((*context).cpuvar_ptr as *const CpuVar);
         asm!("csrw sscratch, {}", in(reg) (*context).cpuvar_ptr);
@@ -342,7 +333,13 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
                 (*context).sepc += 4; // size of ecall
             }
         } else {
-            panic!()
+            panic!(
+                "VM exit: {} (sepc={:x}, htval={:x}, stval={:x})",
+                scause_str,
+                unsafe { (*context).sepc },
+                htval,
+                stval
+            );
         }
 
         let exit = mutable.exit.take().unwrap();

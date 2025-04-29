@@ -53,7 +53,6 @@ impl EventLoop for App {
         let vcpu = VCpu::new(guest_memory.hvspace(), entry.as_usize(), a0, a1).unwrap();
         let mut exit = VCpuExit::new();
         loop {
-            trace!("entering vcpu.run");
             vcpu.run(&mut exit).unwrap();
         }
         // Self {}
