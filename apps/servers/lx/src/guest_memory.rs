@@ -15,16 +15,19 @@ pub enum Error {
     CreateHvSpace(ErrorCode),
     VmSpaceMap(ErrorCode),
     MapRam(ErrorCode),
+    OutOfRam,
 }
 
 pub struct Ram {
     folio: Folio,
+    gpaddr: GPAddr,
     vaddr: VAddr,
     size: usize,
+    free_offset: usize,
 }
 
 impl Ram {
-    pub fn new(size: usize) -> Result<Self, Error> {
+    pub fn new(gpaddr: GPAddr, size: usize) -> Result<Self, Error> {
         let folio = Folio::alloc(size).map_err(Error::AllocFolio)?;
         let vaddr = VmSpace::map_anywhere_current(
             &folio,
@@ -33,7 +36,26 @@ impl Ram {
         )
         .map_err(Error::VmSpaceMap)?;
 
-        Ok(Self { folio, vaddr, size })
+        Ok(Self {
+            folio,
+            gpaddr,
+            vaddr,
+            size,
+            free_offset: 0,
+        })
+    }
+
+    pub fn allocate(&mut self, size: usize, align: usize) -> Result<(&mut [u8], GPAddr), Error> {
+        if self.free_offset + size > self.size {
+            return Err(Error::OutOfRam);
+        }
+
+        let free_start = self.free_offset;
+        self.free_offset += size;
+
+        let gpaddr = self.gpaddr.checked_add(free_start).unwrap();
+        let slice = &mut self.bytes_mut()[free_start..free_start + size];
+        Ok((slice, gpaddr))
     }
 
     pub fn bytes_mut(&mut self) -> &mut [u8] {
@@ -65,13 +87,14 @@ impl GuestMemory {
         &self.hvspace
     }
 
-    pub fn map_ram(&mut self, gpaddr: GPAddr, ram: Ram) -> Result<(), Error> {
+    pub fn add_ram(&mut self, ram: Ram) -> Result<(), Error> {
+        trace!("mapping ram at {}", ram.gpaddr);
         self.hvspace
             .map(
-                gpaddr,
+                ram.gpaddr,
                 &ram.folio,
                 ram.size,
-                PageProtect::READABLE | PageProtect::WRITEABLE,
+                PageProtect::READABLE | PageProtect::WRITEABLE | PageProtect::EXECUTABLE,
             )
             .map_err(Error::MapRam)?;
 

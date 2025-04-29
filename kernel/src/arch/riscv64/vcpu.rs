@@ -245,8 +245,10 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
     }
 
     trace!(
-        "VM exit: {} (sepc={}, htval={})",
-        scause_str, context.sepc, htval
+        "VM exit: {} (sepc={:x}, htval={:x})",
+        scause_str,
+        unsafe { (*context).sepc },
+        htval
     );
 
     unsafe {

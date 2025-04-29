@@ -8,6 +8,7 @@ use crate::guest_memory::Ram;
 pub enum Error {
     AllocFolio(ErrorCode),
     VmSpaceMap(ErrorCode),
+    AllocRam(crate::guest_memory::Error),
     TooShortImage,
     InvalidMagic,
     InvalidImageSize,
@@ -38,15 +39,16 @@ pub struct RiscvImageHeader {
     reserved3: u32,
 }
 
+/// Load the image to "text_offset bytes from a 2MB aligned base address
+/// anywhere in usable system RAM"
+/// https://www.kernel.org/doc/Documentation/arm64/booting.txt
+const IMAGE_ALIGN: usize = 2 * 1024 * 1024;
+
 fn align_up(size: usize, align: usize) -> usize {
     (size + align - 1) & !(align - 1)
 }
 
-pub fn load_riscv_image(
-    ram: &mut Ram,
-    guest_memory_base: GPAddr,
-    image: &[u8],
-) -> Result<GPAddr, Error> {
+pub fn load_riscv_image(ram: &mut Ram, image: &[u8]) -> Result<GPAddr, Error> {
     if image.len() < size_of::<RiscvImageHeader>() {
         return Err(Error::TooShortImage);
     }
@@ -59,14 +61,16 @@ pub fn load_riscv_image(
         return Err(Error::InvalidMagic);
     }
 
-    // Load the image to "text_offset bytes from a 2MB aligned base address
-    // anywhere in usable system RAM"
-    // https://www.kernel.org/doc/Documentation/arm64/booting.txt
-    let base = guest_memory_base.as_usize();
-    let text_offset: usize = u64::from_le(header.text_offset).try_into().unwrap();
-    let offset = align_up(base, 2 * 1024 * 1024) + text_offset - base;
+    let kernel_size = u64::from_le(header.image_size);
+    let (ram_slice, gpaddr) = ram
+        .allocate(kernel_size as usize, IMAGE_ALIGN)
+        .map_err(Error::AllocRam)?;
 
-    ram.bytes_mut()[offset..offset + image.len()].copy_from_slice(&image[..image.len()]);
-    let image_gpaddr = guest_memory_base.checked_add(offset).unwrap();
-    Ok(image_gpaddr)
+    trace!(
+        "loaded image at gpaddr={}, len={}KiB",
+        gpaddr,
+        image.len() / 1024
+    );
+    ram_slice[..image.len()].copy_from_slice(&image[..image.len()]);
+    Ok(gpaddr)
 }

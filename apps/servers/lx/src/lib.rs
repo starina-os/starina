@@ -35,14 +35,16 @@ impl EventLoop for App {
         const GUEST_RAM_SIZE: usize = 64 * 1024 * 1024; // 64MB
         const GUEST_RAM_ADDR: GPAddr = GPAddr::new(0x80000000);
 
-        // Prepare the guest memory.
-        let mut ram = Ram::new(GUEST_RAM_SIZE).unwrap();
-        let entry = linux_loader::load_riscv_image(&mut ram, GUEST_RAM_ADDR, LINUX_ELF).unwrap();
-
+        let mut ram = Ram::new(GUEST_RAM_ADDR, GUEST_RAM_SIZE).unwrap();
         let fdt = build_fdt().expect("failed to build device tree");
+        let (fdt_slice, _) = ram.allocate(fdt.len(), 4096).unwrap();
+        fdt_slice[..fdt.len()].copy_from_slice(&fdt);
+
+        // Prepare the guest memory.
+        let entry = linux_loader::load_riscv_image(&mut ram, LINUX_ELF).unwrap();
 
         let mut guest_memory = GuestMemory::new().unwrap();
-        guest_memory.map_ram(GUEST_RAM_ADDR, ram).unwrap();
+        guest_memory.add_ram(ram).unwrap();
 
         // Create a vCPU and run it.
         let vcpu = VCpu::new(guest_memory.hvspace(), entry.as_usize()).unwrap();
