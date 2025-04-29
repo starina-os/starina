@@ -369,6 +369,11 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
             let fid = unsafe { (*context).a6 };
             let eid = unsafe { (*context).a7 };
             let result = match (eid, fid) {
+                // Set timer
+                (0x00, 0) => {
+                    // TODO: implement
+                    Ok(0)
+                }
                 //  Get SBI specification version
                 (0x10, 0) => {
                     // trace!("SBI: get spec version");
@@ -412,6 +417,12 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
             unsafe {
                 (*context).a0 = error;
                 (*context).a1 = value;
+            }
+            // virtual instruction
+        } else if scause == 22 {
+            trace!("virtual instruction");
+            unsafe {
+                (*context).sepc += 4; // size of ecall
             }
         } else {
             panic!(
