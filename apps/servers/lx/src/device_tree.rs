@@ -61,7 +61,7 @@ pub fn build_fdt() -> Result<Vec<u8>, vm_fdt::Error> {
         // Mark the CPU as available
         fdt.property_string("status", "okay")?;
         // Specify the supported RISC-V ISA extensions
-        fdt.property_string("riscv,isa", GUEST_ISA_STRING)?;
+        fdt.property_string("riscv,isa-base", GUEST_ISA_STRING)?;
         // Specify the MMU type (e.g., Sv39, Sv48)
         fdt.property_string("mmu-type", GUEST_MMU_TYPE)?;
 
