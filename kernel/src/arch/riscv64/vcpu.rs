@@ -27,6 +27,7 @@ struct Context {
     hgatp: u64,
     hvip: u64,
     hedeleg: u64,
+    hcounteren: u64,
     hstatus: u64,
     sstatus: u64,
     sepc: u64,
@@ -133,6 +134,9 @@ impl VCpu {
         hedeleg |= 1 << 13; // Load page fault
         hedeleg |= 1 << 15; // Store/AMO page fault
 
+        // Enable all counters.
+        let mut hcounteren = 0xffff_ffff;
+
         let context = Context {
             magic: CONTEXT_MAGIC,
             sstatus,
@@ -140,6 +144,7 @@ impl VCpu {
             hgatp,
             hstatus,
             hedeleg,
+            hcounteren,
             a0: arg0 as u64,
             a1: arg1 as u64,
             ..Default::default()
@@ -186,6 +191,7 @@ pub fn vcpu_entry(vcpu: *mut VCpu) -> ! {
             "csrw hstatus, {hstatus}",
             "csrw hvip, {hvip}",
             "csrw hedeleg, {hedeleg}",
+            "csrw hcounteren, {hcounteren}",
 
             "csrw sscratch, {sscratch}",
             "csrw sstatus, {sstatus}",
@@ -239,6 +245,7 @@ pub fn vcpu_entry(vcpu: *mut VCpu) -> ! {
             hstatus = in(reg) context.hstatus,
             hvip = in(reg) context.hvip,
             hedeleg = in(reg) context.hedeleg,
+            hcounteren = in(reg) context.hcounteren,
             sscratch = in(reg) vcpu as *const _ as u64,
             sstatus = in(reg) context.sstatus,
             sepc = in(reg) context.sepc,
@@ -366,17 +373,18 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
             //     unsafe { (*context).sepc }
             // );
 
+            let a0 = unsafe { (*context).a0 };
             let fid = unsafe { (*context).a6 };
             let eid = unsafe { (*context).a7 };
             let result = match (eid, fid) {
                 // Set timer
                 (0x00, 0) => {
                     // TODO: implement
+                    panic!("SBI: set timer: a0={:x}", a0);
                     Ok(0)
                 }
                 //  Get SBI specification version
                 (0x10, 0) => {
-                    // trace!("SBI: get spec version");
                     //  version 0.1
                     Ok(0x01)
                 }
@@ -420,7 +428,15 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
             }
             // virtual instruction
         } else if scause == 22 {
-            // trace!("virtual instruction");
+            let htinst: u64;
+            unsafe {
+                asm!("csrr {}, htinst", out(reg) htinst);
+            }
+            panic!(
+                "virtual instruction: sepc={:x}, htinst={:x}",
+                unsafe { (*context).sepc },
+                htinst
+            );
             unsafe {
                 (*context).sepc += 4; // size of ecall
             }
@@ -500,6 +516,8 @@ pub extern "C" fn vcpu_trap_entry() -> ! {
             "sd t0, {hstatus_offset}(a0)",
             "csrr t0, hvip",
             "sd t0, {hvip_offset}(a0)",
+            "csrr t0, hcounteren",
+            "sd t0, {hcounteren_offset}(a0)",
             "csrr t0, sstatus",
             "sd t0, {sstatus_offset}(a0)",
             "csrr t0, sepc",
@@ -557,6 +575,7 @@ pub extern "C" fn vcpu_trap_entry() -> ! {
             vsatp_offset = const offset_of!(VCpu, context.vsatp),
             hstatus_offset = const offset_of!(VCpu, context.hstatus),
             hvip_offset = const offset_of!(VCpu, context.hvip),
+            hcounteren_offset = const offset_of!(VCpu, context.hcounteren),
             sstatus_offset = const offset_of!(VCpu, context.sstatus),
             sepc_offset = const offset_of!(VCpu, context.sepc),
             cpuvar_ptr_offset = const offset_of!(VCpu, context.cpuvar_ptr),
