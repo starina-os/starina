@@ -434,7 +434,9 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
             );
         }
 
-        let exit = mutable.exit.take().unwrap();
+        // let exit = mutable.exit.take().unwrap();
+        // drop(mutable);
+        // current_thread().exit_vcpu();
     }
 
     switch_thread();

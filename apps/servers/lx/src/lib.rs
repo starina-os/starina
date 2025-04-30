@@ -54,6 +54,7 @@ impl EventLoop for App {
         let mut exit = VCpuExit::new();
         loop {
             vcpu.run(&mut exit).unwrap();
+            panic!("vcpu exited");
         }
         // Self {}
     }

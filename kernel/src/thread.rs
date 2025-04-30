@@ -22,7 +22,7 @@ pub enum ThreadState {
     Runnable(Option<RetVal>),
     BlockedByPoll(SharedRef<Poll>),
     RunVCpu(SharedRef<VCpu>),
-    InVCpu(SharedRef<VCpu>),
+    ExitVCpu(SharedRef<VCpu>),
     Exited,
 }
 
@@ -99,6 +99,16 @@ impl Thread {
             GLOBAL_SCHEDULER.push(self.clone());
         }
     }
+
+    pub fn exit_vcpu(self: &SharedRef<Self>) {
+        let mut mutable = self.mutable.lock();
+        let vcpu = match &mutable.state {
+            ThreadState::RunVCpu(vcpu) => vcpu,
+            _ => panic!("thread is not running a vcpu"),
+        };
+
+        mutable.state = ThreadState::ExitVCpu(vcpu.clone());
+    }
 }
 
 impl Drop for Thread {
@@ -119,7 +129,7 @@ pub fn switch_thread() -> ! {
             let is_idle = SharedRef::ptr_eq(&*current_thread, &cpuvar.idle_thread);
             let is_runnable = matches!(
                 current_thread.mutable.lock().state,
-                ThreadState::Runnable(_) | ThreadState::RunVCpu(_) | ThreadState::InVCpu(_)
+                ThreadState::Runnable(_) | ThreadState::RunVCpu(_) | ThreadState::ExitVCpu(_)
             );
             (current_thread, is_idle, is_runnable)
         };
@@ -167,12 +177,11 @@ pub fn switch_thread() -> ! {
                 ThreadState::RunVCpu(vcpu) => {
                     // Keep at least one reference to vcpu in the state to keep alive.
                     let vcpu_ptr = unsafe { vcpu.arch_vcpu_ptr() };
-                    mutable.state = ThreadState::InVCpu(vcpu.clone());
                     drop(mutable);
                     drop(current_thread);
                     arch::vcpu_entry(vcpu_ptr);
                 }
-                ThreadState::InVCpu(vcpu) => {
+                ThreadState::ExitVCpu(vcpu) => {
                     mutable.state = ThreadState::Runnable(None);
                     // The return value from vcpu_run syscall.
                     Some(RetVal::new(0))
