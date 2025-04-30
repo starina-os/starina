@@ -420,7 +420,7 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
             }
             // virtual instruction
         } else if scause == 22 {
-            trace!("virtual instruction");
+            // trace!("virtual instruction");
             unsafe {
                 (*context).sepc += 4; // size of ecall
             }
