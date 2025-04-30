@@ -70,6 +70,7 @@ struct Context {
     vstvec: u64,
     vsscratch: u64,
     vsatp: u64,
+    vstimecmp: u64,
 }
 
 struct ConsolePrinter {
@@ -204,6 +205,7 @@ pub fn vcpu_entry(vcpu: *mut VCpu) -> ! {
             "csrw vsatp, {vsatp}",
             "csrw vscause, {vscause}",
             "csrw vstval, {vstval}",
+            "csrw vstimecmp, {vstimecmp}",
 
             // Restore general-purpose registers
             "mv a0, {context}",
@@ -256,6 +258,7 @@ pub fn vcpu_entry(vcpu: *mut VCpu) -> ! {
             vsatp = in(reg) context.vsatp,
             vscause = in(reg) context.vscause,
             vstval = in(reg) context.vstval,
+            vstimecmp = in(reg) context.vstimecmp,
             context = in(reg) context as *const _,
             ra_offset = const offset_of!(Context, ra),
             sp_offset = const offset_of!(Context, sp),
@@ -380,7 +383,7 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
                 // Set timer
                 (0x00, 0) => {
                     // TODO: implement
-                    panic!("SBI: set timer: a0={:x}", a0);
+                    info!("SBI: set timer: a0={:x}", a0);
                     Ok(0)
                 }
                 //  Get SBI specification version
@@ -512,6 +515,8 @@ pub extern "C" fn vcpu_trap_entry() -> ! {
             "sd t0, {vsscratch_offset}(a0)",
             "csrr t0, vsatp",
             "sd t0, {vsatp_offset}(a0)",
+            "csrr t0, vstimecmp",
+            "sd t0, {vstimecmp_offset}(a0)",
             "csrr t0, hstatus",
             "sd t0, {hstatus_offset}(a0)",
             "csrr t0, hvip",
@@ -573,6 +578,7 @@ pub extern "C" fn vcpu_trap_entry() -> ! {
             vstvec_offset = const offset_of!(VCpu, context.vstvec),
             vsscratch_offset = const offset_of!(VCpu, context.vsscratch),
             vsatp_offset = const offset_of!(VCpu, context.vsatp),
+            vstimecmp_offset = const offset_of!(VCpu, context.vstimecmp),
             hstatus_offset = const offset_of!(VCpu, context.hstatus),
             hvip_offset = const offset_of!(VCpu, context.hvip),
             hcounteren_offset = const offset_of!(VCpu, context.hcounteren),
