@@ -6,7 +6,6 @@ const GUEST_RAM_SIZE: u64 = 64 * 1024 * 1024; // 64 MiB RAM, adjust as needed
 const GUEST_NUM_CPUS: u32 = 1; // Number of virtual CPUs
 const GUEST_HART_ID_BASE: u32 = 0; // Starting Hart ID
 const GUEST_TIMEBASE_FREQ: u64 = 10_000_000; // QEMU virt default timer frequency (10 MHz)
-const GUEST_ISA_STRING: &str = "rv64imafdc"; // Example ISA, adjust if needed (e.g., "rv64imafdc")
 const GUEST_MMU_TYPE: &str = "riscv,sv48"; // Common MMU type for RV64
 
 pub fn build_fdt() -> Result<Vec<u8>, vm_fdt::Error> {
