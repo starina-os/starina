@@ -94,7 +94,6 @@ impl GuestMemory {
     }
 
     pub fn add_ram(&mut self, ram: Ram) -> Result<(), Error> {
-        trace!("mapping ram at {}", ram.gpaddr);
         self.hvspace
             .map(
                 ram.gpaddr,
