@@ -28,6 +28,7 @@ struct Context {
     hvip: u64,
     hedeleg: u64,
     hcounteren: u64,
+    htimedelta: u64,
     hstatus: u64,
     sstatus: u64,
     sepc: u64,
@@ -138,6 +139,13 @@ impl VCpu {
         // Enable all counters.
         let mut hcounteren = 0xffff_ffff;
 
+        let mut now: u64;
+        unsafe {
+            asm!("rdtime {}", out(reg) now);
+        }
+        // let htimedelta = (-(now as i64)) as u64;
+        let htimedelta = 0;
+
         let context = Context {
             magic: CONTEXT_MAGIC,
             sstatus,
@@ -146,6 +154,7 @@ impl VCpu {
             hstatus,
             hedeleg,
             hcounteren,
+            htimedelta,
             a0: arg0 as u64,
             a1: arg1 as u64,
             ..Default::default()
@@ -193,6 +202,7 @@ pub fn vcpu_entry(vcpu: *mut VCpu) -> ! {
             "csrw hvip, {hvip}",
             "csrw hedeleg, {hedeleg}",
             "csrw hcounteren, {hcounteren}",
+            "csrw htimedelta, {htimedelta}",
 
             "csrw sscratch, {sscratch}",
             "csrw sstatus, {sstatus}",
@@ -248,6 +258,7 @@ pub fn vcpu_entry(vcpu: *mut VCpu) -> ! {
             hvip = in(reg) context.hvip,
             hedeleg = in(reg) context.hedeleg,
             hcounteren = in(reg) context.hcounteren,
+            htimedelta = in(reg) context.htimedelta,
             sscratch = in(reg) vcpu as *const _ as u64,
             sstatus = in(reg) context.sstatus,
             sepc = in(reg) context.sepc,
@@ -384,6 +395,15 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
                 (0x00, 0) => {
                     // TODO: implement
                     info!("SBI: set timer: a0={:x}", a0);
+                    if a0 < 0xffff_ffff {
+                        trace!("injecting timer interrupt");
+                        let mut hvip = unsafe { (*context).hvip };
+                        // Set VSTIP
+                        hvip |= 1 << 6;
+                        unsafe {
+                            (*context).hvip = hvip;
+                        }
+                    }
                     Ok(0)
                 }
                 //  Get SBI specification version
