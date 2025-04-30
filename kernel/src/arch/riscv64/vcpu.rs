@@ -118,7 +118,11 @@ impl VCpu {
         arg1: usize,
     ) -> Result<VCpu, ErrorCode> {
         let sepc = entry as u64;
-        let hstatus = 1 << 7; // SPV
+
+        let mut hstatus = 0;
+        hstatus |= 1 << 7; // SPV
+        hstatus |= 1 << 21; // VTW
+
         let sstatus = 1 << 8; // SPP
         let hgatp = hvspace.arch().hgatp();
 
