@@ -25,6 +25,8 @@ struct Context {
     magic: u64,
     cpuvar_ptr: u64,
     hgatp: u64,
+    hie: u64,
+    hip: u64,
     hvip: u64,
     hedeleg: u64,
     hcounteren: u64,
@@ -203,6 +205,8 @@ pub fn vcpu_entry(vcpu: *mut VCpu) -> ! {
             "hfence.gvma",
 
             "csrw hstatus, {hstatus}",
+            "csrw hip, {hip}",
+            "csrw hie, {hie}",
             "csrw hvip, {hvip}",
             "csrw hedeleg, {hedeleg}",
             "csrw hcounteren, {hcounteren}",
@@ -259,6 +263,8 @@ pub fn vcpu_entry(vcpu: *mut VCpu) -> ! {
             "sret",
             hgatp = in(reg) context.hgatp,
             hstatus = in(reg) context.hstatus,
+            hie = in(reg) context.hie,
+            hip = in(reg) context.hip,
             hvip = in(reg) context.hvip,
             hedeleg = in(reg) context.hedeleg,
             hcounteren = in(reg) context.hcounteren,
@@ -404,6 +410,8 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
                         let mut hvip = unsafe { (*context).hvip };
                         // Set VSTIP
                         hvip |= 1 << 6;
+                        // VSSIP
+                        hvip |= 1 << 2;
                         unsafe {
                             (*context).hvip = hvip;
                         }
@@ -459,13 +467,18 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
             unsafe {
                 asm!("csrr {}, htinst", out(reg) htinst);
             }
-            panic!(
+            info!(
                 "virtual instruction: sepc={:x}, htinst={:x}",
                 unsafe { (*context).sepc },
                 htinst
             );
+            let mut hvip = unsafe { (*context).hvip };
+            // Set VSTIP
+            hvip |= 1 << 6;
+            // VSSIP
+            hvip |= 1 << 2;
             unsafe {
-                (*context).sepc += 4; // size of ecall
+                (*context).hvip = hvip;
             }
         } else {
             panic!(
@@ -543,6 +556,10 @@ pub extern "C" fn vcpu_trap_entry() -> ! {
             "sd t0, {vstimecmp_offset}(a0)",
             "csrr t0, hstatus",
             "sd t0, {hstatus_offset}(a0)",
+            "csrr t0, hie",
+            "sd t0, {hie_offset}(a0)",
+            "csrr t0, hip",
+            "sd t0, {hip_offset}(a0)",
             "csrr t0, hvip",
             "sd t0, {hvip_offset}(a0)",
             "csrr t0, hcounteren",
@@ -604,6 +621,8 @@ pub extern "C" fn vcpu_trap_entry() -> ! {
             vsatp_offset = const offset_of!(VCpu, context.vsatp),
             vstimecmp_offset = const offset_of!(VCpu, context.vstimecmp),
             hstatus_offset = const offset_of!(VCpu, context.hstatus),
+            hie_offset = const offset_of!(VCpu, context.hie),
+            hip_offset = const offset_of!(VCpu, context.hip),
             hvip_offset = const offset_of!(VCpu, context.hvip),
             hcounteren_offset = const offset_of!(VCpu, context.hcounteren),
             sstatus_offset = const offset_of!(VCpu, context.sstatus),

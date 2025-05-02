@@ -5,7 +5,7 @@ const GUEST_RAM_START: u64 = 0x80000000; // Standard QEMU virt machine RAM start
 const GUEST_RAM_SIZE: u64 = 64 * 1024 * 1024; // 64 MiB RAM, adjust as needed
 const GUEST_NUM_CPUS: u32 = 1; // Number of virtual CPUs
 const GUEST_HART_ID_BASE: u32 = 0; // Starting Hart ID
-const GUEST_TIMEBASE_FREQ: u64 = 10_000_000; // QEMU virt default timer frequency (10 MHz)
+const GUEST_TIMEBASE_FREQ: u32 = 1; // QEMU virt default timer frequency (10 MHz)
 const GUEST_MMU_TYPE: &str = "riscv,sv48"; // Common MMU type for RV64
 
 pub fn build_fdt() -> Result<Vec<u8>, vm_fdt::Error> {
@@ -48,7 +48,7 @@ pub fn build_fdt() -> Result<Vec<u8>, vm_fdt::Error> {
     // Size-cells typically 0 for CPUs
     fdt.property_u32("#size-cells", 0x0)?;
     // Timer frequency: Essential for timekeeping. OpenSBI usually uses this.
-    fdt.property_u64("timebase-frequency", GUEST_TIMEBASE_FREQ)?;
+    fdt.property_u32("timebase-frequency", GUEST_TIMEBASE_FREQ)?;
 
     // Define each CPU (hart)
     for i in 0..GUEST_NUM_CPUS {
