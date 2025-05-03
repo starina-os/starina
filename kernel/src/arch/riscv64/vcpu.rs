@@ -390,44 +390,14 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
     {
         let mut mutable = unsafe { (*vcpu).mutable.lock() };
         if scause == 10 {
-            // a7 encodes the SBI extension ID (EID),
-            // a6 encodes the SBI function ID (FID) for a given extension ID encoded in a7 for any SBI extension defined in or after SBI v0.2.
-            // info!(
-            //     "ecall: a0={:x}, eid={:x}, fid={:x}, sepc={:x}",
-            //     unsafe { (*context).a0 },
-            //     unsafe { (*context).a7 },
-            //     unsafe { (*context).a6 },
-            //     unsafe { (*context).sepc }
-            // );
-
             let a0 = unsafe { (*context).a0 };
             let fid = unsafe { (*context).a6 };
             let eid = unsafe { (*context).a7 };
 
-            use core::sync::atomic::AtomicUsize;
-            use core::sync::atomic::Ordering;
-
-            static TIMER_ENABLED: AtomicUsize = AtomicUsize::new(0xffff_ffff);
             let result = match (eid, fid) {
                 (0x01, 0x00) => {
                     let ch = unsafe { (*context).a0 } as u8;
                     mutable.printer.putchar(ch);
-
-                    if ch == b'\n' {
-                        unsafe {
-                            // VSTIP: supervisor timer interrupt pending
-                            // (*context).hvip |= 1 << 6;
-                        }
-                    }
-
-                    if TIMER_ENABLED.fetch_sub(1, Ordering::Relaxed) == 0 {
-                        // info!("injecting timer interrupt");
-                        unsafe {
-                            // VSTIP: supervisor timer interrupt pending
-                            // (*context).hvip |= 1 << 6;
-                        }
-                    }
-
                     Ok(0)
                 }
                 (0x02, 0x00) => {
@@ -484,59 +454,10 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
             }
             // virtual instruction
         } else if scause == 22 {
-            // panic!(
-            //     "virtual instruction: sepc={:x}, vsip={:x}, vsie={:x}",
-            //     unsafe { (*context).sepc },
-            //     unsafe { (*context).vsip },
-            //     unsafe { (*context).vsie }
-            // );
-
-            // info!(
-            //     "guest (virtual instruction): vsip={:x}, vsie={:x}",
-            //     unsafe { (*context).vsip },
-            //     unsafe { (*context).vsie }
-            // );
-
             unsafe {
                 (*context).hvip |= 1 << 6;
                 (*context).sepc += 4;
             }
-
-            // info!("injecting timer interrupt");
-            // unsafe {
-            //     // VSTIP: supervisor timer interrupt pending
-            //     // (*context).hideleg |= 1 << 6;
-            //     // (*context).hideleg |= 1 << 5;
-            //     (*context).hvip |= 1 << 6;
-            //     (*context).hvip |= 1 << 5;
-            //     (*context).vsip |= 1 << 6;
-            //     (*context).vsip |= 1 << 5;
-            //     (*context).vsie |= 1 << 6;
-            //     (*context).vsie |= 1 << 5;
-            // }
-
-            // let htinst: u64;
-            // let vsie: u64;
-            // let hie: u64;
-            // unsafe {
-            //     asm!("csrr {}, htinst", out(reg) htinst);
-            //     asm!("csrr {}, vsie", out(reg) vsie);
-            //     asm!("csrr {}, hie", out(reg) hie);
-            // }
-            // panic!(
-            //     "virtual instruction: sepc={:x}, vsie={:x}, hie={:x}",
-            //     unsafe { (*context).sepc },
-            //     vsie,
-            //     hie
-            // );
-            // let mut hvip = unsafe { (*context).hvip };
-            // // Set VSTIP
-            // hvip |= 1 << 6;
-            // // VSSIP
-            // hvip |= 1 << 2;
-            // unsafe {
-            //     (*context).hvip = hvip;
-            // }
         } else {
             panic!(
                 "VM exit: {} (sepc={:x}, htval={:x}, stval={:x})",
