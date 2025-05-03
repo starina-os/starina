@@ -425,7 +425,7 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
                 // Set timer
                 (0x00, 0) => {
                     // TODO: implement
-                    info!("SBI: set_timer: a0={:x}", a0);
+                    // info!("SBI: set_timer: a0={:x}", a0);
 
                     // super::sbi::set_timer(a0);
                     // Clear the timer interrupt
@@ -433,7 +433,7 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
                         let now: u64;
                         asm!("rdtime {}", out(reg) now);
                         let htimedelta = unsafe { (*context).htimedelta };
-                        (*context).vstimecmp = htimedelta + now + 0x15000;
+                        (*context).vstimecmp = htimedelta + now + 0x18000;
                         // (*context).hie &= !(1 << 5);
                     }
 

@@ -33,8 +33,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
 FROM ubuntu:24.04 AS initramfs-builder
 
 RUN apt-get update && apt-get install -y \
-    cpio \
-    lz4
+    cpio
 
 RUN mkdir -p /rootfs
 RUN mkdir -p /rootfs/bin
@@ -47,7 +46,7 @@ RUN mkdir -p /rootfs/var
 COPY --from=lxinit-builder /lxinit /rootfs/lxinit
 
 WORKDIR /rootfs
-RUN find . -print0 | cpio --null -o --format=newc | lz4 -9 > /initramfs.cpio.lz4
+RUN find . -print0 | cpio --null -o --format=newc > /initramfs.cpio
 
 #
 #  Kernel builder
@@ -62,11 +61,12 @@ RUN apt-get update && apt-get install -y \
     bison \
     bc \
     cpio \
+    lz4 \
     libelf-dev \
     gcc-riscv64-linux-gnu \
     binutils-riscv64-linux-gnu
 
-COPY --from=initramfs-builder /initramfs.cpio.lz4 /initramfs.cpio.lz4
+COPY --from=initramfs-builder /initramfs.cpio /initramfs.cpio
 
 CMD make -C /lx/linux ARCH=riscv CROSS_COMPILE=riscv64-linux-gnu- -j$(nproc) \
         olddefconfig Image
