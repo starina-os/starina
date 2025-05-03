@@ -204,6 +204,9 @@ pub fn vcpu_entry(vcpu: *mut VCpu) -> ! {
 
         write_stvec(vcpu_trap_entry as *const () as usize, StvecMode::Direct);
 
+        let hvip = context.hvip;
+        context.hvip = 0;
+
         // Restore VS-mode CSRs
         asm!(
             "csrw hgatp, {hgatp}",
@@ -271,7 +274,7 @@ pub fn vcpu_entry(vcpu: *mut VCpu) -> ! {
             hstatus = in(reg) context.hstatus,
             hie = in(reg) context.hie,
             hip = in(reg) context.hip,
-            hvip = in(reg) context.hvip,
+            hvip = in(reg) hvip,
             hedeleg = in(reg) context.hedeleg,
             hideleg = in(reg) context.hideleg,
             hcounteren = in(reg) context.hcounteren,
@@ -614,8 +617,6 @@ pub extern "C" fn vcpu_trap_entry() -> ! {
             "sd t0, {hie_offset}(a0)",
             "csrr t0, hip",
             "sd t0, {hip_offset}(a0)",
-            "csrr t0, hvip",
-            "sd t0, {hvip_offset}(a0)",
             "csrr t0, hcounteren",
             "sd t0, {hcounteren_offset}(a0)",
             "csrr t0, sstatus",
@@ -677,7 +678,6 @@ pub extern "C" fn vcpu_trap_entry() -> ! {
             hstatus_offset = const offset_of!(VCpu, context.hstatus),
             hie_offset = const offset_of!(VCpu, context.hie),
             hip_offset = const offset_of!(VCpu, context.hip),
-            hvip_offset = const offset_of!(VCpu, context.hvip),
             hcounteren_offset = const offset_of!(VCpu, context.hcounteren),
             sstatus_offset = const offset_of!(VCpu, context.sstatus),
             sepc_offset = const offset_of!(VCpu, context.sepc),
