@@ -88,12 +88,12 @@ pub extern "C" fn interrupt_handler() -> ! {
     } else if (is_intr, code) == (true, 5) {
         info!("interrupt: supervisor timer interrupt");
         use crate::thread::TIMER_QUEUE;
-        for thread in TIMER_QUEUE.lock().iter() {
+        while let Some(thread) = TIMER_QUEUE.lock().pop() {
             trace!("resumed a thread");
             thread.resume_from_idle_vcpu();
         }
 
-        super::sbi::set_timer(0xffffffffffffffff);
+        // super::sbi::set_timer(0xffffffffffffffff);
         switch_thread();
     } else {
         panic!("unhandled intrrupt");

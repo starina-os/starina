@@ -486,6 +486,12 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
                 info!("no pending interrupt, going to idle");
                 let current = crate::cpuvar::current_thread();
                 current.idle_vcpu();
+
+                // let mut now: u64;
+                // unsafe {
+                //     asm!("csrr {}, time", out(reg) now);
+                // }
+                // super::sbi::set_timer(now + 0x20000); // FIXME:
             }
         } else if (is_intr, code) == (true, 5) {
             context.hvip = 1 << 6; // FIXME:
