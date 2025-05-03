@@ -23,6 +23,7 @@ const CONTEXT_MAGIC: u64 = 0xc000ffee;
 #[derive(Debug, Default)]
 struct Context {
     magic: u64,
+    in_wfi: bool,
     cpuvar_ptr: u64,
     hgatp: u64,
     hie: u64,
@@ -204,8 +205,17 @@ pub fn vcpu_entry(vcpu: *mut VCpu) -> ! {
 
         write_stvec(vcpu_trap_entry as *const () as usize, StvecMode::Direct);
 
-        let hvip = context.hvip;
-        context.hvip = 0;
+        if context.in_wfi {
+            // context.sepc += 4; // size of wfi
+            context.in_wfi = false;
+        }
+
+        let mut hvip = 0;
+        if context.hvip != 0 {
+            // info!("injecting hvip: vsstatus={:x}", context.vsstatus);
+            hvip = context.hvip;
+            context.hvip = 0;
+        }
 
         // Restore VS-mode CSRs
         asm!(
@@ -387,6 +397,9 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
         write_stvec(trap_entry as *const () as usize, StvecMode::Direct);
     }
 
+    // Check if it's from VS/VU-mode.
+    assert!(context.hstatus & (1 << 7/* SPV */) != 0, "SPV is not set");
+
     {
         let mut mutable = unsafe { (*vcpu).mutable.lock() };
         if scause == 10 {
@@ -404,7 +417,24 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
                 }
                 // Set timer
                 (0x00, 0) => {
-                    // TODO: implement
+                    let vtime = context.a0;
+                    let htimedelta = context.htimedelta;
+                    let htime = vtime.wrapping_sub(htimedelta);
+                    if vtime == u64::MAX {
+                        info!("vcpu_trap_handler: disabling timer");
+                        super::sbi::set_timer(0xffffffffffffffff);
+                    } else {
+                        let mut now: u64;
+                        unsafe {
+                            asm!("csrr {}, time", out(reg) now);
+                        }
+                        info!(
+                            "vcpu_trap_handler: set_timer: htime={:x} (+{:x})",
+                            htime,
+                            htime - now
+                        );
+                        super::sbi::set_timer(htime + 0x10000);
+                    }
                     Ok(0)
                 }
                 //  Get SBI specification version
@@ -445,11 +475,25 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
             context.sepc += 4; // size of ecall
             context.a0 = error;
             context.a1 = value;
-            // virtual instruction
-            context.hvip |= 1 << 6;
         } else if scause == 22 {
-            context.hvip |= 1 << 6;
-            context.sepc += 4;
+            // info!(
+            //     "vcpu_trap_handler: virtual instruction: sepc={:x}",
+            //     context.sepc
+            // );
+            context.sepc += 4; // size of virtual instruction
+
+            if context.hvip == 0 {
+                info!("no pending interrupt, going to idle");
+                let current = crate::cpuvar::current_thread();
+                current.idle_vcpu();
+            }
+        } else if (is_intr, code) == (true, 5) {
+            context.hvip = 1 << 6; // FIXME:
+            let mut now: u64;
+            unsafe {
+                asm!("csrr {}, time", out(reg) now);
+            }
+            super::sbi::set_timer(now + 0x10000);
         } else {
             panic!(
                 "VM exit: {} (sepc={:x}, htval={:x}, stval={:x})",

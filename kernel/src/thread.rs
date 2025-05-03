@@ -22,6 +22,7 @@ pub enum ThreadState {
     Runnable(Option<RetVal>),
     BlockedByPoll(SharedRef<Poll>),
     RunVCpu(SharedRef<VCpu>),
+    IdleVCpu(SharedRef<VCpu>),
     ExitVCpu(SharedRef<VCpu>),
     Exited,
 }
@@ -36,6 +37,9 @@ impl Mutable {
         &raw const self.arch as *mut _
     }
 }
+
+use alloc::vec::Vec;
+pub static TIMER_QUEUE: SpinLock<Vec<SharedRef<Thread>>> = SpinLock::new(Vec::new());
 
 pub struct Thread {
     mutable: SpinLock<Mutable>,
@@ -98,6 +102,28 @@ impl Thread {
         if was_blocked && matches!(mutable.state, ThreadState::Runnable(_)) {
             GLOBAL_SCHEDULER.push(self.clone());
         }
+    }
+
+    pub fn resume_from_idle_vcpu(self: &SharedRef<Self>) {
+        let mut mutable = self.mutable.lock();
+        let vcpu = match &mutable.state {
+            ThreadState::IdleVCpu(vcpu) => vcpu,
+            _ => panic!("thread is not idle"),
+        };
+
+        mutable.state = ThreadState::RunVCpu(vcpu.clone());
+        GLOBAL_SCHEDULER.push(self.clone());
+    }
+
+    pub fn idle_vcpu(self: &SharedRef<Self>) {
+        let mut mutable = self.mutable.lock();
+        let vcpu = match &mutable.state {
+            ThreadState::RunVCpu(vcpu) => vcpu,
+            _ => panic!("thread is not running a vcpu"),
+        };
+
+        TIMER_QUEUE.lock().push(self.clone());
+        mutable.state = ThreadState::IdleVCpu(vcpu.clone());
     }
 
     pub fn exit_vcpu(self: &SharedRef<Self>) {
@@ -180,6 +206,9 @@ pub fn switch_thread() -> ! {
                     drop(mutable);
                     drop(current_thread);
                     arch::vcpu_entry(vcpu_ptr);
+                }
+                ThreadState::IdleVCpu(vcpu) => {
+                    continue 'next_thread;
                 }
                 ThreadState::ExitVCpu(vcpu) => {
                     mutable.state = ThreadState::Runnable(None);

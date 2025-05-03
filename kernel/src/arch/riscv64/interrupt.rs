@@ -61,7 +61,7 @@ pub extern "C" fn interrupt_handler() -> ! {
 
     let sepc = unsafe { (*cpuvar.arch.context).sepc } as u64;
 
-    trace!(
+    info!(
         "interrupt: {} (scause={:#x}), sepc: {:#x}, stval: {:#x}",
         scause_str, scause, sepc, stval
     );
@@ -85,6 +85,16 @@ pub extern "C" fn interrupt_handler() -> ! {
         // let a5 = unsafe { (*cpuvar.arch.context).a5 } as isize;
         // let ret = syscall_handler(a0, a1, a2, a3, a4, a5);
         todo!()
+    } else if (is_intr, code) == (true, 5) {
+        info!("interrupt: supervisor timer interrupt");
+        use crate::thread::TIMER_QUEUE;
+        for thread in TIMER_QUEUE.lock().iter() {
+            trace!("resumed a thread");
+            thread.resume_from_idle_vcpu();
+        }
+
+        super::sbi::set_timer(0xffffffffffffffff);
+        switch_thread();
     } else {
         panic!("unhandled intrrupt");
     }
