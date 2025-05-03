@@ -71,6 +71,7 @@ struct Context {
     vscause: u64,
     vstval: u64,
     vsie: u64,
+    vsip: u64,
     vstvec: u64,
     vsscratch: u64,
     vsatp: u64,
@@ -224,6 +225,7 @@ pub fn vcpu_entry(vcpu: *mut VCpu) -> ! {
 
             "csrw vsstatus, {vsstatus}",
             "csrw vsie, {vsie}",
+            "csrw vsip, {vsip}",
             "csrw vstvec, {vstvec}",
             "csrw vsscratch, {vsscratch}",
             "csrw vsatp, {vsatp}",
@@ -281,6 +283,7 @@ pub fn vcpu_entry(vcpu: *mut VCpu) -> ! {
             sepc = in(reg) context.sepc,
             vsstatus = in(reg) context.vsstatus,
             vsie = in(reg) context.vsie,
+            vsip = in(reg) context.vsip,
             vstvec = in(reg) context.vstvec,
             vsscratch = in(reg) context.vsscratch,
             vsatp = in(reg) context.vsatp,
@@ -386,14 +389,7 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
 
     {
         let mut mutable = unsafe { (*vcpu).mutable.lock() };
-        if scause_code == 10 && unsafe { (*context).a7 } == 1 {
-            // info!("ecall: a0={:x}", unsafe { (*context).a0 });
-            let ch = unsafe { (*context).a0 } as u8;
-            mutable.printer.putchar(ch);
-            unsafe {
-                (*context).sepc += 4; // size of ecall
-            }
-        } else if scause == 10 {
+        if scause == 10 {
             // a7 encodes the SBI extension ID (EID),
             // a6 encodes the SBI function ID (FID) for a given extension ID encoded in a7 for any SBI extension defined in or after SBI v0.2.
             // info!(
@@ -407,12 +403,43 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
             let a0 = unsafe { (*context).a0 };
             let fid = unsafe { (*context).a6 };
             let eid = unsafe { (*context).a7 };
+
+            use core::sync::atomic::AtomicUsize;
+            use core::sync::atomic::Ordering;
+
+            static TIMER_ENABLED: AtomicUsize = AtomicUsize::new(0xffff_ffff);
             let result = match (eid, fid) {
+                (0x01, 0x00) => {
+                    let ch = unsafe { (*context).a0 } as u8;
+                    mutable.printer.putchar(ch);
+                    if TIMER_ENABLED.fetch_sub(1, Ordering::Relaxed) == 0 {
+                        // info!("injecting timer interrupt");
+                        unsafe {
+                            // VSTIP: supervisor timer interrupt pending
+                            // (*context).hvip |= 1 << 6;
+                        }
+                    }
+
+                    Ok(0)
+                }
                 // Set timer
                 (0x00, 0) => {
                     // TODO: implement
                     info!("SBI: set_timer: a0={:x}", a0);
-                    if a0 < 0xffff_ffff_ffff {}
+
+                    // super::sbi::set_timer(a0);
+                    // Clear the timer interrupt
+                    unsafe {
+                        let now: u64;
+                        asm!("rdtime {}", out(reg) now);
+                        let htimedelta = unsafe { (*context).htimedelta };
+                        (*context).vstimecmp = htimedelta + now + 0x15000;
+                        // (*context).hie &= !(1 << 5);
+                    }
+
+                    if a0 < 0xffff_ffff_ffff {
+                        TIMER_ENABLED.store(10, Ordering::Relaxed);
+                    }
                     Ok(0)
                 }
                 //  Get SBI specification version
@@ -460,13 +487,25 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
             }
             // virtual instruction
         } else if scause == 22 {
-            trace!("virtual instruction: sepc={:x}", unsafe { (*context).sepc });
+            panic!(
+                "virtual instruction: sepc={:x}, vsip={:x}, vsie={:x}",
+                unsafe { (*context).sepc },
+                unsafe { (*context).vsip },
+                unsafe { (*context).vsie }
+            );
 
-            info!("injecting timer interrupt");
-            unsafe {
-                // VSTIP: supervisor timer interrupt pending
-                (*context).hvip |= 1 << 6;
-            }
+            // info!("injecting timer interrupt");
+            // unsafe {
+            //     // VSTIP: supervisor timer interrupt pending
+            //     // (*context).hideleg |= 1 << 6;
+            //     // (*context).hideleg |= 1 << 5;
+            //     (*context).hvip |= 1 << 6;
+            //     (*context).hvip |= 1 << 5;
+            //     (*context).vsip |= 1 << 6;
+            //     (*context).vsip |= 1 << 5;
+            //     (*context).vsie |= 1 << 6;
+            //     (*context).vsie |= 1 << 5;
+            // }
 
             // let htinst: u64;
             // let vsie: u64;
@@ -556,6 +595,8 @@ pub extern "C" fn vcpu_trap_entry() -> ! {
             "sd t0, {vstval_offset}(a0)",
             "csrr t0, vsie",
             "sd t0, {vsie_offset}(a0)",
+            "csrr t0, vsip",
+            "sd t0, {vsip_offset}(a0)",
             "csrr t0, vstvec",
             "sd t0, {vstvec_offset}(a0)",
             "csrr t0, vsscratch",
@@ -626,6 +667,7 @@ pub extern "C" fn vcpu_trap_entry() -> ! {
             vscause_offset = const offset_of!(VCpu, context.vscause),
             vstval_offset = const offset_of!(VCpu, context.vstval),
             vsie_offset = const offset_of!(VCpu, context.vsie),
+            vsip_offset = const offset_of!(VCpu, context.vsip),
             vstvec_offset = const offset_of!(VCpu, context.vstvec),
             vsscratch_offset = const offset_of!(VCpu, context.vsscratch),
             vsatp_offset = const offset_of!(VCpu, context.vsatp),
