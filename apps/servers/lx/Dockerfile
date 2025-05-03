@@ -43,7 +43,7 @@ RUN mkdir -p /rootfs/proc
 RUN mkdir -p /rootfs/sys
 RUN mkdir -p /rootfs/tmp
 RUN mkdir -p /rootfs/var
-COPY --from=lxinit-builder /lxinit /rootfs/lxinit
+COPY --from=lxinit-builder /lxinit /rootfs/init
 
 WORKDIR /rootfs
 RUN find . -print0 | cpio --null -o --format=newc > /initramfs.cpio
