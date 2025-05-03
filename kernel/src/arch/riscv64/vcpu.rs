@@ -75,7 +75,6 @@ struct Context {
     vstvec: u64,
     vsscratch: u64,
     vsatp: u64,
-    vstimecmp: u64,
 }
 
 struct ConsolePrinter {
@@ -231,7 +230,6 @@ pub fn vcpu_entry(vcpu: *mut VCpu) -> ! {
             "csrw vsatp, {vsatp}",
             "csrw vscause, {vscause}",
             "csrw vstval, {vstval}",
-            "csrw vstimecmp, {vstimecmp}",
 
             // Restore general-purpose registers
             "mv a0, {context}",
@@ -289,7 +287,6 @@ pub fn vcpu_entry(vcpu: *mut VCpu) -> ! {
             vsatp = in(reg) context.vsatp,
             vscause = in(reg) context.vscause,
             vstval = in(reg) context.vstval,
-            vstimecmp = in(reg) context.vstimecmp,
             context = in(reg) context as *const _,
             ra_offset = const offset_of!(Context, ra),
             sp_offset = const offset_of!(Context, sp),
@@ -412,6 +409,14 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
                 (0x01, 0x00) => {
                     let ch = unsafe { (*context).a0 } as u8;
                     mutable.printer.putchar(ch);
+
+                    if ch == b'\n' {
+                        unsafe {
+                            // VSTIP: supervisor timer interrupt pending
+                            // (*context).hvip |= 1 << 6;
+                        }
+                    }
+
                     if TIMER_ENABLED.fetch_sub(1, Ordering::Relaxed) == 0 {
                         // info!("injecting timer interrupt");
                         unsafe {
@@ -429,21 +434,6 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
                 // Set timer
                 (0x00, 0) => {
                     // TODO: implement
-                    // info!("SBI: set_timer: a0={:x}", a0);
-
-                    // super::sbi::set_timer(a0);
-                    // Clear the timer interrupt
-                    unsafe {
-                        let now: u64;
-                        asm!("rdtime {}", out(reg) now);
-                        let htimedelta = unsafe { (*context).htimedelta };
-                        (*context).vstimecmp = htimedelta + now + 0x18000;
-                        // (*context).hie &= !(1 << 5);
-                    }
-
-                    if a0 < 0xffff_ffff_ffff {
-                        TIMER_ENABLED.store(10, Ordering::Relaxed);
-                    }
                     Ok(0)
                 }
                 //  Get SBI specification version
@@ -491,12 +481,23 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
             }
             // virtual instruction
         } else if scause == 22 {
-            panic!(
-                "virtual instruction: sepc={:x}, vsip={:x}, vsie={:x}",
-                unsafe { (*context).sepc },
-                unsafe { (*context).vsip },
-                unsafe { (*context).vsie }
-            );
+            // panic!(
+            //     "virtual instruction: sepc={:x}, vsip={:x}, vsie={:x}",
+            //     unsafe { (*context).sepc },
+            //     unsafe { (*context).vsip },
+            //     unsafe { (*context).vsie }
+            // );
+
+            // info!(
+            //     "guest (virtual instruction): vsip={:x}, vsie={:x}",
+            //     unsafe { (*context).vsip },
+            //     unsafe { (*context).vsie }
+            // );
+
+            unsafe {
+                (*context).hvip |= 1 << 6;
+                (*context).sepc += 4;
+            }
 
             // info!("injecting timer interrupt");
             // unsafe {
@@ -607,8 +608,6 @@ pub extern "C" fn vcpu_trap_entry() -> ! {
             "sd t0, {vsscratch_offset}(a0)",
             "csrr t0, vsatp",
             "sd t0, {vsatp_offset}(a0)",
-            "csrr t0, vstimecmp",
-            "sd t0, {vstimecmp_offset}(a0)",
             "csrr t0, hstatus",
             "sd t0, {hstatus_offset}(a0)",
             "csrr t0, hie",
@@ -675,7 +674,6 @@ pub extern "C" fn vcpu_trap_entry() -> ! {
             vstvec_offset = const offset_of!(VCpu, context.vstvec),
             vsscratch_offset = const offset_of!(VCpu, context.vsscratch),
             vsatp_offset = const offset_of!(VCpu, context.vsatp),
-            vstimecmp_offset = const offset_of!(VCpu, context.vstimecmp),
             hstatus_offset = const offset_of!(VCpu, context.hstatus),
             hie_offset = const offset_of!(VCpu, context.hie),
             hip_offset = const offset_of!(VCpu, context.hip),
