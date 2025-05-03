@@ -330,7 +330,7 @@ pub fn vcpu_entry(vcpu: *mut VCpu) -> ! {
 }
 
 extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
-    let context = unsafe { &raw mut (*vcpu).context };
+    let context = unsafe { &mut (*vcpu).context };
 
     let scause: u64;
     let stval: u64;
@@ -390,13 +390,11 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
     {
         let mut mutable = unsafe { (*vcpu).mutable.lock() };
         if scause == 10 {
-            let a0 = unsafe { (*context).a0 };
-            let fid = unsafe { (*context).a6 };
-            let eid = unsafe { (*context).a7 };
-
+            let fid = context.a6;
+            let eid = context.a7;
             let result = match (eid, fid) {
                 (0x01, 0x00) => {
-                    let ch = unsafe { (*context).a0 } as u8;
+                    let ch = context.a0 as u8;
                     mutable.printer.putchar(ch);
                     Ok(0)
                 }
@@ -444,25 +442,19 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
                 Err(error) => (error, 0),
             };
 
-            unsafe {
-                (*context).sepc += 4; // size of ecall
-            }
-
-            unsafe {
-                (*context).a0 = error;
-                (*context).a1 = value;
-            }
+            context.sepc += 4; // size of ecall
+            context.a0 = error;
+            context.a1 = value;
             // virtual instruction
+            context.hvip |= 1 << 6;
         } else if scause == 22 {
-            unsafe {
-                (*context).hvip |= 1 << 6;
-                (*context).sepc += 4;
-            }
+            context.hvip |= 1 << 6;
+            context.sepc += 4;
         } else {
             panic!(
                 "VM exit: {} (sepc={:x}, htval={:x}, stval={:x})",
                 scause_str,
-                unsafe { (*context).sepc },
+                unsafe { context.sepc },
                 htval,
                 stval
             );
