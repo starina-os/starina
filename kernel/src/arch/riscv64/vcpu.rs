@@ -428,11 +428,11 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
                         unsafe {
                             asm!("csrr {}, time", out(reg) now);
                         }
-                        info!(
-                            "vcpu_trap_handler: set_timer: htime={:x} (+{:x})",
-                            htime,
-                            htime - now
-                        );
+                        // info!(
+                        //     "vcpu_trap_handler: set_timer: htime={:x} (+{:x})",
+                        //     htime,
+                        //     htime - now
+                        // );
                         super::sbi::set_timer(htime + 0x10000);
                     }
                     Ok(0)
