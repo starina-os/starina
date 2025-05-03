@@ -89,7 +89,6 @@ pub extern "C" fn interrupt_handler() -> ! {
         info!("interrupt: supervisor timer interrupt");
         use crate::thread::TIMER_QUEUE;
         while let Some(thread) = TIMER_QUEUE.lock().pop() {
-            trace!("resumed a thread");
             thread.resume_from_idle_vcpu();
         }
 
