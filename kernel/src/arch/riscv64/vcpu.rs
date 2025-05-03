@@ -143,6 +143,9 @@ impl VCpu {
         hedeleg |= 1 << 13; // Load page fault
         hedeleg |= 1 << 15; // Store/AMO page fault
 
+        let mut hideleg = 0;
+        hideleg |= 1 << 6; // Supervisor timer interrupt
+
         // Enable all counters.
         let mut hcounteren = 0xffff_ffff;
 
@@ -160,6 +163,7 @@ impl VCpu {
             hgatp,
             hstatus,
             hedeleg,
+            hideleg,
             hcounteren,
             htimedelta,
             a0: arg0 as u64,
@@ -407,15 +411,12 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
                 // Set timer
                 (0x00, 0) => {
                     // TODO: implement
-                    info!("SBI: set timer: a0={:x}", a0);
-                    if a0 < 0xffff_ffff {
-                        trace!("injecting timer interrupt");
-                        let mut hvip = unsafe { (*context).hvip };
-                        // VSTIP: supervisor timer interrupt pending
-                        hvip |= 1 << 6;
+                    info!("SBI: set_timer: a0={:x}", a0);
+                    if a0 < 0xffff_ffff_ffff {
+                        info!("injecting timer interrupt");
                         unsafe {
-                            (*context).hvip = hvip;
-                            (*context).hideleg = 1 << 6;
+                            // VSTIP: supervisor timer interrupt pending
+                            (*context).hvip |= 1 << 6;
                         }
                     }
                     Ok(0)
@@ -465,28 +466,30 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
             }
             // virtual instruction
         } else if scause == 22 {
-            let htinst: u64;
-            let vsie: u64;
-            let hie: u64;
-            unsafe {
-                asm!("csrr {}, htinst", out(reg) htinst);
-                asm!("csrr {}, vsie", out(reg) vsie);
-                asm!("csrr {}, hie", out(reg) hie);
-            }
-            panic!(
-                "virtual instruction: sepc={:x}, vsie={:x}, hie={:x}",
-                unsafe { (*context).sepc },
-                vsie,
-                hie
-            );
-            let mut hvip = unsafe { (*context).hvip };
-            // Set VSTIP
-            hvip |= 1 << 6;
-            // VSSIP
-            hvip |= 1 << 2;
-            unsafe {
-                (*context).hvip = hvip;
-            }
+            trace!("virtual instruction: sepc={:x}", unsafe { (*context).sepc });
+
+            // let htinst: u64;
+            // let vsie: u64;
+            // let hie: u64;
+            // unsafe {
+            //     asm!("csrr {}, htinst", out(reg) htinst);
+            //     asm!("csrr {}, vsie", out(reg) vsie);
+            //     asm!("csrr {}, hie", out(reg) hie);
+            // }
+            // panic!(
+            //     "virtual instruction: sepc={:x}, vsie={:x}, hie={:x}",
+            //     unsafe { (*context).sepc },
+            //     vsie,
+            //     hie
+            // );
+            // let mut hvip = unsafe { (*context).hvip };
+            // // Set VSTIP
+            // hvip |= 1 << 6;
+            // // VSSIP
+            // hvip |= 1 << 2;
+            // unsafe {
+            //     (*context).hvip = hvip;
+            // }
         } else {
             panic!(
                 "VM exit: {} (sepc={:x}, htval={:x}, stval={:x})",
