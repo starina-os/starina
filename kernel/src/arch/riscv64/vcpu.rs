@@ -422,6 +422,10 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
 
                     Ok(0)
                 }
+                (0x02, 0x00) => {
+                    // TODO: implement
+                    Ok(u64::MAX)
+                }
                 // Set timer
                 (0x00, 0) => {
                     // TODO: implement

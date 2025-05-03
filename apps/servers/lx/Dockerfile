@@ -9,18 +9,19 @@
 #
 FROM rust:1.86 AS lxinit-builder
 
-RUN mkdir -p /app
-ADD lxinit /app
-WORKDIR /app
-
 RUN rustup target add riscv64gc-unknown-linux-musl
 
 RUN apt-get update && apt-get install -y \
     gcc-riscv64-linux-gnu \
     binutils-riscv64-linux-gnu
 
+RUN mkdir -p /app
+ADD lxinit /app
+WORKDIR /app
+
 ENV CARGO_TARGET_RISCV64GC_UNKNOWN_LINUX_MUSL_LINKER="riscv64-linux-gnu-gcc"
 ENV CARGO_PROFILE_RELEASE_OPT_LEVEL=z
+ENV RUSTFLAGS="-C target-feature=+crt-static"
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/app/target \
     cargo build --release --target riscv64gc-unknown-linux-musl \
@@ -43,6 +44,7 @@ RUN mkdir -p /rootfs/proc
 RUN mkdir -p /rootfs/sys
 RUN mkdir -p /rootfs/tmp
 RUN mkdir -p /rootfs/var
+
 COPY --from=lxinit-builder /lxinit /rootfs/init
 
 WORKDIR /rootfs
@@ -67,6 +69,7 @@ RUN apt-get update && apt-get install -y \
     binutils-riscv64-linux-gnu
 
 COPY --from=initramfs-builder /initramfs.cpio /initramfs.cpio
+COPY --from=lxinit-builder /lxinit /lxinit
 
 CMD make -C /lx/linux ARCH=riscv CROSS_COMPILE=riscv64-linux-gnu- -j$(nproc) \
         olddefconfig Image
