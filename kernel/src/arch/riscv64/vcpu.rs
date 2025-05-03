@@ -412,13 +412,7 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
                 (0x00, 0) => {
                     // TODO: implement
                     info!("SBI: set_timer: a0={:x}", a0);
-                    if a0 < 0xffff_ffff_ffff {
-                        info!("injecting timer interrupt");
-                        unsafe {
-                            // VSTIP: supervisor timer interrupt pending
-                            (*context).hvip |= 1 << 6;
-                        }
-                    }
+                    if a0 < 0xffff_ffff_ffff {}
                     Ok(0)
                 }
                 //  Get SBI specification version
@@ -467,6 +461,12 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
             // virtual instruction
         } else if scause == 22 {
             trace!("virtual instruction: sepc={:x}", unsafe { (*context).sepc });
+
+            info!("injecting timer interrupt");
+            unsafe {
+                // VSTIP: supervisor timer interrupt pending
+                (*context).hvip |= 1 << 6;
+            }
 
             // let htinst: u64;
             // let vsie: u64;
