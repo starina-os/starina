@@ -421,7 +421,7 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
                     let htimedelta = context.htimedelta;
                     let htime = vtime.wrapping_sub(htimedelta);
                     if vtime == u64::MAX {
-                        info!("vcpu_trap_handler: disabling timer");
+                        // info!("vcpu_trap_handler: disabling timer");
                         super::sbi::set_timer(0xffffffffffffffff);
                     } else {
                         let mut now: u64;
@@ -493,7 +493,7 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
             unsafe {
                 asm!("csrr {}, time", out(reg) now);
             }
-            super::sbi::set_timer(now + 0x10000);
+            super::sbi::set_timer(now + 0x20000); // FIXME:
         } else {
             panic!(
                 "VM exit: {} (sepc={:x}, htval={:x}, stval={:x})",
