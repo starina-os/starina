@@ -411,12 +411,8 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
                     if a0 < 0xffff_ffff {
                         trace!("injecting timer interrupt");
                         let mut hvip = unsafe { (*context).hvip };
-                        // VSSIP: supervisor software interrupt pending
-                        hvip |= 1 << 2;
                         // VSTIP: supervisor timer interrupt pending
                         hvip |= 1 << 6;
-                        // VSEIP: supervisor external interrupt pending
-                        hvip |= 1 << 10;
                         unsafe {
                             (*context).hvip = hvip;
                             (*context).hideleg = 1 << 6;
