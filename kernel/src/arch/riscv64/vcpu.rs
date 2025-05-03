@@ -29,6 +29,7 @@ struct Context {
     hip: u64,
     hvip: u64,
     hedeleg: u64,
+    hideleg: u64,
     hcounteren: u64,
     htimedelta: u64,
     hstatus: u64,
@@ -209,6 +210,7 @@ pub fn vcpu_entry(vcpu: *mut VCpu) -> ! {
             "csrw hie, {hie}",
             "csrw hvip, {hvip}",
             "csrw hedeleg, {hedeleg}",
+            "csrw hideleg, {hideleg}",
             "csrw hcounteren, {hcounteren}",
             "csrw htimedelta, {htimedelta}",
 
@@ -267,6 +269,7 @@ pub fn vcpu_entry(vcpu: *mut VCpu) -> ! {
             hip = in(reg) context.hip,
             hvip = in(reg) context.hvip,
             hedeleg = in(reg) context.hedeleg,
+            hideleg = in(reg) context.hideleg,
             hcounteren = in(reg) context.hcounteren,
             htimedelta = in(reg) context.htimedelta,
             sscratch = in(reg) vcpu as *const _ as u64,
@@ -408,12 +411,15 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
                     if a0 < 0xffff_ffff {
                         trace!("injecting timer interrupt");
                         let mut hvip = unsafe { (*context).hvip };
-                        // Set VSTIP
-                        hvip |= 1 << 6;
-                        // VSSIP
+                        // VSSIP: supervisor software interrupt pending
                         hvip |= 1 << 2;
+                        // VSTIP: supervisor timer interrupt pending
+                        hvip |= 1 << 6;
+                        // VSEIP: supervisor external interrupt pending
+                        hvip |= 1 << 10;
                         unsafe {
                             (*context).hvip = hvip;
+                            (*context).hideleg = 1 << 6;
                         }
                     }
                     Ok(0)
@@ -464,13 +470,18 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
             // virtual instruction
         } else if scause == 22 {
             let htinst: u64;
+            let vsie: u64;
+            let hie: u64;
             unsafe {
                 asm!("csrr {}, htinst", out(reg) htinst);
+                asm!("csrr {}, vsie", out(reg) vsie);
+                asm!("csrr {}, hie", out(reg) hie);
             }
-            info!(
-                "virtual instruction: sepc={:x}, htinst={:x}",
+            panic!(
+                "virtual instruction: sepc={:x}, vsie={:x}, hie={:x}",
                 unsafe { (*context).sepc },
-                htinst
+                vsie,
+                hie
             );
             let mut hvip = unsafe { (*context).hvip };
             // Set VSTIP
