@@ -106,6 +106,74 @@ struct Mutable {
     printer: ConsolePrinter,
 }
 
+impl Mutable {
+    pub fn handle_sbi_call(&mut self, context: &Context) -> Result<isize, isize> {
+        let fid = context.a6;
+        let eid = context.a7;
+        match (eid, fid) {
+            (0x01, 0x00) => {
+                let ch = context.a0 as u8;
+                self.printer.putchar(ch);
+                Ok(0)
+            }
+            (0x02, 0x00) => {
+                // TODO: implement
+                Ok(-1)
+            }
+            // Set timer
+            (0x00, 0) => {
+                let vtime = context.a0;
+                let htimedelta = context.htimedelta;
+                let htime = vtime.wrapping_sub(htimedelta);
+                if vtime == u64::MAX {
+                    // info!("vcpu_trap_handler: disabling timer");
+                    super::sbi::set_timer(0xffffffffffffffff);
+                } else {
+                    let mut now: u64;
+                    unsafe {
+                        asm!("csrr {}, time", out(reg) now);
+                    }
+                    // info!(
+                    //     "vcpu_trap_handler: set_timer: htime={:x} (+{:x})",
+                    //     htime,
+                    //     htime - now
+                    // );
+                    super::sbi::set_timer(htime + 0x10000);
+                }
+                Ok(0)
+            }
+            //  Get SBI specification version
+            (0x10, 0) => {
+                //  version 0.1
+                Ok(0x01)
+            }
+            // Probe SBI extension
+            (0x10, 3) => {
+                // 0 means the extension is not supported.
+                Ok(0)
+            }
+            // Get machine vendor ID
+            (0x10, 4) => {
+                // "0 is always a legal value for this CSR" as per SBI spec.
+                Ok(0)
+            }
+            // Get machine architecture ID
+            (0x10, 5) => {
+                // "0 is always a legal value for this CSR" as per SBI spec.
+                Ok(0)
+            }
+            // Get machine implementation ID
+            (0x10, 6) => {
+                // "0 is always a legal value for this CSR" as per SBI spec.
+                Ok(0)
+            }
+            _ => {
+                panic!("SBI: unknown eid={:x}, fid={:x}", eid, fid);
+            }
+        }
+    }
+}
+
 pub struct VCpu {
     context: Context,
     mutable: SpinLock<Mutable>,
@@ -387,78 +455,14 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
     {
         let mut mutable = unsafe { (*vcpu).mutable.lock() };
         if scause == 10 {
-            let fid = context.a6;
-            let eid = context.a7;
-            let result = match (eid, fid) {
-                (0x01, 0x00) => {
-                    let ch = context.a0 as u8;
-                    mutable.printer.putchar(ch);
-                    Ok(0)
-                }
-                (0x02, 0x00) => {
-                    // TODO: implement
-                    Ok(u64::MAX)
-                }
-                // Set timer
-                (0x00, 0) => {
-                    let vtime = context.a0;
-                    let htimedelta = context.htimedelta;
-                    let htime = vtime.wrapping_sub(htimedelta);
-                    if vtime == u64::MAX {
-                        // info!("vcpu_trap_handler: disabling timer");
-                        super::sbi::set_timer(0xffffffffffffffff);
-                    } else {
-                        let mut now: u64;
-                        unsafe {
-                            asm!("csrr {}, time", out(reg) now);
-                        }
-                        // info!(
-                        //     "vcpu_trap_handler: set_timer: htime={:x} (+{:x})",
-                        //     htime,
-                        //     htime - now
-                        // );
-                        super::sbi::set_timer(htime + 0x10000);
-                    }
-                    Ok(0)
-                }
-                //  Get SBI specification version
-                (0x10, 0) => {
-                    //  version 0.1
-                    Ok(0x01)
-                }
-                // Probe SBI extension
-                (0x10, 3) => {
-                    // 0 means the extension is not supported.
-                    Ok(0)
-                }
-                // Get machine vendor ID
-                (0x10, 4) => {
-                    // "0 is always a legal value for this CSR" as per SBI spec.
-                    Ok(0)
-                }
-                // Get machine architecture ID
-                (0x10, 5) => {
-                    // "0 is always a legal value for this CSR" as per SBI spec.
-                    Ok(0)
-                }
-                // Get machine implementation ID
-                (0x10, 6) => {
-                    // "0 is always a legal value for this CSR" as per SBI spec.
-                    Ok(0)
-                }
-                _ => {
-                    panic!("SBI: unknown eid={:x}, fid={:x}", eid, fid);
-                }
-            };
-
-            let (error, value) = match result {
+            let (error, value) = match mutable.handle_sbi_call(&context) {
                 Ok(value) => (0, value),
                 Err(error) => (error, 0),
             };
 
             context.sepc += 4; // size of ecall
-            context.a0 = error;
-            context.a1 = value;
+            context.a0 = error as u64;
+            context.a1 = value as u64;
         } else if scause == 22 {
             // info!(
             //     "vcpu_trap_handler: virtual instruction: sepc={:x}",
