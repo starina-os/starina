@@ -121,16 +121,9 @@ impl GuestMemory {
         device: impl VirtioDevice + 'static,
     ) -> Result<(), Error> {
         info!("guest_memory: mapping virtio-mmio at {}", gpaddr);
+        // Do not map the folio into the hvspace; we'll intentionally let CPUs
+        // cause page faults on MMIO addresses to handle them programmatically.
         let device = VirtioMmio::new(device).map_err(Error::CreateVirtioMmio)?;
-        self.hvspace
-            .map(
-                gpaddr,
-                device.mmio_folio(),
-                device.mmio_size(),
-                PageProtect::READABLE | PageProtect::WRITEABLE,
-            )
-            .map_err(Error::MapVirtioMmio)?;
-
         self.mappings.push(Mapping::VirtioMmio(device));
         Ok(())
     }

@@ -2,6 +2,8 @@ use starina::address::GPAddr;
 use starina::prelude::*;
 use vm_fdt::FdtWriter;
 
+use crate::virtio::device::VIRTIO_MMIO_SIZE;
+
 const GUEST_HART_ID_BASE: u32 = 0; // Starting Hart ID
 const GUEST_TIMEBASE_FREQ: u32 = 10000000; // QEMU virt default timer frequency (10 MHz)
 const GUEST_MMU_TYPE: &str = "riscv,sv48"; // Common MMU type for RV64
@@ -32,7 +34,10 @@ pub fn build_fdt(
     // Kernel command line. 'console=hvc0' directs printk to OpenSBI console.
     // 'earlycon=sbi' enables very early messages via SBI before full console setup.
     // Add rootfs, init path etc. as needed, e.g. "root=/dev/vda rw"
-    fdt.property_string("bootargs", "console=hvc earlycon=sbi verbose panic=-1")?; // FIXME:
+    fdt.property_string(
+        "bootargs",
+        "console=hvc earlycon=sbi verbose loglevel=16 panic=-1",
+    )?; // FIXME:
     // (Optional but good practice) Specify path to console device if needed,
     // but hvc0 often doesn't require an explicit FDT node if handled purely via SBI.
     // fdt.property_string("stdout-path", "/soc/serial@10000000")?; // Example if UART existed
@@ -54,6 +59,9 @@ pub fn build_fdt(
     fdt.property_u32("#size-cells", 0x0)?;
     // Timer frequency: Essential for timekeeping. OpenSBI usually uses this.
     fdt.property_u32("timebase-frequency", GUEST_TIMEBASE_FREQ)?;
+
+    let mut next_phandle = 1;
+    let mut interrupts_extended = vec![];
 
     // Define each CPU (hart)
     for i in 0..num_cpus {
@@ -83,12 +91,19 @@ pub fn build_fdt(
         // Specify the MMU type (e.g., Sv39, Sv48)
         fdt.property_string("mmu-type", GUEST_MMU_TYPE)?;
 
+        let phandle = next_phandle;
+        next_phandle += 1;
+
         // Interrupt controller specific to this hart (handles timer, SW, external via S-mode trap)
         let intc_node = fdt.begin_node("interrupt-controller")?;
-        fdt.property_u32("#interrupt-cells", 1)?; // Standard RISC-V: cell defines interrupt type
-        fdt.property_null("interrupt-controller")?; // Marks this node as the controller
-        fdt.property_string("compatible", "riscv,cpu-intc")?; // Standard compatible for per-hart intc
+        fdt.property_u32("#interrupt-cells", 1)?;
+        fdt.property_string("compatible", "riscv,cpu-intc")?;
+        fdt.property_null("interrupt-controller")?;
+        fdt.property_phandle(phandle)?;
         fdt.end_node(intc_node)?;
+
+        interrupts_extended.push(phandle);
+        interrupts_extended.push(9); // context 9
 
         fdt.end_node(cpu_node)?;
     }
@@ -97,18 +112,27 @@ pub fn build_fdt(
     // PLIC node.
     let plic_node = fdt.begin_node("plic")?;
     fdt.property_string("compatible", "riscv,plic0")?;
-    fdt.property_u32("#address-cells", 0x1)?;
-    fdt.property_u32("#size-cells", 0x0)?;
+    fdt.property_u32("#address-cells", 0x0)?;
+    fdt.property_u32("#size-cells", 0x1)?;
+    fdt.property_u32("#interrupt-cells", 1)?;
+    fdt.property_u32("riscv,ndev", 16)?;
+    fdt.property_null("interrupt-controller")?;
     fdt.property_array_u64("reg", &[plic_base.as_usize() as u64, plic_size(num_cpus)])?;
+    fdt.property_array_u32("interrupts-extended", &interrupts_extended)?;
+    fdt.property_u32("interrupt-parent", interrupts_extended[0])?;
     fdt.end_node(plic_node)?;
 
     // Virtio-mmio devices.
-    for (i, virtio_mmio) in virtio_mmios.iter().enumerate() {
-        let virtio_mmio_node = fdt.begin_node(&format!("virtio-mmio@{}", i))?;
-        fdt.property_string("compatible", "virtio,mmio")?;
-        fdt.property_array_u64("reg", &[virtio_mmio.as_usize() as u64, 0x1000])?;
-        fdt.end_node(virtio_mmio_node)?;
-    }
+    // for (i, gpaddr) in virtio_mmios.iter().enumerate() {
+    //     let virtio_mmio_node = fdt.begin_node(&format!("virtio-mmio@{}", gpaddr.as_usize()))?;
+    //     fdt.property_string("compatible", "virtio,mmio")?;
+    //     let addr_high = (gpaddr.as_usize() >> 32) as u32;
+    //     let addr_low = (gpaddr.as_usize() & 0xffffffff) as u32;
+    //     let size_high = (VIRTIO_MMIO_SIZE as u64 >> 32) as u32;
+    //     let size_low = (VIRTIO_MMIO_SIZE as u64 & 0xffffffff) as u32;
+    //     fdt.property_array_u32("reg", &[addr_low, addr_high, size_low, size_high])?;
+    //     fdt.end_node(virtio_mmio_node)?;
+    // }
 
     // Finish Root node
     fdt.end_node(root_node)?;
