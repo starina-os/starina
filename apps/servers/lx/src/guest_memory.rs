@@ -101,6 +101,7 @@ impl GuestMemory {
     }
 
     pub fn add_ram(&mut self, ram: Ram) -> Result<(), Error> {
+        info!("guest_memory: mapping RAM at {}", ram.gpaddr);
         self.hvspace
             .map(
                 ram.gpaddr,
@@ -119,6 +120,7 @@ impl GuestMemory {
         gpaddr: GPAddr,
         device: impl VirtioDevice + 'static,
     ) -> Result<(), Error> {
+        info!("guest_memory: mapping virtio-mmio at {}", gpaddr);
         let device = VirtioMmio::new(device).map_err(Error::CreateVirtioMmio)?;
         self.hvspace
             .map(
