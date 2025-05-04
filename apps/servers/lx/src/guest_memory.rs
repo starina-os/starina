@@ -9,12 +9,18 @@ use starina::prelude::*;
 use starina::vmspace::PageProtect;
 use starina::vmspace::VmSpace;
 
+use crate::virtio;
+use crate::virtio::device::VirtioDevice;
+use crate::virtio::device::VirtioMmio;
+
 #[derive(Debug)]
 pub enum Error {
     AllocFolio(ErrorCode),
     CreateHvSpace(ErrorCode),
     VmSpaceMap(ErrorCode),
     MapRam(ErrorCode),
+    CreateVirtioMmio(virtio::device::Error),
+    MapVirtioMmio(ErrorCode),
     OutOfRam,
 }
 
@@ -73,6 +79,7 @@ impl Ram {
 
 enum Mapping {
     Ram(Ram),
+    VirtioMmio(VirtioMmio),
 }
 
 pub struct GuestMemory {
@@ -104,6 +111,25 @@ impl GuestMemory {
             .map_err(Error::MapRam)?;
 
         self.mappings.push(Mapping::Ram(ram));
+        Ok(())
+    }
+
+    pub fn add_virtio_mmio(
+        &mut self,
+        gpaddr: GPAddr,
+        device: impl VirtioDevice + 'static,
+    ) -> Result<(), Error> {
+        let device = VirtioMmio::new(device).map_err(Error::CreateVirtioMmio)?;
+        self.hvspace
+            .map(
+                gpaddr,
+                device.mmio_folio(),
+                device.mmio_size(),
+                PageProtect::READABLE | PageProtect::WRITEABLE,
+            )
+            .map_err(Error::MapVirtioMmio)?;
+
+        self.mappings.push(Mapping::VirtioMmio(device));
         Ok(())
     }
 }

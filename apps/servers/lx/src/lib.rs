@@ -4,6 +4,7 @@ pub mod autogen;
 mod device_tree;
 mod guest_memory;
 mod linux_loader;
+mod virtio;
 
 use device_tree::build_fdt;
 use guest_memory::GuestMemory;
@@ -14,6 +15,7 @@ use starina::eventloop::EventLoop;
 use starina::prelude::*;
 use starina::vcpu::VCpu;
 use starina::vcpu::VCpuExit;
+use virtio::virtio_fs::VirtioFs;
 
 #[derive(Debug)]
 pub enum State {}
@@ -29,7 +31,8 @@ impl EventLoop for App {
 
         const LINUX_ELF: &[u8] = include_bytes!("../linux/arch/riscv/boot/Image");
         const GUEST_RAM_SIZE: usize = 64 * 1024 * 1024; // 64MB
-        const GUEST_RAM_ADDR: GPAddr = GPAddr::new(0x80000000);
+        const GUEST_RAM_ADDR: GPAddr = GPAddr::new(0x8000_0000);
+        const VIRTIO_FS_ADDR: GPAddr = GPAddr::new(0x0a00_0000);
 
         let mut ram = Ram::new(GUEST_RAM_ADDR, GUEST_RAM_SIZE).unwrap();
         let fdt = build_fdt().expect("failed to build device tree");
@@ -41,6 +44,11 @@ impl EventLoop for App {
 
         let mut guest_memory = GuestMemory::new().unwrap();
         guest_memory.add_ram(ram).unwrap();
+
+        let virtio_fs = VirtioFs::new();
+        guest_memory
+            .add_virtio_mmio(VIRTIO_FS_ADDR, virtio_fs)
+            .unwrap();
 
         // Fill registers that Linux expects:
         //
