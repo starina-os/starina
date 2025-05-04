@@ -1,14 +1,22 @@
+use starina::address::GPAddr;
 use starina::prelude::*;
 use vm_fdt::FdtWriter;
 
 const GUEST_RAM_START: u64 = 0x80000000; // Standard QEMU virt machine RAM start
 const GUEST_RAM_SIZE: u64 = 64 * 1024 * 1024; // 64 MiB RAM, adjust as needed
-const GUEST_NUM_CPUS: u32 = 1; // Number of virtual CPUs
 const GUEST_HART_ID_BASE: u32 = 0; // Starting Hart ID
 const GUEST_TIMEBASE_FREQ: u32 = 10000000; // QEMU virt default timer frequency (10 MHz)
 const GUEST_MMU_TYPE: &str = "riscv,sv48"; // Common MMU type for RV64
 
-pub fn build_fdt() -> Result<Vec<u8>, vm_fdt::Error> {
+fn plic_size(num_cpus: usize) -> u64 {
+    0x200000 * (num_cpus as u64 * 0x1000)
+}
+
+pub fn build_fdt(
+    num_cpus: usize,
+    plic_base: GPAddr,
+    virtio_mmios: &[GPAddr],
+) -> Result<Vec<u8>, vm_fdt::Error> {
     let mut fdt = FdtWriter::new()?;
 
     // Root node: Defines global properties
@@ -24,7 +32,7 @@ pub fn build_fdt() -> Result<Vec<u8>, vm_fdt::Error> {
     // Kernel command line. 'console=hvc0' directs printk to OpenSBI console.
     // 'earlycon=sbi' enables very early messages via SBI before full console setup.
     // Add rootfs, init path etc. as needed, e.g. "root=/dev/vda rw"
-    fdt.property_string("bootargs", "console=hvc quiet panic=-1")?; // FIXME:
+    fdt.property_string("bootargs", "console=hvc earlycon=sbi verbose panic=-1")?; // FIXME:
     // (Optional but good practice) Specify path to console device if needed,
     // but hvc0 often doesn't require an explicit FDT node if handled purely via SBI.
     // fdt.property_string("stdout-path", "/soc/serial@10000000")?; // Example if UART existed
@@ -48,7 +56,7 @@ pub fn build_fdt() -> Result<Vec<u8>, vm_fdt::Error> {
     fdt.property_u32("timebase-frequency", GUEST_TIMEBASE_FREQ)?;
 
     // Define each CPU (hart)
-    for i in 0..GUEST_NUM_CPUS {
+    for i in 0..num_cpus.try_into().unwrap() {
         let hart_id = GUEST_HART_ID_BASE + i;
         // Name convention: cpu@<hartid>
         let cpu_node = fdt.begin_node(&format!("cpu@{:x}", hart_id))?;
@@ -86,9 +94,21 @@ pub fn build_fdt() -> Result<Vec<u8>, vm_fdt::Error> {
     }
     fdt.end_node(cpus_node)?;
 
-    // (Note: No explicit timer, PLIC, or UART nodes are included here for minimality,
-    // assuming OpenSBI provides timer and console services via SBI calls as requested
-    // by 'console=hvc0' and kernel defaults).
+    // PLIC node.
+    let plic_node = fdt.begin_node("plic")?;
+    fdt.property_string("compatible", "riscv,plic0")?;
+    fdt.property_u32("#address-cells", 0x1)?;
+    fdt.property_u32("#size-cells", 0x0)?;
+    fdt.property_array_u64("reg", &[plic_base.as_usize() as u64, plic_size(num_cpus)])?;
+    fdt.end_node(plic_node)?;
+
+    // Virtio-mmio devices.
+    for (i, virtio_mmio) in virtio_mmios.iter().enumerate() {
+        let virtio_mmio_node = fdt.begin_node(&format!("virtio-mmio@{}", i))?;
+        fdt.property_string("compatible", "virtio,mmio")?;
+        fdt.property_array_u64("reg", &[virtio_mmio.as_usize() as u64, 0x1000])?;
+        fdt.end_node(virtio_mmio_node)?;
+    }
 
     // Finish Root node
     fdt.end_node(root_node)?;

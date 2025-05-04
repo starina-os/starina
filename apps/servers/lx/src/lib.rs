@@ -30,12 +30,14 @@ impl EventLoop for App {
         info!("starting");
 
         const LINUX_ELF: &[u8] = include_bytes!("../linux/arch/riscv/boot/Image");
+        const NUM_CPUS: usize = 1;
         const GUEST_RAM_SIZE: usize = 64 * 1024 * 1024; // 64MB
         const GUEST_RAM_ADDR: GPAddr = GPAddr::new(0x8000_0000);
         const VIRTIO_FS_ADDR: GPAddr = GPAddr::new(0x0a00_0000);
-
+        const PLIC_BASE_ADDR: GPAddr = GPAddr::new(0x0b00_0000);
         let mut ram = Ram::new(GUEST_RAM_ADDR, GUEST_RAM_SIZE).unwrap();
-        let fdt = build_fdt().expect("failed to build device tree");
+        let fdt = build_fdt(NUM_CPUS, PLIC_BASE_ADDR, &[VIRTIO_FS_ADDR])
+            .expect("failed to build device tree");
         let (fdt_slice, fdt_gpaddr) = ram.allocate(fdt.len(), 4096).unwrap();
         fdt_slice[..fdt.len()].copy_from_slice(&fdt);
 
