@@ -461,6 +461,11 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
         context.a0 = error as u64;
         context.a1 = value as u64;
     } else if scause == 22 {
+        assert!(
+            stval == 0x10500073,
+            "Only WFI is expected in virtual instruction trap"
+        );
+
         // info!(
         //     "vcpu_trap_handler: virtual instruction, sepc={:x}",
         //     context.sepc
