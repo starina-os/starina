@@ -6,7 +6,7 @@ const GUEST_HART_ID_BASE: u32 = 0; // Starting Hart ID
 const GUEST_TIMEBASE_FREQ: u32 = 10000000; // QEMU virt default timer frequency (10 MHz)
 const GUEST_MMU_TYPE: &str = "riscv,sv48"; // Common MMU type for RV64
 
-fn plic_size(num_cpus: usize) -> u64 {
+fn plic_size(num_cpus: u32) -> u64 {
     0x200000 * (num_cpus as u64 * 0x1000)
 }
 
@@ -40,7 +40,7 @@ pub fn build_fdt(
 
     // Memory node: Describes the main system RAM
     // Name follows convention: memory@<address>
-    let memory_node = fdt.begin_node(&format!("memory@{:x}", guest_ram_start))?;
+    let memory_node = fdt.begin_node(&format!("memory@{:x}", guest_ram_start.as_usize()))?;
     fdt.property_string("device_type", "memory")?;
     // Define the RAM region: start address and size. Uses address/size cells from root (2 each).
     fdt.property_array_u64("reg", &[guest_ram_start.as_usize() as u64, guest_ram_size])?;

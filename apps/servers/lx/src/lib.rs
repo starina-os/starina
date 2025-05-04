@@ -39,7 +39,7 @@ impl EventLoop for App {
         let fdt = build_fdt(
             NUM_CPUS,
             GUEST_RAM_ADDR,
-            GUEST_RAM_SIZE,
+            GUEST_RAM_SIZE as u64,
             PLIC_BASE_ADDR,
             &[VIRTIO_FS_ADDR],
         )
