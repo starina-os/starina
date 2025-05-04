@@ -33,8 +33,8 @@ impl EventLoop for App {
         const NUM_CPUS: u32 = 1;
         const GUEST_RAM_SIZE: usize = 64 * 1024 * 1024; // 64MB
         const GUEST_RAM_ADDR: GPAddr = GPAddr::new(0x8000_0000);
-        const VIRTIO_FS_ADDR: GPAddr = GPAddr::new(0x1000_0000);
-        const PLIC_BASE_ADDR: GPAddr = GPAddr::new(0x2000_0000);
+        const PLIC_BASE_ADDR: GPAddr = GPAddr::new(0x1000_0000);
+        const VIRTIO_FS_ADDR: GPAddr = GPAddr::new(0x2000_0000);
         let mut ram = Ram::new(GUEST_RAM_ADDR, GUEST_RAM_SIZE).unwrap();
         let fdt = build_fdt(
             NUM_CPUS,

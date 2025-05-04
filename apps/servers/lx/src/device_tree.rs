@@ -112,12 +112,15 @@ pub fn build_fdt(
     // PLIC node.
     let plic_node = fdt.begin_node("plic")?;
     fdt.property_string("compatible", "riscv,plic0")?;
-    fdt.property_u32("#address-cells", 0x0)?;
-    fdt.property_u32("#size-cells", 0x1)?;
+    // fdt.property_u32("#address-cells", 0x1)?;
+    // fdt.property_u32("#size-cells", 0x1)?;
     fdt.property_u32("#interrupt-cells", 1)?;
     fdt.property_u32("riscv,ndev", 16)?;
     fdt.property_null("interrupt-controller")?;
-    fdt.property_array_u64("reg", &[plic_base.as_usize() as u64, plic_size(num_cpus)])?;
+    fdt.property_array_u64(
+        "reg",
+        &[(plic_base.as_usize() as u64) << 2, plic_size(num_cpus)],
+    )?;
     fdt.property_array_u32("interrupts-extended", &interrupts_extended)?;
     fdt.property_u32("interrupt-parent", interrupts_extended[0])?;
     fdt.end_node(plic_node)?;
