@@ -72,7 +72,7 @@ struct Context {
     vstvec: u64,
     vsscratch: u64,
     vsatp: u64,
-    vtimestamp: u64,
+    vstimecmp: u64,
 }
 
 struct ConsolePrinter {
@@ -122,25 +122,7 @@ impl Mutable {
             }
             // Set timer
             (0x00, 0) => {
-                let vtime = context.a0;
-                let htimedelta = context.htimedelta;
-                let htime = vtime.wrapping_sub(htimedelta);
-                if vtime == u64::MAX {
-                    // info!("vcpu_trap_handler: disabling timer");
-                    super::sbi::set_timer(0xffffffffffffffff);
-                } else {
-                    let mut now: u64;
-                    unsafe {
-                        asm!("csrr {}, time", out(reg) now);
-                    }
-                    // info!(
-                    //     "vcpu_trap_handler: set_timer: htime={:x} (+{:x})",
-                    //     htime,
-                    //     htime - now
-                    // );
-                    super::sbi::set_timer(htime + 0x10000);
-                }
-                Ok(0)
+                panic!("SBI set_timer should not be called from VS/VU-mode");
             }
             //  Get SBI specification version
             (0x10, 0) => {
@@ -209,6 +191,7 @@ impl VCpu {
             hgatp,
             hstatus,
             htimedelta,
+            vstimecmp: u64::MAX,
             a0: arg0 as u64,
             a1: arg1 as u64,
             ..Default::default()
@@ -271,6 +254,7 @@ pub fn vcpu_entry(vcpu: *mut VCpu) -> ! {
             "csrw vsatp, {vsatp}",
             "csrw vscause, {vscause}",
             "csrw vstval, {vstval}",
+            "csrw vstimecmp, {vstimecmp}",
 
             hgatp = in(reg) context.hgatp,
             hstatus = in(reg) context.hstatus,
@@ -289,6 +273,7 @@ pub fn vcpu_entry(vcpu: *mut VCpu) -> ! {
             vsatp = in(reg) context.vsatp,
             vscause = in(reg) context.vscause,
             vstval = in(reg) context.vstval,
+            vstimecmp = in(reg) context.vstimecmp,
         );
 
         // Restore general-purpose registers and enter VS/VU-mode.
@@ -390,11 +375,22 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
     context.vstvec = read_csr!("vstvec");
     context.vsscratch = read_csr!("vsscratch");
     context.vsatp = read_csr!("vsatp");
+    context.vstimecmp = read_csr!("vstimecmp");
     context.hstatus = read_csr!("hstatus");
     context.hie = read_csr!("hie");
     context.hip = read_csr!("hip");
     context.sstatus = read_csr!("sstatus");
     context.sepc = read_csr!("sepc");
+
+    if context.vstimecmp < u64::MAX {
+        unsafe {
+            // info!("vcpu_trap_handler: vstimecmp={:x}", context.vstimecmp);
+            let mut now: u64;
+            asm!("csrr {}, time", out(reg) now);
+            let htime = now.wrapping_sub(context.htimedelta);
+            asm!("csrw stimecmp, {}", in(reg) htime);
+        }
+    }
 
     let scause: u64;
     let stval: u64;
@@ -465,20 +461,25 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
         context.a0 = error as u64;
         context.a1 = value as u64;
     } else if scause == 22 {
+        // info!(
+        //     "vcpu_trap_handler: virtual instruction, sepc={:x}",
+        //     context.sepc
+        // );
         context.sepc += 4; // size of virtual instruction
 
         if context.hvip == 0 {
-            info!("no pending interrupt, going to idle");
+            // info!("no pending interrupt, going to idle");
             let current = crate::cpuvar::current_thread();
+            context.hvip = 1 << 6; // FIXME: We'll
             current.idle_vcpu();
         }
     } else if (is_intr, code) == (true, 5) {
-        context.hvip = 1 << 6; // FIXME:
+        // supervisor timer interrupt
         let mut now: u64;
         unsafe {
             asm!("csrr {}, time", out(reg) now);
+            asm!("csrw stimecmp, {}", in(reg) now + 0x100);
         }
-        super::sbi::set_timer(now + 0x20000); // FIXME:
     } else {
         panic!(
             "VM exit: {} (sepc={:x}, htval={:x}, stval={:x})",
@@ -602,9 +603,14 @@ pub fn init() {
 
     // Enable all counters.
     let hcounteren: u64 = 0xffff_ffff;
+
+    let mut henvcfg: u64 = 0;
+    henvcfg |= 1 << 63; // STCE: STimecmp Enable
+
     unsafe {
         asm!("csrw hcounteren, {}", in(reg) hcounteren);
         asm!("csrw hedeleg, {}", in(reg) hedeleg);
         asm!("csrw hideleg, {}", in(reg) hideleg);
+        asm!("csrw henvcfg, {}", in(reg) henvcfg);
     }
 }

@@ -72,6 +72,7 @@ pub fn build_fdt() -> Result<Vec<u8>, vm_fdt::Error> {
                 "a".to_string(),
                 "f".to_string(),
                 "d".to_string(),
+                "sstc".to_string(),
             ],
         )?;
         // Specify the MMU type (e.g., Sv39, Sv48)

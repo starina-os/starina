@@ -61,11 +61,6 @@ pub extern "C" fn interrupt_handler() -> ! {
 
     let sepc = unsafe { (*cpuvar.arch.context).sepc } as u64;
 
-    info!(
-        "interrupt: {} (scause={:#x}), sepc: {:#x}, stval: {:#x}",
-        scause_str, scause, sepc, stval
-    );
-
     if (is_intr, code) == (true, 9) {
         use_plic(|plic| {
             plic.handle_interrupt();
@@ -86,16 +81,18 @@ pub extern "C" fn interrupt_handler() -> ! {
         // let ret = syscall_handler(a0, a1, a2, a3, a4, a5);
         todo!()
     } else if (is_intr, code) == (true, 5) {
-        info!("interrupt: supervisor timer interrupt");
+        // info!("interrupt: supervisor timer interrupt");
         use crate::thread::TIMER_QUEUE;
         while let Some(thread) = TIMER_QUEUE.lock().pop() {
             thread.resume_from_idle_vcpu();
         }
 
-        // super::sbi::set_timer(0xffffffffffffffff);
         switch_thread();
     } else {
-        panic!("unhandled intrrupt");
+        panic!(
+            "unhandled interrupt: {} (scause={:#x}), sepc: {:#x}, stval: {:#x}",
+            scause_str, scause, sepc, stval
+        );
     }
 }
 pub static INTERRUPT_CONTROLLER: PlicWrapper = PlicWrapper::new();
