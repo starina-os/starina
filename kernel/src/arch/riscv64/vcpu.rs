@@ -23,15 +23,11 @@ const CONTEXT_MAGIC: u64 = 0xc000ffee;
 #[derive(Debug, Default)]
 struct Context {
     magic: u64,
-    in_wfi: bool,
     cpuvar_ptr: u64,
     hgatp: u64,
     hie: u64,
     hip: u64,
     hvip: u64,
-    hedeleg: u64,
-    hideleg: u64,
-    hcounteren: u64,
     htimedelta: u64,
     hstatus: u64,
     sstatus: u64,
@@ -76,6 +72,7 @@ struct Context {
     vstvec: u64,
     vsscratch: u64,
     vsatp: u64,
+    vtimestamp: u64,
 }
 
 struct ConsolePrinter {
@@ -130,26 +127,6 @@ impl VCpu {
         let sstatus = 1 << 8; // SPP
         let hgatp = hvspace.arch().hgatp();
 
-        let mut hedeleg = 0;
-        hedeleg |= 1 << 0; // Instruction address misaligned
-        hedeleg |= 1 << 1; // Instruction access fault
-        hedeleg |= 1 << 2; // Illegal instruction
-        hedeleg |= 1 << 3; // Breakpoint
-        hedeleg |= 1 << 4; // Load address misaligned
-        hedeleg |= 1 << 5; // Load access fault
-        hedeleg |= 1 << 6; // Store/AMO address misaligned
-        hedeleg |= 1 << 7; // Store/AMO access fault
-        hedeleg |= 1 << 8; // Environment call from U-mode
-        hedeleg |= 1 << 12; // Instruction page fault
-        hedeleg |= 1 << 13; // Load page fault
-        hedeleg |= 1 << 15; // Store/AMO page fault
-
-        let mut hideleg = 0;
-        hideleg |= 1 << 6; // Supervisor timer interrupt
-
-        // Enable all counters.
-        let mut hcounteren = 0xffff_ffff;
-
         let mut now: u64;
         unsafe {
             asm!("rdtime {}", out(reg) now);
@@ -163,9 +140,6 @@ impl VCpu {
             sepc,
             hgatp,
             hstatus,
-            hedeleg,
-            hideleg,
-            hcounteren,
             htimedelta,
             a0: arg0 as u64,
             a1: arg1 as u64,
@@ -201,23 +175,12 @@ pub fn vcpu_entry(vcpu: *mut VCpu) -> ! {
         let context = &mut (*vcpu).context;
         context.cpuvar_ptr = cpuvar as u64;
 
-        // info!("vcpu_entry: sepc={:x}", context.sepc);
-
         write_stvec(vcpu_trap_entry as *const () as usize, StvecMode::Direct);
 
-        if context.in_wfi {
-            // context.sepc += 4; // size of wfi
-            context.in_wfi = false;
-        }
+        let hvip = context.hvip;
+        context.hvip = 0;
 
-        let mut hvip = 0;
-        if context.hvip != 0 {
-            // info!("injecting hvip: vsstatus={:x}", context.vsstatus);
-            hvip = context.hvip;
-            context.hvip = 0;
-        }
-
-        // Restore VS-mode CSRs
+        // Fill H extension CSRs and virtual CSRs.
         asm!(
             "csrw hgatp, {hgatp}",
             "hfence.gvma",
@@ -226,9 +189,6 @@ pub fn vcpu_entry(vcpu: *mut VCpu) -> ! {
             "csrw hip, {hip}",
             "csrw hie, {hie}",
             "csrw hvip, {hvip}",
-            "csrw hedeleg, {hedeleg}",
-            "csrw hideleg, {hideleg}",
-            "csrw hcounteren, {hcounteren}",
             "csrw htimedelta, {htimedelta}",
 
             "csrw sscratch, {sscratch}",
@@ -244,7 +204,27 @@ pub fn vcpu_entry(vcpu: *mut VCpu) -> ! {
             "csrw vscause, {vscause}",
             "csrw vstval, {vstval}",
 
-            // Restore general-purpose registers
+            hgatp = in(reg) context.hgatp,
+            hstatus = in(reg) context.hstatus,
+            hie = in(reg) context.hie,
+            hip = in(reg) context.hip,
+            hvip = in(reg) hvip,
+            htimedelta = in(reg) context.htimedelta,
+            sscratch = in(reg) vcpu as *const _ as u64,
+            sstatus = in(reg) context.sstatus,
+            sepc = in(reg) context.sepc,
+            vsstatus = in(reg) context.vsstatus,
+            vsie = in(reg) context.vsie,
+            vsip = in(reg) context.vsip,
+            vstvec = in(reg) context.vstvec,
+            vsscratch = in(reg) context.vsscratch,
+            vsatp = in(reg) context.vsatp,
+            vscause = in(reg) context.vscause,
+            vstval = in(reg) context.vstval,
+        );
+
+        // Restore general-purpose registers and enter VS/VU-mode.
+        asm!(
             "mv a0, {context}",
             "ld ra, {ra_offset}(a0)",
             "ld sp, {sp_offset}(a0)",
@@ -277,29 +257,9 @@ pub fn vcpu_entry(vcpu: *mut VCpu) -> ! {
             "ld t5, {t5_offset}(a0)",
             "ld t6, {t6_offset}(a0)",
 
+            // Restore a0 at the end of this switch - it contains the CpuVar pointer!
             "ld a0, {a0_offset}(a0)",
-
             "sret",
-            hgatp = in(reg) context.hgatp,
-            hstatus = in(reg) context.hstatus,
-            hie = in(reg) context.hie,
-            hip = in(reg) context.hip,
-            hvip = in(reg) hvip,
-            hedeleg = in(reg) context.hedeleg,
-            hideleg = in(reg) context.hideleg,
-            hcounteren = in(reg) context.hcounteren,
-            htimedelta = in(reg) context.htimedelta,
-            sscratch = in(reg) vcpu as *const _ as u64,
-            sstatus = in(reg) context.sstatus,
-            sepc = in(reg) context.sepc,
-            vsstatus = in(reg) context.vsstatus,
-            vsie = in(reg) context.vsie,
-            vsip = in(reg) context.vsip,
-            vstvec = in(reg) context.vstvec,
-            vsscratch = in(reg) context.vsscratch,
-            vsatp = in(reg) context.vsatp,
-            vscause = in(reg) context.vscause,
-            vstval = in(reg) context.vstval,
             context = in(reg) context as *const _,
             ra_offset = const offset_of!(Context, ra),
             sp_offset = const offset_of!(Context, sp),
@@ -339,8 +299,32 @@ pub fn vcpu_entry(vcpu: *mut VCpu) -> ! {
     unreachable!();
 }
 
+macro_rules! read_csr {
+    ($csr:expr) => {{
+        let mut value: u64;
+        unsafe {
+            asm!(concat!("csrr {}, ", $csr), out(reg) value);
+        }
+        value
+    }};
+}
+
 extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
     let context = unsafe { &mut (*vcpu).context };
+    context.vsstatus = read_csr!("vsstatus");
+    context.vsepc = read_csr!("vsepc");
+    context.vscause = read_csr!("vscause");
+    context.vstval = read_csr!("vstval");
+    context.vsie = read_csr!("vsie");
+    context.vsip = read_csr!("vsip");
+    context.vstvec = read_csr!("vstvec");
+    context.vsscratch = read_csr!("vsscratch");
+    context.vsatp = read_csr!("vsatp");
+    context.hstatus = read_csr!("hstatus");
+    context.hie = read_csr!("hie");
+    context.hip = read_csr!("hip");
+    context.sstatus = read_csr!("sstatus");
+    context.sepc = read_csr!("sepc");
 
     let scause: u64;
     let stval: u64;
@@ -556,37 +540,6 @@ pub extern "C" fn vcpu_trap_entry() -> ! {
             "sd t5, {t5_offset}(a0)",
             "sd t6, {t6_offset}(a0)",
 
-            "csrr t0, vsstatus",
-            "sd t0, {vsstatus_offset}(a0)",
-            "csrr t0, vsepc",
-            "sd t0, {vsepc_offset}(a0)",
-            "csrr t0, vscause",
-            "sd t0, {vscause_offset}(a0)",
-            "csrr t0, vstval",
-            "sd t0, {vstval_offset}(a0)",
-            "csrr t0, vsie",
-            "sd t0, {vsie_offset}(a0)",
-            "csrr t0, vsip",
-            "sd t0, {vsip_offset}(a0)",
-            "csrr t0, vstvec",
-            "sd t0, {vstvec_offset}(a0)",
-            "csrr t0, vsscratch",
-            "sd t0, {vsscratch_offset}(a0)",
-            "csrr t0, vsatp",
-            "sd t0, {vsatp_offset}(a0)",
-            "csrr t0, hstatus",
-            "sd t0, {hstatus_offset}(a0)",
-            "csrr t0, hie",
-            "sd t0, {hie_offset}(a0)",
-            "csrr t0, hip",
-            "sd t0, {hip_offset}(a0)",
-            "csrr t0, hcounteren",
-            "sd t0, {hcounteren_offset}(a0)",
-            "csrr t0, sstatus",
-            "sd t0, {sstatus_offset}(a0)",
-            "csrr t0, sepc",
-            "sd t0, {sepc_offset}(a0)",
-
             "csrr t0, sscratch",
             "sd t0, {a0_offset}(a0)",
 
@@ -629,23 +582,35 @@ pub extern "C" fn vcpu_trap_entry() -> ! {
             t4_offset = const offset_of!(VCpu, context.t4),
             t5_offset = const offset_of!(VCpu, context.t5),
             t6_offset = const offset_of!(VCpu, context.t6),
-            vsstatus_offset = const offset_of!(VCpu, context.vsstatus),
-            vsepc_offset = const offset_of!(VCpu, context.vsepc),
-            vscause_offset = const offset_of!(VCpu, context.vscause),
-            vstval_offset = const offset_of!(VCpu, context.vstval),
-            vsie_offset = const offset_of!(VCpu, context.vsie),
-            vsip_offset = const offset_of!(VCpu, context.vsip),
-            vstvec_offset = const offset_of!(VCpu, context.vstvec),
-            vsscratch_offset = const offset_of!(VCpu, context.vsscratch),
-            vsatp_offset = const offset_of!(VCpu, context.vsatp),
-            hstatus_offset = const offset_of!(VCpu, context.hstatus),
-            hie_offset = const offset_of!(VCpu, context.hie),
-            hip_offset = const offset_of!(VCpu, context.hip),
-            hcounteren_offset = const offset_of!(VCpu, context.hcounteren),
-            sstatus_offset = const offset_of!(VCpu, context.sstatus),
-            sepc_offset = const offset_of!(VCpu, context.sepc),
             cpuvar_ptr_offset = const offset_of!(VCpu, context.cpuvar_ptr),
             kernel_sp_offset = const offset_of!(CpuVar, arch.kernel_sp),
         );
     };
+}
+
+pub fn init() {
+    let mut hedeleg = 0;
+    hedeleg |= 1 << 0; // Instruction address misaligned
+    hedeleg |= 1 << 1; // Instruction access fault
+    hedeleg |= 1 << 2; // Illegal instruction
+    hedeleg |= 1 << 3; // Breakpoint
+    hedeleg |= 1 << 4; // Load address misaligned
+    hedeleg |= 1 << 5; // Load access fault
+    hedeleg |= 1 << 6; // Store/AMO address misaligned
+    hedeleg |= 1 << 7; // Store/AMO access fault
+    hedeleg |= 1 << 8; // Environment call from U-mode
+    hedeleg |= 1 << 12; // Instruction page fault
+    hedeleg |= 1 << 13; // Load page fault
+    hedeleg |= 1 << 15; // Store/AMO page fault
+
+    let mut hideleg = 0;
+    hideleg |= 1 << 6; // Supervisor timer interrupt
+
+    // Enable all counters.
+    let hcounteren: u64 = 0xffff_ffff;
+    unsafe {
+        asm!("csrw hcounteren, {}", in(reg) hcounteren);
+        asm!("csrw hedeleg, {}", in(reg) hedeleg);
+        asm!("csrw hideleg, {}", in(reg) hideleg);
+    }
 }
