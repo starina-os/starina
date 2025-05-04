@@ -238,8 +238,8 @@ impl VCpu {
 }
 
 pub fn vcpu_entry(vcpu: *mut VCpu) -> ! {
-    let cpuvar = get_cpuvar() as *const CpuVar;
     unsafe {
+        let cpuvar = get_cpuvar() as *const CpuVar;
         let context = &mut (*vcpu).context;
         context.cpuvar_ptr = cpuvar as u64;
 
@@ -379,6 +379,8 @@ macro_rules! read_csr {
 
 extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
     let context = unsafe { &mut (*vcpu).context };
+    debug_assert_eq!(context.magic, CONTEXT_MAGIC);
+
     context.vsstatus = read_csr!("vsstatus");
     context.vsepc = read_csr!("vsepc");
     context.vscause = read_csr!("vscause");
@@ -452,51 +454,39 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
     // Check if it's from VS/VU-mode.
     assert!(context.hstatus & (1 << 7/* SPV */) != 0, "SPV is not set");
 
-    {
+    if scause == 10 {
         let mut mutable = unsafe { (*vcpu).mutable.lock() };
-        if scause == 10 {
-            let (error, value) = match mutable.handle_sbi_call(&context) {
-                Ok(value) => (0, value),
-                Err(error) => (error, 0),
-            };
+        let (error, value) = match mutable.handle_sbi_call(&context) {
+            Ok(value) => (0, value),
+            Err(error) => (error, 0),
+        };
 
-            context.sepc += 4; // size of ecall
-            context.a0 = error as u64;
-            context.a1 = value as u64;
-        } else if scause == 22 {
-            // info!(
-            //     "vcpu_trap_handler: virtual instruction: sepc={:x}",
-            //     context.sepc
-            // );
-            context.sepc += 4; // size of virtual instruction
+        context.sepc += 4; // size of ecall
+        context.a0 = error as u64;
+        context.a1 = value as u64;
+    } else if scause == 22 {
+        context.sepc += 4; // size of virtual instruction
 
-            if context.hvip == 0 {
-                info!("no pending interrupt, going to idle");
-                let current = crate::cpuvar::current_thread();
-                current.idle_vcpu();
-
-                // let mut now: u64;
-                // unsafe {
-                //     asm!("csrr {}, time", out(reg) now);
-                // }
-                // super::sbi::set_timer(now + 0x20000); // FIXME:
-            }
-        } else if (is_intr, code) == (true, 5) {
-            context.hvip = 1 << 6; // FIXME:
-            let mut now: u64;
-            unsafe {
-                asm!("csrr {}, time", out(reg) now);
-            }
-            super::sbi::set_timer(now + 0x20000); // FIXME:
-        } else {
-            panic!(
-                "VM exit: {} (sepc={:x}, htval={:x}, stval={:x})",
-                scause_str,
-                unsafe { context.sepc },
-                htval,
-                stval
-            );
+        if context.hvip == 0 {
+            info!("no pending interrupt, going to idle");
+            let current = crate::cpuvar::current_thread();
+            current.idle_vcpu();
         }
+    } else if (is_intr, code) == (true, 5) {
+        context.hvip = 1 << 6; // FIXME:
+        let mut now: u64;
+        unsafe {
+            asm!("csrr {}, time", out(reg) now);
+        }
+        super::sbi::set_timer(now + 0x20000); // FIXME:
+    } else {
+        panic!(
+            "VM exit: {} (sepc={:x}, htval={:x}, stval={:x})",
+            scause_str,
+            unsafe { context.sepc },
+            htval,
+            stval
+        );
 
         // let exit = mutable.exit.take().unwrap();
         // drop(mutable);
