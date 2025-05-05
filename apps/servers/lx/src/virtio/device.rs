@@ -33,7 +33,7 @@ impl VirtioMmio {
 
 impl MmioDevice for VirtioMmio {
     fn read(&self, offset: u64, value: &mut [u8]) -> Result<(), MmioError> {
-        todo!(
+        trace!(
             "virtio mmio read: offset={:x}, width={:x}",
             offset,
             value.len()
@@ -42,7 +42,7 @@ impl MmioDevice for VirtioMmio {
     }
 
     fn write(&self, offset: u64, value: &[u8]) -> Result<(), MmioError> {
-        todo!(
+        trace!(
             "virtio mmio write: offset={:x}, width={:x}",
             offset,
             value.len()

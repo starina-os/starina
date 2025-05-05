@@ -118,30 +118,29 @@ pub fn build_fdt(
     fdt.property_u32("#interrupt-cells", 1)?;
     fdt.property_u32("riscv,ndev", 3)?;
     fdt.property_null("interrupt-controller")?;
-    fdt.property_array_u32(
+    fdt.property_array_u64(
         "reg",
         &[
-            0,
             plic_base.as_usize().try_into().unwrap(),
-            0,
-            plic_mmio_size as u32,
+            plic_mmio_size as u64,
         ],
     )?;
     fdt.property_array_u32("interrupts-extended", &interrupts_extended)?;
     fdt.end_node(plic_node)?;
 
     // Virtio-mmio devices.
-    // for (i, gpaddr) in virtio_mmios.iter().enumerate() {
-    //     let virtio_mmio_node = fdt.begin_node(&format!("virtio-mmio@{}", gpaddr.as_usize()))?;
-    //     fdt.property_string("compatible", "virtio,mmio")?;
-    //     let addr_high = (gpaddr.as_usize() >> 32) as u32;
-    //     let addr_low = (gpaddr.as_usize() & 0xffffffff) as u32;
-    //     let size_high = (VIRTIO_MMIO_SIZE as u64 >> 32) as u32;
-    //     let size_low = (VIRTIO_MMIO_SIZE as u64 & 0xffffffff) as u32;
-    //     fdt.property_array_u32("reg", &[addr_low, addr_high, size_low, size_high])?;
-    //     fdt.end_node(virtio_mmio_node)?;
-    // }
-    //
+    for (i, gpaddr) in virtio_mmios.iter().enumerate() {
+        let virtio_mmio_node = fdt.begin_node(&format!("virtio-mmio@{}", gpaddr.as_usize()))?;
+        fdt.property_string("compatible", "virtio,mmio")?;
+        fdt.property_array_u64(
+            "reg",
+            &[
+                gpaddr.as_usize().try_into().unwrap(),
+                VIRTIO_MMIO_SIZE as u64,
+            ],
+        )?;
+        fdt.end_node(virtio_mmio_node)?;
+    }
 
     fdt.end_node(soc_node)?;
 
