@@ -21,6 +21,10 @@ use crate::arch::riscv64::riscv::OP_LOAD_FUNCT3_LB;
 use crate::arch::riscv64::riscv::OP_LOAD_FUNCT3_LD;
 use crate::arch::riscv64::riscv::OP_LOAD_FUNCT3_LH;
 use crate::arch::riscv64::riscv::OP_LOAD_FUNCT3_LW;
+use crate::arch::riscv64::riscv::OP_STORE_FUNCT3_SB;
+use crate::arch::riscv64::riscv::OP_STORE_FUNCT3_SD;
+use crate::arch::riscv64::riscv::OP_STORE_FUNCT3_SH;
+use crate::arch::riscv64::riscv::OP_STORE_FUNCT3_SW;
 use crate::arch::riscv64::riscv::SCAUSE_ECALL_FROM_VS;
 use crate::arch::riscv64::riscv::SCAUSE_GUEST_INST_PAGE_FAULT;
 use crate::arch::riscv64::riscv::SCAUSE_GUEST_LOAD_PAGE_FAULT;
@@ -175,13 +179,13 @@ impl Mutable {
     }
 }
 
-fn htinst_load_inst(htinst: u64) -> (LoadInst, u8) {
+fn htinst_load_inst(htinst: u64) -> (LoadInst, u8, u8) {
     if htinst & 1 != 1 {
         panic!("invalid load instruction: {:x}", htinst);
     }
 
-    // "Bit 0 is 1, and replacing bit 1 with 1 makes the value into a valid
-    // encoding of a standard instruction."
+    let is_compressed = htinst & (1 << 1) == 0;
+    let inst_len = if is_compressed { 2 } else { 4 };
     let inst = htinst | (1 << 1);
 
     let opcode = (inst & 0b111_1111) as u8;
@@ -196,21 +200,23 @@ fn htinst_load_inst(htinst: u64) -> (LoadInst, u8) {
     }
 
     match funct3 {
-        OP_LOAD_FUNCT3_LB => (LoadInst { rd }, 1),
-        OP_LOAD_FUNCT3_LH => (LoadInst { rd }, 2),
-        OP_LOAD_FUNCT3_LW => (LoadInst { rd }, 4),
-        OP_LOAD_FUNCT3_LD => (LoadInst { rd }, 8),
+        OP_LOAD_FUNCT3_LB => (LoadInst { rd }, 1, inst_len),
+        OP_LOAD_FUNCT3_LH => (LoadInst { rd }, 2, inst_len),
+        OP_LOAD_FUNCT3_LW => (LoadInst { rd }, 4, inst_len),
+        OP_LOAD_FUNCT3_LD => (LoadInst { rd }, 8, inst_len),
         _ => {
             panic!("unsupported funct3 for load: {:x}", funct3);
         }
     }
 }
 
-fn htinst_store_inst(htinst: u64) -> u8 {
+fn htinst_store_inst(htinst: u64) -> (u8, u8) {
     if htinst & 1 != 1 {
         panic!("invalid store instruction: {:x}", htinst);
     }
 
+    let is_compressed = htinst & (1 << 1) == 0;
+    let inst_len = if is_compressed { 2 } else { 4 };
     let inst = htinst | (1 << 1);
 
     let opcode = (inst & 0b111_1111) as u8;
@@ -224,10 +230,10 @@ fn htinst_store_inst(htinst: u64) -> u8 {
     }
 
     match funct3 {
-        OP_STORE_FUNCT3_SB => 1,
-        OP_STORE_FUNCT3_SH => 2,
-        OP_STORE_FUNCT3_SW => 4,
-        OP_STORE_FUNCT3_SD => 8,
+        OP_STORE_FUNCT3_SB => (1, inst_len),
+        OP_STORE_FUNCT3_SH => (2, inst_len),
+        OP_STORE_FUNCT3_SW => (4, inst_len),
+        OP_STORE_FUNCT3_SD => (8, inst_len),
         _ => panic!("unsupported funct3 for store: {:x}", funct3),
     }
 }
@@ -243,11 +249,14 @@ fn handle_guest_page_fault(
         gpaddr, kind
     );
 
-    let (load_inst, width) = match kind {
-        ExitPageFaultKind::Load | ExitPageFaultKind::Execute => htinst_load_inst(htinst),
+    let (load_inst, width, inst_len) = match kind {
+        ExitPageFaultKind::Load | ExitPageFaultKind::Execute => {
+            let (load_inst, width, inst_len) = htinst_load_inst(htinst);
+            (load_inst, width, inst_len)
+        }
         ExitPageFaultKind::Store => {
-            let width = htinst_store_inst(htinst);
-            (LoadInst::default(), width)
+            let (width, inst_len) = htinst_store_inst(htinst);
+            (LoadInst::default(), width, inst_len)
         }
         _ => {
             panic!("unknown exit page fault kind: {:?}", kind);
@@ -267,6 +276,7 @@ fn handle_guest_page_fault(
                     kind,
                     width,
                     load_inst,
+                    inst_len,
                 },
             },
         },
@@ -344,8 +354,8 @@ impl VCpu {
             VCPU_EXIT_PAGE_FAULT => {
                 let page_fault = unsafe { &exit_state.info.page_fault };
                 trace!(
-                    "solving page fault: gpaddr={}, kind={:?}",
-                    page_fault.gpaddr, page_fault.kind
+                    "solving page fault: gpaddr={}, kind={:?}, inst_len={}",
+                    page_fault.gpaddr, page_fault.kind, page_fault.inst_len
                 );
 
                 // FIXME:
@@ -355,7 +365,7 @@ impl VCpu {
                 };
 
                 unsafe {
-                    (*context).sepc += 4; // size of load/store instruction
+                    (*context).sepc += page_fault.inst_len as u64;
                 }
 
                 match page_fault.kind {
@@ -396,122 +406,152 @@ impl VCpu {
                             }
                             // x1: ra
                             1 => unsafe {
+                                trace!("load: RD=x1: ra");
                                 (*context).ra = value;
                             },
                             // x2: sp
                             2 => unsafe {
+                                trace!("load: RD=x2: sp");
                                 (*context).sp = value;
                             },
                             // x3: gp
                             3 => unsafe {
+                                trace!("load: RD=x3: gp");
                                 (*context).gp = value;
                             },
                             // x4: tp
                             4 => unsafe {
+                                trace!("load: RD=x4: tp");
                                 (*context).tp = value;
                             },
                             // x5: t0
                             5 => unsafe {
+                                trace!("load: RD=x5: t0");
                                 (*context).t0 = value;
                             },
                             // x6: t1
                             6 => unsafe {
+                                trace!("load: RD=x6: t1");
                                 (*context).t1 = value;
                             },
                             // x7: t2
                             7 => unsafe {
+                                trace!("load: RD=x7: t2");
                                 (*context).t2 = value;
                             },
                             // x8: s0
                             8 => unsafe {
+                                trace!("load: RD=x8: s0");
                                 (*context).s0 = value;
                             },
                             // x9: s1
                             9 => unsafe {
+                                trace!("load: RD=x9: s1");
                                 (*context).s1 = value;
                             },
                             // x10: a0
                             10 => unsafe {
+                                trace!("load: RD=x10: a0");
                                 (*context).a0 = value;
                             },
                             // x11: a1
                             11 => unsafe {
+                                trace!("load: RD=x11: a1");
                                 (*context).a1 = value;
                             },
                             // x12: a2
                             12 => unsafe {
+                                trace!("load: RD=x12: a2");
                                 (*context).a2 = value;
                             },
                             // x13: a3
                             13 => unsafe {
+                                trace!("load: RD=x13: a3");
                                 (*context).a3 = value;
                             },
                             // x14: a4
                             14 => unsafe {
+                                trace!("load: RD=x14: a4");
                                 (*context).a4 = value;
                             },
                             // x15: a5
                             15 => unsafe {
+                                trace!("load: RD=x15: a5");
                                 (*context).a5 = value;
                             },
                             // x16: a6
                             16 => unsafe {
+                                trace!("load: RD=x16: a6");
                                 (*context).a6 = value;
                             },
                             // x17: a7
                             17 => unsafe {
+                                trace!("load: RD=x17: a7");
                                 (*context).a7 = value;
                             },
                             // x18: s2
                             18 => unsafe {
+                                trace!("load: RD=x18: s2");
                                 (*context).s2 = value;
                             },
                             // x19: s3
                             19 => unsafe {
+                                trace!("load: RD=x19: s3");
                                 (*context).s3 = value;
                             },
                             // x20: s4
                             20 => unsafe {
+                                trace!("load: RD=x20: s4");
                                 (*context).s4 = value;
                             },
                             // x21: s5
                             21 => unsafe {
+                                trace!("load: RD=x21: s5");
                                 (*context).s5 = value;
                             },
                             // x22: s6
                             22 => unsafe {
+                                trace!("load: RD=x22: s6");
                                 (*context).s6 = value;
                             },
                             // x23: s7
                             23 => unsafe {
+                                trace!("load: RD=x23: s7");
                                 (*context).s7 = value;
                             },
                             // x24: s8
                             24 => unsafe {
+                                trace!("load: RD=x24: s8");
                                 (*context).s8 = value;
                             },
                             // x25: s9
                             25 => unsafe {
+                                trace!("load: RD=x25: s9");
                                 (*context).s9 = value;
                             },
                             // x26: s10
                             26 => unsafe {
+                                trace!("load: RD=x26: s10");
                                 (*context).s10 = value;
                             },
                             // x27: s11
                             27 => unsafe {
+                                trace!("load: RD=x27: s11");
                                 (*context).s11 = value;
                             },
                             // x28: t3
                             28 => unsafe {
+                                trace!("load: RD=x28: t3");
                                 (*context).t3 = value;
                             },
                             // x29: t4
                             29 => unsafe {
+                                trace!("load: RD=x29: t4");
                                 (*context).t4 = value;
                             },
                             // x30: t5
                             30 => unsafe {
+                                trace!("load: RD=x30: t5");
                                 (*context).t5 = value;
                             },
                             // x31: t6
@@ -523,13 +563,11 @@ impl VCpu {
                             }
                         };
                     },
-                    ExitPageFaultKind::Store => unsafe {
-                        trace!(
-                            "solving store page fault: gpaddr={}, width={}",
-                            page_fault.gpaddr, page_fault.width
-                        );
-                    },
-                    _ => {}
+                    ExitPageFaultKind::Store => {}
+                    _ => {
+                        panic!("unknown exit page fault kind: {:?}", exit_state.reason);
+                        return Err(ErrorCode::InvalidState);
+                    }
                 }
             }
             VCPU_EXIT_NONE => {}
@@ -814,6 +852,7 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
         }
         _ => {
             let mut exit = mutable.exit.take().unwrap();
+            info!("page fault sepc: {:x}", context.sepc);
             match scause {
                 SCAUSE_GUEST_INST_PAGE_FAULT => {
                     let gpaddr = GPAddr::new(htval as usize);

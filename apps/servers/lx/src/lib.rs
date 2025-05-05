@@ -82,6 +82,14 @@ impl EventLoop for App {
                         "load page fault: gpaddr={}, data={:x?}, width={}",
                         gpaddr, data, width
                     );
+                    data[0] = 0x42;
+                    data[1] = 0x42;
+                    data[2] = 0x42;
+                    data[3] = 0x42;
+                    data[4] = 0x42;
+                    data[5] = 0x42;
+                    data[6] = 0x42;
+                    data[7] = 0x42;
                 }
                 VCpuExit::StorePageFault {
                     gpaddr,

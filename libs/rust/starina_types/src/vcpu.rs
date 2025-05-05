@@ -21,6 +21,7 @@ pub struct ExitPageFault {
     pub kind: ExitPageFaultKind,
     pub width: u8,
     pub load_inst: LoadInst,
+    pub inst_len: u8,
 }
 
 #[derive(Debug, Clone, Copy, Default)]
