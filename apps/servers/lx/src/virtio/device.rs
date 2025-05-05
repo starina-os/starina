@@ -1,9 +1,5 @@
-use starina::address::VAddr;
 use starina::error::ErrorCode;
-use starina::folio::Folio;
 use starina::prelude::*;
-use starina::vmspace::PageProtect;
-use starina::vmspace::VmSpace;
 
 use crate::guest_memory::MmioDevice;
 use crate::guest_memory::MmioError;

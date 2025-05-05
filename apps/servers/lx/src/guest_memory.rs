@@ -10,6 +10,7 @@ use starina::vmspace::PageProtect;
 use starina::vmspace::VmSpace;
 
 use crate::virtio;
+use crate::virtio::device::VIRTIO_MMIO_SIZE;
 use crate::virtio::device::VirtioDevice;
 use crate::virtio::device::VirtioMmio;
 
@@ -94,8 +95,8 @@ enum Backend {
 }
 
 struct Mapping {
-    base: GPAddr,
-    len: usize,
+    start: GPAddr,
+    end: GPAddr,
     backend: Backend,
 }
 
@@ -128,11 +129,11 @@ impl GuestMemory {
             )
             .map_err(Error::MapRam)?;
 
-        self.mappings.push(Mapping::Backend(Backend {
-            base: ram.gpaddr,
-            len: ram.size,
+        self.mappings.push(Mapping {
+            start: ram.gpaddr,
+            end: ram.gpaddr.checked_add(ram.size).unwrap(),
             backend: Backend::Ram(ram),
-        }));
+        });
         Ok(())
     }
 
@@ -146,24 +147,24 @@ impl GuestMemory {
         // cause page faults on MMIO addresses to handle them programmatically.
         let device = VirtioMmio::new(device).map_err(Error::CreateVirtioMmio)?;
         self.mappings.push(Mapping {
-            base: gpaddr,
-            len: VIRTIO_MMIO_SIZE,
+            start: gpaddr,
+            end: gpaddr.checked_add(VIRTIO_MMIO_SIZE).unwrap(),
             backend: Backend::VirtioMmio(device),
         });
 
         Ok(())
     }
 
-    fn find_mmio_device(&self, gpaddr: GPAddr) -> Result<(&dyn MmioDevice, usize), MmioError> {
+    fn find_mmio_device(&self, gpaddr: GPAddr) -> Result<(&dyn MmioDevice, u64), MmioError> {
         for mapping in &self.mappings {
-            if mapping.base <= gpaddr && gpaddr < mapping.base.checked_add(mapping.len) {
+            if mapping.start <= gpaddr && gpaddr < mapping.end {
                 match &mapping.backend {
                     Backend::Ram(_) => {
                         return Err(MmioError::NotMmio);
                     }
-                    Backend::VirtioMmio(ref device) => {
-                        let offset = gpaddr.as_usize() as u64 - mapping.base.as_usize() as u64;
-                        return Ok((device as &dyn MmioDevice, offset as usize));
+                    Backend::VirtioMmio(device) => {
+                        let offset = gpaddr.as_usize() - mapping.start.as_usize();
+                        return Ok((device as &dyn MmioDevice, offset as u64));
                     }
                 }
             }
