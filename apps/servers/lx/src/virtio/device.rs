@@ -44,6 +44,8 @@ const REG_QUEUE_DRIVER_LOW: u64 = 0x90;
 const REG_QUEUE_DRIVER_HIGH: u64 = 0x94;
 const REG_QUEUE_DEVICE_LOW: u64 = 0xa0;
 const REG_QUEUE_DEVICE_HIGH: u64 = 0xa4;
+const REG_QUEUE_CONFIG_GEN: u64 = 0xfc;
+const REG_CONFIG_START: u64 = 0x100;
 
 const VIRTIO_F_VERSION_1: u64 = 1 << 32;
 
@@ -57,6 +59,7 @@ struct Mutable {
     device_features_select: u32,
     driver_features_select: u32,
     device_status: u32,
+    driver_features: u64,
     queue_select: u32,
     num_queues: u32,
 }
@@ -76,6 +79,7 @@ impl VirtioMmio {
                 device_features_select: 0,
                 driver_features_select: 0,
                 device_status: 0,
+                driver_features: 0,
                 queue_select: 0,
                 num_queues,
             }),
@@ -91,39 +95,57 @@ impl MmioDevice for VirtioMmio {
             dst.len()
         );
 
-        let width: usize = dst.len();
-        if width != 4 {
-            panic!(
-                "unexpected virtio-mmio read: offset={:x}, width={}",
-                offset, width
-            );
+        let width = dst.len();
+        let mutable = self.mutable.lock();
+        match width {
+            1 => {
+                let value = match offset {
+                    offset if offset >= REG_CONFIG_START => {
+                        trace!("virtio-mmio: read config: offset={:x}", offset);
+                        0
+                    }
+                    _ => {
+                        panic!(
+                            "unexpected virtio-mmio read: offset={:x}, width={}",
+                            offset, width
+                        );
+                    }
+                };
+
+                dst[0] = value as u8;
+            }
+            4 => {
+                let value = match offset {
+                    REG_MAGIC => 0x74726976,
+                    REG_VERSION => 2,
+                    REG_DEVICE_ID => self.device.device_id(),
+                    REG_VENDOR_ID => self.device.vendor_id(),
+                    REG_DEVICE_FEATURES => {
+                        let features = self.device.device_features() | VIRTIO_F_VERSION_1;
+                        if mutable.device_features_select == 0 {
+                            (features & 0xffffffff) as u32
+                        } else {
+                            (features >> 32) as u32
+                        }
+                    }
+                    REG_DEVICE_FEATURES_SEL => mutable.device_features_select,
+                    REG_DEVICE_STATUS => mutable.device_status,
+                    REG_QUEUE_CONFIG_GEN => 0,
+                    _ => {
+                        panic!(
+                            "unexpected virtio-mmio read: offset={:x}, width={}",
+                            offset, width
+                        );
+                    }
+                };
+
+                dst.copy_from_slice(&value.to_ne_bytes());
+            }
+            _ => {
+                panic!("unsupported virtio-mmio read width: {:x}", width);
+            }
         }
 
-        let mutable = self.mutable.lock();
-        let value = match offset {
-            REG_MAGIC => 0x74726976,
-            REG_VERSION => 2,
-            REG_DEVICE_ID => self.device.device_id(),
-            REG_VENDOR_ID => self.device.vendor_id(),
-            REG_DEVICE_FEATURES => {
-                let features = self.device.device_features() | VIRTIO_F_VERSION_1;
-                if mutable.device_features_select == 0 {
-                    (features & 0xffffffff) as u32
-                } else {
-                    (features >> 32) as u32
-                }
-            }
-            REG_DEVICE_FEATURES_SEL => mutable.device_features_select,
-            REG_DEVICE_STATUS => mutable.device_status,
-            _ => {
-                panic!(
-                    "unexpected virtio-mmio read: offset={:x}, width={}",
-                    offset, width
-                );
-            }
-        };
-
-        dst.copy_from_slice(&value.to_ne_bytes());
         Ok(())
     }
 
@@ -159,10 +181,10 @@ impl MmioDevice for VirtioMmio {
             }
             REG_DRIVER_FEATURES => {
                 if mutable.driver_features_select == 0 {
-                    mutable.driver_features = value;
+                    mutable.driver_features = value as u64;
                 } else {
-                    mutable.driver_features =
-                        (mutable.driver_features & 0xffffffff) | (value << 32);
+                    mutable.driver_features &= 0xffffffff;
+                    mutable.driver_features |= (value as u64) << 32;
                 }
             }
             _ => {
