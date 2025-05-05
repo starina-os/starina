@@ -9,7 +9,7 @@ const GUEST_TIMEBASE_FREQ: u32 = 10000000; // QEMU virt default timer frequency 
 const GUEST_MMU_TYPE: &str = "riscv,sv48"; // Common MMU type for RV64
 
 fn plic_size(num_cpus: u32) -> u64 {
-    0x200000 * (num_cpus as u64 * 0x1000)
+    0x200000 + (num_cpus as u64 * 0x1000)
 }
 
 pub fn build_fdt(
@@ -110,17 +110,21 @@ pub fn build_fdt(
     fdt.end_node(cpus_node)?;
 
     // PLIC node.
+    info!(
+        "plic_base: {:x}, plic_size: {:x}",
+        plic_base.as_usize(),
+        plic_size(num_cpus)
+    );
+    debug_assert!(plic_size(num_cpus) <= 0x100_0000);
+
     let plic_node = fdt.begin_node("plic")?;
     fdt.property_string("compatible", "riscv,plic0")?;
     // fdt.property_u32("#address-cells", 0x1)?;
     // fdt.property_u32("#size-cells", 0x1)?;
     fdt.property_u32("#interrupt-cells", 1)?;
-    fdt.property_u32("riscv,ndev", 16)?;
+    fdt.property_u32("riscv,ndev", 4)?;
     fdt.property_null("interrupt-controller")?;
-    fdt.property_array_u64(
-        "reg",
-        &[(plic_base.as_usize() as u64) << 2, plic_size(num_cpus)],
-    )?;
+    fdt.property_array_u64("reg", &[plic_base.as_usize() as u64, plic_size(num_cpus)])?;
     fdt.property_array_u32("interrupts-extended", &interrupts_extended)?;
     fdt.property_u32("interrupt-parent", interrupts_extended[0])?;
     fdt.end_node(plic_node)?;

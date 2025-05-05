@@ -353,11 +353,6 @@ impl VCpu {
         match exit_state.reason {
             VCPU_EXIT_PAGE_FAULT => {
                 let page_fault = unsafe { &exit_state.info.page_fault };
-                trace!(
-                    "solving page fault: gpaddr={}, kind={:?}, inst_len={}",
-                    page_fault.gpaddr, page_fault.kind, page_fault.inst_len
-                );
-
                 // FIXME:
                 let context = unsafe {
                     let ptr = (&self.context) as *const _ as usize;
@@ -406,152 +401,152 @@ impl VCpu {
                             }
                             // x1: ra
                             1 => unsafe {
-                                trace!("load: RD=x1: ra");
+                                // trace!("load: RD=x1: ra");
                                 (*context).ra = value;
                             },
                             // x2: sp
                             2 => unsafe {
-                                trace!("load: RD=x2: sp");
+                                // trace!("load: RD=x2: sp");
                                 (*context).sp = value;
                             },
                             // x3: gp
                             3 => unsafe {
-                                trace!("load: RD=x3: gp");
+                                // trace!("load: RD=x3: gp");
                                 (*context).gp = value;
                             },
                             // x4: tp
                             4 => unsafe {
-                                trace!("load: RD=x4: tp");
+                                // trace!("load: RD=x4: tp");
                                 (*context).tp = value;
                             },
                             // x5: t0
                             5 => unsafe {
-                                trace!("load: RD=x5: t0");
+                                // trace!("load: RD=x5: t0");
                                 (*context).t0 = value;
                             },
                             // x6: t1
                             6 => unsafe {
-                                trace!("load: RD=x6: t1");
+                                // trace!("load: RD=x6: t1");
                                 (*context).t1 = value;
                             },
                             // x7: t2
                             7 => unsafe {
-                                trace!("load: RD=x7: t2");
+                                // trace!("load: RD=x7: t2");
                                 (*context).t2 = value;
                             },
                             // x8: s0
                             8 => unsafe {
-                                trace!("load: RD=x8: s0");
+                                // trace!("load: RD=x8: s0");
                                 (*context).s0 = value;
                             },
                             // x9: s1
                             9 => unsafe {
-                                trace!("load: RD=x9: s1");
+                                // trace!("load: RD=x9: s1");
                                 (*context).s1 = value;
                             },
                             // x10: a0
                             10 => unsafe {
-                                trace!("load: RD=x10: a0");
+                                // trace!("load: RD=x10: a0");
                                 (*context).a0 = value;
                             },
                             // x11: a1
                             11 => unsafe {
-                                trace!("load: RD=x11: a1");
+                                // trace!("load: RD=x11: a1");
                                 (*context).a1 = value;
                             },
                             // x12: a2
                             12 => unsafe {
-                                trace!("load: RD=x12: a2");
+                                // trace!("load: RD=x12: a2");
                                 (*context).a2 = value;
                             },
                             // x13: a3
                             13 => unsafe {
-                                trace!("load: RD=x13: a3");
+                                // trace!("load: RD=x13: a3");
                                 (*context).a3 = value;
                             },
                             // x14: a4
                             14 => unsafe {
-                                trace!("load: RD=x14: a4");
+                                // trace!("load: RD=x14: a4");
                                 (*context).a4 = value;
                             },
                             // x15: a5
                             15 => unsafe {
-                                trace!("load: RD=x15: a5");
+                                // trace!("load: RD=x15: a5");
                                 (*context).a5 = value;
                             },
                             // x16: a6
                             16 => unsafe {
-                                trace!("load: RD=x16: a6");
+                                // trace!("load: RD=x16: a6");
                                 (*context).a6 = value;
                             },
                             // x17: a7
                             17 => unsafe {
-                                trace!("load: RD=x17: a7");
+                                // trace!("load: RD=x17: a7");
                                 (*context).a7 = value;
                             },
                             // x18: s2
                             18 => unsafe {
-                                trace!("load: RD=x18: s2");
+                                // trace!("load: RD=x18: s2");
                                 (*context).s2 = value;
                             },
                             // x19: s3
                             19 => unsafe {
-                                trace!("load: RD=x19: s3");
+                                // trace!("load: RD=x19: s3");
                                 (*context).s3 = value;
                             },
                             // x20: s4
                             20 => unsafe {
-                                trace!("load: RD=x20: s4");
+                                // trace!("load: RD=x20: s4");
                                 (*context).s4 = value;
                             },
                             // x21: s5
                             21 => unsafe {
-                                trace!("load: RD=x21: s5");
+                                // trace!("load: RD=x21: s5");
                                 (*context).s5 = value;
                             },
                             // x22: s6
                             22 => unsafe {
-                                trace!("load: RD=x22: s6");
+                                // trace!("load: RD=x22: s6");
                                 (*context).s6 = value;
                             },
                             // x23: s7
                             23 => unsafe {
-                                trace!("load: RD=x23: s7");
+                                // trace!("load: RD=x23: s7");
                                 (*context).s7 = value;
                             },
                             // x24: s8
                             24 => unsafe {
-                                trace!("load: RD=x24: s8");
+                                // trace!("load: RD=x24: s8");
                                 (*context).s8 = value;
                             },
                             // x25: s9
                             25 => unsafe {
-                                trace!("load: RD=x25: s9");
+                                // trace!("load: RD=x25: s9");
                                 (*context).s9 = value;
                             },
                             // x26: s10
                             26 => unsafe {
-                                trace!("load: RD=x26: s10");
+                                // trace!("load: RD=x26: s10");
                                 (*context).s10 = value;
                             },
                             // x27: s11
                             27 => unsafe {
-                                trace!("load: RD=x27: s11");
+                                // trace!("load: RD=x27: s11");
                                 (*context).s11 = value;
                             },
                             // x28: t3
                             28 => unsafe {
-                                trace!("load: RD=x28: t3");
+                                // trace!("load: RD=x28: t3");
                                 (*context).t3 = value;
                             },
                             // x29: t4
                             29 => unsafe {
-                                trace!("load: RD=x29: t4");
+                                // trace!("load: RD=x29: t4");
                                 (*context).t4 = value;
                             },
                             // x30: t5
                             30 => unsafe {
-                                trace!("load: RD=x30: t5");
+                                // trace!("load: RD=x30: t5");
                                 (*context).t5 = value;
                             },
                             // x31: t6
@@ -852,7 +847,6 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
         }
         _ => {
             let mut exit = mutable.exit.take().unwrap();
-            info!("page fault sepc: {:x}", context.sepc);
             match scause {
                 SCAUSE_GUEST_INST_PAGE_FAULT => {
                     let gpaddr = GPAddr::new(htval as usize);

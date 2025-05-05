@@ -33,9 +33,9 @@ impl EventLoop for App {
         const LINUX_ELF: &[u8] = include_bytes!("../linux/arch/riscv/boot/Image");
         const NUM_CPUS: u32 = 1;
         const GUEST_RAM_SIZE: usize = 64 * 1024 * 1024; // 64MB
+        const PLIC_BASE_ADDR: GPAddr = GPAddr::new(0x0a00_0000);
+        const VIRTIO_FS_ADDR: GPAddr = GPAddr::new(0x0b00_0000);
         const GUEST_RAM_ADDR: GPAddr = GPAddr::new(0x8000_0000);
-        const PLIC_BASE_ADDR: GPAddr = GPAddr::new(0x1000_0000);
-        const VIRTIO_FS_ADDR: GPAddr = GPAddr::new(0x2000_0000);
         let mut ram = Ram::new(GUEST_RAM_ADDR, GUEST_RAM_SIZE).unwrap();
         let fdt = build_fdt(
             NUM_CPUS,
@@ -77,27 +77,12 @@ impl EventLoop for App {
                     gpaddr,
                     data,
                     width,
-                } => {
-                    info!(
-                        "load page fault: gpaddr={}, data={:x?}, width={}",
-                        gpaddr, data, width
-                    );
-                    data[0] = 0x42;
-                    data[1] = 0x42;
-                    data[2] = 0x42;
-                    data[3] = 0x42;
-                    data[4] = 0x42;
-                    data[5] = 0x42;
-                    data[6] = 0x42;
-                    data[7] = 0x42;
-                }
+                } => {}
                 VCpuExit::StorePageFault {
                     gpaddr,
                     data,
                     width,
-                } => {
-                    info!("store page fault: gpaddr={}, width={}", gpaddr, width);
-                }
+                } => {}
             }
         }
         // Self {}
