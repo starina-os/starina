@@ -158,7 +158,6 @@ impl GuestMemory {
     }
 
     pub fn add_plic(&mut self, gpaddr: GPAddr, mmio_size: usize, plic: Plic) -> Result<(), Error> {
-        self.add_virtio_mmio(gpaddr, plic)?;
         self.mappings.push(Mapping {
             start: gpaddr,
             end: gpaddr.checked_add(mmio_size).unwrap(),
@@ -179,9 +178,10 @@ impl GuestMemory {
                 };
 
                 let offset = gpaddr.as_usize() - mapping.start.as_usize();
-                Ok((device, offset as u64))
+                return Ok((device, offset as u64));
             }
         }
+
         Err(MmioError::NotMapped)
     }
 

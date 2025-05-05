@@ -721,7 +721,7 @@ macro_rules! read_csr {
 
 fn htval_to_gpaddr(htval: u64) -> GPAddr {
     // "A guest physical address written to htval is shifted right by 2 bits"
-    GPAddr::new(htval as usize >> 2)
+    GPAddr::new((htval as usize) << 2)
 }
 
 extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {

@@ -1,7 +1,7 @@
 use crate::guest_memory::MmioDevice;
 use crate::guest_memory::MmioError;
 
-pub fn plic_mmio_size(num_cpus: u32) -> usize {
+pub const fn plic_mmio_size(num_cpus: u32) -> usize {
     0x200000 + (num_cpus as usize * 0x1000)
 }
 
