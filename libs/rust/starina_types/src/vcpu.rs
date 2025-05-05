@@ -20,6 +20,16 @@ pub struct ExitPageFault {
     pub data: [u8; 8],
     pub kind: ExitPageFaultKind,
     pub width: u8,
+    pub load_inst: LoadInst,
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+#[repr(C)]
+pub struct LoadInst {
+    #[cfg(target_arch = "riscv64")]
+    rd: u8,
+    #[cfg(target_arch = "riscv64")]
+    shift: u8,
 }
 
 #[derive(Clone, Copy)]

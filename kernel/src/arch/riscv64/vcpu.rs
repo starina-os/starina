@@ -8,6 +8,7 @@ use starina::error::ErrorCode;
 use starina::vcpu::ExitInfo;
 use starina::vcpu::ExitPageFault;
 use starina::vcpu::ExitPageFaultKind;
+use starina::vcpu::LoadInst;
 use starina::vcpu::VCPU_EXIT_NONE;
 use starina::vcpu::VCPU_EXIT_PAGE_FAULT;
 use starina::vcpu::VCpuExitState;
@@ -170,11 +171,35 @@ impl Mutable {
     }
 }
 
-fn handle_guest_page_fault(exit: &mut IsolationHeapMut, gpaddr: GPAddr, kind: ExitPageFaultKind) {
+fn htinst_load_inst(htinst: u64) -> (LoadInst, u8) {
+    todo!()
+}
+
+fn htinst_store_inst(htinst: u64) -> u8 {
+    todo!()
+}
+
+fn handle_guest_page_fault(
+    exit: &mut IsolationHeapMut,
+    htinst: u64,
+    gpaddr: GPAddr,
+    kind: ExitPageFaultKind,
+) {
     info!(
         "handle_guest_page_fault: gpaddr={}, kind={:?}",
         gpaddr, kind
     );
+
+    let (load_inst, width) = match kind {
+        ExitPageFaultKind::Load | ExitPageFaultKind::Execute => htinst_load_inst(htinst),
+        ExitPageFaultKind::Store => {
+            let width = htinst_store_inst(htinst);
+            (LoadInst::default(), width)
+        }
+        _ => {
+            panic!("unknown exit page fault kind: {:?}", kind);
+        }
+    };
 
     // FIXME: isolation
     exit.write(
@@ -188,6 +213,7 @@ fn handle_guest_page_fault(exit: &mut IsolationHeapMut, gpaddr: GPAddr, kind: Ex
                     data: [0; 8],
                     kind,
                     width,
+                    load_inst,
                 },
             },
         },
@@ -270,7 +296,55 @@ impl VCpu {
                 );
 
                 // FIXME:
-                let context = unsafe { &mut *((&self.context) as *const _ as *mut Context) };
+                let context = unsafe {
+                    let ptr = (&self.context) as *const _ as usize;
+                    ptr as *mut Context
+                };
+
+                match page_fault.kind {
+                    ExitPageFaultKind::Load | ExitPageFaultKind::Execute => unsafe {
+                        unsafe { todo!() }
+                    },
+                    ExitPageFaultKind::Store => unsafe {
+                        match page_fault.width {
+                            1 => unsafe {
+                                asm!("hsv.b {data}, ({dst})", data = in(reg) page_fault.data[0], dst = in(reg) page_fault.gpaddr.as_usize());
+                            },
+                            2 => unsafe {
+                                let data =
+                                    u16::from_le_bytes([page_fault.data[0], page_fault.data[1]]);
+                                asm!("hsv.h {data}, ({dst})", data = in(reg) data, dst = in(reg) page_fault.gpaddr.as_usize());
+                            },
+                            4 => unsafe {
+                                let data = u32::from_le_bytes([
+                                    page_fault.data[0],
+                                    page_fault.data[1],
+                                    page_fault.data[2],
+                                    page_fault.data[3],
+                                ]);
+                                asm!("hsv.w {data}, ({dst})", data = in(reg) data, dst = in(reg) page_fault.gpaddr.as_usize());
+                            },
+                            8 => unsafe {
+                                let data = u64::from_le_bytes([
+                                    page_fault.data[0],
+                                    page_fault.data[1],
+                                    page_fault.data[2],
+                                    page_fault.data[3],
+                                    page_fault.data[4],
+                                    page_fault.data[5],
+                                    page_fault.data[6],
+                                    page_fault.data[7],
+                                ]);
+                                asm!("hsv.d {data}, ({dst})", data = in(reg) data, dst = in(reg) page_fault.gpaddr.as_usize());
+                            },
+                            _ => {
+                                debug_warn!("unknown store width: {}", page_fault.width);
+                                return Err(ErrorCode::InvalidState);
+                            }
+                        }
+                    },
+                    _ => {}
+                }
             }
             VCPU_EXIT_NONE => {}
             _ => {
@@ -557,15 +631,18 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
             match scause {
                 SCAUSE_GUEST_INST_PAGE_FAULT => {
                     let gpaddr = GPAddr::new(htval as usize);
-                    handle_guest_page_fault(exit, gpaddr, ExitPageFaultKind::Execute);
+                    let htinst = read_csr!("htinst");
+                    handle_guest_page_fault(exit, htinst, gpaddr, ExitPageFaultKind::Execute);
                 }
                 SCAUSE_GUEST_LOAD_PAGE_FAULT => {
                     let gpaddr = GPAddr::new(htval as usize);
-                    handle_guest_page_fault(exit, gpaddr, ExitPageFaultKind::Load);
+                    let htinst = read_csr!("htinst");
+                    handle_guest_page_fault(exit, htinst, gpaddr, ExitPageFaultKind::Load);
                 }
                 SCAUSE_GUEST_STORE_PAGE_FAULT => {
                     let gpaddr = GPAddr::new(htval as usize);
-                    handle_guest_page_fault(exit, gpaddr, ExitPageFaultKind::Store);
+                    let htinst = read_csr!("htinst");
+                    handle_guest_page_fault(exit, htinst, gpaddr, ExitPageFaultKind::Store);
                 }
                 _ => {
                     panic!(
