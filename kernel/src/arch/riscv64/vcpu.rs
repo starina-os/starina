@@ -210,7 +210,7 @@ fn htinst_load_inst(htinst: u64) -> (LoadInst, u8, u8) {
     }
 }
 
-fn htinst_store_inst(htinst: u64) -> (u8, u8) {
+fn htinst_store_inst(context: &Context, htinst: u64) -> (u8, [u8; 8], u8) {
     if htinst & 1 != 1 {
         panic!("invalid store instruction: {:x}", htinst);
     }
@@ -222,6 +222,7 @@ fn htinst_store_inst(htinst: u64) -> (u8, u8) {
     let opcode = (inst & 0b111_1111) as u8;
     let funct3 = ((inst >> 12) & 0b111) as u8;
     let addr_offset = ((inst >> 15) & 0b1_1111) as u8;
+    let rs2 = ((inst >> 20) & 0b1_1111) as u8;
 
     assert!(addr_offset == 0); // TODO: Handle misaligned store.
 
@@ -229,17 +230,110 @@ fn htinst_store_inst(htinst: u64) -> (u8, u8) {
         panic!("unsupported opcode for store: {:x}", opcode);
     }
 
-    match funct3 {
-        OP_STORE_FUNCT3_SB => (1, inst_len),
-        OP_STORE_FUNCT3_SH => (2, inst_len),
-        OP_STORE_FUNCT3_SW => (4, inst_len),
-        OP_STORE_FUNCT3_SD => (8, inst_len),
+    let width = match funct3 {
+        OP_STORE_FUNCT3_SB => 1,
+        OP_STORE_FUNCT3_SH => 2,
+        OP_STORE_FUNCT3_SW => 4,
+        OP_STORE_FUNCT3_SD => 8,
         _ => panic!("unsupported funct3 for store: {:x}", funct3),
+    };
+
+    // FIXME:
+    let value = match rs2 {
+        // x0: zero
+        0 => 0,
+        // x1: ra
+        1 => context.ra,
+        // x2: sp
+        2 => context.sp,
+        // x3: gp
+        3 => context.gp,
+        // x4: tp
+        4 => context.tp,
+        // x5: t0
+        5 => context.t0,
+        // x6: t1
+        6 => context.t1,
+        // x7: t2
+        7 => context.t2,
+        // x8: s0
+        8 => context.s0,
+        // x9: s1
+        9 => context.s1,
+        // x10: a0
+        10 => context.a0,
+        // x11: a1
+        11 => context.a1,
+        // x12: a2
+        12 => context.a2,
+        // x13: a3
+        13 => context.a3,
+        // x14: a4
+        14 => context.a4,
+        // x15: a5
+        15 => context.a5,
+        // x16: a6
+        16 => context.a6,
+        // x17: a7
+        17 => context.a7,
+        // x18: s2
+        18 => context.s2,
+        // x19: s3
+        19 => context.s3,
+        // x20: s4
+        20 => context.s4,
+        // x21: s5
+        21 => context.s5,
+        // x22: s6
+        22 => context.s6,
+        // x23: s7
+        23 => context.s7,
+        // x24: s8
+        24 => context.s8,
+        // x25: s9
+        25 => context.s9,
+        // x26: s10
+        26 => context.s10,
+        // x27: s11
+        27 => context.s11,
+        // x28: t3
+        28 => context.t3,
+        // x29: t4
+        29 => context.t4,
+        // x30: t5
+        30 => context.t5,
+        // x31: t6
+        31 => context.t6,
+        _ => {
+            panic!("unknown rs: {}", rs2);
+        }
+    };
+
+    let mut data = [0; 8];
+    match width {
+        1 => {
+            data[0] = value as u8;
+        }
+        2 => {
+            data[0..2].copy_from_slice(&value.to_le_bytes()[0..2]);
+        }
+        4 => {
+            data[0..4].copy_from_slice(&value.to_le_bytes()[0..4]);
+        }
+        8 => {
+            data.copy_from_slice(&value.to_le_bytes());
+        }
+        _ => {
+            unreachable!();
+        }
     }
+
+    (width, data, inst_len)
 }
 
 fn handle_guest_page_fault(
     exit: &mut IsolationHeapMut,
+    context: &Context,
     htinst: u64,
     gpaddr: GPAddr,
     kind: ExitPageFaultKind,
@@ -249,14 +343,14 @@ fn handle_guest_page_fault(
         gpaddr, kind
     );
 
-    let (load_inst, width, inst_len) = match kind {
+    let (load_inst, data, width, inst_len) = match kind {
         ExitPageFaultKind::Load | ExitPageFaultKind::Execute => {
             let (load_inst, width, inst_len) = htinst_load_inst(htinst);
-            (load_inst, width, inst_len)
+            (load_inst, [0; 8], width, inst_len)
         }
         ExitPageFaultKind::Store => {
-            let (width, inst_len) = htinst_store_inst(htinst);
-            (LoadInst::default(), width, inst_len)
+            let (width, data, inst_len) = htinst_store_inst(context, htinst);
+            (LoadInst::default(), data, width, inst_len)
         }
         _ => {
             panic!("unknown exit page fault kind: {:?}", kind);
@@ -272,7 +366,7 @@ fn handle_guest_page_fault(
             info: ExitInfo {
                 page_fault: ExitPageFault {
                     gpaddr,
-                    data: [0; 8],
+                    data,
                     kind,
                     width,
                     load_inst,
@@ -856,17 +950,35 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
                 SCAUSE_GUEST_INST_PAGE_FAULT => {
                     let gpaddr = htval_to_gpaddr(htval);
                     let htinst = read_csr!("htinst");
-                    handle_guest_page_fault(&mut exit, htinst, gpaddr, ExitPageFaultKind::Execute);
+                    handle_guest_page_fault(
+                        &mut exit,
+                        context,
+                        htinst,
+                        gpaddr,
+                        ExitPageFaultKind::Execute,
+                    );
                 }
                 SCAUSE_GUEST_LOAD_PAGE_FAULT => {
                     let gpaddr = htval_to_gpaddr(htval);
                     let htinst = read_csr!("htinst");
-                    handle_guest_page_fault(&mut exit, htinst, gpaddr, ExitPageFaultKind::Load);
+                    handle_guest_page_fault(
+                        &mut exit,
+                        context,
+                        htinst,
+                        gpaddr,
+                        ExitPageFaultKind::Load,
+                    );
                 }
                 SCAUSE_GUEST_STORE_PAGE_FAULT => {
                     let gpaddr = htval_to_gpaddr(htval);
                     let htinst = read_csr!("htinst");
-                    handle_guest_page_fault(&mut exit, htinst, gpaddr, ExitPageFaultKind::Store);
+                    handle_guest_page_fault(
+                        &mut exit,
+                        context,
+                        htinst,
+                        gpaddr,
+                        ExitPageFaultKind::Store,
+                    );
                 }
                 _ => {
                     panic!(
