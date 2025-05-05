@@ -356,7 +356,167 @@ impl VCpu {
 
                 match page_fault.kind {
                     ExitPageFaultKind::Load | ExitPageFaultKind::Execute => unsafe {
-                        unsafe { todo!() }
+                        let value = match page_fault.width {
+                            1 => page_fault.data[0] as u64,
+                            2 => {
+                                u16::from_le_bytes([page_fault.data[0], page_fault.data[1]]) as u64
+                            }
+                            4 => {
+                                u32::from_le_bytes([
+                                    page_fault.data[0],
+                                    page_fault.data[1],
+                                    page_fault.data[2],
+                                    page_fault.data[3],
+                                ]) as u64
+                            }
+                            8 => {
+                                u64::from_le_bytes([
+                                    page_fault.data[0],
+                                    page_fault.data[1],
+                                    page_fault.data[2],
+                                    page_fault.data[3],
+                                    page_fault.data[4],
+                                    page_fault.data[5],
+                                    page_fault.data[6],
+                                    page_fault.data[7],
+                                ])
+                            }
+                            _ => panic!("unknown load width: {}", page_fault.width),
+                        };
+
+                        let rd = match page_fault.load_inst.rd {
+                            // x0: zero
+                            0 => {
+                                // Do nothing.
+                            }
+                            // x1: ra
+                            1 => unsafe {
+                                (*context).ra = value;
+                            },
+                            // x2: sp
+                            2 => unsafe {
+                                (*context).sp = value;
+                            },
+                            // x3: gp
+                            3 => unsafe {
+                                (*context).gp = value;
+                            },
+                            // x4: tp
+                            4 => unsafe {
+                                (*context).tp = value;
+                            },
+                            // x5: t0
+                            5 => unsafe {
+                                (*context).t0 = value;
+                            },
+                            // x6: t1
+                            6 => unsafe {
+                                (*context).t1 = value;
+                            },
+                            // x7: t2
+                            7 => unsafe {
+                                (*context).t2 = value;
+                            },
+                            // x8: s0
+                            8 => unsafe {
+                                (*context).s0 = value;
+                            },
+                            // x9: s1
+                            9 => unsafe {
+                                (*context).s1 = value;
+                            },
+                            // x10: a0
+                            10 => unsafe {
+                                (*context).a0 = value;
+                            },
+                            // x11: a1
+                            11 => unsafe {
+                                (*context).a1 = value;
+                            },
+                            // x12: a2
+                            12 => unsafe {
+                                (*context).a2 = value;
+                            },
+                            // x13: a3
+                            13 => unsafe {
+                                (*context).a3 = value;
+                            },
+                            // x14: a4
+                            14 => unsafe {
+                                (*context).a4 = value;
+                            },
+                            // x15: a5
+                            15 => unsafe {
+                                (*context).a5 = value;
+                            },
+                            // x16: a6
+                            16 => unsafe {
+                                (*context).a6 = value;
+                            },
+                            // x17: a7
+                            17 => unsafe {
+                                (*context).a7 = value;
+                            },
+                            // x18: s2
+                            18 => unsafe {
+                                (*context).s2 = value;
+                            },
+                            // x19: s3
+                            19 => unsafe {
+                                (*context).s3 = value;
+                            },
+                            // x20: s4
+                            20 => unsafe {
+                                (*context).s4 = value;
+                            },
+                            // x21: s5
+                            21 => unsafe {
+                                (*context).s5 = value;
+                            },
+                            // x22: s6
+                            22 => unsafe {
+                                (*context).s6 = value;
+                            },
+                            // x23: s7
+                            23 => unsafe {
+                                (*context).s7 = value;
+                            },
+                            // x24: s8
+                            24 => unsafe {
+                                (*context).s8 = value;
+                            },
+                            // x25: s9
+                            25 => unsafe {
+                                (*context).s9 = value;
+                            },
+                            // x26: s10
+                            26 => unsafe {
+                                (*context).s10 = value;
+                            },
+                            // x27: s11
+                            27 => unsafe {
+                                (*context).s11 = value;
+                            },
+                            // x28: t3
+                            28 => unsafe {
+                                (*context).t3 = value;
+                            },
+                            // x29: t4
+                            29 => unsafe {
+                                (*context).t4 = value;
+                            },
+                            // x30: t5
+                            30 => unsafe {
+                                (*context).t5 = value;
+                            },
+                            // x31: t6
+                            31 => unsafe {
+                                (*context).t6 = value;
+                            },
+                            _ => {
+                                panic!("unknown rd: {}", page_fault.load_inst.rd);
+                            }
+                        };
                     },
                     ExitPageFaultKind::Store => unsafe {
                         match page_fault.width {
