@@ -55,6 +55,7 @@ pub enum Error {
 
 struct Mutable {
     device_features_select: u32,
+    driver_features_select: u32,
     device_status: u32,
     queue_select: u32,
     num_queues: u32,
@@ -73,6 +74,7 @@ impl VirtioMmio {
             device: Box::new(device),
             mutable: Mutex::new(Mutable {
                 device_features_select: 0,
+                driver_features_select: 0,
                 device_status: 0,
                 queue_select: 0,
                 num_queues,
@@ -151,6 +153,17 @@ impl MmioDevice for VirtioMmio {
             }
             REG_QUEUE_SELECT => {
                 mutable.queue_select = value;
+            }
+            REG_DRIVER_FEATURES_SEL => {
+                mutable.driver_features_select = value;
+            }
+            REG_DRIVER_FEATURES => {
+                if mutable.driver_features_select == 0 {
+                    mutable.driver_features = value;
+                } else {
+                    mutable.driver_features =
+                        (mutable.driver_features & 0xffffffff) | (value << 32);
+                }
             }
             _ => {
                 panic!(
