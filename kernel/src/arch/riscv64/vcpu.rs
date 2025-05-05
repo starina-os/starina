@@ -680,22 +680,22 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
             }
         }
         _ => {
-            let exit = mutable.exit.take().unwrap();
+            let mut exit = mutable.exit.take().unwrap();
             match scause {
                 SCAUSE_GUEST_INST_PAGE_FAULT => {
                     let gpaddr = GPAddr::new(htval as usize);
                     let htinst = read_csr!("htinst");
-                    handle_guest_page_fault(exit, htinst, gpaddr, ExitPageFaultKind::Execute);
+                    handle_guest_page_fault(&mut exit, htinst, gpaddr, ExitPageFaultKind::Execute);
                 }
                 SCAUSE_GUEST_LOAD_PAGE_FAULT => {
                     let gpaddr = GPAddr::new(htval as usize);
                     let htinst = read_csr!("htinst");
-                    handle_guest_page_fault(exit, htinst, gpaddr, ExitPageFaultKind::Load);
+                    handle_guest_page_fault(&mut exit, htinst, gpaddr, ExitPageFaultKind::Load);
                 }
                 SCAUSE_GUEST_STORE_PAGE_FAULT => {
                     let gpaddr = GPAddr::new(htval as usize);
                     let htinst = read_csr!("htinst");
-                    handle_guest_page_fault(exit, htinst, gpaddr, ExitPageFaultKind::Store);
+                    handle_guest_page_fault(&mut exit, htinst, gpaddr, ExitPageFaultKind::Store);
                 }
                 _ => {
                     panic!(
