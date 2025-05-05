@@ -680,7 +680,7 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
             }
         }
         _ => {
-            let exit = mutable.exit.as_mut().unwrap();
+            let exit = mutable.exit.take().unwrap();
             match scause {
                 SCAUSE_GUEST_INST_PAGE_FAULT => {
                     let gpaddr = GPAddr::new(htval as usize);
