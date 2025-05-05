@@ -73,16 +73,12 @@ impl EventLoop for App {
         loop {
             vcpu.run(&mut exit_state).unwrap();
             match exit_state.as_exit() {
-                VCpuExit::LoadPageFault {
-                    gpaddr,
-                    data,
-                    width,
-                } => {}
-                VCpuExit::StorePageFault {
-                    gpaddr,
-                    data,
-                    width,
-                } => {}
+                VCpuExit::LoadPageFault { gpaddr, data } => {
+                    guest_memory.mmio_read(gpaddr, data).unwrap();
+                }
+                VCpuExit::StorePageFault { gpaddr, data } => {
+                    guest_memory.mmio_write(gpaddr, data).unwrap();
+                }
             }
         }
         // Self {}

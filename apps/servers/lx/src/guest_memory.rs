@@ -77,9 +77,26 @@ impl Ram {
     }
 }
 
-enum Mapping {
+#[derive(Debug)]
+pub enum MmioError {
+    NotMapped,
+    NotMmio,
+}
+
+pub trait MmioDevice {
+    fn read(&self, offset: u64, value: &mut [u8]) -> Result<(), MmioError>;
+    fn write(&self, offset: u64, value: &[u8]) -> Result<(), MmioError>;
+}
+
+enum Backend {
     Ram(Ram),
     VirtioMmio(VirtioMmio),
+}
+
+struct Mapping {
+    base: GPAddr,
+    len: usize,
+    backend: Backend,
 }
 
 pub struct GuestMemory {
@@ -111,7 +128,11 @@ impl GuestMemory {
             )
             .map_err(Error::MapRam)?;
 
-        self.mappings.push(Mapping::Ram(ram));
+        self.mappings.push(Mapping::Backend(Backend {
+            base: ram.gpaddr,
+            len: ram.size,
+            backend: Backend::Ram(ram),
+        }));
         Ok(())
     }
 
@@ -124,7 +145,41 @@ impl GuestMemory {
         // Do not map the folio into the hvspace; we'll intentionally let CPUs
         // cause page faults on MMIO addresses to handle them programmatically.
         let device = VirtioMmio::new(device).map_err(Error::CreateVirtioMmio)?;
-        self.mappings.push(Mapping::VirtioMmio(device));
+        self.mappings.push(Mapping {
+            base: gpaddr,
+            len: VIRTIO_MMIO_SIZE,
+            backend: Backend::VirtioMmio(device),
+        });
+
+        Ok(())
+    }
+
+    fn find_mmio_device(&self, gpaddr: GPAddr) -> Result<(&dyn MmioDevice, usize), MmioError> {
+        for mapping in &self.mappings {
+            if mapping.base <= gpaddr && gpaddr < mapping.base.checked_add(mapping.len) {
+                match &mapping.backend {
+                    Backend::Ram(_) => {
+                        return Err(MmioError::NotMmio);
+                    }
+                    Backend::VirtioMmio(ref device) => {
+                        let offset = gpaddr.as_usize() as u64 - mapping.base.as_usize() as u64;
+                        return Ok((device as &dyn MmioDevice, offset as usize));
+                    }
+                }
+            }
+        }
+        Err(MmioError::NotMapped)
+    }
+
+    pub fn mmio_read(&self, gpaddr: GPAddr, value: &mut [u8]) -> Result<(), MmioError> {
+        let (device, offset) = self.find_mmio_device(gpaddr)?;
+        device.read(offset, value)?;
+        Ok(())
+    }
+
+    pub fn mmio_write(&self, gpaddr: GPAddr, value: &[u8]) -> Result<(), MmioError> {
+        let (device, offset) = self.find_mmio_device(gpaddr)?;
+        device.write(offset, value)?;
         Ok(())
     }
 }

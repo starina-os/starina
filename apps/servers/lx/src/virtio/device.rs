@@ -5,6 +5,9 @@ use starina::prelude::*;
 use starina::vmspace::PageProtect;
 use starina::vmspace::VmSpace;
 
+use crate::guest_memory::MmioDevice;
+use crate::guest_memory::MmioError;
+
 /// The host-side (device-side) of a virtio device.
 ///
 /// Guest OS interacts with this device through their virtio
@@ -30,20 +33,24 @@ impl VirtioMmio {
             device: Box::new(device),
         })
     }
+}
 
-    pub fn mmio_read(&self, offset: usize, width: usize) -> u64 {
-        match offset {
-            _ => {
-                panic!("unsupported offset: {}", offset);
-            }
-        }
+impl MmioDevice for VirtioMmio {
+    fn read(&self, offset: u64, value: &mut [u8]) -> Result<(), MmioError> {
+        todo!(
+            "virtio mmio read: offset={:x}, width={:x}",
+            offset,
+            value.len()
+        );
+        Ok(())
     }
 
-    pub fn mmio_write(&self, offset: usize, width: usize, value: u64) {
-        match offset {
-            _ => {
-                panic!("unsupported offset: {}", offset);
-            }
-        }
+    fn write(&self, offset: u64, value: &[u8]) -> Result<(), MmioError> {
+        todo!(
+            "virtio mmio write: offset={:x}, width={:x}",
+            offset,
+            value.len()
+        );
+        Ok(())
     }
 }

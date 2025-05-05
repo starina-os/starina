@@ -134,6 +134,10 @@ impl GPAddr {
     pub fn checked_add(self, offset: usize) -> Option<GPAddr> {
         self.as_usize().checked_add(offset).map(GPAddr::new)
     }
+
+    pub fn checked_sub(self, offset: usize) -> Option<GPAddr> {
+        self.as_usize().checked_sub(offset).map(GPAddr::new)
+    }
 }
 
 impl fmt::Display for GPAddr {
