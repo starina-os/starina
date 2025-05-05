@@ -14,6 +14,7 @@ use starina::eventloop::Dispatcher;
 use starina::eventloop::EventLoop;
 use starina::prelude::*;
 use starina::vcpu::VCpu;
+use starina::vcpu::VCpuExit;
 use starina::vcpu::VCpuExitState;
 use virtio::virtio_fs::VirtioFs;
 
@@ -67,11 +68,29 @@ impl EventLoop for App {
         let a1 = fdt_gpaddr.as_usize(); // fdt address
 
         let vcpu = VCpu::new(guest_memory.hvspace(), entry.as_usize(), a0, a1).unwrap();
-        let mut exit = VCpuExitState::new();
+        let mut exit_state = VCpuExitState::new();
         info!("running vcpu");
         loop {
-            vcpu.run(&mut exit).unwrap();
-            panic!("vcpu exited");
+            vcpu.run(&mut exit_state).unwrap();
+            match exit_state.as_exit() {
+                VCpuExit::LoadPageFault {
+                    gpaddr,
+                    data,
+                    width,
+                } => {
+                    info!(
+                        "load page fault: gpaddr={}, data={:x?}, width={}",
+                        gpaddr, data, width
+                    );
+                }
+                VCpuExit::StorePageFault {
+                    gpaddr,
+                    data,
+                    width,
+                } => {
+                    info!("store page fault: gpaddr={}, width={}", gpaddr, width);
+                }
+            }
         }
         // Self {}
     }

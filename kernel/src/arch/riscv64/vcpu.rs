@@ -164,10 +164,9 @@ impl Mutable {
     }
 
     pub fn handle_guest_page_fault(&mut self, gpaddr: GPAddr, kind: ExitPageFaultKind) {
-        todo!(
+        info!(
             "handle_guest_page_fault: gpaddr={}, kind={:?}",
-            gpaddr,
-            kind
+            gpaddr, kind
         );
     }
 }
