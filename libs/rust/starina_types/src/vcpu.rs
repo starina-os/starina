@@ -48,12 +48,12 @@ pub struct VCpuExitState {
 pub enum VCpuExit<'a> {
     LoadPageFault {
         gpaddr: GPAddr,
-        data: &'a [u8; 8],
+        data: &'a mut [u8; 8],
         width: u8,
     },
     StorePageFault {
         gpaddr: GPAddr,
-        data: &'a mut [u8; 8],
+        data: &'a [u8; 8],
         width: u8,
     },
 }
@@ -74,14 +74,14 @@ impl VCpuExitState {
                     ExitPageFaultKind::Load => {
                         VCpuExit::LoadPageFault {
                             gpaddr: page_fault.gpaddr,
-                            data: &page_fault.data,
+                            data: &mut page_fault.data,
                             width: page_fault.width,
                         }
                     }
                     ExitPageFaultKind::Store => {
                         VCpuExit::StorePageFault {
                             gpaddr: page_fault.gpaddr,
-                            data: &mut page_fault.data,
+                            data: &page_fault.data,
                             width: page_fault.width,
                         }
                     }

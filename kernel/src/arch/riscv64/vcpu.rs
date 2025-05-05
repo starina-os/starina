@@ -354,6 +354,10 @@ impl VCpu {
                     ptr as *mut Context
                 };
 
+                unsafe {
+                    (*context).sepc += 4; // size of load/store instruction
+                }
+
                 match page_fault.kind {
                     ExitPageFaultKind::Load | ExitPageFaultKind::Execute => unsafe {
                         let value = match page_fault.width {
@@ -519,42 +523,10 @@ impl VCpu {
                         };
                     },
                     ExitPageFaultKind::Store => unsafe {
-                        match page_fault.width {
-                            1 => unsafe {
-                                asm!("hsv.b {data}, ({dst})", data = in(reg) page_fault.data[0], dst = in(reg) page_fault.gpaddr.as_usize());
-                            },
-                            2 => unsafe {
-                                let data =
-                                    u16::from_le_bytes([page_fault.data[0], page_fault.data[1]]);
-                                asm!("hsv.h {data}, ({dst})", data = in(reg) data, dst = in(reg) page_fault.gpaddr.as_usize());
-                            },
-                            4 => unsafe {
-                                let data = u32::from_le_bytes([
-                                    page_fault.data[0],
-                                    page_fault.data[1],
-                                    page_fault.data[2],
-                                    page_fault.data[3],
-                                ]);
-                                asm!("hsv.w {data}, ({dst})", data = in(reg) data, dst = in(reg) page_fault.gpaddr.as_usize());
-                            },
-                            8 => unsafe {
-                                let data = u64::from_le_bytes([
-                                    page_fault.data[0],
-                                    page_fault.data[1],
-                                    page_fault.data[2],
-                                    page_fault.data[3],
-                                    page_fault.data[4],
-                                    page_fault.data[5],
-                                    page_fault.data[6],
-                                    page_fault.data[7],
-                                ]);
-                                asm!("hsv.d {data}, ({dst})", data = in(reg) data, dst = in(reg) page_fault.gpaddr.as_usize());
-                            },
-                            _ => {
-                                debug_warn!("unknown store width: {}", page_fault.width);
-                                return Err(ErrorCode::InvalidState);
-                            }
-                        }
+                        trace!(
+                            "solving store page fault: gpaddr={}, width={}",
+                            page_fault.gpaddr, page_fault.width
+                        );
                     },
                     _ => {}
                 }
