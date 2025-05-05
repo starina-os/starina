@@ -7,15 +7,12 @@ use crate::virtio::device::VIRTIO_MMIO_SIZE;
 const GUEST_HART_ID_BASE: u32 = 0; // Starting Hart ID
 const GUEST_TIMEBASE_FREQ: u32 = 10000000; // QEMU virt default timer frequency (10 MHz)
 
-fn plic_size(num_cpus: u32) -> u64 {
-    0x200000 + (num_cpus as u64 * 0x1000)
-}
-
 pub fn build_fdt(
     num_cpus: u32,
     guest_ram_start: GPAddr,
     guest_ram_size: u64,
     plic_base: GPAddr,
+    plic_mmio_size: usize,
     virtio_mmios: &[GPAddr],
 ) -> Result<Vec<u8>, vm_fdt::Error> {
     let mut fdt = FdtWriter::new()?;
@@ -115,13 +112,6 @@ pub fn build_fdt(
     fdt.property_null("ranges").unwrap();
 
     // PLIC node.
-    info!(
-        "plic_base: {:x}, plic_size: {:x}",
-        plic_base.as_usize(),
-        plic_size(num_cpus)
-    );
-    debug_assert!(plic_size(num_cpus) <= 0x100_0000);
-
     let plic_node = fdt.begin_node(&format!("plic@{:x}", plic_base.as_usize()))?;
     fdt.property_string("compatible", "riscv,plic0")?;
     fdt.property_u32("#address-cells", 0)?;
@@ -134,7 +124,7 @@ pub fn build_fdt(
             0,
             plic_base.as_usize().try_into().unwrap(),
             0,
-            plic_size(num_cpus).try_into().unwrap(),
+            plic_mmio_size as u32,
         ],
     )?;
     fdt.property_array_u32("interrupts-extended", &interrupts_extended)?;

@@ -9,6 +9,7 @@ use starina::prelude::*;
 use starina::vmspace::PageProtect;
 use starina::vmspace::VmSpace;
 
+use crate::riscv::plic::Plic;
 use crate::virtio;
 use crate::virtio::device::VIRTIO_MMIO_SIZE;
 use crate::virtio::device::VirtioDevice;
@@ -92,6 +93,7 @@ pub trait MmioDevice {
 enum Backend {
     Ram(Ram),
     VirtioMmio(VirtioMmio),
+    Plic(Plic),
 }
 
 struct Mapping {
@@ -155,18 +157,29 @@ impl GuestMemory {
         Ok(())
     }
 
+    pub fn add_plic(&mut self, gpaddr: GPAddr, mmio_size: usize, plic: Plic) -> Result<(), Error> {
+        self.add_virtio_mmio(gpaddr, plic)?;
+        self.mappings.push(Mapping {
+            start: gpaddr,
+            end: gpaddr.checked_add(mmio_size).unwrap(),
+            backend: Backend::Plic(plic),
+        });
+        Ok(())
+    }
+
     fn find_mmio_device(&self, gpaddr: GPAddr) -> Result<(&dyn MmioDevice, u64), MmioError> {
         for mapping in &self.mappings {
             if mapping.start <= gpaddr && gpaddr < mapping.end {
-                match &mapping.backend {
+                let device = match &mapping.backend {
                     Backend::Ram(_) => {
                         return Err(MmioError::NotMmio);
                     }
-                    Backend::VirtioMmio(device) => {
-                        let offset = gpaddr.as_usize() - mapping.start.as_usize();
-                        return Ok((device as &dyn MmioDevice, offset as u64));
-                    }
-                }
+                    Backend::VirtioMmio(device) => device as &dyn MmioDevice,
+                    Backend::Plic(plic) => plic as &dyn MmioDevice,
+                };
+
+                let offset = gpaddr.as_usize() - mapping.start.as_usize();
+                Ok((device, offset as u64))
             }
         }
         Err(MmioError::NotMapped)
