@@ -388,7 +388,8 @@ impl VCpu {
                             _ => panic!("unknown load width: {}", page_fault.width),
                         };
 
-                        let rd = match page_fault.load_inst.rd {
+                        // FIXME:
+                        match page_fault.load_inst.rd {
                             // x0: zero
                             0 => {
                                 // Do nothing.
