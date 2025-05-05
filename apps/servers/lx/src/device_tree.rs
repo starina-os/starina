@@ -102,8 +102,6 @@ pub fn build_fdt(
         fdt.end_node(intc_node)?;
 
         interrupts_extended.push(phandle);
-        interrupts_extended.push(0xb); // context 0xb
-        interrupts_extended.push(phandle);
         interrupts_extended.push(0x9); // context 9
 
         fdt.end_node(cpu_node)?;
