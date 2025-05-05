@@ -1,4 +1,3 @@
-use starina::address::GPAddr;
 use starina::error::ErrorCode;
 use starina::prelude::*;
 use starina::sync::Mutex;
