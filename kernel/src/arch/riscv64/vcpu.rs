@@ -17,6 +17,10 @@ use super::get_cpuvar;
 use crate::arch::riscv64::csr::StvecMode;
 use crate::arch::riscv64::csr::write_stvec;
 use crate::arch::riscv64::entry::trap_entry;
+use crate::arch::riscv64::riscv::OP_LOAD_FUNCT3_LB;
+use crate::arch::riscv64::riscv::OP_LOAD_FUNCT3_LD;
+use crate::arch::riscv64::riscv::OP_LOAD_FUNCT3_LH;
+use crate::arch::riscv64::riscv::OP_LOAD_FUNCT3_LW;
 use crate::arch::riscv64::riscv::SCAUSE_ECALL_FROM_VS;
 use crate::arch::riscv64::riscv::SCAUSE_GUEST_INST_PAGE_FAULT;
 use crate::arch::riscv64::riscv::SCAUSE_GUEST_LOAD_PAGE_FAULT;
@@ -172,11 +176,60 @@ impl Mutable {
 }
 
 fn htinst_load_inst(htinst: u64) -> (LoadInst, u8) {
-    todo!()
+    if htinst & 1 != 1 {
+        panic!("invalid load instruction: {:x}", htinst);
+    }
+
+    // "Bit 0 is 1, and replacing bit 1 with 1 makes the value into a valid
+    // encoding of a standard instruction."
+    let inst = htinst | (1 << 1);
+
+    let opcode = (inst & 0b111_1111) as u8;
+    let rd = ((inst >> 7) & 0b1_1111) as u8;
+    let funct3 = ((inst >> 12) & 0b111) as u8;
+    let addr_offset = ((inst >> 15) & 0b1_1111) as u8;
+
+    assert!(addr_offset == 0); // TODO: Handle misaligned load.
+
+    if opcode != 3 {
+        panic!("unsupported opcode for load: {:x}", opcode);
+    }
+
+    match funct3 {
+        OP_LOAD_FUNCT3_LB => (LoadInst { rd }, 1),
+        OP_LOAD_FUNCT3_LH => (LoadInst { rd }, 2),
+        OP_LOAD_FUNCT3_LW => (LoadInst { rd }, 4),
+        OP_LOAD_FUNCT3_LD => (LoadInst { rd }, 8),
+        _ => {
+            panic!("unsupported funct3 for load: {:x}", funct3);
+        }
+    }
 }
 
 fn htinst_store_inst(htinst: u64) -> u8 {
-    todo!()
+    if htinst & 1 != 1 {
+        panic!("invalid store instruction: {:x}", htinst);
+    }
+
+    let inst = htinst | (1 << 1);
+
+    let opcode = (inst & 0b111_1111) as u8;
+    let funct3 = ((inst >> 12) & 0b111) as u8;
+    let addr_offset = ((inst >> 15) & 0b1_1111) as u8;
+
+    assert!(addr_offset == 0); // TODO: Handle misaligned store.
+
+    if opcode != 0b100011 {
+        panic!("unsupported opcode for store: {:x}", opcode);
+    }
+
+    match funct3 {
+        OP_STORE_FUNCT3_SB => 1,
+        OP_STORE_FUNCT3_SH => 2,
+        OP_STORE_FUNCT3_SW => 4,
+        OP_STORE_FUNCT3_SD => 8,
+        _ => panic!("unsupported funct3 for store: {:x}", funct3),
+    }
 }
 
 fn handle_guest_page_fault(

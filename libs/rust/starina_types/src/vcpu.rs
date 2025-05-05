@@ -27,9 +27,7 @@ pub struct ExitPageFault {
 #[repr(C)]
 pub struct LoadInst {
     #[cfg(target_arch = "riscv64")]
-    rd: u8,
-    #[cfg(target_arch = "riscv64")]
-    shift: u8,
+    pub rd: u8,
 }
 
 #[derive(Clone, Copy)]
