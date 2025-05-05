@@ -168,35 +168,30 @@ impl Mutable {
             }
         }
     }
+}
 
-    pub fn handle_guest_page_fault(
-        &mut self,
-        exit: &mut IsolationHeapMut,
-        gpaddr: GPAddr,
-        kind: ExitPageFaultKind,
-    ) {
-        info!(
-            "handle_guest_page_fault: gpaddr={}, kind={:?}",
-            gpaddr, kind
-        );
+fn handle_guest_page_fault(exit: &mut IsolationHeapMut, gpaddr: GPAddr, kind: ExitPageFaultKind) {
+    info!(
+        "handle_guest_page_fault: gpaddr={}, kind={:?}",
+        gpaddr, kind
+    );
 
-        // FIXME: isolation
-        exit.write(
-            &Isolation::InKernel,
-            0,
-            VCpuExitState {
-                reason: VCPU_EXIT_PAGE_FAULT,
-                info: ExitInfo {
-                    page_fault: ExitPageFault {
-                        gpaddr,
-                        data: [0; 8],
-                        kind,
-                        width,
-                    },
+    // FIXME: isolation
+    exit.write(
+        &Isolation::InKernel,
+        0,
+        VCpuExitState {
+            reason: VCPU_EXIT_PAGE_FAULT,
+            info: ExitInfo {
+                page_fault: ExitPageFault {
+                    gpaddr,
+                    data: [0; 8],
+                    kind,
+                    width,
                 },
             },
-        );
-    }
+        },
+    );
 }
 
 pub struct VCpu {
@@ -258,11 +253,10 @@ impl VCpu {
             return Err(ErrorCode::InUse);
         }
 
-        mutable.exit = Some(exit);
         let exit_state: VCpuExitState = match exit.read(&Isolation::InKernel, 0) {
             Ok(exit_state) => exit_state,
             Err(e) => {
-                debug_warn!("Failed to read exit state: {}", e);
+                debug_warn!("failed to read exit state: {:?}", e);
                 return Err(e);
             }
         };
@@ -276,7 +270,7 @@ impl VCpu {
                 );
 
                 // FIXME:
-                let context = unsafe { &mut *((&self.context) as *const _ as *mut _) };
+                let context = unsafe { &mut *((&self.context) as *const _ as *mut Context) };
             }
             VCPU_EXIT_NONE => {}
             _ => {
@@ -285,6 +279,7 @@ impl VCpu {
             }
         }
 
+        mutable.exit = Some(exit);
         Ok(())
     }
 }
@@ -562,15 +557,15 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
             match scause {
                 SCAUSE_GUEST_INST_PAGE_FAULT => {
                     let gpaddr = GPAddr::new(htval as usize);
-                    mutable.handle_guest_page_fault(exit, gpaddr, ExitPageFaultKind::Execute);
+                    handle_guest_page_fault(exit, gpaddr, ExitPageFaultKind::Execute);
                 }
                 SCAUSE_GUEST_LOAD_PAGE_FAULT => {
                     let gpaddr = GPAddr::new(htval as usize);
-                    mutable.handle_guest_page_fault(exit, gpaddr, ExitPageFaultKind::Load);
+                    handle_guest_page_fault(exit, gpaddr, ExitPageFaultKind::Load);
                 }
                 SCAUSE_GUEST_STORE_PAGE_FAULT => {
                     let gpaddr = GPAddr::new(htval as usize);
-                    mutable.handle_guest_page_fault(exit, gpaddr, ExitPageFaultKind::Store);
+                    handle_guest_page_fault(exit, gpaddr, ExitPageFaultKind::Store);
                 }
                 _ => {
                     panic!(
