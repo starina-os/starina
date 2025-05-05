@@ -15,12 +15,12 @@ impl Plic {
 
 impl MmioDevice for Plic {
     fn read(&self, offset: u64, value: &mut [u8]) -> Result<(), MmioError> {
-        todo!("plic read: offset={:x}, width={:x}", offset, value.len());
+        trace!("plic read: offset={:x}, width={:x}", offset, value.len());
         Ok(())
     }
 
     fn write(&self, offset: u64, value: &[u8]) -> Result<(), MmioError> {
-        todo!("plic write: offset={:x}, width={:x}", offset, value.len());
+        trace!("plic write: offset={:x}, width={:x}", offset, value.len());
         Ok(())
     }
 }
