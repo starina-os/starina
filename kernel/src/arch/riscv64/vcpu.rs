@@ -3,12 +3,20 @@ use core::arch::asm;
 use core::arch::naked_asm;
 use core::mem::offset_of;
 
+use starina::address::GPAddr;
 use starina::error::ErrorCode;
+use starina::vcpu::ExitPageFaultKind;
 
 use super::get_cpuvar;
 use crate::arch::riscv64::csr::StvecMode;
 use crate::arch::riscv64::csr::write_stvec;
 use crate::arch::riscv64::entry::trap_entry;
+use crate::arch::riscv64::riscv::SCAUSE_ECALL_FROM_VS;
+use crate::arch::riscv64::riscv::SCAUSE_GUEST_INST_PAGE_FAULT;
+use crate::arch::riscv64::riscv::SCAUSE_GUEST_LOAD_PAGE_FAULT;
+use crate::arch::riscv64::riscv::SCAUSE_GUEST_STORE_PAGE_FAULT;
+use crate::arch::riscv64::riscv::SCAUSE_HOST_TIMER_INTR;
+use crate::arch::riscv64::riscv::SCAUSE_VIRTUAL_INST;
 use crate::arch::set_cpuvar;
 use crate::cpuvar::CpuVar;
 use crate::cpuvar::current_thread;
@@ -153,6 +161,14 @@ impl Mutable {
                 panic!("SBI: unknown eid={:x}, fid={:x}", eid, fid);
             }
         }
+    }
+
+    pub fn handle_guest_page_fault(&mut self, gpaddr: GPAddr, kind: ExitPageFaultKind) {
+        todo!(
+            "handle_guest_page_fault: gpaddr={}, kind={:?}",
+            gpaddr,
+            kind
+        );
     }
 }
 
@@ -450,55 +466,74 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
     // Check if it's from VS/VU-mode.
     assert!(context.hstatus & (1 << 7/* SPV */) != 0, "SPV is not set");
 
-    if scause == 10 {
-        let mut mutable = unsafe { (*vcpu).mutable.lock() };
-        let (error, value) = match mutable.handle_sbi_call(&context) {
-            Ok(value) => (0, value),
-            Err(error) => (error, 0),
-        };
-
-        context.sepc += 4; // size of ecall
-        context.a0 = error as u64;
-        context.a1 = value as u64;
-    } else if scause == 22 {
-        assert!(
-            stval == 0x10500073,
-            "Only WFI is expected in virtual instruction trap"
-        );
-
-        // info!(
-        //     "vcpu_trap_handler: virtual instruction, sepc={:x}",
-        //     context.sepc
-        // );
-        context.sepc += 4; // size of virtual instruction
-
-        if context.hvip == 0 {
-            // info!("no pending interrupt, going to idle");
-            let current = crate::cpuvar::current_thread();
-            context.hvip = 1 << 6; // FIXME: We'll
-            current.idle_vcpu();
+    let mut mutable = unsafe { (*vcpu).mutable.lock() };
+    match scause {
+        SCAUSE_HOST_TIMER_INTR => {
+            let mut now: u64;
+            unsafe {
+                asm!("csrr {}, time", out(reg) now);
+                asm!("csrw stimecmp, {}", in(reg) now + 0x100);
+            }
         }
-    } else if (is_intr, code) == (true, 5) {
-        // supervisor timer interrupt
-        let mut now: u64;
-        unsafe {
-            asm!("csrr {}, time", out(reg) now);
-            asm!("csrw stimecmp, {}", in(reg) now + 0x100);
-        }
-    } else {
-        panic!(
-            "VM exit: {} (sepc={:x}, htval={:x}, stval={:x})",
-            scause_str,
-            unsafe { context.sepc },
-            htval,
-            stval
-        );
+        SCAUSE_ECALL_FROM_VS => {
+            let (error, value) = match mutable.handle_sbi_call(&context) {
+                Ok(value) => (0, value),
+                Err(error) => (error, 0),
+            };
 
-        // let exit = mutable.exit.take().unwrap();
-        // drop(mutable);
-        // current_thread().exit_vcpu();
+            context.sepc += 4; // size of ecall
+            context.a0 = error as u64;
+            context.a1 = value as u64;
+        }
+        SCAUSE_VIRTUAL_INST => {
+            assert!(
+                stval == 0x10500073,
+                "Only WFI is expected in virtual instruction trap"
+            );
+
+            // info!(
+            //     "vcpu_trap_handler: virtual instruction, sepc={:x}",
+            //     context.sepc
+            // );
+            context.sepc += 4; // size of virtual instruction
+
+            if context.hvip == 0 {
+                // info!("no pending interrupt, going to idle");
+                let current = current_thread();
+                context.hvip = 1 << 6; // FIXME: We'll
+                current.idle_vcpu();
+            }
+        }
+        _ => {
+            match scause {
+                SCAUSE_GUEST_INST_PAGE_FAULT => {
+                    let gpaddr = GPAddr::new(htval as usize);
+                    mutable.handle_guest_page_fault(gpaddr, ExitPageFaultKind::Execute);
+                }
+                SCAUSE_GUEST_LOAD_PAGE_FAULT => {
+                    let gpaddr = GPAddr::new(htval as usize);
+                    mutable.handle_guest_page_fault(gpaddr, ExitPageFaultKind::Load);
+                }
+                SCAUSE_GUEST_STORE_PAGE_FAULT => {
+                    let gpaddr = GPAddr::new(htval as usize);
+                    mutable.handle_guest_page_fault(gpaddr, ExitPageFaultKind::Store);
+                }
+                _ => {
+                    panic!(
+                        "VM exit: {} (sepc={:x}, htval={:x}, stval={:x})",
+                        scause_str,
+                        unsafe { context.sepc },
+                        htval,
+                        stval
+                    );
+                }
+            };
+
+            current_thread().exit_vcpu();
+        }
     }
 
+    drop(mutable);
     switch_thread();
 }
 

@@ -14,7 +14,7 @@ use starina::eventloop::Dispatcher;
 use starina::eventloop::EventLoop;
 use starina::prelude::*;
 use starina::vcpu::VCpu;
-use starina::vcpu::VCpuExit;
+use starina::vcpu::VCpuExitState;
 use virtio::virtio_fs::VirtioFs;
 
 #[derive(Debug)]
@@ -67,7 +67,7 @@ impl EventLoop for App {
         let a1 = fdt_gpaddr.as_usize(); // fdt address
 
         let vcpu = VCpu::new(guest_memory.hvspace(), entry.as_usize(), a0, a1).unwrap();
-        let mut exit = VCpuExit::new();
+        let mut exit = VCpuExitState::new();
         info!("running vcpu");
         loop {
             vcpu.run(&mut exit).unwrap();

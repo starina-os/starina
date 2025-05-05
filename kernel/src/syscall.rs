@@ -11,7 +11,7 @@ use starina_types::message::MESSAGE_NUM_HANDLES_MAX;
 use starina_types::message::MessageInfo;
 use starina_types::poll::Readiness;
 use starina_types::syscall::*;
-use starina_types::vcpu::VCpuExit;
+use starina_types::vcpu::VCpuExitState;
 use starina_types::vmspace::PageProtect;
 
 use crate::arch;
@@ -431,7 +431,7 @@ fn do_syscall(
             let vcpu_handle = HandleId::from_raw_isize(a0)?;
             let exit = IsolationHeapMut::InKernel {
                 ptr: a1 as *mut u8,
-                len: size_of::<VCpuExit>(),
+                len: size_of::<VCpuExitState>(),
             };
             let new_state = vcpu_run(&current, vcpu_handle, exit)?;
             Ok(SyscallResult::Block(new_state))

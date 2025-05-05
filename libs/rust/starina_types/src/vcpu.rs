@@ -1,31 +1,81 @@
+use crate::address::GPAddr;
+
 pub const VCPU_EXIT_PAGE_FAULT: u8 = 0x1;
+
+#[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
+#[repr(u8)]
+pub enum ExitPageFaultKind {
+    None = 0,
+    Load = 1,
+    Store = 2,
+    Execute = 3,
+}
 
 #[derive(Debug, Clone, Copy)]
 #[repr(C)]
 pub struct ExitPageFault {
+    pub gpaddr: GPAddr,
     pub data: [u8; 8],
+    pub kind: ExitPageFaultKind,
 }
 
 #[derive(Clone, Copy)]
 #[repr(C)]
 pub union ExitInfo {
+    none: (),
     pub page_fault: ExitPageFault,
 }
 
 #[derive(Clone, Copy)]
 #[repr(C)]
-pub struct VCpuExit {
+pub struct VCpuExitState {
     pub reason: u8,
     pub info: ExitInfo,
 }
 
-impl VCpuExit {
+#[derive(Debug)]
+pub enum VCpuExit<'a> {
+    LoadPageFault {
+        gpaddr: GPAddr,
+        data: &'a [u8; 8],
+    },
+    StorePageFault {
+        gpaddr: GPAddr,
+        data: &'a mut [u8; 8],
+    },
+}
+
+impl VCpuExitState {
     pub fn new() -> Self {
         Self {
             reason: 0,
-            info: ExitInfo {
-                page_fault: ExitPageFault { data: [0; 8] },
-            },
+            info: ExitInfo { none: () },
+        }
+    }
+
+    pub fn as_exit(&mut self) -> VCpuExit<'_> {
+        match self.reason {
+            VCPU_EXIT_PAGE_FAULT => {
+                let page_fault = unsafe { &mut self.info.page_fault };
+                match page_fault.kind {
+                    ExitPageFaultKind::Load => {
+                        VCpuExit::LoadPageFault {
+                            gpaddr: page_fault.gpaddr,
+                            data: &page_fault.data,
+                        }
+                    }
+                    ExitPageFaultKind::Store => {
+                        VCpuExit::StorePageFault {
+                            gpaddr: page_fault.gpaddr,
+                            data: &mut page_fault.data,
+                        }
+                    }
+                    _ => panic!("unexpected page fault kind: {}", page_fault.kind as u8),
+                }
+            }
+
+            _ => panic!("unexpected exit reason: {}", self.reason),
         }
     }
 }

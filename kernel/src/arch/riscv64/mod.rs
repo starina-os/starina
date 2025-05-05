@@ -6,6 +6,7 @@ mod hvspace;
 mod idle;
 mod interrupt;
 mod plic;
+mod riscv;
 mod sbi;
 mod serial;
 mod thread;

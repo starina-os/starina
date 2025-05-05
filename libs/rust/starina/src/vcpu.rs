@@ -20,7 +20,7 @@ impl VCpu {
         })
     }
 
-    pub fn run(&self, exit: &mut VCpuExit) -> Result<(), ErrorCode> {
+    pub fn run(&self, exit: &mut VCpuExitState) -> Result<(), ErrorCode> {
         syscall::sys_vcpu_run(self.handle.id(), exit as *mut _)?;
         Ok(())
     }
