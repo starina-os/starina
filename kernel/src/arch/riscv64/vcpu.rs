@@ -5,7 +5,12 @@ use core::mem::offset_of;
 
 use starina::address::GPAddr;
 use starina::error::ErrorCode;
+use starina::vcpu::ExitInfo;
+use starina::vcpu::ExitPageFault;
 use starina::vcpu::ExitPageFaultKind;
+use starina::vcpu::VCPU_EXIT_NONE;
+use starina::vcpu::VCPU_EXIT_PAGE_FAULT;
+use starina::vcpu::VCpuExitState;
 
 use super::get_cpuvar;
 use crate::arch::riscv64::csr::StvecMode;
@@ -21,6 +26,7 @@ use crate::arch::set_cpuvar;
 use crate::cpuvar::CpuVar;
 use crate::cpuvar::current_thread;
 use crate::hvspace::HvSpace;
+use crate::isolation::Isolation;
 use crate::isolation::IsolationHeapMut;
 use crate::spinlock::SpinLock;
 use crate::thread::switch_thread;
@@ -163,10 +169,32 @@ impl Mutable {
         }
     }
 
-    pub fn handle_guest_page_fault(&mut self, gpaddr: GPAddr, kind: ExitPageFaultKind) {
+    pub fn handle_guest_page_fault(
+        &mut self,
+        exit: &mut IsolationHeapMut,
+        gpaddr: GPAddr,
+        kind: ExitPageFaultKind,
+    ) {
         info!(
             "handle_guest_page_fault: gpaddr={}, kind={:?}",
             gpaddr, kind
+        );
+
+        // FIXME: isolation
+        exit.write(
+            &Isolation::InKernel,
+            0,
+            VCpuExitState {
+                reason: VCPU_EXIT_PAGE_FAULT,
+                info: ExitInfo {
+                    page_fault: ExitPageFault {
+                        gpaddr,
+                        data: [0; 8],
+                        kind,
+                        width,
+                    },
+                },
+            },
         );
     }
 }
@@ -231,6 +259,32 @@ impl VCpu {
         }
 
         mutable.exit = Some(exit);
+        let exit_state: VCpuExitState = match exit.read(&Isolation::InKernel, 0) {
+            Ok(exit_state) => exit_state,
+            Err(e) => {
+                debug_warn!("Failed to read exit state: {}", e);
+                return Err(e);
+            }
+        };
+
+        match exit_state.reason {
+            VCPU_EXIT_PAGE_FAULT => {
+                let page_fault = unsafe { &exit_state.info.page_fault };
+                trace!(
+                    "solving page fault: gpaddr={}, kind={:?}",
+                    page_fault.gpaddr, page_fault.kind
+                );
+
+                // FIXME:
+                let context = unsafe { &mut *((&self.context) as *const _ as *mut _) };
+            }
+            VCPU_EXIT_NONE => {}
+            _ => {
+                trace!("unknown exit reason: {}", exit_state.reason);
+                return Err(ErrorCode::InvalidState);
+            }
+        }
+
         Ok(())
     }
 }
@@ -504,18 +558,19 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
             }
         }
         _ => {
+            let exit = mutable.exit.as_mut().unwrap();
             match scause {
                 SCAUSE_GUEST_INST_PAGE_FAULT => {
                     let gpaddr = GPAddr::new(htval as usize);
-                    mutable.handle_guest_page_fault(gpaddr, ExitPageFaultKind::Execute);
+                    mutable.handle_guest_page_fault(exit, gpaddr, ExitPageFaultKind::Execute);
                 }
                 SCAUSE_GUEST_LOAD_PAGE_FAULT => {
                     let gpaddr = GPAddr::new(htval as usize);
-                    mutable.handle_guest_page_fault(gpaddr, ExitPageFaultKind::Load);
+                    mutable.handle_guest_page_fault(exit, gpaddr, ExitPageFaultKind::Load);
                 }
                 SCAUSE_GUEST_STORE_PAGE_FAULT => {
                     let gpaddr = GPAddr::new(htval as usize);
-                    mutable.handle_guest_page_fault(gpaddr, ExitPageFaultKind::Store);
+                    mutable.handle_guest_page_fault(exit, gpaddr, ExitPageFaultKind::Store);
                 }
                 _ => {
                     panic!(

@@ -1,5 +1,6 @@
 use crate::address::GPAddr;
 
+pub const VCPU_EXIT_NONE: u8 = 0x0;
 pub const VCPU_EXIT_PAGE_FAULT: u8 = 0x1;
 
 #[derive(Debug, Clone, Copy)]
@@ -52,7 +53,7 @@ pub enum VCpuExit<'a> {
 impl VCpuExitState {
     pub fn new() -> Self {
         Self {
-            reason: 0,
+            reason: VCPU_EXIT_NONE,
             info: ExitInfo { none: () },
         }
     }
