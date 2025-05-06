@@ -2,7 +2,7 @@ use starina::address::GPAddr;
 use starina::error::ErrorCode;
 use starina::prelude::*;
 
-use crate::guest_memory::Ram;
+use crate::guest_memory::GuestMemory;
 
 #[derive(Debug)]
 pub enum Error {
@@ -44,7 +44,7 @@ pub struct RiscvImageHeader {
 /// https://www.kernel.org/doc/Documentation/arm64/booting.txt
 const IMAGE_ALIGN: usize = 2 * 1024 * 1024;
 
-pub fn load_riscv_image(ram: &mut Ram, image: &[u8]) -> Result<GPAddr, Error> {
+pub fn load_riscv_image(memory: &mut GuestMemory, image: &[u8]) -> Result<GPAddr, Error> {
     if image.len() < size_of::<RiscvImageHeader>() {
         return Err(Error::TooShortImage);
     }
@@ -58,7 +58,7 @@ pub fn load_riscv_image(ram: &mut Ram, image: &[u8]) -> Result<GPAddr, Error> {
     }
 
     let kernel_size = u64::from_le(header.image_size);
-    let (ram_slice, gpaddr) = ram
+    let (buf, gpaddr) = memory
         .allocate(kernel_size as usize, IMAGE_ALIGN)
         .map_err(Error::AllocRam)?;
 
@@ -69,6 +69,6 @@ pub fn load_riscv_image(ram: &mut Ram, image: &[u8]) -> Result<GPAddr, Error> {
         gpaddr,
         image.len() / 1024
     );
-    ram_slice[..image.len()].copy_from_slice(&image[..image.len()]);
+    buf[..image.len()].copy_from_slice(&image[..image.len()]);
     Ok(gpaddr)
 }

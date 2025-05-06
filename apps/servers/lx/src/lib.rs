@@ -3,11 +3,12 @@
 pub mod autogen;
 mod guest_memory;
 mod linux_loader;
+mod mmio;
 mod riscv;
 mod virtio;
 
 use guest_memory::GuestMemory;
-use guest_memory::Ram;
+use mmio::Bus;
 use riscv::device_tree::build_fdt;
 use riscv::plic::Plic;
 use riscv::plic::plic_mmio_size;
@@ -18,6 +19,8 @@ use starina::prelude::*;
 use starina::vcpu::VCpu;
 use starina::vcpu::VCpuExit;
 use starina::vcpu::VCpuExitState;
+use virtio::device::VIRTIO_MMIO_SIZE;
+use virtio::device::VirtioMmio;
 use virtio::virtio_fs::VirtioFs;
 
 #[derive(Debug)]
@@ -40,7 +43,9 @@ impl EventLoop for App {
         debug_assert!(PLIC_BASE_ADDR.as_usize() + PLIC_MMIO_SIZE <= VIRTIO_FS_ADDR.as_usize());
         const VIRTIO_FS_ADDR: GPAddr = GPAddr::new(0x0b00_0000);
         const GUEST_RAM_ADDR: GPAddr = GPAddr::new(0x8000_0000);
-        let mut ram = Ram::new(GUEST_RAM_ADDR, GUEST_RAM_SIZE).unwrap();
+
+        let mut guest_memory = GuestMemory::new(GUEST_RAM_ADDR, GUEST_RAM_SIZE).unwrap();
+
         let fdt = build_fdt(
             NUM_CPUS,
             GUEST_RAM_ADDR,
@@ -50,24 +55,19 @@ impl EventLoop for App {
             &[VIRTIO_FS_ADDR],
         )
         .expect("failed to build device tree");
-        let (fdt_slice, fdt_gpaddr) = ram.allocate(fdt.len(), 4096).unwrap();
+        let (fdt_slice, fdt_gpaddr) = guest_memory.allocate(fdt.len(), 4096).unwrap();
         fdt_slice[..fdt.len()].copy_from_slice(&fdt);
 
         // Prepare the guest memory.
-        let entry = linux_loader::load_riscv_image(&mut ram, LINUX_ELF).unwrap();
+        let entry = linux_loader::load_riscv_image(&mut guest_memory, LINUX_ELF).unwrap();
 
-        let mut guest_memory = GuestMemory::new().unwrap();
-        guest_memory.add_ram(ram).unwrap();
-
+        let mut bus = Bus::new();
         let virtio_fs = VirtioFs::new();
-        guest_memory
-            .add_virtio_mmio(VIRTIO_FS_ADDR, virtio_fs)
-            .unwrap();
+        let virtio_mmio_fs = VirtioMmio::new(virtio_fs).unwrap();
+        bus.add_device(VIRTIO_FS_ADDR, VIRTIO_MMIO_SIZE, virtio_mmio_fs);
 
         let plic = Plic::new();
-        guest_memory
-            .add_plic(PLIC_BASE_ADDR, PLIC_MMIO_SIZE, plic)
-            .unwrap();
+        bus.add_device(PLIC_BASE_ADDR, PLIC_MMIO_SIZE, plic);
 
         // Fill registers that Linux expects:
         //
@@ -84,10 +84,10 @@ impl EventLoop for App {
             vcpu.run(&mut exit_state).unwrap();
             match exit_state.as_exit() {
                 VCpuExit::LoadPageFault { gpaddr, data } => {
-                    guest_memory.mmio_read(gpaddr, data).unwrap();
+                    bus.read(gpaddr, data).unwrap();
                 }
                 VCpuExit::StorePageFault { gpaddr, data } => {
-                    guest_memory.mmio_write(gpaddr, data).unwrap();
+                    bus.write(gpaddr, data).unwrap();
                 }
             }
         }

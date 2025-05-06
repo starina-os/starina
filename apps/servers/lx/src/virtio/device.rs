@@ -1,11 +1,9 @@
-use starina::address::GPAddr;
 use starina::error::ErrorCode;
 use starina::prelude::*;
 use starina::sync::Mutex;
 
 use super::virtqueue::Virtqueue;
-use crate::guest_memory::MmioDevice;
-use crate::guest_memory::MmioError;
+use crate::mmio;
 use crate::virtio::virtqueue::VIRTQUEUE_NUM_DESCS_MAX;
 
 /// The host-side (device-side) of a virtio device.
@@ -94,8 +92,8 @@ impl VirtioMmio {
     }
 }
 
-impl MmioDevice for VirtioMmio {
-    fn read(&self, offset: u64, dst: &mut [u8]) -> Result<(), MmioError> {
+impl mmio::Device for VirtioMmio {
+    fn mmio_read(&self, offset: u64, dst: &mut [u8]) -> Result<(), mmio::Error> {
         trace!(
             "virtio mmio read: offset={:x}, width={:x}",
             offset,
@@ -149,7 +147,7 @@ impl MmioDevice for VirtioMmio {
         Ok(())
     }
 
-    fn write(&self, offset: u64, src: &[u8]) -> Result<(), MmioError> {
+    fn mmio_write(&self, offset: u64, src: &[u8]) -> Result<(), mmio::Error> {
         trace!(
             "virtio mmio write: offset={:x}, width={:x}",
             offset,
