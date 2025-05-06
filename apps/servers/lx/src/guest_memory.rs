@@ -1,3 +1,6 @@
+use core::mem::MaybeUninit;
+use core::ops::Range;
+use core::ptr;
 use core::slice;
 
 use starina::address::GPAddr;
@@ -16,6 +19,8 @@ pub enum Error {
     VmSpaceMap(ErrorCode),
     MapRam(ErrorCode),
     OutOfRam,
+    InvalidAddress(GPAddr),
+    TooLong,
 }
 
 fn align_up(size: usize, align: usize) -> usize {
@@ -82,15 +87,73 @@ impl GuestMemory {
         self.free_offset = free_start + size;
 
         let gpaddr = self.start.checked_add(free_start).unwrap();
-        let slice = &mut self.bytes_mut()[free_start..free_start + size];
+        let slice = &mut self.slice_mut()[free_start..free_start + size];
 
         trace!("RAM: allocated {} bytes at {}", size, gpaddr);
         Ok((slice, gpaddr))
     }
 
-    pub fn bytes_mut(&mut self) -> &mut [u8] {
+    fn slice(&self) -> &[u8] {
+        // SAFETY: The folio is mapped to the current vmspace, and folio
+        // is kept alive as long as `self` is alive.
+        unsafe { slice::from_raw_parts(self.vaddr.as_ptr(), self.size) }
+    }
+
+    fn slice_mut(&mut self) -> &mut [u8] {
         // SAFETY: The folio is mapped to the current vmspace, and folio
         // is kept alive as long as `self` is alive.
         unsafe { slice::from_raw_parts_mut(self.vaddr.as_mut_ptr(), self.size) }
+    }
+
+    fn check_range(&self, gpaddr: GPAddr, size: usize) -> Result<Range<usize>, Error> {
+        if gpaddr < self.start || gpaddr >= self.end {
+            return Err(Error::InvalidAddress(gpaddr));
+        }
+
+        let Some(end) = gpaddr.checked_add(size) else {
+            return Err(Error::TooLong);
+        };
+
+        if end > self.end {
+            return Err(Error::TooLong);
+        }
+
+        let offset = gpaddr.as_usize() - self.start.as_usize();
+        let range = offset..offset + size;
+        Ok(range)
+    }
+
+    pub fn read_bytes(&self, gpaddr: GPAddr, size: usize, dst: &mut [u8]) -> Result<(), Error> {
+        let range = self.check_range(gpaddr, size)?;
+        let slice = &self.slice()[range];
+        unsafe {
+            ptr::copy_nonoverlapping(slice.as_ptr(), dst.as_mut_ptr(), size);
+        }
+        Ok(())
+    }
+
+    pub fn write_bytes(&mut self, gpaddr: GPAddr, size: usize, src: &[u8]) -> Result<(), Error> {
+        let range = self.check_range(gpaddr, size)?;
+        let slice = &mut self.slice_mut()[range];
+        unsafe {
+            ptr::copy_nonoverlapping(src.as_ptr(), slice.as_mut_ptr(), size);
+        }
+        Ok(())
+    }
+
+    pub fn read<T: Copy>(&self, gpaddr: GPAddr) -> Result<T, Error> {
+        let mut buf = MaybeUninit::<T>::uninit();
+        let buf_slice =
+            unsafe { slice::from_raw_parts_mut(buf.as_mut_ptr() as *mut u8, size_of::<T>()) };
+        self.read_bytes(gpaddr, size_of::<T>(), buf_slice)?;
+        Ok(unsafe { buf.assume_init() })
+    }
+
+    pub fn write<T: Copy>(&mut self, gpaddr: GPAddr, value: T) -> Result<(), Error> {
+        let buf_slice =
+            unsafe { slice::from_raw_parts(&value as *const T as *const u8, size_of::<T>()) };
+
+        self.write_bytes(gpaddr, size_of::<T>(), buf_slice)?;
+        Ok(())
     }
 }
