@@ -56,7 +56,8 @@ pub fn build_fdt(
     // Timer frequency: Essential for timekeeping. OpenSBI usually uses this.
     fdt.property_u32("timebase-frequency", GUEST_TIMEBASE_FREQ)?;
 
-    let mut next_phandle = 1;
+    const PLIC_PHANDLE: u32 = 1;
+    let mut next_phandle = 2;
     let mut interrupts_extended = vec![];
 
     // Define each CPU (hart)
@@ -114,6 +115,7 @@ pub fn build_fdt(
     // PLIC node.
     let plic_node = fdt.begin_node(&format!("plic@{:x}", plic_base.as_usize()))?;
     fdt.property_string("compatible", "riscv,plic0")?;
+    fdt.property_phandle(PLIC_PHANDLE)?;
     fdt.property_u32("#address-cells", 0)?;
     fdt.property_u32("#interrupt-cells", 1)?;
     fdt.property_u32("riscv,ndev", 3)?;
@@ -129,6 +131,7 @@ pub fn build_fdt(
     fdt.end_node(plic_node)?;
 
     // Virtio-mmio devices.
+    let mut next_irq = 1;
     for (i, gpaddr) in virtio_mmios.iter().enumerate() {
         let virtio_mmio_node = fdt.begin_node(&format!("virtio-mmio@{}", gpaddr.as_usize()))?;
         fdt.property_string("compatible", "virtio,mmio")?;
@@ -139,6 +142,11 @@ pub fn build_fdt(
                 VIRTIO_MMIO_SIZE as u64,
             ],
         )?;
+
+        fdt.property_array_u32("interrupts", &[next_irq])?;
+        next_irq += 1;
+
+        fdt.property_u32("interrupt-parent", PLIC_PHANDLE)?;
         fdt.end_node(virtio_mmio_node)?;
     }
 

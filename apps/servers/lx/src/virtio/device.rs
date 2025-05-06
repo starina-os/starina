@@ -1,3 +1,4 @@
+use starina::address::GPAddr;
 use starina::error::ErrorCode;
 use starina::prelude::*;
 use starina::sync::Mutex;
@@ -55,13 +56,31 @@ pub enum Error {
     VmSpaceMap(ErrorCode),
 }
 
+struct Virtqueue {
+    desc_gpaddr: GPAddr,
+    device_gpaddr: GPAddr,
+    driver_gpaddr: GPAddr,
+    num_descs_max: u32,
+}
+
+impl Virtqueue {
+    pub fn new() -> Self {
+        Self {
+            desc_gpaddr: GPAddr::new(0),
+            device_gpaddr: GPAddr::new(0),
+            driver_gpaddr: GPAddr::new(0),
+            num_descs_max: 128,
+        }
+    }
+}
+
 struct Mutable {
     device_features_select: u32,
     driver_features_select: u32,
     device_status: u32,
     driver_features: u64,
     queue_select: u32,
-    num_queues: u32,
+    queues: Vec<Virtqueue>,
 }
 
 /// Virtio device over memory-mapped I/O.
@@ -73,6 +92,11 @@ pub struct VirtioMmio {
 impl VirtioMmio {
     pub fn new<D: VirtioDevice + 'static>(device: D) -> Result<Self, Error> {
         let num_queues = device.num_queues();
+        let mut queues = Vec::with_capacity(num_queues as usize);
+        for _ in 0..num_queues {
+            queues.push(Virtqueue::new());
+        }
+
         Ok(Self {
             device: Box::new(device),
             mutable: Mutex::new(Mutable {
@@ -81,7 +105,7 @@ impl VirtioMmio {
                 device_status: 0,
                 driver_features: 0,
                 queue_select: 0,
-                num_queues,
+                queues,
             }),
         })
     }
@@ -121,6 +145,17 @@ impl MmioDevice for VirtioMmio {
                     }
                     REG_DEVICE_FEATURES_SEL => mutable.device_features_select,
                     REG_DEVICE_STATUS => mutable.device_status,
+                    REG_QUEUE_READY => 0,
+                    REG_QUEUE_NUM_MAX => {
+                        let mutable = self.mutable.lock();
+                        let queue_index = mutable.queue_select as usize;
+                        let queue = &mutable
+                            .queues
+                            .get(queue_index)
+                            .expect("queue index out of range");
+
+                        queue.num_descs_max as u32
+                    }
                     REG_QUEUE_CONFIG_GEN => 0,
                     _ => {
                         panic!(
@@ -164,9 +199,6 @@ impl MmioDevice for VirtioMmio {
             REG_DEVICE_STATUS => {
                 mutable.device_status = value;
             }
-            REG_QUEUE_SELECT => {
-                mutable.queue_select = value;
-            }
             REG_DRIVER_FEATURES_SEL => {
                 mutable.driver_features_select = value;
             }
@@ -177,6 +209,57 @@ impl MmioDevice for VirtioMmio {
                     mutable.driver_features &= 0xffffffff;
                     mutable.driver_features |= (value as u64) << 32;
                 }
+            }
+            REG_QUEUE_SELECT => {
+                mutable.queue_select = value;
+            }
+            REG_QUEUE_READY => {
+                trace!("queue ready");
+            }
+            REG_QUEUE_DESC_LOW | REG_QUEUE_DESC_HIGH => {
+                let queue_index = mutable.queue_select as usize;
+                let queue = &mut mutable
+                    .queues
+                    .get_mut(queue_index)
+                    .expect("queue index out of range");
+
+                let mut addr = queue.desc_gpaddr.as_usize();
+                if offset == REG_QUEUE_DESC_LOW {
+                    addr = (addr & !0xffffffff_usize) | (value as usize);
+                } else {
+                    addr = (addr & 0xffffffff_usize) | ((value as usize) << 32);
+                }
+                queue.desc_gpaddr = GPAddr::new(addr);
+            }
+            REG_QUEUE_DRIVER_LOW | REG_QUEUE_DRIVER_HIGH => {
+                let queue_index = mutable.queue_select as usize;
+                let queue = &mut mutable
+                    .queues
+                    .get_mut(queue_index)
+                    .expect("queue index out of range");
+
+                let mut addr = queue.driver_gpaddr.as_usize();
+                if offset == REG_QUEUE_DRIVER_LOW {
+                    addr = (addr & !0xffffffff_usize) | (value as usize);
+                } else {
+                    addr = (addr & 0xffffffff_usize) | ((value as usize) << 32);
+                }
+                queue.driver_gpaddr = GPAddr::new(addr);
+            }
+            REG_QUEUE_DEVICE_LOW | REG_QUEUE_DEVICE_HIGH => {
+                let queue_index = mutable.queue_select as usize;
+                let queue = &mut mutable
+                    .queues
+                    .get_mut(queue_index)
+                    .expect("queue index out of range");
+
+                let mut addr = queue.device_gpaddr.as_usize();
+                if offset == REG_QUEUE_DEVICE_LOW {
+                    addr = (addr & !0xffffffff_usize) | (value as usize);
+                } else {
+                    addr = (addr & 0xffffffff_usize) | ((value as usize) << 32);
+                }
+                queue.device_gpaddr = GPAddr::new(addr);
             }
             _ => {
                 panic!(
