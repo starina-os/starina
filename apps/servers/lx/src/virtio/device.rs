@@ -15,7 +15,6 @@ use crate::virtio::virtqueue::VIRTQUEUE_NUM_DESCS_MAX;
 pub trait VirtioDevice {
     fn num_queues(&self) -> u32;
     fn device_features(&self) -> u64;
-    fn driver_features(&self) -> u64;
     fn device_id(&self) -> u32;
     fn vendor_id(&self) -> u32;
     fn config_read(&self, offset: u64, buf: &mut [u8]);

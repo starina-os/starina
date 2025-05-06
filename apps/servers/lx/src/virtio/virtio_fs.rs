@@ -29,10 +29,6 @@ impl VirtioDevice for VirtioFs {
         0
     }
 
-    fn driver_features(&self) -> u64 {
-        0
-    }
-
     fn device_id(&self) -> u32 {
         26
     }
