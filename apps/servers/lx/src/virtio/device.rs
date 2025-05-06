@@ -216,9 +216,7 @@ impl MmioDevice for VirtioMmio {
                 debug_assert!(value <= VIRTQUEUE_NUM_DESCS_MAX);
                 queue.num_descs = value;
             }
-            REG_QUEUE_READY => {
-                trace!("queue ready");
-            }
+            REG_QUEUE_READY => {}
             REG_QUEUE_DESC_LOW | REG_QUEUE_DESC_HIGH => {
                 let queue_index = mutable.queue_select as usize;
                 let queue = &mut mutable
