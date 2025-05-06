@@ -32,7 +32,7 @@ pub fn build_fdt(
     // Add rootfs, init path etc. as needed, e.g. "root=/dev/vda rw"
     fdt.property_string(
         "bootargs",
-        "console=sbi earlycon=sbi verbose loglevel=16 panic=-1",
+        "console=hvc earlycon=sbi debug verbose loglevel=16 panic=-1",
     )?; // FIXME:
     // (Optional but good practice) Specify path to console device if needed,
     // but hvc0 often doesn't require an explicit FDT node if handled purely via SBI.
