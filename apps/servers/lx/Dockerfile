@@ -21,10 +21,12 @@ WORKDIR /app
 
 ENV CARGO_TARGET_RISCV64GC_UNKNOWN_LINUX_MUSL_LINKER="riscv64-linux-gnu-gcc"
 ENV CARGO_PROFILE_RELEASE_OPT_LEVEL=z
+ENV CARGO_PROFILE_RELEASE_DEBUG=full
 ENV RUSTFLAGS="-C target-feature=+crt-static"
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/app/target \
     cargo build --release --target riscv64gc-unknown-linux-musl \
+    && cp /app/target/riscv64gc-unknown-linux-musl/release/lxinit /lxinit.debug \
     && cp /app/target/riscv64gc-unknown-linux-musl/release/lxinit /lxinit \
     && riscv64-linux-gnu-strip /lxinit
 
@@ -69,7 +71,11 @@ RUN apt-get update && apt-get install -y \
     gcc-riscv64-linux-gnu \
     binutils-riscv64-linux-gnu
 
+RUN apt-get install -y llvm
+RUN apt-get install -y less
+
 COPY --from=initramfs-builder /initramfs.cpio /initramfs.cpio
+COPY --from=lxinit-builder /lxinit.debug /lxinit.debug
 COPY --from=lxinit-builder /lxinit /lxinit
 
 CMD make -C /lx/linux ARCH=riscv CROSS_COMPILE=riscv64-linux-gnu- -j$(nproc) \
