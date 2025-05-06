@@ -46,7 +46,7 @@ RUN mkdir -p /rootfs/proc
 RUN mkdir -p /rootfs/sys
 RUN mkdir -p /rootfs/tmp
 RUN mkdir -p /rootfs/var
-RUN mkdir -p /rootfs/starina
+RUN mkdir -p /rootfs/virtfs
 
 RUN mknod /rootfs/dev/console c 5 1
 
