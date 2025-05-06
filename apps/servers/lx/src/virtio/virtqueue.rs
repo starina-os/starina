@@ -5,6 +5,53 @@ use crate::guest_memory::GuestMemory;
 
 pub const VIRTQUEUE_NUM_DESCS_MAX: u32 = 256;
 
+const VIRTQ_DESC_F_NEXT: u16 = 1;
+const VIRTQ_DESC_F_WRITE: u16 = 2;
+
+#[derive(Debug, Copy, Clone)]
+#[repr(C, packed)]
+pub struct VirtqDesc {
+    pub addr: u64,
+    pub len: u32,
+    pub flags: u16,
+    pub next: u16,
+}
+
+impl VirtqDesc {
+    pub fn is_writable(&self) -> bool {
+        self.flags & VIRTQ_DESC_F_WRITE != 0
+    }
+
+    pub fn has_next(&self) -> bool {
+        self.flags & VIRTQ_DESC_F_NEXT != 0
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+#[repr(C, packed)]
+struct VirtqAvail {
+    flags: u16,
+    index: u16,
+    // The rings (an array of descriptor indices) immediately follows here.
+}
+
+#[derive(Debug, Copy, Clone)]
+#[repr(C, packed)]
+pub struct VirtqUsedElem {
+    id: u32,
+    len: u32,
+}
+
+#[derive(Debug, Copy, Clone)]
+#[repr(C, packed)]
+struct VirtqUsed {
+    flags: u16,
+    index: u16,
+    // The rings (an array of VirtqUsedElem) immediately follows here.
+}
+
+struct DescChain {}
+
 pub struct Virtqueue {
     desc_gpaddr: GPAddr,
     device_gpaddr: GPAddr,
@@ -41,7 +88,14 @@ impl Virtqueue {
     }
 
     pub fn queue_notify(&self, memory: &mut GuestMemory, device: &dyn VirtioDevice) {
-        todo!()
+        while let Some(chain) = self.pop(memory) {
+            // TODO: Implement
+        }
+    }
+
+    fn pop(&self, memory: &mut GuestMemory) -> Option<DescChain> {
+        // TODO: Implement
+        None
     }
 }
 
