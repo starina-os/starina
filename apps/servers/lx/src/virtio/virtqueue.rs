@@ -1,6 +1,7 @@
 use starina::address::GPAddr;
 
 use super::device::VirtioDevice;
+use crate::guest_memory::GuestMemory;
 
 pub const VIRTQUEUE_NUM_DESCS_MAX: u32 = 256;
 
@@ -39,7 +40,7 @@ impl Virtqueue {
         set_addr(&mut self.driver_gpaddr, value, is_high);
     }
 
-    pub fn queue_notify(&self, device: &dyn VirtioDevice) {
+    pub fn queue_notify(&self, memory: &mut GuestMemory, device: &dyn VirtioDevice) {
         todo!()
     }
 }

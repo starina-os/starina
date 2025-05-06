@@ -1,6 +1,8 @@
 use starina::address::GPAddr;
 use starina::prelude::*;
 
+use crate::guest_memory::GuestMemory;
+
 #[derive(Debug)]
 pub enum Error {
     NotMapped,
@@ -8,8 +10,13 @@ pub enum Error {
 }
 
 pub trait Device {
-    fn mmio_read(&self, offset: u64, value: &mut [u8]) -> Result<(), Error>;
-    fn mmio_write(&self, offset: u64, value: &[u8]) -> Result<(), Error>;
+    fn mmio_read(
+        &self,
+        memory: &mut GuestMemory,
+        offset: u64,
+        value: &mut [u8],
+    ) -> Result<(), Error>;
+    fn mmio_write(&self, memory: &mut GuestMemory, offset: u64, value: &[u8]) -> Result<(), Error>;
 }
 
 struct Region {
@@ -66,15 +73,25 @@ impl Bus {
         Err(Error::NotMapped)
     }
 
-    pub fn read(&self, gpaddr: GPAddr, value: &mut [u8]) -> Result<(), Error> {
+    pub fn read(
+        &self,
+        memory: &mut GuestMemory,
+        gpaddr: GPAddr,
+        value: &mut [u8],
+    ) -> Result<(), Error> {
         let (device, offset) = self.find_mmio_device(gpaddr)?;
-        device.mmio_read(offset, value)?;
+        device.mmio_read(memory, offset, value)?;
         Ok(())
     }
 
-    pub fn write(&self, gpaddr: GPAddr, value: &[u8]) -> Result<(), Error> {
+    pub fn write(
+        &self,
+        memory: &mut GuestMemory,
+        gpaddr: GPAddr,
+        value: &[u8],
+    ) -> Result<(), Error> {
         let (device, offset) = self.find_mmio_device(gpaddr)?;
-        device.mmio_write(offset, value)?;
+        device.mmio_write(memory, offset, value)?;
         Ok(())
     }
 }

@@ -3,6 +3,7 @@ use starina::prelude::*;
 use starina::sync::Mutex;
 
 use super::virtqueue::Virtqueue;
+use crate::guest_memory::GuestMemory;
 use crate::mmio;
 use crate::virtio::virtqueue::VIRTQUEUE_NUM_DESCS_MAX;
 
@@ -93,7 +94,12 @@ impl VirtioMmio {
 }
 
 impl mmio::Device for VirtioMmio {
-    fn mmio_read(&self, offset: u64, dst: &mut [u8]) -> Result<(), mmio::Error> {
+    fn mmio_read(
+        &self,
+        memory: &mut GuestMemory,
+        offset: u64,
+        dst: &mut [u8],
+    ) -> Result<(), mmio::Error> {
         trace!(
             "virtio mmio read: offset={:x}, width={:x}",
             offset,
@@ -147,7 +153,12 @@ impl mmio::Device for VirtioMmio {
         Ok(())
     }
 
-    fn mmio_write(&self, offset: u64, src: &[u8]) -> Result<(), mmio::Error> {
+    fn mmio_write(
+        &self,
+        memory: &mut GuestMemory,
+        offset: u64,
+        src: &[u8],
+    ) -> Result<(), mmio::Error> {
         trace!(
             "virtio mmio write: offset={:x}, width={:x}",
             offset,
@@ -200,7 +211,7 @@ impl mmio::Device for VirtioMmio {
                     .queues
                     .get_mut(queue_index)
                     .expect("queue index out of range")
-                    .queue_notify(&*self.device);
+                    .queue_notify(memory, &*self.device);
             }
             REG_QUEUE_DESC_LOW | REG_QUEUE_DESC_HIGH => {
                 let queue_index = mutable.queue_select as usize;

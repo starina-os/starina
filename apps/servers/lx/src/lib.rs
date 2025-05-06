@@ -44,7 +44,7 @@ impl EventLoop for App {
         const VIRTIO_FS_ADDR: GPAddr = GPAddr::new(0x0b00_0000);
         const GUEST_RAM_ADDR: GPAddr = GPAddr::new(0x8000_0000);
 
-        let mut guest_memory = GuestMemory::new(GUEST_RAM_ADDR, GUEST_RAM_SIZE).unwrap();
+        let mut memory = GuestMemory::new(GUEST_RAM_ADDR, GUEST_RAM_SIZE).unwrap();
 
         let fdt = build_fdt(
             NUM_CPUS,
@@ -55,11 +55,11 @@ impl EventLoop for App {
             &[VIRTIO_FS_ADDR],
         )
         .expect("failed to build device tree");
-        let (fdt_slice, fdt_gpaddr) = guest_memory.allocate(fdt.len(), 4096).unwrap();
+        let (fdt_slice, fdt_gpaddr) = memory.allocate(fdt.len(), 4096).unwrap();
         fdt_slice[..fdt.len()].copy_from_slice(&fdt);
 
         // Prepare the guest memory.
-        let entry = linux_loader::load_riscv_image(&mut guest_memory, LINUX_ELF).unwrap();
+        let entry = linux_loader::load_riscv_image(&mut memory, LINUX_ELF).unwrap();
 
         let mut bus = Bus::new();
         let virtio_fs = VirtioFs::new();
@@ -77,17 +77,17 @@ impl EventLoop for App {
         let a0 = 0; // hartid
         let a1 = fdt_gpaddr.as_usize(); // fdt address
 
-        let vcpu = VCpu::new(guest_memory.hvspace(), entry.as_usize(), a0, a1).unwrap();
+        let vcpu = VCpu::new(memory.hvspace(), entry.as_usize(), a0, a1).unwrap();
         let mut exit_state = VCpuExitState::new();
         info!("running vcpu");
         loop {
             vcpu.run(&mut exit_state).unwrap();
             match exit_state.as_exit() {
                 VCpuExit::LoadPageFault { gpaddr, data } => {
-                    bus.read(gpaddr, data).unwrap();
+                    bus.read(&mut memory, gpaddr, data).unwrap();
                 }
                 VCpuExit::StorePageFault { gpaddr, data } => {
-                    bus.write(gpaddr, data).unwrap();
+                    bus.write(&mut memory, gpaddr, data).unwrap();
                 }
             }
         }
