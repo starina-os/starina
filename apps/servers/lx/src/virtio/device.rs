@@ -15,6 +15,7 @@ pub trait VirtioDevice {
     fn driver_features(&self) -> u64;
     fn device_id(&self) -> u32;
     fn vendor_id(&self) -> u32;
+    fn config_read(&self, offset: u64, buf: &mut [u8]);
 }
 
 pub const VIRTIO_MMIO_SIZE: usize = 4096;
@@ -94,25 +95,15 @@ impl MmioDevice for VirtioMmio {
             dst.len()
         );
 
+        if offset >= REG_CONFIG_START {
+            trace!("virtio-mmio: read config: offset={:x}", offset);
+            self.device.config_read(offset, dst);
+            return Ok(());
+        }
+
         let width = dst.len();
         let mutable = self.mutable.lock();
         match width {
-            1 => {
-                let value = match offset {
-                    offset if offset >= REG_CONFIG_START => {
-                        trace!("virtio-mmio: read config: offset={:x}", offset);
-                        0
-                    }
-                    _ => {
-                        panic!(
-                            "unexpected virtio-mmio read: offset={:x}, width={}",
-                            offset, width
-                        );
-                    }
-                };
-
-                dst[0] = value as u8;
-            }
             4 => {
                 let value = match offset {
                     REG_MAGIC => 0x74726976,
