@@ -96,8 +96,9 @@ impl MmioDevice for VirtioMmio {
         );
 
         if offset >= REG_CONFIG_START {
-            trace!("virtio-mmio: read config: offset={:x}", offset);
-            self.device.config_read(offset, dst);
+            let config_offset = offset - REG_CONFIG_START;
+            trace!("virtio-mmio: read config: offset={:x}", config_offset);
+            self.device.config_read(config_offset, dst);
             return Ok(());
         }
 
