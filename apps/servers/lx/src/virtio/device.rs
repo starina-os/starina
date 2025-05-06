@@ -32,8 +32,8 @@ const REG_DEVICE_FEATURES_SEL: u64 = 0x14;
 const REG_DRIVER_FEATURES: u64 = 0x20;
 const REG_DRIVER_FEATURES_SEL: u64 = 0x24;
 const REG_QUEUE_SELECT: u64 = 0x30;
-const REG_QUEUE_NUM_MAX: u64 = 0x34;
-const REG_QUEUE_NUM: u64 = 0x38;
+const REG_QUEUE_SIZE_MAX: u64 = 0x34;
+const REG_QUEUE_SIZE: u64 = 0x38;
 const REG_QUEUE_READY: u64 = 0x44;
 const REG_QUEUE_NOTIFY: u64 = 0x50;
 const REG_INTERRUPT_STATUS: u64 = 0x60;
@@ -56,11 +56,13 @@ pub enum Error {
     VmSpaceMap(ErrorCode),
 }
 
+const VIRTQUEUE_NUM_DESCS_MAX: u32 = 256;
+
 struct Virtqueue {
     desc_gpaddr: GPAddr,
     device_gpaddr: GPAddr,
     driver_gpaddr: GPAddr,
-    num_descs_max: u32,
+    num_descs: u32,
 }
 
 impl Virtqueue {
@@ -69,7 +71,7 @@ impl Virtqueue {
             desc_gpaddr: GPAddr::new(0),
             device_gpaddr: GPAddr::new(0),
             driver_gpaddr: GPAddr::new(0),
-            num_descs_max: 128,
+            num_descs: VIRTQUEUE_NUM_DESCS_MAX,
         }
     }
 }
@@ -146,16 +148,7 @@ impl MmioDevice for VirtioMmio {
                     REG_DEVICE_FEATURES_SEL => mutable.device_features_select,
                     REG_DEVICE_STATUS => mutable.device_status,
                     REG_QUEUE_READY => 0,
-                    REG_QUEUE_NUM_MAX => {
-                        let mutable = self.mutable.lock();
-                        let queue_index = mutable.queue_select as usize;
-                        let queue = &mutable
-                            .queues
-                            .get(queue_index)
-                            .expect("queue index out of range");
-
-                        queue.num_descs_max as u32
-                    }
+                    REG_QUEUE_SIZE_MAX => VIRTQUEUE_NUM_DESCS_MAX,
                     REG_QUEUE_CONFIG_GEN => 0,
                     _ => {
                         panic!(
@@ -212,6 +205,16 @@ impl MmioDevice for VirtioMmio {
             }
             REG_QUEUE_SELECT => {
                 mutable.queue_select = value;
+            }
+            REG_QUEUE_SIZE => {
+                let queue_index = mutable.queue_select as usize;
+                let queue = &mut mutable
+                    .queues
+                    .get_mut(queue_index)
+                    .expect("queue index out of range");
+
+                debug_assert!(value <= VIRTQUEUE_NUM_DESCS_MAX);
+                queue.num_descs = value;
             }
             REG_QUEUE_READY => {
                 trace!("queue ready");
