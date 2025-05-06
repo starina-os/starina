@@ -44,6 +44,7 @@ RUN mkdir -p /rootfs/proc
 RUN mkdir -p /rootfs/sys
 RUN mkdir -p /rootfs/tmp
 RUN mkdir -p /rootfs/var
+RUN mkdir -p /rootfs/starina
 
 COPY --from=lxinit-builder /lxinit /rootfs/init
 
