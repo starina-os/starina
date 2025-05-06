@@ -43,7 +43,7 @@ impl VirtioDevice for VirtioFs {
 
     fn config_read(&self, offset: u64, buf: &mut [u8]) {
         let config = VirtioConfig {
-            tag: *b"virtfs\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+            tag: *b"virtfs\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0",
             num_request_queues: 1_u32.to_le(),
             notify_buf_size: 0_u32.to_le(),
         };
@@ -60,5 +60,9 @@ impl VirtioDevice for VirtioFs {
 
         let copy_len = min(buf.len(), config_size.saturating_sub(offset));
         buf[..copy_len].copy_from_slice(&config_bytes[offset..offset + copy_len]);
+        trace!(
+            "virtio-fs: config read: offset={:x}, buf={:x?}, copy_len={}",
+            offset, buf, copy_len
+        );
     }
 }

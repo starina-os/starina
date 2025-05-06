@@ -3,8 +3,10 @@ use starina::error::ErrorCode;
 use starina::prelude::*;
 use starina::sync::Mutex;
 
+use super::virtqueue::Virtqueue;
 use crate::guest_memory::MmioDevice;
 use crate::guest_memory::MmioError;
+use crate::virtio::virtqueue::VIRTQUEUE_NUM_DESCS_MAX;
 
 /// The host-side (device-side) of a virtio device.
 ///
@@ -54,26 +56,6 @@ const VIRTIO_F_VERSION_1: u64 = 1 << 32;
 pub enum Error {
     AllocFolio(ErrorCode),
     VmSpaceMap(ErrorCode),
-}
-
-const VIRTQUEUE_NUM_DESCS_MAX: u32 = 256;
-
-struct Virtqueue {
-    desc_gpaddr: GPAddr,
-    device_gpaddr: GPAddr,
-    driver_gpaddr: GPAddr,
-    num_descs: u32,
-}
-
-impl Virtqueue {
-    pub fn new() -> Self {
-        Self {
-            desc_gpaddr: GPAddr::new(0),
-            device_gpaddr: GPAddr::new(0),
-            driver_gpaddr: GPAddr::new(0),
-            num_descs: VIRTQUEUE_NUM_DESCS_MAX,
-        }
-    }
 }
 
 struct Mutable {
@@ -208,59 +190,44 @@ impl MmioDevice for VirtioMmio {
             }
             REG_QUEUE_SIZE => {
                 let queue_index = mutable.queue_select as usize;
-                let queue = &mut mutable
+                mutable
                     .queues
                     .get_mut(queue_index)
-                    .expect("queue index out of range");
-
-                debug_assert!(value <= VIRTQUEUE_NUM_DESCS_MAX);
-                queue.num_descs = value;
+                    .expect("queue index out of range")
+                    .set_queue_size(value);
             }
             REG_QUEUE_READY => {}
-            REG_QUEUE_DESC_LOW | REG_QUEUE_DESC_HIGH => {
+            REG_QUEUE_NOTIFY => {
                 let queue_index = mutable.queue_select as usize;
-                let queue = &mut mutable
+                mutable
                     .queues
                     .get_mut(queue_index)
-                    .expect("queue index out of range");
-
-                let mut addr = queue.desc_gpaddr.as_usize();
-                if offset == REG_QUEUE_DESC_LOW {
-                    addr = (addr & !0xffffffff_usize) | (value as usize);
-                } else {
-                    addr = (addr & 0xffffffff_usize) | ((value as usize) << 32);
-                }
-                queue.desc_gpaddr = GPAddr::new(addr);
+                    .expect("queue index out of range")
+                    .queue_notify(&*self.device);
+            }
+            REG_QUEUE_DESC_LOW | REG_QUEUE_DESC_HIGH => {
+                let queue_index = mutable.queue_select as usize;
+                mutable
+                    .queues
+                    .get_mut(queue_index)
+                    .expect("queue index out of range")
+                    .set_desc_addr(value, offset == REG_QUEUE_DESC_HIGH);
             }
             REG_QUEUE_DRIVER_LOW | REG_QUEUE_DRIVER_HIGH => {
                 let queue_index = mutable.queue_select as usize;
-                let queue = &mut mutable
+                mutable
                     .queues
                     .get_mut(queue_index)
-                    .expect("queue index out of range");
-
-                let mut addr = queue.driver_gpaddr.as_usize();
-                if offset == REG_QUEUE_DRIVER_LOW {
-                    addr = (addr & !0xffffffff_usize) | (value as usize);
-                } else {
-                    addr = (addr & 0xffffffff_usize) | ((value as usize) << 32);
-                }
-                queue.driver_gpaddr = GPAddr::new(addr);
+                    .expect("queue index out of range")
+                    .set_driver_addr(value, offset == REG_QUEUE_DRIVER_HIGH);
             }
             REG_QUEUE_DEVICE_LOW | REG_QUEUE_DEVICE_HIGH => {
                 let queue_index = mutable.queue_select as usize;
-                let queue = &mut mutable
+                mutable
                     .queues
                     .get_mut(queue_index)
-                    .expect("queue index out of range");
-
-                let mut addr = queue.device_gpaddr.as_usize();
-                if offset == REG_QUEUE_DEVICE_LOW {
-                    addr = (addr & !0xffffffff_usize) | (value as usize);
-                } else {
-                    addr = (addr & 0xffffffff_usize) | ((value as usize) << 32);
-                }
-                queue.device_gpaddr = GPAddr::new(addr);
+                    .expect("queue index out of range")
+                    .set_device_addr(value, offset == REG_QUEUE_DEVICE_HIGH);
             }
             _ => {
                 panic!(

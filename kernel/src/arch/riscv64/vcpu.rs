@@ -813,9 +813,11 @@ macro_rules! read_csr {
     }};
 }
 
-fn htval_to_gpaddr(htval: u64) -> GPAddr {
+fn htval_to_gpaddr(htval: u64, stval: u64) -> GPAddr {
     // "A guest physical address written to htval is shifted right by 2 bits"
-    GPAddr::new((htval as usize) << 2)
+    let upper = htval << 2;
+    let lower = stval & 0b11;
+    GPAddr::new((upper | lower) as usize)
 }
 
 extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
@@ -948,7 +950,7 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
             let mut exit = mutable.exit.take().unwrap();
             match scause {
                 SCAUSE_GUEST_INST_PAGE_FAULT => {
-                    let gpaddr = htval_to_gpaddr(htval);
+                    let gpaddr = htval_to_gpaddr(htval, stval);
                     let htinst = read_csr!("htinst");
                     handle_guest_page_fault(
                         &mut exit,
@@ -959,7 +961,7 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
                     );
                 }
                 SCAUSE_GUEST_LOAD_PAGE_FAULT => {
-                    let gpaddr = htval_to_gpaddr(htval);
+                    let gpaddr = htval_to_gpaddr(htval, stval);
                     let htinst = read_csr!("htinst");
                     handle_guest_page_fault(
                         &mut exit,
@@ -970,7 +972,7 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
                     );
                 }
                 SCAUSE_GUEST_STORE_PAGE_FAULT => {
-                    let gpaddr = htval_to_gpaddr(htval);
+                    let gpaddr = htval_to_gpaddr(htval, stval);
                     let htinst = read_csr!("htinst");
                     handle_guest_page_fault(
                         &mut exit,
