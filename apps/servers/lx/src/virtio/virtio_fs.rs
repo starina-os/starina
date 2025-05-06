@@ -43,7 +43,7 @@ impl VirtioDevice for VirtioFs {
 
     fn config_read(&self, offset: u64, buf: &mut [u8]) {
         let config = VirtioConfig {
-            tag: [0; 36],
+            tag: b"rootfs\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
             num_request_queues: 1_u32.to_le(),
             notify_buf_size: 0_u32.to_le(),
         };
