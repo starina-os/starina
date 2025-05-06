@@ -48,6 +48,8 @@ RUN mkdir -p /rootfs/tmp
 RUN mkdir -p /rootfs/var
 RUN mkdir -p /rootfs/starina
 
+RUN mknod /rootfs/dev/console c 5 1
+
 COPY --from=lxinit-builder /lxinit /rootfs/init
 
 WORKDIR /rootfs
