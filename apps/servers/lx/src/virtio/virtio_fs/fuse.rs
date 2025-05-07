@@ -1,3 +1,4 @@
+/// `struct fuse_in_header`.
 #[derive(Debug, Clone, Copy)]
 #[repr(C)]
 pub struct FuseInHeader {
@@ -10,6 +11,14 @@ pub struct FuseInHeader {
     pub pid: u32,
     pub total_extlen: u16,
     pub padding: u16,
+}
+
+#[derive(Debug, Clone, Copy)]
+#[repr(C)]
+pub struct FuseOutHeader {
+    pub len: u32,
+    pub error: i32,
+    pub unique: u64,
 }
 
 pub const FUSE_LOOKUP: u32 = 1;

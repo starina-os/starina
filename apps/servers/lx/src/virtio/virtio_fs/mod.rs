@@ -5,6 +5,7 @@ use core::slice;
 
 use fuse::FUSE_INIT;
 use fuse::FuseInHeader;
+use fuse::FuseOutHeader;
 use starina::prelude::*;
 
 use super::device::VirtioDevice;
@@ -46,8 +47,16 @@ impl VirtioDevice for VirtioFs {
 
     fn process(&self, memory: &mut GuestMemory, vq: &mut Virtqueue, mut chain: DescChain) {
         info!("virtio-fs: process: chain={:?}", chain);
+
         let in_header_desc = chain.next_desc(vq, memory).unwrap();
+        let datain_desc = chain.next_desc(vq, memory).unwrap();
+        let out_header_desc = chain.next_desc(vq, memory).unwrap();
+        let dataout_desc = chain.next_desc(vq, memory).unwrap();
         assert!(in_header_desc.is_read_only());
+        assert!(datain_desc.is_read_only());
+        assert!(out_header_desc.is_write_only());
+        assert!(dataout_desc.is_write_only());
+
         let in_header = memory
             .read::<FuseInHeader>(in_header_desc.gpaddr())
             .unwrap();
@@ -56,12 +65,31 @@ impl VirtioDevice for VirtioFs {
         match in_header.opcode {
             FUSE_INIT => {
                 info!("fuse init");
+                // struct virtio_fs_req {
+                //     // Device-readable part
+                //     struct fuse_in_header in;
+                //     u8 datain[];
+                //
+                //     // Device-writable part
+                //     struct fuse_out_header out;
+                //     u8 dataout[];
+                // };
             }
             _ => {
-                info!("fuse opcode: {:x}", in_header.opcode);
+                panic!("fuse unknown opcode: {:x}", in_header.opcode);
             }
         }
 
+        memory
+            .write(
+                out_header_desc.gpaddr(),
+                FuseOutHeader {
+                    len: 0,
+                    error: 0,
+                    unique: in_header.unique,
+                },
+            )
+            .unwrap();
         vq.push_used(memory, chain, 0);
     }
 
