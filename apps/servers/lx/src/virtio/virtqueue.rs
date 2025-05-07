@@ -1,3 +1,5 @@
+use core::mem::offset_of;
+
 use starina::address::GPAddr;
 use starina::prelude::*;
 
@@ -28,14 +30,17 @@ impl VirtqDesc {
     }
 }
 
+type DescIndex = u16;
+
 #[derive(Debug)]
 pub struct DescChain {
-    next_desc_index: Option<u16>,
+    head: DescIndex,
+    next: Option<DescIndex>,
 }
 
 impl DescChain {
     pub fn next_desc(&mut self, vq: &mut Virtqueue, memory: &mut GuestMemory) -> Option<VirtqDesc> {
-        let desc_index = self.next_desc_index?;
+        let desc_index = self.next?;
 
         let desc_gpaddr = vq
             .desc_gpaddr
@@ -51,9 +56,9 @@ impl DescChain {
         };
 
         if desc.has_next() {
-            self.next_desc_index = Some(desc.next);
+            self.next = Some(desc.next);
         } else {
-            self.next_desc_index = None;
+            self.next = None;
         }
 
         Some(desc)
@@ -96,6 +101,7 @@ pub struct Virtqueue {
     /// Known as *Used Ring*.
     used_gpaddr: GPAddr,
     avail_index: u16,
+    used_index: u32,
     num_descs: u32,
 }
 
@@ -106,6 +112,7 @@ impl Virtqueue {
             avail_gpaddr: GPAddr::new(0),
             used_gpaddr: GPAddr::new(0),
             avail_index: 0,
+            used_index: 0,
             num_descs: VIRTQUEUE_NUM_DESCS_MAX,
         }
     }
@@ -134,7 +141,53 @@ impl Virtqueue {
         }
     }
 
+    fn push_used(&mut self, memory: &mut GuestMemory, chain: DescChain, written_len: u32) {
+        if chain.head >= self.num_descs as u16 {
+            debug_warn!("virtqueue: push_used: chain head is greater than num_descs");
+            return;
+        }
+
+        let used_index = self.used_index;
+
+        let used_index_gpaddr = self
+            .used_gpaddr
+            .checked_add(offset_of!(VirtqUsed, index))
+            .unwrap();
+        let used_elem_gpaddr = self
+            .used_gpaddr
+            .checked_add(used_index as usize * size_of::<VirtqUsedElem>())
+            .unwrap();
+
+        if let Err(err) = memory.write(
+            used_elem_gpaddr,
+            VirtqUsedElem {
+                id: used_index,
+                len: written_len,
+            },
+        ) {
+            debug_warn!(
+                "virtqueue: push_used: failed to write used ring: {:x?}",
+                err
+            );
+            return;
+        }
+
+        // This increment must be done before writing the used index.
+        self.used_index = (self.used_index + 1) % (self.num_descs as u32);
+
+        // TODO: fence here
+
+        if let Err(err) = memory.write(used_index_gpaddr, self.used_index) {
+            debug_warn!(
+                "virtqueue: push_used: failed to write used ring: {:x?}",
+                err
+            );
+        }
+    }
+
     fn pop(&mut self, memory: &mut GuestMemory) -> Option<DescChain> {
+        // TODO: fence here
+
         let avail = match memory.read::<VirtqAvail>(self.avail_gpaddr) {
             Ok(avail) => avail,
             Err(err) => {
@@ -164,7 +217,8 @@ impl Virtqueue {
         self.avail_index = (self.avail_index + 1) % (self.num_descs as u16);
 
         Some(DescChain {
-            next_desc_index: Some(desc_index),
+            head: desc_index,
+            next: Some(desc_index),
         })
     }
 }
