@@ -21,8 +21,16 @@ pub struct VirtqDesc {
 }
 
 impl VirtqDesc {
-    pub fn is_writable(&self) -> bool {
+    pub fn gpaddr(&self) -> GPAddr {
+        GPAddr::new(self.addr as usize)
+    }
+
+    pub fn is_write_only(&self) -> bool {
         self.flags & VIRTQ_DESC_F_WRITE != 0
+    }
+
+    pub fn is_read_only(&self) -> bool {
+        !self.is_write_only()
     }
 
     pub fn has_next(&self) -> bool {

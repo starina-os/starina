@@ -1,6 +1,10 @@
+mod fuse;
+
 use core::cmp::min;
 use core::slice;
 
+use fuse::FUSE_INIT;
+use fuse::FuseInHeader;
 use starina::prelude::*;
 
 use super::device::VirtioDevice;
@@ -42,8 +46,20 @@ impl VirtioDevice for VirtioFs {
 
     fn process(&self, memory: &mut GuestMemory, vq: &mut Virtqueue, mut chain: DescChain) {
         info!("virtio-fs: process: chain={:?}", chain);
-        while let Some(desc) = chain.next_desc(vq, memory) {
-            info!("desc: {:x?}", desc);
+        let in_header_desc = chain.next_desc(vq, memory).unwrap();
+        assert!(in_header_desc.is_read_only());
+        let in_header = memory
+            .read::<FuseInHeader>(in_header_desc.gpaddr())
+            .unwrap();
+
+        info!("fuse in header: {:x?}", in_header);
+        match in_header.opcode {
+            FUSE_INIT => {
+                info!("fuse init");
+            }
+            _ => {
+                info!("fuse opcode: {:x}", in_header.opcode);
+            }
         }
 
         vq.push_used(memory, chain, 0);
