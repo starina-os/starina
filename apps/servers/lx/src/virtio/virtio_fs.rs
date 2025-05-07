@@ -45,6 +45,8 @@ impl VirtioDevice for VirtioFs {
         while let Some(desc) = chain.next_desc(vq, memory) {
             info!("desc: {:x?}", desc);
         }
+
+        vq.push_used(memory, chain, 0);
     }
 
     fn config_read(&self, offset: u64, buf: &mut [u8]) {
