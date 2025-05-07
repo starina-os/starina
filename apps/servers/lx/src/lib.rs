@@ -79,7 +79,6 @@ impl EventLoop for App {
 
         let vcpu = VCpu::new(memory.hvspace(), entry.as_usize(), a0, a1).unwrap();
         let mut exit_state = VCpuExitState::new();
-        info!("running vcpu");
         loop {
             vcpu.run(&mut exit_state).unwrap();
             match exit_state.as_exit() {

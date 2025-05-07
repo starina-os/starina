@@ -4,6 +4,9 @@ use core::slice;
 use starina::prelude::*;
 
 use super::device::VirtioDevice;
+use super::virtqueue::DescChain;
+use super::virtqueue::Virtqueue;
+use crate::guest_memory::GuestMemory;
 
 #[repr(C)]
 struct VirtioConfig {
@@ -35,6 +38,13 @@ impl VirtioDevice for VirtioFs {
 
     fn vendor_id(&self) -> u32 {
         0
+    }
+
+    fn process(&self, memory: &mut GuestMemory, vq: &mut Virtqueue, mut chain: DescChain) {
+        info!("virtio-fs: process: chain={:?}", chain);
+        while let Some(desc) = chain.next_desc(vq, memory) {
+            info!("desc: {:x?}", desc);
+        }
     }
 
     fn config_read(&self, offset: u64, buf: &mut [u8]) {

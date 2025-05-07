@@ -2,6 +2,7 @@ use starina::error::ErrorCode;
 use starina::prelude::*;
 use starina::sync::Mutex;
 
+use super::virtqueue::DescChain;
 use super::virtqueue::Virtqueue;
 use crate::guest_memory::GuestMemory;
 use crate::mmio;
@@ -17,6 +18,7 @@ pub trait VirtioDevice {
     fn device_id(&self) -> u32;
     fn vendor_id(&self) -> u32;
     fn config_read(&self, offset: u64, buf: &mut [u8]);
+    fn process(&self, memory: &mut GuestMemory, vq: &mut Virtqueue, chain: DescChain);
 }
 
 pub const VIRTIO_MMIO_SIZE: usize = 4096;

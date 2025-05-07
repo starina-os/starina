@@ -145,6 +145,7 @@ impl GuestMemory {
         let mut buf = MaybeUninit::<T>::uninit();
         let buf_slice =
             unsafe { slice::from_raw_parts_mut(buf.as_mut_ptr() as *mut u8, size_of::<T>()) };
+
         self.read_bytes(gpaddr, size_of::<T>(), buf_slice)?;
         Ok(unsafe { buf.assume_init() })
     }

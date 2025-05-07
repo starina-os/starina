@@ -11,7 +11,6 @@ pub enum Error {
     AllocRam(crate::guest_memory::Error),
     TooShortImage,
     InvalidMagic,
-    InvalidImageSize,
 }
 
 /// <https://www.kernel.org/doc/html/v5.5/riscv/boot-image-header.html>
