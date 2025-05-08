@@ -90,7 +90,10 @@ impl VirtioDevice for VirtioFs {
                 },
             )
             .unwrap();
-        vq.push_used(memory, chain, 0);
+
+        let written_len = todo!();
+
+        vq.push_used(memory, chain, written_len);
     }
 
     fn config_read(&self, offset: u64, buf: &mut [u8]) {

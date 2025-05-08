@@ -157,6 +157,7 @@ impl mmio::Device for VirtioMmio {
 
     fn mmio_write(
         &self,
+        vcpu: &VCpu,
         memory: &mut GuestMemory,
         offset: u64,
         src: &[u8],

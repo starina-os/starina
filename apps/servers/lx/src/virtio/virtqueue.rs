@@ -149,6 +149,10 @@ impl Virtqueue {
         }
     }
 
+    pub fn should_interrupt(&self) -> bool {
+        todo!()
+    }
+
     fn pop_avail(&mut self, memory: &mut GuestMemory) -> Option<DescChain> {
         // TODO: fence here
 
