@@ -116,7 +116,7 @@ impl VirtioDevice for VirtioFs {
                     atimensec: 0,
                     mtimensec: 0,
                     ctimensec: 0,
-                    mode: 0,
+                    mode: 0o755 | 0o40000,
                     nlink: 0,
                     uid: 0,
                     gid: 0,
