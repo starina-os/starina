@@ -1091,7 +1091,7 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
             context.sepc += 4; // size of virtual instruction
 
             if context.hvip == 0 {
-                info!("no pending interrupt, going to idle");
+                // info!("no pending interrupt, going to idle");
                 let current = current_thread();
                 // context.hvip = 1 << 6; // FIXME: We'll
                 current.idle_vcpu();

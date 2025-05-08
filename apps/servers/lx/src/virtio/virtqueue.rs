@@ -67,14 +67,6 @@ impl DescChain {
             }
         };
 
-        info!(
-            "next_desc: index={}, len={}, has_next={}, writeable={}, next={}",
-            desc_index,
-            unsafe { desc.len },
-            desc.has_next(),
-            desc.is_write_only(),
-            unsafe { desc.next }
-        );
         if desc.has_next() {
             self.next = Some(desc.next);
         } else {
@@ -206,7 +198,6 @@ impl Virtqueue {
 
         self.avail_index = (self.avail_index + 1) % (self.num_descs as u16);
 
-        info!("@@@ desc_index={}", desc_index);
         Some(DescChain {
             head: desc_index,
             next: Some(desc_index),

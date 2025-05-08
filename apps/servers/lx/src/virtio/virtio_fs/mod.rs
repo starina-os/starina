@@ -60,8 +60,6 @@ impl VirtioDevice for VirtioFs {
     }
 
     fn process(&self, memory: &mut GuestMemory, vq: &mut Virtqueue, mut chain: DescChain) {
-        info!("virtio-fs: process: chain={:?}", chain);
-
         let in_header_desc = chain.next_desc(vq, memory).unwrap();
         let in_header = memory
             .read::<FuseInHeader>(in_header_desc.gpaddr())
@@ -70,7 +68,6 @@ impl VirtioDevice for VirtioFs {
         if in_header.opcode == FUSE_FLUSH || in_header.opcode == FUSE_RELEASE {
             let datain_desc = chain.next_desc(vq, memory).unwrap();
             let out_header_desc = chain.next_desc(vq, memory).unwrap();
-            info!("fuse flush");
             memory
                 .write(
                     out_header_desc.gpaddr(),
@@ -135,7 +132,6 @@ impl VirtioDevice for VirtioFs {
 
         let dataout_len = match in_header.opcode {
             FUSE_INIT => {
-                info!("fuse init");
                 // struct virtio_fs_req {
                 //     // Device-readable part
                 //     struct fuse_in_header in;
@@ -256,10 +252,6 @@ impl VirtioDevice for VirtioFs {
                     read_in.size as usize,
                     HELLO_TEXT.len().saturating_sub(offset),
                 );
-                info!(
-                    ">>>>>>>>>>> fuse read: offset={}, written_len={}",
-                    offset, written_len
-                );
                 if written_len > 0 {
                     memory
                         .write_bytes(
@@ -280,20 +272,6 @@ impl VirtioDevice for VirtioFs {
                     )
                     .unwrap();
                 written_len
-            }
-            FUSE_FLUSH => {
-                info!("fuse flush");
-                memory
-                    .write(
-                        out_header_desc.gpaddr(),
-                        FuseOutHeader {
-                            len: 0,
-                            error: 0,
-                            unique: in_header.unique,
-                        },
-                    )
-                    .unwrap();
-                0
             }
             _ => {
                 panic!("fuse unknown opcode: {:x}", in_header.opcode);
@@ -325,9 +303,5 @@ impl VirtioDevice for VirtioFs {
 
         let copy_len = min(buf.len(), config_size.saturating_sub(offset));
         buf[..copy_len].copy_from_slice(&config_bytes[offset..offset + copy_len]);
-        trace!(
-            "virtio-fs: config read: offset={:x}, buf={:x?}, copy_len={}",
-            offset, buf, copy_len
-        );
     }
 }
