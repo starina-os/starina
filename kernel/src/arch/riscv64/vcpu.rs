@@ -98,6 +98,174 @@ struct Context {
     vstimecmp: u64,
 }
 
+impl Context {
+    pub fn set_reg(&mut self, rd: u8, value: u64) {
+        match rd {
+            // x0: zero
+            0 => {
+                // Do nothing.
+            }
+            // x1: ra
+            1 => unsafe {
+                // trace!("load: RD=x1: ra");
+                self.ra = value;
+            },
+            // x2: sp
+            2 => unsafe {
+                // trace!("load: RD=x2: sp");
+                self.sp = value;
+            },
+            // x3: gp
+            3 => unsafe {
+                // trace!("load: RD=x3: gp");
+                self.gp = value;
+            },
+            // x4: tp
+            4 => unsafe {
+                // trace!("load: RD=x4: tp");
+                self.tp = value;
+            },
+            // x5: t0
+            5 => unsafe {
+                // trace!("load: RD=x5: t0");
+                self.t0 = value;
+            },
+            // x6: t1
+            6 => unsafe {
+                // trace!("load: RD=x6: t1");
+                self.t1 = value;
+            },
+            // x7: t2
+            7 => unsafe {
+                // trace!("load: RD=x7: t2");
+                self.t2 = value;
+            },
+            // x8: s0
+            8 => unsafe {
+                // trace!("load: RD=x8: s0");
+                self.s0 = value;
+            },
+            // x9: s1
+            9 => unsafe {
+                // trace!("load: RD=x9: s1");
+                self.s1 = value;
+            },
+            // x10: a0
+            10 => unsafe {
+                // trace!("load: RD=x10: a0");
+                self.a0 = value;
+            },
+            // x11: a1
+            11 => unsafe {
+                // trace!("load: RD=x11: a1");
+                self.a1 = value;
+            },
+            // x12: a2
+            12 => unsafe {
+                // trace!("load: RD=x12: a2");
+                self.a2 = value;
+            },
+            // x13: a3
+            13 => unsafe {
+                // trace!("load: RD=x13: a3");
+                self.a3 = value;
+            },
+            // x14: a4
+            14 => unsafe {
+                // trace!("load: RD=x14: a4");
+                self.a4 = value;
+            },
+            // x15: a5
+            15 => unsafe {
+                // trace!("load: RD=x15: a5");
+                self.a5 = value;
+            },
+            // x16: a6
+            16 => unsafe {
+                // trace!("load: RD=x16: a6");
+                self.a6 = value;
+            },
+            // x17: a7
+            17 => unsafe {
+                // trace!("load: RD=x17: a7");
+                self.a7 = value;
+            },
+            // x18: s2
+            18 => unsafe {
+                // trace!("load: RD=x18: s2");
+                self.s2 = value;
+            },
+            // x19: s3
+            19 => unsafe {
+                // trace!("load: RD=x19: s3");
+                self.s3 = value;
+            },
+            // x20: s4
+            20 => unsafe {
+                // trace!("load: RD=x20: s4");
+                self.s4 = value;
+            },
+            // x21: s5
+            21 => unsafe {
+                // trace!("load: RD=x21: s5");
+                self.s5 = value;
+            },
+            // x22: s6
+            22 => unsafe {
+                // trace!("load: RD=x22: s6");
+                self.s6 = value;
+            },
+            // x23: s7
+            23 => unsafe {
+                // trace!("load: RD=x23: s7");
+                self.s7 = value;
+            },
+            // x24: s8
+            24 => unsafe {
+                // trace!("load: RD=x24: s8");
+                self.s8 = value;
+            },
+            // x25: s9
+            25 => unsafe {
+                // trace!("load: RD=x25: s9");
+                self.s9 = value;
+            },
+            // x26: s10
+            26 => unsafe {
+                // trace!("load: RD=x26: s10");
+                self.s10 = value;
+            },
+            // x27: s11
+            27 => unsafe {
+                // trace!("load: RD=x27: s11");
+                self.s11 = value;
+            },
+            // x28: t3
+            28 => unsafe {
+                // trace!("load: RD=x28: t3");
+                self.t3 = value;
+            },
+            // x29: t4
+            29 => unsafe {
+                // trace!("load: RD=x29: t4");
+                self.t4 = value;
+            },
+            // x30: t5
+            30 => unsafe {
+                // trace!("load: RD=x30: t5");
+                self.t5 = value;
+            },
+            // x31: t6
+            31 => unsafe {
+                self.t6 = value;
+            },
+            _ => {
+                panic!("unknown rd: {}", rd);
+            }
+        }
+    }
+}
+
 struct ConsolePrinter {
     buf: Vec<u8>,
 }
@@ -151,15 +319,28 @@ impl PlicEmu {
         Some(irq as u8)
     }
 
-    pub fn mmio_read(&self, offset: u64, data: &mut [u8]) {
+    pub fn mmio_read(&self, offset: u64, width: u8) -> u64 {
+        if width != 4 {
+            panic!("plic-emu: mmio_read: invalid width: {}", width);
+        }
+
         match offset {
+            0x2000..0x200000 => {
+                // Enable bits.
+                0
+            }
             _ => {
                 debug_warn!("plic-emu: mmio_read: unknown offset: {:x}", offset);
+                0
             }
         }
     }
 
-    pub fn mmio_write(&mut self, offset: u64, data: &[u8]) {
+    pub fn mmio_write(&mut self, offset: u64, value: u64, width: u8) {
+        if width != 4 {
+            panic!("plic-emu: mmio_write: invalid width: {}", width);
+        }
+
         match offset {
             _ => {
                 debug_warn!("plic-emu: mmio_write: unknown offset: {:x}", offset);
@@ -383,9 +564,8 @@ const PLIC_ADDR: GPAddr = GPAddr::new(0x0a00_0000);
 const PLIC_SIZE: usize = plic_mmio_size(1); // FIXME:
 
 fn handle_guest_page_fault(
-    exit: &mut IsolationHeapMut,
-    context: &Context,
-    plic: &mut PlicEmu,
+    mutable: &mut Mutable,
+    context: &mut Context,
     htinst: u64,
     gpaddr: GPAddr,
     kind: ExitPageFaultKind,
@@ -395,7 +575,7 @@ fn handle_guest_page_fault(
         gpaddr, kind
     );
 
-    let (load_inst, mut data, width, inst_len) = match kind {
+    let (load_inst, data, width, inst_len) = match kind {
         ExitPageFaultKind::Load | ExitPageFaultKind::Execute => {
             let (load_inst, width, inst_len) = htinst_load_inst(htinst);
             (load_inst, [0; 8], width, inst_len)
@@ -414,16 +594,30 @@ fn handle_guest_page_fault(
         let offset = (gpaddr.as_usize() - PLIC_ADDR.as_usize()) as u64;
         match kind {
             ExitPageFaultKind::Store => {
-                plic.mmio_write(offset, &data);
+                let value = match width {
+                    1 => data[0] as u64,
+                    2 => u16::from_ne_bytes([data[0], data[1]]) as u64,
+                    4 => u32::from_ne_bytes([data[0], data[1], data[2], data[3]]) as u64,
+                    8 => u64::from_ne_bytes(data),
+                    _ => {
+                        panic!("unknown width: {}", width);
+                    }
+                };
+                mutable.plic.mmio_write(offset, value, width);
             }
             _ => {
-                plic.mmio_read(offset, &mut data);
+                let value = mutable.plic.mmio_read(offset, width);
+                context.set_reg(load_inst.rd, value);
             }
         }
+
+        context.sepc += inst_len as u64;
         return;
     }
 
     // FIXME: isolation
+    current_thread().exit_vcpu();
+    let mut exit = mutable.exit.take().unwrap();
     exit.write(
         &Isolation::InKernel,
         0,
@@ -555,170 +749,7 @@ impl VCpu {
                             _ => panic!("unknown load width: {}", page_fault.width),
                         };
 
-                        // FIXME:
-                        match page_fault.load_inst.rd {
-                            // x0: zero
-                            0 => {
-                                // Do nothing.
-                            }
-                            // x1: ra
-                            1 => unsafe {
-                                // trace!("load: RD=x1: ra");
-                                (*context).ra = value;
-                            },
-                            // x2: sp
-                            2 => unsafe {
-                                // trace!("load: RD=x2: sp");
-                                (*context).sp = value;
-                            },
-                            // x3: gp
-                            3 => unsafe {
-                                // trace!("load: RD=x3: gp");
-                                (*context).gp = value;
-                            },
-                            // x4: tp
-                            4 => unsafe {
-                                // trace!("load: RD=x4: tp");
-                                (*context).tp = value;
-                            },
-                            // x5: t0
-                            5 => unsafe {
-                                // trace!("load: RD=x5: t0");
-                                (*context).t0 = value;
-                            },
-                            // x6: t1
-                            6 => unsafe {
-                                // trace!("load: RD=x6: t1");
-                                (*context).t1 = value;
-                            },
-                            // x7: t2
-                            7 => unsafe {
-                                // trace!("load: RD=x7: t2");
-                                (*context).t2 = value;
-                            },
-                            // x8: s0
-                            8 => unsafe {
-                                // trace!("load: RD=x8: s0");
-                                (*context).s0 = value;
-                            },
-                            // x9: s1
-                            9 => unsafe {
-                                // trace!("load: RD=x9: s1");
-                                (*context).s1 = value;
-                            },
-                            // x10: a0
-                            10 => unsafe {
-                                // trace!("load: RD=x10: a0");
-                                (*context).a0 = value;
-                            },
-                            // x11: a1
-                            11 => unsafe {
-                                // trace!("load: RD=x11: a1");
-                                (*context).a1 = value;
-                            },
-                            // x12: a2
-                            12 => unsafe {
-                                // trace!("load: RD=x12: a2");
-                                (*context).a2 = value;
-                            },
-                            // x13: a3
-                            13 => unsafe {
-                                // trace!("load: RD=x13: a3");
-                                (*context).a3 = value;
-                            },
-                            // x14: a4
-                            14 => unsafe {
-                                // trace!("load: RD=x14: a4");
-                                (*context).a4 = value;
-                            },
-                            // x15: a5
-                            15 => unsafe {
-                                // trace!("load: RD=x15: a5");
-                                (*context).a5 = value;
-                            },
-                            // x16: a6
-                            16 => unsafe {
-                                // trace!("load: RD=x16: a6");
-                                (*context).a6 = value;
-                            },
-                            // x17: a7
-                            17 => unsafe {
-                                // trace!("load: RD=x17: a7");
-                                (*context).a7 = value;
-                            },
-                            // x18: s2
-                            18 => unsafe {
-                                // trace!("load: RD=x18: s2");
-                                (*context).s2 = value;
-                            },
-                            // x19: s3
-                            19 => unsafe {
-                                // trace!("load: RD=x19: s3");
-                                (*context).s3 = value;
-                            },
-                            // x20: s4
-                            20 => unsafe {
-                                // trace!("load: RD=x20: s4");
-                                (*context).s4 = value;
-                            },
-                            // x21: s5
-                            21 => unsafe {
-                                // trace!("load: RD=x21: s5");
-                                (*context).s5 = value;
-                            },
-                            // x22: s6
-                            22 => unsafe {
-                                // trace!("load: RD=x22: s6");
-                                (*context).s6 = value;
-                            },
-                            // x23: s7
-                            23 => unsafe {
-                                // trace!("load: RD=x23: s7");
-                                (*context).s7 = value;
-                            },
-                            // x24: s8
-                            24 => unsafe {
-                                // trace!("load: RD=x24: s8");
-                                (*context).s8 = value;
-                            },
-                            // x25: s9
-                            25 => unsafe {
-                                // trace!("load: RD=x25: s9");
-                                (*context).s9 = value;
-                            },
-                            // x26: s10
-                            26 => unsafe {
-                                // trace!("load: RD=x26: s10");
-                                (*context).s10 = value;
-                            },
-                            // x27: s11
-                            27 => unsafe {
-                                // trace!("load: RD=x27: s11");
-                                (*context).s11 = value;
-                            },
-                            // x28: t3
-                            28 => unsafe {
-                                // trace!("load: RD=x28: t3");
-                                (*context).t3 = value;
-                            },
-                            // x29: t4
-                            29 => unsafe {
-                                // trace!("load: RD=x29: t4");
-                                (*context).t4 = value;
-                            },
-                            // x30: t5
-                            30 => unsafe {
-                                // trace!("load: RD=x30: t5");
-                                (*context).t5 = value;
-                            },
-                            // x31: t6
-                            31 => unsafe {
-                                (*context).t6 = value;
-                            },
-                            _ => {
-                                panic!("unknown rd: {}", page_fault.load_inst.rd);
-                            }
-                        };
+                        (*context).set_reg(page_fault.load_inst.rd, value);
                     },
                     ExitPageFaultKind::Store => {}
                     _ => {
@@ -1015,15 +1046,13 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
             }
         }
         _ => {
-            let mut exit = mutable.exit.take().unwrap();
             match scause {
                 SCAUSE_GUEST_INST_PAGE_FAULT => {
                     let gpaddr = htval_to_gpaddr(htval, stval);
                     let htinst = read_csr!("htinst");
                     handle_guest_page_fault(
-                        &mut exit,
+                        &mut mutable,
                         context,
-                        &mut mutable.plic,
                         htinst,
                         gpaddr,
                         ExitPageFaultKind::Execute,
@@ -1033,9 +1062,8 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
                     let gpaddr = htval_to_gpaddr(htval, stval);
                     let htinst = read_csr!("htinst");
                     handle_guest_page_fault(
-                        &mut exit,
+                        &mut mutable,
                         context,
-                        &mut mutable.plic,
                         htinst,
                         gpaddr,
                         ExitPageFaultKind::Load,
@@ -1045,9 +1073,8 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
                     let gpaddr = htval_to_gpaddr(htval, stval);
                     let htinst = read_csr!("htinst");
                     handle_guest_page_fault(
-                        &mut exit,
+                        &mut mutable,
                         context,
-                        &mut mutable.plic,
                         htinst,
                         gpaddr,
                         ExitPageFaultKind::Store,
@@ -1063,8 +1090,6 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
                     );
                 }
             };
-
-            current_thread().exit_vcpu();
         }
     }
 
