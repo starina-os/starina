@@ -183,11 +183,11 @@ impl mmio::Device for VirtioMmio {
         offset: u64,
         src: &[u8],
     ) -> Result<(), mmio::Error> {
-        trace!(
-            "virtio mmio write: offset={:x}, width={:x}",
-            offset,
-            src.len()
-        );
+        // trace!(
+        //     "virtio mmio write: offset={:x}, width={:x}",
+        //     offset,
+        //     src.len()
+        // );
 
         let width = src.len();
         if width != 4 {

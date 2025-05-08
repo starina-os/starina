@@ -273,7 +273,7 @@ impl VirtioDevice for VirtioFs {
                     .write(
                         out_header_desc.gpaddr(),
                         FuseOutHeader {
-                            len: written_len as u32,
+                            len: size_of::<FuseOutHeader>() as u32 + written_len as u32,
                             error: 0,
                             unique: in_header.unique,
                         },

@@ -607,10 +607,10 @@ fn handle_guest_page_fault(
     gpaddr: GPAddr,
     kind: ExitPageFaultKind,
 ) {
-    info!(
-        "handle_guest_page_fault: gpaddr={}, kind={:?}",
-        gpaddr, kind
-    );
+    // info!(
+    //     "handle_guest_page_fault: gpaddr={}, kind={:?}",
+    //     gpaddr, kind
+    // );
 
     let (load_inst, data, width, inst_len) = match kind {
         ExitPageFaultKind::Load | ExitPageFaultKind::Execute => {
