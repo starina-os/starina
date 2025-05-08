@@ -796,6 +796,10 @@ pub fn vcpu_entry(vcpu: *mut VCpu) -> ! {
         let hvip = context.hvip;
         context.hvip = 0;
 
+        if hvip & HVIP_VSEIP != 0 {
+            info!("vCPU: injecting HVIP_VSEIP {:b}, vsie={:b}", hvip,);
+        }
+
         // Fill H extension CSRs and virtual CSRs.
         asm!(
             "csrw hgatp, {hgatp}",
