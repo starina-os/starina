@@ -379,7 +379,7 @@ const fn plic_mmio_size(num_cpus: u32) -> usize {
     0x200000 + (num_cpus as usize * 0x1000)
 }
 
-const PLIC_ADDR: GPAddr = GPAddr::new(0x0c000000);
+const PLIC_ADDR: GPAddr = GPAddr::new(0x0a00_0000);
 const PLIC_SIZE: usize = plic_mmio_size(1); // FIXME:
 
 fn handle_guest_page_fault(
@@ -395,7 +395,7 @@ fn handle_guest_page_fault(
         gpaddr, kind
     );
 
-    let (load_inst, data, width, inst_len) = match kind {
+    let (load_inst, mut data, width, inst_len) = match kind {
         ExitPageFaultKind::Load | ExitPageFaultKind::Execute => {
             let (load_inst, width, inst_len) = htinst_load_inst(htinst);
             (load_inst, [0; 8], width, inst_len)

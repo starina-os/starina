@@ -120,13 +120,7 @@ pub fn build_fdt(
     fdt.property_u32("#interrupt-cells", 1)?;
     fdt.property_u32("riscv,ndev", 3)?;
     fdt.property_null("interrupt-controller")?;
-    fdt.property_array_u64(
-        "reg",
-        &[
-            plic_base.as_usize().try_into().unwrap(),
-            plic_mmio_size as u64,
-        ],
-    )?;
+    fdt.property_array_u64("reg", &[0x0a00_0000, plic_mmio_size as u64])?;
     fdt.property_array_u32("interrupts-extended", &interrupts_extended)?;
     fdt.end_node(plic_node)?;
 
