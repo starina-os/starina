@@ -27,7 +27,9 @@ fn main() {
     let mut contents = String::new();
     file.read_to_string(&mut contents)
         .expect("failed to read /virtfs/test.txt");
-    println!("/virtfs/test.txt: {}", contents);
+    println!("--------------------------------");
+    println!("/virtfs/test.txt: \"{}\"", contents);
+    println!("--------------------------------");
 
     // List files in /virtfs
     // println!("Listing files in /virtfs:");

@@ -123,20 +123,20 @@ impl GuestMemory {
         Ok(range)
     }
 
-    pub fn read_bytes(&self, gpaddr: GPAddr, size: usize, dst: &mut [u8]) -> Result<(), Error> {
-        let range = self.check_range(gpaddr, size)?;
+    pub fn read_bytes(&self, gpaddr: GPAddr, dst: &mut [u8]) -> Result<(), Error> {
+        let range = self.check_range(gpaddr, dst.len())?;
         let slice = &self.slice()[range];
         unsafe {
-            ptr::copy_nonoverlapping(slice.as_ptr(), dst.as_mut_ptr(), size);
+            ptr::copy_nonoverlapping(slice.as_ptr(), dst.as_mut_ptr(), dst.len());
         }
         Ok(())
     }
 
-    pub fn write_bytes(&mut self, gpaddr: GPAddr, size: usize, src: &[u8]) -> Result<(), Error> {
-        let range = self.check_range(gpaddr, size)?;
+    pub fn write_bytes(&mut self, gpaddr: GPAddr, src: &[u8]) -> Result<(), Error> {
+        let range = self.check_range(gpaddr, src.len())?;
         let slice = &mut self.slice_mut()[range];
         unsafe {
-            ptr::copy_nonoverlapping(src.as_ptr(), slice.as_mut_ptr(), size);
+            ptr::copy_nonoverlapping(src.as_ptr(), slice.as_mut_ptr(), src.len());
         }
         Ok(())
     }
@@ -146,7 +146,7 @@ impl GuestMemory {
         let buf_slice =
             unsafe { slice::from_raw_parts_mut(buf.as_mut_ptr() as *mut u8, size_of::<T>()) };
 
-        self.read_bytes(gpaddr, size_of::<T>(), buf_slice)?;
+        self.read_bytes(gpaddr, buf_slice)?;
         Ok(unsafe { buf.assume_init() })
     }
 
@@ -154,7 +154,7 @@ impl GuestMemory {
         let buf_slice =
             unsafe { slice::from_raw_parts(&value as *const T as *const u8, size_of::<T>()) };
 
-        self.write_bytes(gpaddr, size_of::<T>(), buf_slice)?;
+        self.write_bytes(gpaddr, buf_slice)?;
         Ok(())
     }
 }

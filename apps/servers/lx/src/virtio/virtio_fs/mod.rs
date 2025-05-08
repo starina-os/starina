@@ -3,16 +3,23 @@ mod fuse;
 use core::cmp::min;
 use core::slice;
 
+use fuse::FUSE_FLUSH;
 use fuse::FUSE_GETATTR;
 use fuse::FUSE_INIT;
 use fuse::FUSE_LOOKUP;
+use fuse::FUSE_OPEN;
+use fuse::FUSE_READ;
+use fuse::FUSE_RELEASE;
 use fuse::FuseAttr;
 use fuse::FuseEntryOut;
 use fuse::FuseGetAttrOut;
 use fuse::FuseInHeader;
 use fuse::FuseInitIn;
 use fuse::FuseInitOut;
+use fuse::FuseOpenIn;
+use fuse::FuseOpenOut;
 use fuse::FuseOutHeader;
+use fuse::FuseReadIn;
 use starina::prelude::*;
 
 use super::device::VirtioDevice;
@@ -56,6 +63,30 @@ impl VirtioDevice for VirtioFs {
         info!("virtio-fs: process: chain={:?}", chain);
 
         let in_header_desc = chain.next_desc(vq, memory).unwrap();
+        let in_header = memory
+            .read::<FuseInHeader>(in_header_desc.gpaddr())
+            .unwrap();
+
+        if in_header.opcode == FUSE_FLUSH || in_header.opcode == FUSE_RELEASE {
+            let datain_desc = chain.next_desc(vq, memory).unwrap();
+            let out_header_desc = chain.next_desc(vq, memory).unwrap();
+            info!("fuse flush");
+            memory
+                .write(
+                    out_header_desc.gpaddr(),
+                    FuseOutHeader {
+                        len: 0,
+                        error: 0,
+                        unique: in_header.unique,
+                    },
+                )
+                .unwrap();
+
+            vq.push_used(memory, chain, size_of::<FuseOutHeader>() as u32);
+
+            return;
+        }
+
         let datain_desc = chain.next_desc(vq, memory).unwrap();
         let out_header_desc = chain.next_desc(vq, memory).unwrap();
         let dataout_desc = chain.next_desc(vq, memory).unwrap();
@@ -64,11 +95,44 @@ impl VirtioDevice for VirtioFs {
         assert!(out_header_desc.is_write_only());
         assert!(dataout_desc.is_write_only());
 
-        let in_header = memory
-            .read::<FuseInHeader>(in_header_desc.gpaddr())
-            .unwrap();
-
         const HELLO_TEXT: &[u8] = b"Hello from FUSE!";
+        const ROOT_DIR_ATTR: FuseAttr = FuseAttr {
+            ino: 1,
+            size: 0,
+            blocks: 0,
+            atime: 0,
+            mtime: 0,
+            ctime: 0,
+            atimensec: 0,
+            mtimensec: 0,
+            ctimensec: 0,
+            mode: 0o755 | 0o40000,
+            nlink: 0,
+            uid: 0,
+            gid: 0,
+            rdev: 0,
+            blksize: 0,
+            padding: 0,
+        };
+        const HELLO_TXT_ATTR: FuseAttr = FuseAttr {
+            ino: 2,
+            size: HELLO_TEXT.len() as u64,
+            blocks: 0,
+            atime: 0,
+            mtime: 0,
+            ctime: 0,
+            atimensec: 0,
+            mtimensec: 0,
+            ctimensec: 0,
+            mode: 0o100644, // regular file mode
+            nlink: 0,
+            uid: 0,
+            gid: 0,
+            rdev: 0,
+            blksize: 0,
+            padding: 0,
+        };
+
         let dataout_len = match in_header.opcode {
             FUSE_INIT => {
                 info!("fuse init");
@@ -109,30 +173,24 @@ impl VirtioDevice for VirtioFs {
                 size_of::<FuseInitOut>()
             }
             FUSE_GETATTR => {
-                let attr = FuseAttr {
-                    ino: 1,
-                    size: 0,
-                    blocks: 0,
-                    atime: 0,
-                    mtime: 0,
-                    ctime: 0,
-                    atimensec: 0,
-                    mtimensec: 0,
-                    ctimensec: 0,
-                    mode: 0o755 | 0o40000,
-                    nlink: 0,
-                    uid: 0,
-                    gid: 0,
-                    rdev: 0,
-                    blksize: 0,
-                    padding: 0,
+                let getattr_out = if in_header.nodeid == 1 {
+                    FuseGetAttrOut {
+                        attr: ROOT_DIR_ATTR,
+                        attr_valid: 0,
+                        attr_valid_nsec: 0,
+                        dummy: 0,
+                    }
+                } else if in_header.nodeid == 2 {
+                    FuseGetAttrOut {
+                        attr: HELLO_TXT_ATTR,
+                        attr_valid: 0,
+                        attr_valid_nsec: 0,
+                        dummy: 0,
+                    }
+                } else {
+                    panic!("fuse getattr: unknown nodeid: {:x}", in_header.nodeid);
                 };
-                let getattr_out = FuseGetAttrOut {
-                    attr,
-                    attr_valid: 0,
-                    attr_valid_nsec: 0,
-                    dummy: 0,
-                };
+
                 memory.write(dataout_desc.gpaddr(), getattr_out).unwrap();
                 memory
                     .write(
@@ -148,30 +206,13 @@ impl VirtioDevice for VirtioFs {
             }
             FUSE_LOOKUP => {
                 let lookup_out = FuseEntryOut {
-                    nodeid: 1,
+                    nodeid: 2,
                     generation: 0,
                     entry_valid: 0,
                     attr_valid: 0,
                     entry_valid_nsec: 0,
                     attr_valid_nsec: 0,
-                    attr: FuseAttr {
-                        ino: 1,
-                        size: HELLO_TEXT.len() as u64,
-                        blocks: 0,
-                        atime: 0,
-                        mtime: 0,
-                        ctime: 0,
-                        atimensec: 0,
-                        mtimensec: 0,
-                        ctimensec: 0,
-                        mode: 0o100644, // regular file mode
-                        nlink: 0,
-                        uid: 0,
-                        gid: 0,
-                        rdev: 0,
-                        blksize: 0,
-                        padding: 0,
-                    },
+                    attr: HELLO_TXT_ATTR,
                 };
 
                 memory.write(dataout_desc.gpaddr(), lookup_out).unwrap();
@@ -186,6 +227,73 @@ impl VirtioDevice for VirtioFs {
                     )
                     .unwrap();
                 size_of::<FuseEntryOut>()
+            }
+            FUSE_OPEN => {
+                let open_in = memory.read::<FuseOpenIn>(datain_desc.gpaddr()).unwrap();
+                let open_out = FuseOpenOut {
+                    fh: 1,
+                    open_flags: open_in.flags,
+                    padding: 0,
+                };
+
+                memory.write(dataout_desc.gpaddr(), open_out).unwrap();
+                memory
+                    .write(
+                        out_header_desc.gpaddr(),
+                        FuseOutHeader {
+                            len: 0,
+                            error: 0,
+                            unique: in_header.unique,
+                        },
+                    )
+                    .unwrap();
+                size_of::<FuseOpenOut>()
+            }
+            FUSE_READ => {
+                let read_in = memory.read::<FuseReadIn>(datain_desc.gpaddr()).unwrap();
+                let offset = read_in.offset as usize;
+                let written_len = min(
+                    read_in.size as usize,
+                    HELLO_TEXT.len().saturating_sub(offset),
+                );
+                info!(
+                    ">>>>>>>>>>> fuse read: offset={}, written_len={}",
+                    offset, written_len
+                );
+                if written_len > 0 {
+                    memory
+                        .write_bytes(
+                            dataout_desc.gpaddr(),
+                            &HELLO_TEXT[offset..offset + written_len as usize],
+                        )
+                        .unwrap();
+                }
+
+                memory
+                    .write(
+                        out_header_desc.gpaddr(),
+                        FuseOutHeader {
+                            len: written_len as u32,
+                            error: 0,
+                            unique: in_header.unique,
+                        },
+                    )
+                    .unwrap();
+                written_len
+            }
+            FUSE_FLUSH => {
+                info!("fuse flush");
+                memory
+                    .write(
+                        out_header_desc.gpaddr(),
+                        FuseOutHeader {
+                            len: 0,
+                            error: 0,
+                            unique: in_header.unique,
+                        },
+                    )
+                    .unwrap();
+                0
             }
             _ => {
                 panic!("fuse unknown opcode: {:x}", in_header.opcode);
