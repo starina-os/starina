@@ -42,6 +42,9 @@ use crate::thread::switch_thread;
 
 const CONTEXT_MAGIC: u64 = 0xc000ffee;
 
+/// VS-level external interrupt (e.g. virtio interrupts).
+const HVIP_VSEIP: u64 = 1 << 10;
+
 #[repr(C)]
 #[derive(Debug, Default)]
 struct Context {
@@ -706,14 +709,26 @@ impl VCpu {
             }
         };
 
+        if exit_state.irqs != 0 {
+            mutable.plic.update(exit_state.irqs);
+        }
+
+        // FIXME:
+        let context = unsafe {
+            let ptr = (&self.context) as *const _ as usize;
+            ptr as *mut Context
+        };
+
+        if mutable.plic.is_pending() {
+            unsafe {
+                info!("vCPU: setting HVIP_VSEIP @@@@");
+                (*context).hvip |= HVIP_VSEIP;
+            }
+        }
+
         match exit_state.reason {
             VCPU_EXIT_PAGE_FAULT => {
                 let page_fault = unsafe { &exit_state.info.page_fault };
-                // FIXME:
-                let context = unsafe {
-                    let ptr = (&self.context) as *const _ as usize;
-                    ptr as *mut Context
-                };
 
                 unsafe {
                     (*context).sepc += page_fault.inst_len as u64;
@@ -1200,6 +1215,7 @@ pub fn init() {
 
     let mut hideleg = 0;
     hideleg |= 1 << 6; // Supervisor timer interrupt
+    hideleg |= 1 << 10; // Supervisor external interrupt
 
     // Enable all counters.
     let hcounteren: u64 = 0xffff_ffff;

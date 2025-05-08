@@ -70,7 +70,7 @@ impl EventLoop for App {
         let mut bus = Bus::new();
         let virtio_fs = VirtioFs::new();
         let virtio_mmio_fs =
-            VirtioMmio::new(irq_trigger.clone(), VIRITO_FS_IRQ, virtio_fs).unwrap();
+            VirtioMmio::new(irq_trigger.clone(), VIRTIO_FS_IRQ, virtio_fs).unwrap();
         bus.add_device(VIRTIO_FS_ADDR, VIRTIO_MMIO_SIZE, virtio_mmio_fs);
 
         // Fill registers that Linux expects:

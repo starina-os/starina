@@ -66,11 +66,11 @@ struct Mutable {
     driver_features: u64,
     queue_select: u32,
     queues: Vec<Virtqueue>,
-    irq: u8,
 }
 
 /// Virtio device over memory-mapped I/O.
 pub struct VirtioMmio {
+    irq: u8,
     irq_trigger: IrqTrigger,
     device: Box<dyn VirtioDevice>,
     mutable: Mutex<Mutable>,
@@ -89,6 +89,7 @@ impl VirtioMmio {
         }
 
         Ok(Self {
+            irq,
             irq_trigger,
             device: Box::new(device),
             mutable: Mutex::new(Mutable {
@@ -98,7 +99,6 @@ impl VirtioMmio {
                 driver_features: 0,
                 queue_select: 0,
                 queues,
-                irq,
             }),
         })
     }

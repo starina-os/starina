@@ -91,7 +91,7 @@ impl VirtioDevice for VirtioFs {
             )
             .unwrap();
 
-        let written_len = todo!();
+        let written_len = 0;
 
         vq.push_used(memory, chain, written_len);
     }
