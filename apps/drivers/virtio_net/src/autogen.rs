@@ -18,22 +18,22 @@ use starina::syscall::VsyscallPage;
 #[derive(Debug, Deserialize)]
 pub struct Env {
     pub startup_ch: Channel,
-    pub device_tree: DeviceTree,
     pub iobus: HashMap<String, IoBus>,
+    pub device_tree: DeviceTree,
 }
 
 pub const APP_SPEC: ParsedAppSpec = ParsedAppSpec {
     name: "virtio_net",
     env: &[
         ParsedEnvItem {
+            name: "iobus",
+            ty: ParsedEnvType::IoBusMap,
+        },
+        ParsedEnvItem {
             name: "device_tree",
             ty: ParsedEnvType::DeviceTree {
                 matches: &[ParsedDeviceMatch::Compatible("virtio,mmio")],
             },
-        },
-        ParsedEnvItem {
-            name: "iobus",
-            ty: ParsedEnvType::IoBusMap,
         },
     ],
     exports: &[ParsedExportItem::Service {

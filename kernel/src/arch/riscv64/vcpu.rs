@@ -362,6 +362,7 @@ fn handle_guest_page_fault(
         &Isolation::InKernel,
         0,
         VCpuExitState {
+            irqs: 0, // FIXME: Do not override IRQ
             reason: VCPU_EXIT_PAGE_FAULT,
             info: ExitInfo {
                 page_fault: ExitPageFault {

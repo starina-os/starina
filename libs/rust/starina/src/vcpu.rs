@@ -10,6 +10,7 @@ use crate::syscall;
 #[derive(Debug)]
 pub struct VCpu {
     handle: OwnedHandle,
+    exit: VCpuExitState,
 }
 
 impl VCpu {
@@ -17,12 +18,19 @@ impl VCpu {
         let id = syscall::sys_vcpu_create(hvspace.handle_id(), entry, a0, a1)?;
         Ok(Self {
             handle: OwnedHandle::from_raw(id),
+            exit: VCpuExitState::new(),
         })
     }
 
-    pub fn run(&self, exit: &mut VCpuExitState) -> Result<(), ErrorCode> {
-        syscall::sys_vcpu_run(self.handle.id(), exit as *mut _)?;
-        Ok(())
+    pub fn run(&mut self) -> Result<VCpuExit<'_>, ErrorCode> {
+        syscall::sys_vcpu_run(self.handle.id(), &mut self.exit)?;
+        Ok(self.exit.as_exit())
+    }
+
+    pub fn inject_irq(&mut self, irq: u8) {
+        debug_assert!(irq < 32);
+
+        self.exit.irqs |= 1 << irq;
     }
 }
 

@@ -77,11 +77,10 @@ impl EventLoop for App {
         let a0 = 0; // hartid
         let a1 = fdt_gpaddr.as_usize(); // fdt address
 
-        let vcpu = VCpu::new(memory.hvspace(), entry.as_usize(), a0, a1).unwrap();
-        let mut exit_state = VCpuExitState::new();
+        let mut vcpu = VCpu::new(memory.hvspace(), entry.as_usize(), a0, a1).unwrap();
         loop {
-            vcpu.run(&mut exit_state).unwrap();
-            match exit_state.as_exit() {
+            let exit = vcpu.run().unwrap();
+            match exit {
                 VCpuExit::LoadPageFault { gpaddr, data } => {
                     bus.read(&mut memory, gpaddr, data).unwrap();
                 }

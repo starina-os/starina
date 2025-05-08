@@ -1,3 +1,5 @@
+use core::fmt;
+
 use crate::address::GPAddr;
 
 pub const VCPU_EXIT_NONE: u8 = 0x0;
@@ -41,8 +43,18 @@ pub union ExitInfo {
 #[derive(Clone, Copy)]
 #[repr(C)]
 pub struct VCpuExitState {
+    pub irqs: u32,
     pub reason: u8,
     pub info: ExitInfo,
+}
+
+impl fmt::Debug for VCpuExitState {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("VCpuExitState")
+            .field("irqs", &self.irqs)
+            .field("reason", &self.reason)
+            .finish()
+    }
 }
 
 #[derive(Debug)]
@@ -54,6 +66,7 @@ pub enum VCpuExit<'a> {
 impl VCpuExitState {
     pub fn new() -> Self {
         Self {
+            irqs: 0,
             reason: VCPU_EXIT_NONE,
             info: ExitInfo { none: () },
         }
