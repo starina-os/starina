@@ -27,10 +27,8 @@ impl VCpu {
         Ok(self.exit.as_exit())
     }
 
-    pub fn inject_irq(&mut self, irq: u8) {
-        debug_assert!(irq < 32);
-
-        self.exit.irqs |= 1 << irq;
+    pub fn inject_irqs(&mut self, irqs: u32) {
+        self.exit.irqs |= irqs;
     }
 }
 

@@ -5,6 +5,7 @@ use starina::sync::Mutex;
 use super::virtqueue::DescChain;
 use super::virtqueue::Virtqueue;
 use crate::guest_memory::GuestMemory;
+use crate::interrupt::IrqTrigger;
 use crate::mmio;
 use crate::virtio::virtqueue::VIRTQUEUE_NUM_DESCS_MAX;
 
@@ -69,12 +70,16 @@ struct Mutable {
 
 /// Virtio device over memory-mapped I/O.
 pub struct VirtioMmio {
+    irq_trigger: IrqTrigger,
     device: Box<dyn VirtioDevice>,
     mutable: Mutex<Mutable>,
 }
 
 impl VirtioMmio {
-    pub fn new<D: VirtioDevice + 'static>(device: D) -> Result<Self, Error> {
+    pub fn new<D: VirtioDevice + 'static>(
+        irq_trigger: IrqTrigger,
+        device: D,
+    ) -> Result<Self, Error> {
         let num_queues = device.num_queues();
         let mut queues = Vec::with_capacity(num_queues as usize);
         for _ in 0..num_queues {
@@ -82,6 +87,7 @@ impl VirtioMmio {
         }
 
         Ok(Self {
+            irq_trigger,
             device: Box::new(device),
             mutable: Mutex::new(Mutable {
                 device_features_select: 0,

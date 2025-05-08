@@ -2,23 +2,22 @@
 
 pub mod autogen;
 mod guest_memory;
+mod interrupt;
 mod linux_loader;
 mod mmio;
 mod riscv;
 mod virtio;
 
 use guest_memory::GuestMemory;
+use interrupt::IrqTrigger;
 use mmio::Bus;
 use riscv::device_tree::build_fdt;
-use riscv::plic::Plic;
-use riscv::plic::plic_mmio_size;
 use starina::address::GPAddr;
 use starina::eventloop::Dispatcher;
 use starina::eventloop::EventLoop;
 use starina::prelude::*;
 use starina::vcpu::VCpu;
 use starina::vcpu::VCpuExit;
-use starina::vcpu::VCpuExitState;
 use virtio::device::VIRTIO_MMIO_SIZE;
 use virtio::device::VirtioMmio;
 use virtio::virtio_fs::VirtioFs;
@@ -27,6 +26,10 @@ use virtio::virtio_fs::VirtioFs;
 pub enum State {}
 
 pub struct App {}
+
+const fn plic_mmio_size(num_cpus: u32) -> usize {
+    0x200000 + (num_cpus as usize * 0x1000)
+}
 
 impl EventLoop for App {
     type Env = autogen::Env;
@@ -61,13 +64,12 @@ impl EventLoop for App {
         // Prepare the guest memory.
         let entry = linux_loader::load_riscv_image(&mut memory, LINUX_ELF).unwrap();
 
+        let irq_trigger = IrqTrigger::new();
+
         let mut bus = Bus::new();
         let virtio_fs = VirtioFs::new();
-        let virtio_mmio_fs = VirtioMmio::new(virtio_fs).unwrap();
+        let virtio_mmio_fs = VirtioMmio::new(irq_trigger.clone(), virtio_fs).unwrap();
         bus.add_device(VIRTIO_FS_ADDR, VIRTIO_MMIO_SIZE, virtio_mmio_fs);
-
-        let plic = Plic::new();
-        bus.add_device(PLIC_BASE_ADDR, PLIC_MMIO_SIZE, plic);
 
         // Fill registers that Linux expects:
         //
@@ -79,6 +81,7 @@ impl EventLoop for App {
 
         let mut vcpu = VCpu::new(memory.hvspace(), entry.as_usize(), a0, a1).unwrap();
         loop {
+            vcpu.inject_irqs(irq_trigger.clear_all());
             let exit = vcpu.run().unwrap();
             match exit {
                 VCpuExit::LoadPageFault { gpaddr, data } => {
