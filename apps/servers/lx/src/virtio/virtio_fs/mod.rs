@@ -53,9 +53,13 @@ impl VirtioDevice for VirtioFs {
         info!("virtio-fs: process: chain={:?}", chain);
 
         let in_header_desc = chain.next_desc(vq, memory).unwrap();
-        // assert!(in_header_desc.is_read_only());
-        // assert!(datain_desc.is_read_only());
-        // assert!(out_header_desc.is_write_only());
+        let datain_desc = chain.next_desc(vq, memory).unwrap();
+        let out_header_desc = chain.next_desc(vq, memory).unwrap();
+        let dataout_desc = chain.next_desc(vq, memory).unwrap();
+        assert!(in_header_desc.is_read_only());
+        assert!(datain_desc.is_read_only());
+        assert!(out_header_desc.is_write_only());
+        assert!(dataout_desc.is_write_only());
 
         let in_header = memory
             .read::<FuseInHeader>(in_header_desc.gpaddr())
@@ -64,11 +68,6 @@ impl VirtioDevice for VirtioFs {
         info!("fuse in header: {:x?}", in_header);
         let dataout_len = match in_header.opcode {
             FUSE_INIT => {
-                let datain_desc = chain.next_desc(vq, memory).unwrap();
-                let out_header_desc = chain.next_desc(vq, memory).unwrap();
-                let dataout_desc = chain.next_desc(vq, memory).unwrap();
-                assert!(dataout_desc.is_write_only());
-
                 info!("fuse init");
                 // struct virtio_fs_req {
                 //     // Device-readable part
@@ -107,10 +106,6 @@ impl VirtioDevice for VirtioFs {
                 size_of::<FuseInitOut>()
             }
             FUSE_GETATTR => {
-                let out_header_desc = chain.next_desc(vq, memory).unwrap();
-                let dataout_desc = chain.next_desc(vq, memory).unwrap();
-                assert!(dataout_desc.is_write_only());
-
                 let attr = FuseAttr {
                     ino: 1,
                     size: 0,

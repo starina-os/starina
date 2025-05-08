@@ -192,12 +192,12 @@ impl Virtqueue {
         }
 
         let index_gpaddr = self
-            .used_gpaddr
-            .checked_add(self.avail_index as usize * size_of::<u16>())
+            .avail_gpaddr
+            .checked_add(size_of::<VirtqAvail>() + self.avail_index as usize * size_of::<u16>())
             .unwrap();
 
         let desc_index = match memory.read::<u16>(index_gpaddr) {
-            Ok(used) => used,
+            Ok(desc_index) => desc_index,
             Err(err) => {
                 debug_warn!("virtqueue: pop: failed to read used ring: {:x?}", err);
                 return None;
@@ -206,6 +206,7 @@ impl Virtqueue {
 
         self.avail_index = (self.avail_index + 1) % (self.num_descs as u16);
 
+        info!("@@@ desc_index={}", desc_index);
         Some(DescChain {
             head: desc_index,
             next: Some(desc_index),
