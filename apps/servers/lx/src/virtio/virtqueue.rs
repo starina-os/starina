@@ -67,6 +67,14 @@ impl DescChain {
             }
         };
 
+        info!(
+            "next_desc: index={}, len={}, has_next={}, writeable={}, next={}",
+            desc_index,
+            unsafe { desc.len },
+            desc.has_next(),
+            desc.is_write_only(),
+            unsafe { desc.next }
+        );
         if desc.has_next() {
             self.next = Some(desc.next);
         } else {
@@ -156,7 +164,15 @@ impl Virtqueue {
     }
 
     pub fn should_interrupt(&self) -> bool {
-        self.irq_status != 0
+        self.irq_status() != 0
+    }
+
+    pub fn irq_status(&self) -> u32 {
+        self.irq_status
+    }
+
+    pub fn acknowledge_irq(&mut self, value: u32) {
+        self.irq_status &= !value;
     }
 
     fn pop_avail(&mut self, memory: &mut GuestMemory) -> Option<DescChain> {
@@ -208,7 +224,9 @@ impl Virtqueue {
             .unwrap();
         let used_elem_gpaddr = self
             .used_gpaddr
-            .checked_add(self.used_index as usize * size_of::<VirtqUsedElem>())
+            .checked_add(
+                size_of::<VirtqUsed>() + self.used_index as usize * size_of::<VirtqUsedElem>(),
+            )
             .unwrap();
 
         if let Err(err) = memory.write(

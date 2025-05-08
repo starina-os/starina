@@ -125,7 +125,7 @@ impl mmio::Device for VirtioMmio {
         }
 
         let width = dst.len();
-        let mutable = self.mutable.lock();
+        let mut mutable = self.mutable.lock();
         match width {
             4 => {
                 let value = match offset {
@@ -146,6 +146,15 @@ impl mmio::Device for VirtioMmio {
                     REG_QUEUE_READY => 0,
                     REG_QUEUE_SIZE_MAX => VIRTQUEUE_NUM_DESCS_MAX,
                     REG_QUEUE_CONFIG_GEN => 0,
+                    REG_INTERRUPT_STATUS => {
+                        let queue_index = mutable.queue_select as usize;
+                        let vq = mutable
+                            .queues
+                            .get_mut(queue_index)
+                            .expect("queue index out of range");
+
+                        vq.irq_status().into()
+                    }
                     _ => {
                         panic!(
                             "unexpected virtio-mmio read: offset={:x}, width={}",
@@ -227,6 +236,15 @@ impl mmio::Device for VirtioMmio {
                     .get_mut(queue_index)
                     .expect("queue index out of range")
                     .queue_notify(memory, &*self.device);
+            }
+            REG_INTERRUPT_ACK => {
+                let queue_index = mutable.queue_select as usize;
+                let vq = mutable
+                    .queues
+                    .get_mut(queue_index)
+                    .expect("queue index out of range");
+
+                vq.acknowledge_irq(value);
             }
             REG_QUEUE_DESC_LOW | REG_QUEUE_DESC_HIGH => {
                 let queue_index = mutable.queue_select as usize;

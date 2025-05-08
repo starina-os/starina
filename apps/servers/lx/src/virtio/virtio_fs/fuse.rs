@@ -1,3 +1,7 @@
+//! FUSE protocol.
+//!
+//! <https://man7.org/linux/man-pages/man4/fuse.4.html>
+
 /// `struct fuse_in_header`.
 #[derive(Debug, Clone, Copy)]
 #[repr(C)]
@@ -21,6 +25,76 @@ pub struct FuseOutHeader {
     pub unique: u64,
 }
 
+#[derive(Debug, Clone, Copy)]
+#[repr(C)]
+pub struct FuseInitIn {
+    pub major: u32,
+    pub minor: u32,
+    /// Since v7.6.
+    pub max_readahead: u32,
+    /// Since v7.6.
+    pub flags: u32,
+}
+
+#[derive(Debug, Clone, Copy)]
+#[repr(C)]
+pub struct FuseInitOut {
+    pub major: u32,
+    pub minor: u32,
+    /// Since v7.6.
+    pub max_readahead: u32,
+    /// Since v7.6.
+    pub flags: u32,
+    /// Since v7.13.
+    pub max_background: u16,
+    /// Since v7.13.
+    pub congestion_threshold: u16,
+    /// Since v7.5.
+    pub max_write: u32,
+    /// Since v7.6.
+    pub time_gran: u32,
+    pub unused: [u32; 9],
+}
+
+#[derive(Debug, Clone, Copy)]
+#[repr(C)]
+pub struct FuseGetAttrIn {
+    pub getattr_flags: u32,
+    pub dummy: u32,
+    pub fh: u64,
+}
+
+#[derive(Debug, Clone, Copy)]
+#[repr(C)]
+pub struct FuseGetAttrOut {
+    pub attr_valid: u64,
+    pub attr_valid_nsec: u32,
+    pub dummy: u32,
+    pub attr: FuseAttr,
+}
+
+#[derive(Debug, Clone, Copy)]
+#[repr(C)]
+pub struct FuseAttr {
+    pub ino: u64,
+    pub size: u64,
+    pub blocks: u64,
+    pub atime: u64,
+    pub mtime: u64,
+    pub ctime: u64,
+    pub atimensec: u32,
+    pub mtimensec: u32,
+    pub ctimensec: u32,
+    pub mode: u32,
+    pub nlink: u32,
+    pub uid: u32,
+    pub gid: u32,
+    pub rdev: u32,
+    pub blksize: u32,
+    pub padding: u32,
+}
+
+// FUSE operations.
 pub const FUSE_LOOKUP: u32 = 1;
 pub const FUSE_FORGET: u32 = 2;
 pub const FUSE_GETATTR: u32 = 3;

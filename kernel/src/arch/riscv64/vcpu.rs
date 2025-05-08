@@ -312,14 +312,17 @@ impl PlicEmu {
         self.pending_irqs != 0
     }
 
-    pub fn pop_pending_irq(&mut self) -> Option<u8> {
+    pub fn peek_pending_irq(&self) -> Option<u8> {
         if self.pending_irqs == 0 {
             return None;
         }
 
         let irq = self.pending_irqs.trailing_zeros();
-        self.pending_irqs &= !(1 << irq);
         Some(irq as u8)
+    }
+
+    pub fn acknowledge_irq(&mut self, irq: u8) {
+        self.pending_irqs &= !(1 << irq);
     }
 
     pub fn mmio_read(&self, offset: u64, width: u8) -> u64 {
@@ -331,6 +334,22 @@ impl PlicEmu {
             0x2000..0x200000 => {
                 // Enable bits.
                 0
+            }
+            0x200000..0x4000000 => {
+                //
+                match offset & 0xfff {
+                    0x000 => {
+                        // Priority threshold.
+                        0
+                    }
+                    0x004 => {
+                        // Claim.
+                        self.peek_pending_irq().unwrap_or(0).into()
+                    }
+                    _ => {
+                        panic!("plic-emu: mmio_read: unknown offset: {:x}", offset);
+                    }
+                }
             }
             _ => {
                 debug_warn!("plic-emu: mmio_read: unknown offset: {:x}", offset);
@@ -345,6 +364,21 @@ impl PlicEmu {
         }
 
         match offset {
+            0x200000..0x4000000 => {
+                //
+                match offset & 0xfff {
+                    0x000 => {
+                        // Priority threshold.
+                    }
+                    0x004 => {
+                        // Claim.
+                        self.acknowledge_irq(value as u8);
+                    }
+                    _ => {
+                        panic!("plic-emu: mmio_read: unknown offset: {:x}", offset);
+                    }
+                }
+            }
             _ => {
                 debug_warn!("plic-emu: mmio_write: unknown offset: {:x}", offset);
             }
@@ -719,13 +753,6 @@ impl VCpu {
             ptr as *mut Context
         };
 
-        if mutable.plic.is_pending() {
-            unsafe {
-                info!("vCPU: setting HVIP_VSEIP @@@@");
-                (*context).hvip |= HVIP_VSEIP;
-            }
-        }
-
         match exit_state.reason {
             VCPU_EXIT_PAGE_FAULT => {
                 let page_fault = unsafe { &exit_state.info.page_fault };
@@ -793,14 +820,17 @@ pub fn vcpu_entry(vcpu: *mut VCpu) -> ! {
 
         write_stvec(vcpu_trap_entry as *const () as usize, StvecMode::Direct);
 
-        let hvip = context.hvip;
+        let mut hvip = context.hvip;
         context.hvip = 0;
 
-        if hvip & HVIP_VSEIP != 0 {
-            info!(
-                "vCPU: injecting HVIP_VSEIP {:b}, vsie={:b}",
-                hvip, context.vsie
-            );
+        let irq_pending = unsafe {
+            let mutable = unsafe { &mut (*vcpu).mutable }.lock();
+            mutable.plic.is_pending()
+        };
+
+        if irq_pending {
+            // info!("vCPU: injecting HVIP_VSEIP");
+            hvip |= HVIP_VSEIP;
         }
 
         // Fill H extension CSRs and virtual CSRs.
@@ -1061,9 +1091,9 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
             context.sepc += 4; // size of virtual instruction
 
             if context.hvip == 0 {
-                // info!("no pending interrupt, going to idle");
+                info!("no pending interrupt, going to idle");
                 let current = current_thread();
-                context.hvip = 1 << 6; // FIXME: We'll
+                // context.hvip = 1 << 6; // FIXME: We'll
                 current.idle_vcpu();
             }
         }
