@@ -5,11 +5,15 @@ use starina::prelude::*;
 
 use super::device::VirtioDevice;
 use crate::guest_memory::GuestMemory;
+use crate::interrupt::IrqTrigger;
 
 pub const VIRTQUEUE_NUM_DESCS_MAX: u32 = 256;
 
 const VIRTQ_DESC_F_NEXT: u16 = 1;
 const VIRTQ_DESC_F_WRITE: u16 = 2;
+
+/// Used Buffer Notification.
+const VIRQ_IRQSTATUS_QUEUE: u32 = 1 << 0;
 
 #[derive(Debug, Copy, Clone)]
 #[repr(C, packed)]
@@ -111,6 +115,7 @@ pub struct Virtqueue {
     avail_index: u16,
     used_index: u32,
     num_descs: u32,
+    irq_status: u32,
 }
 
 impl Virtqueue {
@@ -122,6 +127,7 @@ impl Virtqueue {
             avail_index: 0,
             used_index: 0,
             num_descs: VIRTQUEUE_NUM_DESCS_MAX,
+            irq_status: 0,
         }
     }
 
@@ -149,9 +155,8 @@ impl Virtqueue {
         }
     }
 
-    pub fn isr_status(&self) -> u32 {
-        // self.used_index
-        todo!()
+    pub fn should_interrupt(&self) -> bool {
+        self.irq_status != 0
     }
 
     fn pop_avail(&mut self, memory: &mut GuestMemory) -> Option<DescChain> {
@@ -222,6 +227,7 @@ impl Virtqueue {
 
         // This increment must be done before writing the used index.
         self.used_index = (self.used_index + 1) % (self.num_descs as u32);
+        self.irq_status |= VIRQ_IRQSTATUS_QUEUE;
 
         // TODO: fence here
 

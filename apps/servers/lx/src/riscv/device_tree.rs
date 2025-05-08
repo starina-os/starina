@@ -13,7 +13,7 @@ pub fn build_fdt(
     guest_ram_size: u64,
     plic_base: GPAddr,
     plic_mmio_size: usize,
-    virtio_mmios: &[GPAddr],
+    virtio_mmios: &[(GPAddr, u8 /* irq */)],
 ) -> Result<Vec<u8>, vm_fdt::Error> {
     let mut fdt = FdtWriter::new()?;
 
@@ -125,8 +125,7 @@ pub fn build_fdt(
     fdt.end_node(plic_node)?;
 
     // Virtio-mmio devices.
-    let mut next_irq = 1;
-    for (i, gpaddr) in virtio_mmios.iter().enumerate() {
+    for (gpaddr, irq) in virtio_mmios.iter() {
         let virtio_mmio_node = fdt.begin_node(&format!("virtio-mmio@{}", gpaddr.as_usize()))?;
         fdt.property_string("compatible", "virtio,mmio")?;
         fdt.property_array_u64(
@@ -137,9 +136,7 @@ pub fn build_fdt(
             ],
         )?;
 
-        fdt.property_array_u32("interrupts", &[next_irq])?;
-        next_irq += 1;
-
+        fdt.property_array_u32("interrupts", &[*irq as u32])?;
         fdt.property_u32("interrupt-parent", PLIC_PHANDLE)?;
         fdt.end_node(virtio_mmio_node)?;
     }

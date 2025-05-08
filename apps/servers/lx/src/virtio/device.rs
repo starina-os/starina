@@ -66,6 +66,7 @@ struct Mutable {
     driver_features: u64,
     queue_select: u32,
     queues: Vec<Virtqueue>,
+    irq: u8,
 }
 
 /// Virtio device over memory-mapped I/O.
@@ -78,6 +79,7 @@ pub struct VirtioMmio {
 impl VirtioMmio {
     pub fn new<D: VirtioDevice + 'static>(
         irq_trigger: IrqTrigger,
+        irq: u8,
         device: D,
     ) -> Result<Self, Error> {
         let num_queues = device.num_queues();
@@ -96,6 +98,7 @@ impl VirtioMmio {
                 driver_features: 0,
                 queue_select: 0,
                 queues,
+                irq,
             }),
         })
     }
@@ -156,6 +159,10 @@ impl mmio::Device for VirtioMmio {
             _ => {
                 panic!("unsupported virtio-mmio read width: {:x}", width);
             }
+        }
+
+        if mutable.queues.iter().any(|vq| vq.should_interrupt()) {
+            self.irq_trigger.trigger(self.irq);
         }
 
         Ok(())
@@ -251,6 +258,10 @@ impl mmio::Device for VirtioMmio {
                     offset, width
                 );
             }
+        }
+
+        if mutable.queues.iter().any(|vq| vq.should_interrupt()) {
+            self.irq_trigger.trigger(self.irq);
         }
 
         Ok(())

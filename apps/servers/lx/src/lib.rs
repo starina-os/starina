@@ -45,6 +45,7 @@ impl EventLoop for App {
         const PLIC_MMIO_SIZE: usize = plic_mmio_size(NUM_CPUS);
         debug_assert!(PLIC_BASE_ADDR.as_usize() + PLIC_MMIO_SIZE <= VIRTIO_FS_ADDR.as_usize());
         const VIRTIO_FS_ADDR: GPAddr = GPAddr::new(0x0b00_0000);
+        const VIRTIO_FS_IRQ: u8 = 1;
         const GUEST_RAM_ADDR: GPAddr = GPAddr::new(0x8000_0000);
 
         let mut memory = GuestMemory::new(GUEST_RAM_ADDR, GUEST_RAM_SIZE).unwrap();
@@ -55,7 +56,7 @@ impl EventLoop for App {
             GUEST_RAM_SIZE as u64,
             PLIC_BASE_ADDR,
             PLIC_MMIO_SIZE,
-            &[VIRTIO_FS_ADDR],
+            &[(VIRTIO_FS_ADDR, VIRTIO_FS_IRQ)],
         )
         .expect("failed to build device tree");
         let (fdt_slice, fdt_gpaddr) = memory.allocate(fdt.len(), 4096).unwrap();
@@ -68,7 +69,8 @@ impl EventLoop for App {
 
         let mut bus = Bus::new();
         let virtio_fs = VirtioFs::new();
-        let virtio_mmio_fs = VirtioMmio::new(irq_trigger.clone(), virtio_fs).unwrap();
+        let virtio_mmio_fs =
+            VirtioMmio::new(irq_trigger.clone(), VIRITO_FS_IRQ, virtio_fs).unwrap();
         bus.add_device(VIRTIO_FS_ADDR, VIRTIO_MMIO_SIZE, virtio_mmio_fs);
 
         // Fill registers that Linux expects:
