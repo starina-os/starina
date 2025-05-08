@@ -94,6 +94,19 @@ pub struct FuseAttr {
     pub padding: u32,
 }
 
+/// `struct fuse_entry_out`.
+#[derive(Debug, Clone, Copy)]
+#[repr(C)]
+pub struct FuseEntryOut {
+    pub nodeid: u64,
+    pub generation: u64,
+    pub entry_valid: u64,
+    pub attr_valid: u64,
+    pub entry_valid_nsec: u32,
+    pub attr_valid_nsec: u32,
+    pub attr: FuseAttr,
+}
+
 // FUSE operations.
 pub const FUSE_LOOKUP: u32 = 1;
 pub const FUSE_FORGET: u32 = 2;

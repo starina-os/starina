@@ -3,8 +3,11 @@ mod fuse;
 use core::cmp::min;
 use core::slice;
 
+use fuse::FUSE_GETATTR;
 use fuse::FUSE_INIT;
+use fuse::FUSE_LOOKUP;
 use fuse::FuseAttr;
+use fuse::FuseEntryOut;
 use fuse::FuseGetAttrOut;
 use fuse::FuseInHeader;
 use fuse::FuseInitIn;
@@ -65,7 +68,7 @@ impl VirtioDevice for VirtioFs {
             .read::<FuseInHeader>(in_header_desc.gpaddr())
             .unwrap();
 
-        info!("fuse in header: {:x?}", in_header);
+        const HELLO_TEXT: &[u8] = b"Hello from FUSE!";
         let dataout_len = match in_header.opcode {
             FUSE_INIT => {
                 info!("fuse init");
@@ -142,6 +145,47 @@ impl VirtioDevice for VirtioFs {
                     )
                     .unwrap();
                 size_of::<FuseGetAttrOut>()
+            }
+            FUSE_LOOKUP => {
+                let lookup_out = FuseEntryOut {
+                    nodeid: 1,
+                    generation: 0,
+                    entry_valid: 0,
+                    attr_valid: 0,
+                    entry_valid_nsec: 0,
+                    attr_valid_nsec: 0,
+                    attr: FuseAttr {
+                        ino: 1,
+                        size: HELLO_TEXT.len() as u64,
+                        blocks: 0,
+                        atime: 0,
+                        mtime: 0,
+                        ctime: 0,
+                        atimensec: 0,
+                        mtimensec: 0,
+                        ctimensec: 0,
+                        mode: 0o100644, // regular file mode
+                        nlink: 0,
+                        uid: 0,
+                        gid: 0,
+                        rdev: 0,
+                        blksize: 0,
+                        padding: 0,
+                    },
+                };
+
+                memory.write(dataout_desc.gpaddr(), lookup_out).unwrap();
+                memory
+                    .write(
+                        out_header_desc.gpaddr(),
+                        FuseOutHeader {
+                            len: 0,
+                            error: 0,
+                            unique: in_header.unique,
+                        },
+                    )
+                    .unwrap();
+                size_of::<FuseEntryOut>()
             }
             _ => {
                 panic!("fuse unknown opcode: {:x}", in_header.opcode);
