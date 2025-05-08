@@ -797,7 +797,10 @@ pub fn vcpu_entry(vcpu: *mut VCpu) -> ! {
         context.hvip = 0;
 
         if hvip & HVIP_VSEIP != 0 {
-            info!("vCPU: injecting HVIP_VSEIP {:b}, vsie={:b}", hvip,);
+            info!(
+                "vCPU: injecting HVIP_VSEIP {:b}, vsie={:b}",
+                hvip, context.vsie
+            );
         }
 
         // Fill H extension CSRs and virtual CSRs.
