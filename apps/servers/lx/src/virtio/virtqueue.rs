@@ -149,7 +149,8 @@ impl Virtqueue {
         }
     }
 
-    pub fn should_interrupt(&self) -> bool {
+    pub fn isr_status(&self) -> u32 {
+        // self.used_index
         todo!()
     }
 

@@ -124,9 +124,53 @@ impl ConsolePrinter {
     }
 }
 
+struct PlicEmu {
+    pending_irqs: u32,
+}
+
+impl PlicEmu {
+    pub fn new() -> Self {
+        Self { pending_irqs: 0 }
+    }
+
+    pub fn update(&mut self, irqs: u32) {
+        self.pending_irqs |= irqs;
+    }
+
+    pub fn is_pending(&self) -> bool {
+        self.pending_irqs != 0
+    }
+
+    pub fn pop_pending_irq(&mut self) -> Option<u8> {
+        if self.pending_irqs == 0 {
+            return None;
+        }
+
+        let irq = self.pending_irqs.trailing_zeros();
+        self.pending_irqs &= !(1 << irq);
+        Some(irq as u8)
+    }
+
+    pub fn mmio_read(&self, offset: u64, data: &mut [u8]) {
+        match offset {
+            _ => {
+                debug_warn!("plic-emu: mmio_read: unknown offset: {:x}", offset);
+            }
+        }
+    }
+
+    pub fn mmio_write(&mut self, offset: u64, data: &[u8]) {
+        match offset {
+            _ => {
+                debug_warn!("plic-emu: mmio_write: unknown offset: {:x}", offset);
+            }
+        }
+    }
+}
 struct Mutable {
     exit: Option<IsolationHeapMut>,
     printer: ConsolePrinter,
+    plic: PlicEmu,
 }
 
 impl Mutable {
@@ -331,9 +375,17 @@ fn htinst_store_inst(context: &Context, htinst: u64) -> (u8, [u8; 8], u8) {
     (width, data, inst_len)
 }
 
+const fn plic_mmio_size(num_cpus: u32) -> usize {
+    0x200000 + (num_cpus as usize * 0x1000)
+}
+
+const PLIC_ADDR: GPAddr = GPAddr::new(0x0c000000);
+const PLIC_SIZE: usize = plic_mmio_size(1); // FIXME:
+
 fn handle_guest_page_fault(
     exit: &mut IsolationHeapMut,
     context: &Context,
+    plic: &mut PlicEmu,
     htinst: u64,
     gpaddr: GPAddr,
     kind: ExitPageFaultKind,
@@ -356,6 +408,20 @@ fn handle_guest_page_fault(
             panic!("unknown exit page fault kind: {:?}", kind);
         }
     };
+
+    let plic_end = PLIC_ADDR.checked_add(PLIC_SIZE).unwrap(); // FIXME:
+    if PLIC_ADDR <= gpaddr && gpaddr < plic_end {
+        let offset = (gpaddr.as_usize() - PLIC_ADDR.as_usize()) as u64;
+        match kind {
+            ExitPageFaultKind::Store => {
+                plic.mmio_write(offset, &data);
+            }
+            _ => {
+                plic.mmio_read(offset, &mut data);
+            }
+        }
+        return;
+    }
 
     // FIXME: isolation
     exit.write(
@@ -422,6 +488,7 @@ impl VCpu {
         let mutable = Mutable {
             exit: None,
             printer: ConsolePrinter::new(),
+            plic: PlicEmu::new(),
         };
 
         Ok(VCpu {
@@ -956,6 +1023,7 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
                     handle_guest_page_fault(
                         &mut exit,
                         context,
+                        &mut mutable.plic,
                         htinst,
                         gpaddr,
                         ExitPageFaultKind::Execute,
@@ -967,6 +1035,7 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
                     handle_guest_page_fault(
                         &mut exit,
                         context,
+                        &mut mutable.plic,
                         htinst,
                         gpaddr,
                         ExitPageFaultKind::Load,
@@ -978,6 +1047,7 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
                     handle_guest_page_fault(
                         &mut exit,
                         context,
+                        &mut mutable.plic,
                         htinst,
                         gpaddr,
                         ExitPageFaultKind::Store,
