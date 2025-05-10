@@ -6,7 +6,6 @@ use crate::guest_memory::GuestMemory;
 #[derive(Debug)]
 pub enum Error {
     NotMapped,
-    NotMmio,
 }
 
 pub trait Device {

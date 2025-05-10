@@ -107,7 +107,7 @@ impl VirtioMmio {
 impl mmio::Device for VirtioMmio {
     fn mmio_read(
         &self,
-        memory: &mut GuestMemory,
+        _memory: &mut GuestMemory,
         offset: u64,
         dst: &mut [u8],
     ) -> Result<(), mmio::Error> {

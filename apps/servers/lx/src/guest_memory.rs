@@ -32,7 +32,7 @@ pub struct GuestMemory {
     start: GPAddr,
     end: GPAddr,
     size: usize,
-    folio: Folio,
+    _folio: Folio,
     vaddr: VAddr,
     free_offset: usize,
 }
@@ -68,7 +68,7 @@ impl GuestMemory {
             start,
             end,
             size,
-            folio,
+            _folio: folio,
             vaddr,
             free_offset: 0,
         })
