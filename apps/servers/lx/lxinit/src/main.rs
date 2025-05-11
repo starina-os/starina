@@ -24,9 +24,21 @@ fn main() {
 
     // Open /virtfs/test.txt
     let mut file = File::open("/virtfs/test.txt").expect("failed to open /virtfs/test.txt");
-    let mut contents = String::new();
-    file.read_to_string(&mut contents)
+    let mut contents = Vec::new();
+    file.read_to_end(&mut contents)
         .expect("failed to read /virtfs/test.txt");
+
+    let contents = match std::str::from_utf8(&contents) {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!(
+                "failed to convert /virtfs/test.txt to UTF-8: {:?}: {:02x?}",
+                e, &contents
+            );
+            return;
+        }
+    };
+
     println!("--------------------------------");
     println!("/virtfs/test.txt: \"{}\"", contents);
     println!("--------------------------------");

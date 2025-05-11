@@ -70,7 +70,7 @@ impl<'a> Reply<'a> {
         }
 
         if let Some(bytes) = bytes {
-            self.desc_writer.write(bytes)?;
+            self.desc_writer.write_bytes(bytes)?;
         }
 
         Ok(len)
@@ -215,7 +215,8 @@ impl VirtioFs {
         let read_in = reader.read::<FuseReadIn>()?;
         let node_id = INode::new(in_header.nodeid);
         let read_reply = ReadCompleter(reply);
-        self.fs.read(node_id, read_in, read_reply).0
+        let result = self.fs.read(node_id, read_in, read_reply);
+        result.0
     }
 
     fn do_write(

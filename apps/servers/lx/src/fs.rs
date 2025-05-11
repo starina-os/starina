@@ -136,7 +136,7 @@ impl virtio_fs::FileSystem for DemoFileSystem {
         let data = &HELLO_TEXT[offset..offset + read_len];
 
         info!(
-            "read: inode={:?}, offset={}, read_len={}, data={:?}",
+            "read: inode={:?}, offset={}, read_len={}, data={:02x?}",
             inode, offset, read_len, data
         );
         completer.complete(data)
