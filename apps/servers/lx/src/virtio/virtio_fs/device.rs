@@ -33,7 +33,7 @@ use crate::virtio::virtqueue::DescChainReader;
 use crate::virtio::virtqueue::DescChainWriter;
 use crate::virtio::virtqueue::Virtqueue;
 
-struct Reply<'a> {
+pub struct Reply<'a> {
     unique: u64,
     desc_writer: DescChainWriter<'a>,
 }
