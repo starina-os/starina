@@ -49,7 +49,18 @@ const HELLO_TXT_ATTR: FuseAttr = FuseAttr {
 
 impl virtio_fs::FileSystem for DemoFileSystem {
     fn lookup(&self, dir_inode: INode, filename: &[u8]) -> Result<FuseEntryOut, FuseError> {
-        trace!("lookup: dir_inode={:?}, filename={:?}", dir_inode, filename);
+        let filename = match str::from_utf8(filename) {
+            Ok(s) => s,
+            Err(_) => {
+                debug_warn!("lookup: non-UTF-8 filename: {:x?}", filename);
+                return Err(FuseError::TODO);
+            }
+        };
+
+        trace!(
+            "lookup: dir_inode={:?}, filename=\"{}\"",
+            dir_inode, filename
+        );
         Ok(FuseEntryOut {
             nodeid: 2,
             generation: 0,
@@ -124,6 +135,10 @@ impl virtio_fs::FileSystem for DemoFileSystem {
         let read_len = min(read_in.size as usize, file_size.saturating_sub(offset));
         let data = &HELLO_TEXT[offset..offset + read_len];
 
+        info!(
+            "read: inode={:?}, offset={}, read_len={}, data={:?}",
+            inode, offset, read_len, data
+        );
         completer.complete(data)
     }
 

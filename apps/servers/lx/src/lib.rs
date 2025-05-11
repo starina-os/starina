@@ -9,6 +9,7 @@ mod mmio;
 mod riscv;
 mod virtio;
 
+use fs::DemoFileSystem;
 use guest_memory::GuestMemory;
 use interrupt::IrqTrigger;
 use mmio::Bus;
@@ -68,9 +69,9 @@ impl EventLoop for App {
 
         let irq_trigger = IrqTrigger::new();
 
-        let fs = DemoFileSystem {};
+        let fs = DemoFileSystem::new();
         let mut bus = Bus::new();
-        let virtio_fs = VirtioFs::new(fs);
+        let virtio_fs = VirtioFs::new(Box::new(fs));
         let virtio_mmio_fs =
             VirtioMmio::new(irq_trigger.clone(), VIRTIO_FS_IRQ, virtio_fs).unwrap();
         bus.add_device(VIRTIO_FS_ADDR, VIRTIO_MMIO_SIZE, virtio_mmio_fs);

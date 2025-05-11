@@ -59,13 +59,11 @@ impl<'a> Reply<'a> {
             len += bytes.len();
         }
 
-        let out_header = FuseOutHeader {
+        self.desc_writer.write(FuseOutHeader {
             len: len as u32,
             error: 0,
             unique: self.unique,
-        };
-
-        self.desc_writer.write(out_header)?;
+        })?;
 
         if let Some(out) = out {
             self.desc_writer.write(out)?;

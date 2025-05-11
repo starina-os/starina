@@ -65,15 +65,14 @@ impl DescChain {
                 .unwrap();
 
             let desc = memory.read::<VirtqDesc>(desc_gpaddr)?;
-
-            if !desc.has_next() {
-                break;
-            }
-
             if desc.is_read_only() {
                 readable_descs.push_back(desc);
             } else {
                 writable_descs.push_back(desc);
+            }
+
+            if !desc.has_next() {
+                break;
             }
 
             desc_index = desc.next;
