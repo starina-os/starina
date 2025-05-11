@@ -1,5 +1,4 @@
 use core::cmp::min;
-use core::mem::MaybeUninit;
 use core::slice;
 
 use starina::prelude::*;
@@ -7,7 +6,6 @@ use starina::prelude::*;
 use super::fs::FileSystem;
 use super::fs::INode;
 use super::fs::ReadCompleter;
-use super::fs::ReadResult;
 use super::fuse::FUSE_FLUSH;
 use super::fuse::FUSE_GETATTR;
 use super::fuse::FUSE_INIT;
@@ -15,18 +13,17 @@ use super::fuse::FUSE_LOOKUP;
 use super::fuse::FUSE_OPEN;
 use super::fuse::FUSE_READ;
 use super::fuse::FUSE_RELEASE;
-use super::fuse::FuseAttr;
-use super::fuse::FuseEntryOut;
 use super::fuse::FuseError;
+use super::fuse::FuseFlushIn;
 use super::fuse::FuseGetAttrIn;
-use super::fuse::FuseGetAttrOut;
 use super::fuse::FuseInHeader;
 use super::fuse::FuseInitIn;
 use super::fuse::FuseInitOut;
 use super::fuse::FuseOpenIn;
-use super::fuse::FuseOpenOut;
 use super::fuse::FuseOutHeader;
 use super::fuse::FuseReadIn;
+use super::fuse::FuseReleaseIn;
+use super::fuse::FuseWriteIn;
 use crate::guest_memory;
 use crate::guest_memory::GuestMemory;
 use crate::virtio::device::VirtioDevice;
@@ -84,6 +81,10 @@ impl<'a> Reply<'a> {
 
     pub fn reply_error(&self, error: FuseError) -> Result<usize, guest_memory::Error> {
         todo!()
+    }
+
+    pub fn reply_without_data(self) -> Result<usize, guest_memory::Error> {
+        self.do_reply(None as Option<()>, None)
     }
 
     pub fn reply<T: Copy>(self, out: T) -> Result<usize, guest_memory::Error> {
@@ -155,14 +156,12 @@ impl VirtioFs {
         mut reader: DescChainReader<'_>,
         reply: Reply<'_>,
     ) -> Result<usize, guest_memory::Error> {
-        let filename_len = (in_header.len as usize).saturating_sub(size_of::<FuseInHeader>());
-        if filename_len > FILENAME_LEN_MAX {
-            return reply.reply_error(FuseError::TODO);
-        }
+        let filename_len = match (in_header.len as usize).checked_sub(size_of::<FuseInHeader>()) {
+            Some(len) => len,
+            None => return reply.reply_error(FuseError::TODO),
+        };
 
-        let mut filename_buf = [0; FILENAME_LEN_MAX]; // TODO: Use MaybeUninit
-        reader.read_bytes(filename_buf.as_mut_slice())?;
-        let filename = &filename_buf[..filename_len];
+        let filename = reader.read_zerocopy(filename_len)?;
 
         let dir_inode = INode::new(in_header.nodeid);
         match self.fs.lookup(dir_inode, filename) {
@@ -199,6 +198,34 @@ impl VirtioFs {
         }
     }
 
+    fn do_flush(
+        &self,
+        in_header: FuseInHeader,
+        mut reader: DescChainReader<'_>,
+        reply: Reply<'_>,
+    ) -> Result<usize, guest_memory::Error> {
+        let flush_in = reader.read::<FuseFlushIn>()?;
+        let node_id = INode::new(in_header.nodeid);
+        match self.fs.flush(node_id, flush_in) {
+            Ok(()) => reply.reply_without_data(),
+            Err(e) => reply.reply_error(e),
+        }
+    }
+
+    fn do_release(
+        &self,
+        in_header: FuseInHeader,
+        mut reader: DescChainReader<'_>,
+        reply: Reply<'_>,
+    ) -> Result<usize, guest_memory::Error> {
+        let release_in = reader.read::<FuseReleaseIn>()?;
+        let node_id = INode::new(in_header.nodeid);
+        match self.fs.release(node_id, release_in) {
+            Ok(()) => reply.reply_without_data(),
+            Err(e) => reply.reply_error(e),
+        }
+    }
+
     fn do_read(
         &self,
         in_header: FuseInHeader,
@@ -209,6 +236,26 @@ impl VirtioFs {
         let node_id = INode::new(in_header.nodeid);
         let read_reply = ReadCompleter(ReadReply::new(reply));
         self.fs.read(node_id, read_in, read_reply).0
+    }
+
+    fn do_write(
+        &self,
+        in_header: FuseInHeader,
+        mut reader: DescChainReader<'_>,
+        reply: Reply<'_>,
+    ) -> Result<usize, guest_memory::Error> {
+        let write_in = reader.read::<FuseWriteIn>()?;
+        let node_id = INode::new(in_header.nodeid);
+        let len = match (write_in.size as usize).checked_sub(size_of::<FuseWriteIn>()) {
+            Some(len) => len,
+            None => return reply.reply_error(FuseError::TODO),
+        };
+
+        let buf = reader.read_zerocopy(len)?;
+        match self.fs.write(node_id, write_in, buf) {
+            Ok(out) => reply.reply(out),
+            Err(e) => reply.reply_error(e),
+        }
     }
 }
 
@@ -246,7 +293,10 @@ impl VirtioDevice for VirtioFs {
             FUSE_LOOKUP => self.do_lookup(in_header, reader, reply),
             FUSE_OPEN => self.do_open(in_header, reader, reply),
             FUSE_GETATTR => self.do_getattr(in_header, reader, reply),
+            FUSE_FLUSH => self.do_flush(in_header, reader, reply),
+            FUSE_RELEASE => self.do_release(in_header, reader, reply),
             FUSE_READ => self.do_read(in_header, reader, reply),
+            FUSE_WRITE => self.do_write(in_header, reader, reply),
             _ => {
                 debug_warn!("virtio-fs: unknown opcode: {:x}", in_header.opcode);
                 return;

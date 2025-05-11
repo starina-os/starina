@@ -3,11 +3,15 @@ use starina::prelude::*;
 use super::device::ReadReply;
 use super::fuse::FuseEntryOut;
 use super::fuse::FuseError;
+use super::fuse::FuseFlushIn;
 use super::fuse::FuseGetAttrIn;
 use super::fuse::FuseGetAttrOut;
 use super::fuse::FuseOpenIn;
 use super::fuse::FuseOpenOut;
 use super::fuse::FuseReadIn;
+use super::fuse::FuseReleaseIn;
+use super::fuse::FuseWriteIn;
+use super::fuse::FuseWriteOut;
 use crate::guest_memory;
 
 pub struct ReadCompleter<'a>(pub(super) ReadReply<'a>);
@@ -23,10 +27,6 @@ impl<'a> ReadCompleter<'a> {
     }
 }
 
-pub trait FileReader {
-    fn read(&self, completer: ReadCompleter);
-}
-
 pub struct INode(u64);
 
 impl INode {
@@ -35,22 +35,18 @@ impl INode {
     }
 }
 
-pub enum Error {}
-
 pub trait FileSystem {
     fn lookup(&self, dir_inode: INode, filename: &[u8]) -> Result<FuseEntryOut, FuseError>;
     fn open(&self, inode: INode, open_in: FuseOpenIn) -> Result<FuseOpenOut, FuseError>;
     fn getattr(&self, inode: INode, getattr_in: FuseGetAttrIn)
     -> Result<FuseGetAttrOut, FuseError>;
+    fn flush(&self, inode: INode, flush_in: FuseFlushIn) -> Result<(), FuseError>;
+    fn release(&self, inode: INode, release_in: FuseReleaseIn) -> Result<(), FuseError>;
     fn read(&self, inode: INode, read_in: FuseReadIn, completer: ReadCompleter) -> ReadResult;
+    fn write(
+        &self,
+        inode: INode,
+        write_in: FuseWriteIn,
+        data: &[u8],
+    ) -> Result<FuseWriteOut, FuseError>;
 }
-
-// let lookup_out = FuseEntryOut {
-//     nodeid: 2,
-//     generation: 0,
-//     entry_valid: 0,
-//     attr_valid: 0,
-//     entry_valid_nsec: 0,
-//     attr_valid_nsec: 0,
-//     attr: HELLO_TXT_ATTR,
-// };

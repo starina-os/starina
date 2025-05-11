@@ -65,6 +65,24 @@ pub struct FuseInitOut {
 
 #[derive(Debug, Clone, Copy)]
 #[repr(C)]
+pub struct FuseFlushIn {
+    pub fh: u64,
+    pub unused: u32,
+    pub padding: u32,
+    pub lock_owner: u64,
+}
+
+#[derive(Debug, Clone, Copy)]
+#[repr(C)]
+pub struct FuseReleaseIn {
+    pub fh: u64,
+    pub flags: u32,
+    pub release_flags: u32,
+    pub lock_owner: u64,
+}
+
+#[derive(Debug, Clone, Copy)]
+#[repr(C)]
 pub struct FuseGetAttrIn {
     pub getattr_flags: u32,
     pub dummy: u32,
@@ -138,6 +156,25 @@ pub struct FuseReadIn {
     pub read_flags: u32,
     pub lock_owner: u64,
     pub flags: u32,
+    pub padding: u32,
+}
+
+#[derive(Debug, Clone, Copy)]
+#[repr(C)]
+pub struct FuseWriteIn {
+    pub fh: u64,
+    pub offset: u64,
+    pub size: u32,
+    pub write_flags: u32,
+    pub lock_owner: u64,
+    pub flags: u32,
+    pub padding: u32,
+}
+
+#[derive(Debug, Clone, Copy)]
+#[repr(C)]
+pub struct FuseWriteOut {
+    pub size: u32,
     pub padding: u32,
 }
 

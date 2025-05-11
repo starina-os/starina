@@ -125,7 +125,7 @@ impl<'a> DescChainReader<'a> {
         todo!()
     }
 
-    pub fn read_bytes(&mut self, buf: &mut [u8]) -> Result<usize, guest_memory::Error> {
+    pub fn read_zerocopy(&mut self, len: usize) -> Result<&[u8], guest_memory::Error> {
         // TODO:
         todo!()
     }
