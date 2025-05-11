@@ -33,8 +33,6 @@ use crate::virtio::virtqueue::DescChainReader;
 use crate::virtio::virtqueue::DescChainWriter;
 use crate::virtio::virtqueue::Virtqueue;
 
-const FILENAME_LEN_MAX: usize = 256;
-
 struct Reply<'a> {
     unique: u64,
     desc_writer: DescChainWriter<'a>,

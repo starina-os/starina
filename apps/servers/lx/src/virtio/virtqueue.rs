@@ -103,13 +103,31 @@ pub struct DescChainWriter<'a> {
 
 impl<'a> DescChainWriter<'a> {
     pub fn write<T: Copy>(&mut self, value: T) -> Result<(), guest_memory::Error> {
-        // TODO:
-        todo!()
+        // TODO: This assumes the guest provides a descriptor per one write in VMM.
+        let desc = match self.descs.pop_front() {
+            Some(desc) => desc,
+            None => {
+                debug_warn!("virtqueue: desc chain writer: no more descriptors");
+                return Err(guest_memory::Error::TooLong);
+            }
+        };
+
+        self.memory.write(desc.gpaddr(), value)?;
+        Ok(())
     }
 
     pub fn write_bytes(&mut self, bytes: &[u8]) -> Result<(), guest_memory::Error> {
-        // TODO:
-        todo!()
+        // TODO: This assumes the guest provides a descriptor per one write in VMM.
+        let desc = match self.descs.pop_front() {
+            Some(desc) => desc,
+            None => {
+                debug_warn!("virtqueue: desc chain writer: no more descriptors");
+                return Err(guest_memory::Error::TooLong);
+            }
+        };
+
+        self.memory.write_bytes(desc.gpaddr(), bytes)?;
+        Ok(())
     }
 }
 
@@ -121,13 +139,31 @@ pub struct DescChainReader<'a> {
 
 impl<'a> DescChainReader<'a> {
     pub fn read<T: Copy>(&mut self) -> Result<T, guest_memory::Error> {
-        // TODO:
-        todo!()
+        // TODO: This assumes the guest provides a descriptor per one read in VMM.
+        let desc = match self.descs.pop_front() {
+            Some(desc) => desc,
+            None => {
+                debug_warn!("virtqueue: desc chain reader: no more descriptors");
+                return Err(guest_memory::Error::TooLong);
+            }
+        };
+
+        let value = self.memory.read(desc.gpaddr())?;
+        Ok(value)
     }
 
     pub fn read_zerocopy(&mut self, len: usize) -> Result<&[u8], guest_memory::Error> {
-        // TODO:
-        todo!()
+        // TODO: This assumes the guest provides a descriptor per one read in VMM.
+        let desc = match self.descs.pop_front() {
+            Some(desc) => desc,
+            None => {
+                debug_warn!("virtqueue: desc chain reader: no more descriptors");
+                return Err(guest_memory::Error::TooLong);
+            }
+        };
+
+        let slice = self.memory.bytes_slice(desc.gpaddr(), len)?;
+        Ok(slice)
     }
 }
 

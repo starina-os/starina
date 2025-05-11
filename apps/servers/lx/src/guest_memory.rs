@@ -123,6 +123,11 @@ impl GuestMemory {
         Ok(range)
     }
 
+    pub fn bytes_slice(&self, gpaddr: GPAddr, size: usize) -> Result<&[u8], Error> {
+        let range = self.check_range(gpaddr, size)?;
+        Ok(&self.slice()[range])
+    }
+
     pub fn read_bytes(&self, gpaddr: GPAddr, dst: &mut [u8]) -> Result<(), Error> {
         let range = self.check_range(gpaddr, dst.len())?;
         let slice = &self.slice()[range];
