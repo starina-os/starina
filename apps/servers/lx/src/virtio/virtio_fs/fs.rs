@@ -27,10 +27,10 @@ impl<'a> ReadCompleter<'a> {
     }
 }
 
-pub struct INode(u64);
+pub struct INode(pub u64);
 
 impl INode {
-    pub fn new(id: u64) -> Self {
+    pub const fn new(id: u64) -> Self {
         Self(id)
     }
 }

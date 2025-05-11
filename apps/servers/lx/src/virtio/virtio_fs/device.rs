@@ -13,6 +13,7 @@ use super::fuse::FUSE_LOOKUP;
 use super::fuse::FUSE_OPEN;
 use super::fuse::FUSE_READ;
 use super::fuse::FUSE_RELEASE;
+use super::fuse::FUSE_WRITE;
 use super::fuse::FuseError;
 use super::fuse::FuseFlushIn;
 use super::fuse::FuseGetAttrIn;
@@ -134,6 +135,7 @@ impl VirtioFs {
         let init_in = reader.read::<FuseInitIn>()?;
 
         if init_in.major != 7 {
+            warn!("virtio-fs: unsupported major version: {:x}", init_in.major);
             return reply.reply_error(FuseError::TODO);
         }
 
