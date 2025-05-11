@@ -1,11 +1,12 @@
 use core::mem::offset_of;
 
 use starina::address::GPAddr;
+use starina::collections::VecDeque;
 use starina::prelude::*;
 
 use super::device::VirtioDevice;
 use crate::guest_memory::GuestMemory;
-use crate::interrupt::IrqTrigger;
+use crate::guest_memory::{self};
 
 pub const VIRTQUEUE_NUM_DESCS_MAX: u32 = 256;
 
@@ -44,36 +45,89 @@ impl VirtqDesc {
 
 type DescIndex = u16;
 
-#[derive(Debug)]
 pub struct DescChain {
     head: DescIndex,
-    next: Option<DescIndex>,
 }
 
 impl DescChain {
-    pub fn next_desc(&mut self, vq: &mut Virtqueue, memory: &mut GuestMemory) -> Option<VirtqDesc> {
-        let desc_index = self.next?;
+    pub fn reader_writer<'a>(
+        &'a self,
+        vq: &mut Virtqueue,
+        memory: &'a GuestMemory,
+    ) -> Result<(DescChainReader<'a>, DescChainWriter<'a>), guest_memory::Error> {
+        let mut readable_descs = VecDeque::new();
+        let mut writable_descs = VecDeque::new();
+        let mut desc_index = self.head;
+        loop {
+            let desc_gpaddr = vq
+                .desc_gpaddr
+                .checked_add(desc_index as usize * size_of::<VirtqDesc>())
+                .unwrap();
 
-        let desc_gpaddr = vq
-            .desc_gpaddr
-            .checked_add(desc_index as usize * size_of::<VirtqDesc>())
-            .unwrap();
+            let desc = memory.read::<VirtqDesc>(desc_gpaddr)?;
 
-        let desc = match memory.read::<VirtqDesc>(desc_gpaddr) {
-            Ok(desc) => desc,
-            Err(err) => {
-                debug_warn!("virtqueue: next_desc: failed to read desc: {:x?}", err);
-                return None;
+            if !desc.has_next() {
+                break;
             }
-        };
 
-        if desc.has_next() {
-            self.next = Some(desc.next);
-        } else {
-            self.next = None;
+            if desc.is_read_only() {
+                readable_descs.push_back(desc);
+            } else {
+                writable_descs.push_back(desc);
+            }
+
+            desc_index = desc.next;
         }
 
-        Some(desc)
+        let reader = DescChainReader {
+            head: &self,
+            memory,
+            descs: readable_descs,
+        };
+
+        let writer = DescChainWriter {
+            head: &self,
+            memory,
+            descs: writable_descs,
+        };
+
+        Ok((reader, writer))
+    }
+}
+
+pub struct DescChainWriter<'a> {
+    head: &'a DescChain,
+    memory: &'a GuestMemory,
+    descs: VecDeque<VirtqDesc>,
+}
+
+impl<'a> DescChainWriter<'a> {
+    pub fn write<T: Copy>(&mut self, value: T) -> Result<(), guest_memory::Error> {
+        // TODO:
+        todo!()
+    }
+
+    pub fn write_bytes(&mut self, bytes: &[u8]) -> Result<(), guest_memory::Error> {
+        // TODO:
+        todo!()
+    }
+}
+
+pub struct DescChainReader<'a> {
+    head: &'a DescChain,
+    memory: &'a GuestMemory,
+    descs: VecDeque<VirtqDesc>,
+}
+
+impl<'a> DescChainReader<'a> {
+    pub fn read<T: Copy>(&mut self) -> Result<T, guest_memory::Error> {
+        // TODO:
+        todo!()
+    }
+
+    pub fn read_bytes(&mut self, buf: &mut [u8]) -> Result<usize, guest_memory::Error> {
+        // TODO:
+        todo!()
     }
 }
 
@@ -198,10 +252,7 @@ impl Virtqueue {
 
         self.avail_index = (self.avail_index + 1) % (self.num_descs as u16);
 
-        Some(DescChain {
-            head: desc_index,
-            next: Some(desc_index),
-        })
+        Some(DescChain { head: desc_index })
     }
 
     pub fn push_used(&mut self, memory: &mut GuestMemory, chain: DescChain, written_len: u32) {

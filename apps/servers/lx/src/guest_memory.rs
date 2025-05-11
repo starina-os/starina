@@ -99,7 +99,7 @@ impl GuestMemory {
         unsafe { slice::from_raw_parts(self.vaddr.as_ptr(), self.size) }
     }
 
-    fn slice_mut(&mut self) -> &mut [u8] {
+    fn slice_mut(&self) -> &mut [u8] {
         // SAFETY: The folio is mapped to the current vmspace, and folio
         // is kept alive as long as `self` is alive.
         unsafe { slice::from_raw_parts_mut(self.vaddr.as_mut_ptr(), self.size) }
@@ -127,15 +127,17 @@ impl GuestMemory {
         let range = self.check_range(gpaddr, dst.len())?;
         let slice = &self.slice()[range];
         unsafe {
+            // FIXME: Use volatile copy.
             ptr::copy_nonoverlapping(slice.as_ptr(), dst.as_mut_ptr(), dst.len());
         }
         Ok(())
     }
 
-    pub fn write_bytes(&mut self, gpaddr: GPAddr, src: &[u8]) -> Result<(), Error> {
+    pub fn write_bytes(&self, gpaddr: GPAddr, src: &[u8]) -> Result<(), Error> {
         let range = self.check_range(gpaddr, src.len())?;
         let slice = &mut self.slice_mut()[range];
         unsafe {
+            // FIXME: Use volatile copy.
             ptr::copy_nonoverlapping(src.as_ptr(), slice.as_mut_ptr(), src.len());
         }
         Ok(())
@@ -150,7 +152,7 @@ impl GuestMemory {
         Ok(unsafe { buf.assume_init() })
     }
 
-    pub fn write<T: Copy>(&mut self, gpaddr: GPAddr, value: T) -> Result<(), Error> {
+    pub fn write<T: Copy>(&self, gpaddr: GPAddr, value: T) -> Result<(), Error> {
         let buf_slice =
             unsafe { slice::from_raw_parts(&value as *const T as *const u8, size_of::<T>()) };
 

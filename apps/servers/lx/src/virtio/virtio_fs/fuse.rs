@@ -3,6 +3,12 @@
 //! <https://man7.org/linux/man-pages/man4/fuse.4.html>
 #![allow(unused)]
 
+#[derive(Debug, Clone, Copy)]
+#[repr(u32)]
+pub enum FuseError {
+    TODO,
+}
+
 /// `struct fuse_in_header`.
 #[derive(Debug, Clone, Copy)]
 #[repr(C)]
