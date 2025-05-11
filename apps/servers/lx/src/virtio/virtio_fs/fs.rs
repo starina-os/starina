@@ -1,6 +1,4 @@
-use starina::prelude::*;
-
-use super::device::ReadReply;
+use super::device::Reply;
 use super::fuse::FuseEntryOut;
 use super::fuse::FuseError;
 use super::fuse::FuseFlushIn;
@@ -14,16 +12,18 @@ use super::fuse::FuseWriteIn;
 use super::fuse::FuseWriteOut;
 use crate::guest_memory;
 
-pub struct ReadCompleter<'a>(pub(super) ReadReply<'a>);
+pub struct ReadCompleter<'a>(pub(super) Reply<'a>);
 pub struct ReadResult(pub(super) Result<usize, guest_memory::Error>);
 
 impl<'a> ReadCompleter<'a> {
     pub fn error(self, error: FuseError) -> ReadResult {
-        ReadResult(self.0.reply_error(error))
+        let result = self.0.reply_error(error);
+        ReadResult(result)
     }
 
     pub fn complete(self, data: &[u8]) -> ReadResult {
-        ReadResult(self.0.reply(data))
+        let result = self.0.do_reply(None as Option<()>, Some(data));
+        ReadResult(result)
     }
 }
 

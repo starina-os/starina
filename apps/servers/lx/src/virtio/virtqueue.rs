@@ -268,7 +268,6 @@ impl Virtqueue {
         };
 
         if avail.index == self.avail_index {
-            debug_warn!("virtqueue: pop: avail index is not updated");
             return None;
         }
 

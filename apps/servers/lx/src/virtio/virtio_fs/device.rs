@@ -46,7 +46,7 @@ impl<'a> Reply<'a> {
         }
     }
 
-    fn do_reply<T: Copy>(
+    pub(super) fn do_reply<T: Copy>(
         mut self,
         out: Option<T>,
         bytes: Option<&[u8]>,
@@ -86,24 +86,6 @@ impl<'a> Reply<'a> {
 
     pub fn reply<T: Copy>(self, out: T) -> Result<usize, guest_memory::Error> {
         self.do_reply(Some(out), None)
-    }
-}
-
-pub struct ReadReply<'a> {
-    inner: Reply<'a>,
-}
-
-impl<'a> ReadReply<'a> {
-    pub fn new(inner: Reply<'a>) -> Self {
-        Self { inner }
-    }
-
-    pub fn reply_error(&self, error: FuseError) -> Result<usize, guest_memory::Error> {
-        self.inner.reply_error(error)
-    }
-
-    pub fn reply(self, data: &[u8]) -> Result<usize, guest_memory::Error> {
-        self.inner.do_reply(None as Option<()>, Some(data))
     }
 }
 
@@ -232,7 +214,7 @@ impl VirtioFs {
     ) -> Result<usize, guest_memory::Error> {
         let read_in = reader.read::<FuseReadIn>()?;
         let node_id = INode::new(in_header.nodeid);
-        let read_reply = ReadCompleter(ReadReply::new(reply));
+        let read_reply = ReadCompleter(reply);
         self.fs.read(node_id, read_in, read_reply).0
     }
 
