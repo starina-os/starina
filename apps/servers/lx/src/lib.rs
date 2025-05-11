@@ -1,6 +1,7 @@
 #![no_std]
 
 pub mod autogen;
+mod fs;
 mod guest_memory;
 mod interrupt;
 mod linux_loader;
@@ -67,8 +68,7 @@ impl EventLoop for App {
 
         let irq_trigger = IrqTrigger::new();
 
-        let fs = todo!();
-
+        let fs = DemoFileSystem {};
         let mut bus = Bus::new();
         let virtio_fs = VirtioFs::new(fs);
         let virtio_mmio_fs =

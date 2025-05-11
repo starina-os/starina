@@ -27,6 +27,7 @@ impl<'a> ReadCompleter<'a> {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct INode(pub u64);
 
 impl INode {
