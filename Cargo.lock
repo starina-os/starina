@@ -257,6 +257,7 @@ dependencies = [
  "serde",
  "starina",
  "starina_build_sdk",
+ "starina_utils",
  "vm-fdt",
 ]
 

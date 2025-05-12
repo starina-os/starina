@@ -7,6 +7,7 @@ edition = { workspace = true }
 
 [dependencies]
 starina = { workspace = true }
+starina_utils = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 vm-fdt = { workspace = true, features = ["alloc"] }
 

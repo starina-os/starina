@@ -3,10 +3,12 @@ use core::mem::offset_of;
 use starina::address::GPAddr;
 use starina::collections::VecDeque;
 use starina::prelude::*;
+use starina_utils::endianness::LittleEndian;
+use starina_utils::static_assert;
 
 use super::device::VirtioDevice;
+use crate::guest_memory;
 use crate::guest_memory::GuestMemory;
-use crate::guest_memory::{self};
 
 pub const VIRTQUEUE_NUM_DESCS_MAX: u32 = 256;
 
@@ -17,21 +19,23 @@ const VIRTQ_DESC_F_WRITE: u16 = 2;
 const VIRQ_IRQSTATUS_QUEUE: u32 = 1 << 0;
 
 #[derive(Debug, Copy, Clone)]
-#[repr(C, packed)]
+#[repr(C)]
 pub struct VirtqDesc {
-    pub addr: u64,
-    pub len: u32,
-    pub flags: u16,
-    pub next: u16,
+    pub addr: LittleEndian<u64>,
+    pub len: LittleEndian<u32>,
+    pub flags: LittleEndian<u16>,
+    pub next: LittleEndian<u16>,
 }
+
+static_assert!(size_of::<VirtqDesc>() == 16);
 
 impl VirtqDesc {
     pub fn gpaddr(&self) -> GPAddr {
-        GPAddr::new(self.addr as usize)
+        GPAddr::new(self.addr.to_host() as usize)
     }
 
     pub fn is_write_only(&self) -> bool {
-        self.flags & VIRTQ_DESC_F_WRITE != 0
+        self.flags.to_host() & VIRTQ_DESC_F_WRITE != 0
     }
 
     pub fn is_read_only(&self) -> bool {
@@ -39,7 +43,7 @@ impl VirtqDesc {
     }
 
     pub fn has_next(&self) -> bool {
-        self.flags & VIRTQ_DESC_F_NEXT != 0
+        self.flags.to_host() & VIRTQ_DESC_F_NEXT != 0
     }
 }
 
@@ -75,7 +79,7 @@ impl DescChain {
                 break;
             }
 
-            desc_index = desc.next;
+            desc_index = desc.next.to_host();
         }
 
         let reader = DescChainReader {
@@ -167,25 +171,25 @@ impl<'a> DescChainReader<'a> {
 }
 
 #[derive(Debug, Copy, Clone)]
-#[repr(C, packed)]
+#[repr(C)]
 struct VirtqAvail {
-    flags: u16,
-    index: u16,
+    flags: LittleEndian<u16>,
+    index: LittleEndian<u16>,
     // The rings (an array of descriptor indices) immediately follows here.
 }
 
 #[derive(Debug, Copy, Clone)]
-#[repr(C, packed)]
+#[repr(C)]
 pub struct VirtqUsedElem {
-    id: u32,
-    len: u32,
+    id: LittleEndian<u32>,
+    len: LittleEndian<u32>,
 }
 
 #[derive(Debug, Copy, Clone)]
-#[repr(C, packed)]
+#[repr(C)]
 struct VirtqUsed {
-    flags: u16,
-    index: u16,
+    flags: LittleEndian<u16>,
+    index: LittleEndian<u16>,
     // The rings (an array of VirtqUsedElem) immediately follows here.
 }
 
@@ -262,7 +266,7 @@ impl Virtqueue {
             }
         };
 
-        if avail.index == self.avail_index {
+        if avail.index.to_host() == self.avail_index {
             return None;
         }
 
@@ -304,8 +308,8 @@ impl Virtqueue {
         if let Err(err) = memory.write(
             used_elem_gpaddr,
             VirtqUsedElem {
-                id: chain.head as u32,
-                len: written_len,
+                id: (chain.head as u32).into(),
+                len: written_len.into(),
             },
         ) {
             debug_warn!(
