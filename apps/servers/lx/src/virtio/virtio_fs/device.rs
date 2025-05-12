@@ -76,8 +76,17 @@ impl<'a> Reply<'a> {
         Ok(len)
     }
 
-    pub fn reply_error(&self, error: FuseError) -> Result<usize, guest_memory::Error> {
-        todo!()
+    #[track_caller]
+    pub fn reply_error(mut self, error: FuseError) -> Result<usize, guest_memory::Error> {
+        debug_warn!("reply_error from: {:?}", core::panic::Location::caller());
+        let len = size_of::<FuseOutHeader>();
+        self.desc_writer.write(FuseOutHeader {
+            len: len as u32,
+            error: error as i32,
+            unique: self.unique,
+        })?;
+
+        Ok(len)
     }
 
     pub fn reply_without_data(self) -> Result<usize, guest_memory::Error> {
@@ -141,7 +150,15 @@ impl VirtioFs {
             None => return reply.reply_error(FuseError::TODO),
         };
 
-        let filename = reader.read_zerocopy(filename_len)?;
+        let filename_with_nulls = reader.read_zerocopy(filename_len)?;
+
+        // The filename may be terminated by NULL. Trim them.
+        let trailing_nulls = filename_with_nulls
+            .iter()
+            .rev()
+            .take_while(|&b| *b == 0)
+            .count();
+        let filename = &filename_with_nulls[..filename_with_nulls.len() - trailing_nulls];
 
         let dir_inode = INode::new(in_header.nodeid);
         match self.fs.lookup(dir_inode, filename) {
@@ -258,7 +275,7 @@ impl VirtioDevice for VirtioFs {
     }
 
     fn process(&self, memory: &mut GuestMemory, vq: &mut Virtqueue, mut chain: DescChain) {
-        let (mut reader, mut writer) = chain.reader_writer(vq, memory).unwrap();
+        let (mut reader, writer) = chain.reader_writer(vq, memory).unwrap();
 
         let in_header = match reader.read::<FuseInHeader>() {
             Ok(in_header) => in_header,

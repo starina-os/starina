@@ -111,15 +111,14 @@ impl mmio::Device for VirtioMmio {
         offset: u64,
         dst: &mut [u8],
     ) -> Result<(), mmio::Error> {
-        trace!(
-            "virtio mmio read: offset={:x}, width={:x}",
-            offset,
-            dst.len()
-        );
+        // trace!(
+        //     "virtio mmio read: offset={:x}, width={:x}",
+        //     offset,
+        //     dst.len()
+        // );
 
         if offset >= REG_CONFIG_START {
             let config_offset = offset - REG_CONFIG_START;
-            trace!("virtio-mmio: read config: offset={:x}", config_offset);
             self.device.config_read(config_offset, dst);
             return Ok(());
         }

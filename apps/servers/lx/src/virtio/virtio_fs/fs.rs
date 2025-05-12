@@ -32,7 +32,13 @@ pub struct INode(pub u64);
 
 impl INode {
     pub const fn new(id: u64) -> Self {
+        debug_assert!(id > 1, "non-root inode must be greater than 1");
         Self(id)
+    }
+
+    pub const fn root_dir() -> Self {
+        // As defined in `FUSE_ROOT_ID`.
+        Self(1)
     }
 }
 

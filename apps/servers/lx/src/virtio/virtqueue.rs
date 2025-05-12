@@ -79,13 +79,13 @@ impl DescChain {
         }
 
         let reader = DescChainReader {
-            head: &self,
+            _head: &self,
             memory,
             descs: readable_descs,
         };
 
         let writer = DescChainWriter {
-            head: &self,
+            _head: &self,
             memory,
             descs: writable_descs,
         };
@@ -95,7 +95,7 @@ impl DescChain {
 }
 
 pub struct DescChainWriter<'a> {
-    head: &'a DescChain,
+    _head: &'a DescChain,
     memory: &'a GuestMemory,
     descs: VecDeque<VirtqDesc>,
 }
@@ -131,7 +131,7 @@ impl<'a> DescChainWriter<'a> {
 }
 
 pub struct DescChainReader<'a> {
-    head: &'a DescChain,
+    _head: &'a DescChain,
     memory: &'a GuestMemory,
     descs: VecDeque<VirtqDesc>,
 }
@@ -187,11 +187,6 @@ struct VirtqUsed {
     flags: u16,
     index: u16,
     // The rings (an array of VirtqUsedElem) immediately follows here.
-}
-
-// TODO: Remove to a common module
-fn align_up(size: usize, align: usize) -> usize {
-    (size + align - 1) & !(align - 1)
 }
 
 pub struct Virtqueue {
