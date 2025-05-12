@@ -274,7 +274,18 @@ impl VirtioDevice for VirtioFs {
         0
     }
 
-    fn process(&self, memory: &mut GuestMemory, vq: &mut Virtqueue, mut chain: DescChain) {
+    /// Handles a FUSE request from the guest.
+    ///
+    /// # Endianess
+    ///
+    /// Virtio spec says "The endianness of the FUSE protocol session is
+    /// detectable by inspecting the uint32_t in.opcode field of the FUSE_INIT
+    /// request sent by the driver to the device".
+    ///
+    /// In this implementation, we assume the guest and the host use the same
+    /// endianness. We don't have a check for the endianness but the guest
+    /// should fail because we will handle their FUSE_INIT as an invalid request.
+    fn process(&self, memory: &mut GuestMemory, vq: &mut Virtqueue, chain: DescChain) {
         let (mut reader, writer) = chain.reader_writer(vq, memory).unwrap();
 
         let in_header = match reader.read::<FuseInHeader>() {
