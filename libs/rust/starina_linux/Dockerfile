@@ -80,5 +80,6 @@ COPY --from=initramfs-builder /initramfs.cpio /initramfs.cpio
 COPY --from=lxinit-builder /lxinit.debug /lxinit.debug
 COPY --from=lxinit-builder /lxinit /lxinit
 
+ADD linux.riscv64.config /linux.config
 ADD build-linux.sh /build-linux.sh
 CMD ["/build-linux.sh"]

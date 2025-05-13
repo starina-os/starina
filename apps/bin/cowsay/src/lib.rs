@@ -16,7 +16,8 @@ impl EventLoop for App {
 
     fn init(dispatcher: &dyn Dispatcher<Self::State>, env: Self::Env) -> Self {
         info!("cowsaying...");
-        let cmd = starina_linux::Command::new("cowsay")
+
+        starina_linux::Command::new("cowsay")
             .arg("-f")
             .arg("dragon")
             .spawn()

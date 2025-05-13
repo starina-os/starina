@@ -15,7 +15,7 @@ pub struct Command {
 }
 
 impl Command {
-    pub fn new(program: &str) -> Self {
+    pub fn new(program: &str) -> Command {
         Command {
             argv: vec![program.to_string()],
             stdin: None,
@@ -23,25 +23,25 @@ impl Command {
         }
     }
 
-    pub fn arg<S: AsRef<str>>(&mut self, arg: S) -> &mut Self {
+    pub fn arg<S: AsRef<str>>(&mut self, arg: S) -> &mut Command {
         self.argv.push(arg.as_ref().to_string());
         self
     }
 
-    pub fn stdin(&mut self, file: Arc<dyn Entry>) -> &mut Self {
+    pub fn stdin(&mut self, file: Arc<dyn Entry>) -> &mut Command {
         self.stdin = Some(file);
         self
     }
 
-    pub fn stdout(&mut self, file: Arc<dyn Entry>) -> &mut Self {
+    pub fn stdout(&mut self, file: Arc<dyn Entry>) -> &mut Command {
         self.stdout = Some(file);
         self
     }
 
-    pub fn spawn(self) -> Result<(), Error> {
+    pub fn spawn(&mut self) -> Result<(), Error> {
         let mut root_files = Vec::new();
-        if let Some(stdin) = self.stdin {
-            root_files.push(("stdin", stdin));
+        if let Some(stdin) = &self.stdin {
+            root_files.push(("stdin", stdin.clone()));
         }
 
         let fs = FileSystem::new(root_files);
