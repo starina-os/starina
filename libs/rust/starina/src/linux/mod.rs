@@ -1,13 +1,25 @@
 #![no_std]
 
-pub mod autogen;
+use fs::DemoFileSystem;
+use guest_memory::GuestMemory;
+use interrupt::IrqTrigger;
+use mmio::Bus;
+use riscv::device_tree::build_fdt;
+use starina_types::address::GPAddr;
+use starina_types::vcpu::VCpuExit;
+use virtio::device::VIRTIO_MMIO_SIZE;
+use virtio::device::VirtioMmio;
+use virtio::virtio_fs::VirtioFs;
 
-mod linux;
+use crate::vcpu::VCpu;
 
-#[derive(Debug)]
-pub enum State {}
-
-pub struct App {}
+mod fs;
+mod guest_memory;
+mod interrupt;
+mod linux_loader;
+mod mmio;
+mod riscv;
+mod virtio;
 
 const fn plic_mmio_size(num_cpus: u32) -> usize {
     0x200000 + (num_cpus as usize * 0x1000)
