@@ -2,13 +2,11 @@
 
 pub mod autogen;
 
-use connection::ChannelWriter;
-use connection::Conn;
-use starina::eventloop::Context;
 use starina::eventloop::Dispatcher;
 use starina::eventloop::EventLoop;
 use starina::prelude::*;
-use starina::sync::Mutex;
+
+pub enum State {}
 
 pub struct App {}
 

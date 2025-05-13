@@ -3,3 +3,5 @@ name = "cowsay"
 [env]
 
 [[exports]]
+type = "service"
+service = "cowsay"

@@ -1,17 +1,12 @@
 [package]
-name = "starina"
+name = "starina_linux"
 publish = false
 version = { workspace = true }
 authors = { workspace = true }
 edition = { workspace = true }
 
 [dependencies]
-hashbrown = { workspace = true }
-spin = { workspace = true }
+starina = { workspace = true }
 starina_types = { workspace = true }
 starina_utils = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
-
-[features]
-in-kernel = []
+vm-fdt = { workspace = true, features = ["alloc"] }

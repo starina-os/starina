@@ -32,6 +32,7 @@ starina_types = { path = "libs/rust/starina_types" }
 starina_utils = { path = "libs/rust/starina_utils" }
 starina_driver_sdk = { path = "libs/rust/driver_sdk" }
 starina_build_sdk = { path = "libs/rust/build_sdk" }
+starina_linux = { path = "libs/rust/starina_linux" }
 virtio = { path = "libs/rust/virtio" }
 
 virtio_net = { path = "apps/drivers/virtio_net" }

@@ -5,13 +5,13 @@ use guest_memory::GuestMemory;
 use interrupt::IrqTrigger;
 use mmio::Bus;
 use riscv::device_tree::build_fdt;
+use starina::prelude::*;
+use starina::vcpu::VCpu;
 use starina_types::address::GPAddr;
 use starina_types::vcpu::VCpuExit;
 use virtio::device::VIRTIO_MMIO_SIZE;
 use virtio::device::VirtioMmio;
 use virtio::virtio_fs::VirtioFs;
-
-use crate::vcpu::VCpu;
 
 mod fs;
 mod guest_memory;
