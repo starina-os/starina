@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::process::Stdio;
+use std::fs::OpenOptions;
 
 use nix::mount::MsFlags;
 use nix::mount::mount;
@@ -29,8 +29,16 @@ async fn main() {
 
     eprintln!("[linuxinit] opening files");
     let command_json_file = File::open("/virtfs/command").expect("failed to open /virtfs/command");
-    let stdin_file = File::open("/virtfs/stdin").expect("failed to open /virtfs/stdin");
-    let stdout_file = File::open("/virtfs/stdout").expect("failed to open /virtfs/stdout");
+
+    let stdin_file = OpenOptions::new()
+        .read(true)
+        .open("/virtfs/stdin")
+        .expect("failed to open /virtfs/stdin");
+
+    let stdout_file = OpenOptions::new()
+        .write(true)
+        .open("/virtfs/stdout")
+        .expect("failed to open /virtfs/stdout");
 
     eprintln!("[linuxinit] parsing command");
     let command_json: CommandJson =

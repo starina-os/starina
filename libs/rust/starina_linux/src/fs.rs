@@ -59,7 +59,6 @@ impl<T: FileLike> INode for T {
     }
 
     fn write(&self, offset: u64, data: &[u8]) -> Result<u32, Errno> {
-        info!("FileLike WRITE @@@@@@@@@@@@@@@@@\n");
         let len = self.write_at(offset as usize, data)?;
         Ok(len as u32)
     }

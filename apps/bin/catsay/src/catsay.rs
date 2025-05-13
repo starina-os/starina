@@ -12,5 +12,5 @@ pub fn catsay(text: &str) {
         .spawn()
         .expect("failed to execute process");
 
-    info!("stdout: {}", stdout.text().as_str());
+    info!("stdout:\n\n{}\n", stdout.text().as_str());
 }

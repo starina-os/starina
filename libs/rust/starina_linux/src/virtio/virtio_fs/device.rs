@@ -245,12 +245,7 @@ impl VirtioFs {
     ) -> Result<usize, guest_memory::Error> {
         let write_in = reader.read::<FuseWriteIn>()?;
         let node_id = INodeNo::new(in_header.nodeid);
-        let len = match (write_in.size as usize).checked_sub(size_of::<FuseWriteIn>()) {
-            Some(len) => len,
-            None => return reply.reply_error(Errno::TODO),
-        };
-
-        let buf = reader.read_zerocopy(len)?;
+        let buf = reader.read_zerocopy(write_in.size as usize)?;
         match self.fs.write(node_id, write_in, buf) {
             Ok(out) => reply.reply(out),
             Err(e) => reply.reply_error(e),
