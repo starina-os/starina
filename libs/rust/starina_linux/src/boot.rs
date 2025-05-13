@@ -3,7 +3,7 @@ use starina::vcpu::VCpu;
 use starina_types::address::GPAddr;
 use starina_types::vcpu::VCpuExit;
 
-use crate::fs::DemoFileSystem;
+use crate::fs::FileSystem;
 use crate::guest_memory::GuestMemory;
 use crate::interrupt::IrqTrigger;
 use crate::mmio::Bus;
@@ -16,7 +16,7 @@ const fn plic_mmio_size(num_cpus: u32) -> usize {
     0x200000 + (num_cpus as usize * 0x1000)
 }
 
-fn boot_linux() {
+pub fn boot_linux(fs: FileSystem) {
     info!("starting");
 
     const LINUX_ELF: &[u8] = include_bytes!("../kernel/arch/riscv/boot/Image");
@@ -48,7 +48,6 @@ fn boot_linux() {
 
     let irq_trigger = IrqTrigger::new();
 
-    let fs = DemoFileSystem::new();
     let mut bus = Bus::new();
     let virtio_fs = VirtioFs::new(Box::new(fs));
     let virtio_mmio_fs = VirtioMmio::new(irq_trigger.clone(), VIRTIO_FS_IRQ, virtio_fs).unwrap();

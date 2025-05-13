@@ -23,7 +23,7 @@ use crate::virtio::virtio_fs::fuse::FuseWriteIn;
 use crate::virtio::virtio_fs::fuse::FuseWriteOut;
 
 #[allow(unused)]
-trait Entry {
+pub trait Entry {
     fn attr(&self) -> Result<FuseAttr, FuseError>;
     fn lookup(&self, filename: &[u8]) -> Result<Dirent, FuseError>;
     fn read(&self, offset: u64, size: u32, completer: ReadCompleter) -> ReadResult;
@@ -41,7 +41,7 @@ pub struct Dirent {
 }
 
 struct RootDirectory {
-    files: HashMap<&'static [u8], Dirent>,
+    files: HashMap<Vec<u8>, Dirent>,
 }
 
 impl RootDirectory {
@@ -51,8 +51,8 @@ impl RootDirectory {
         }
     }
 
-    pub fn insert_entry(&mut self, inode: INode, name: &'static str, entry: Arc<dyn Entry>) {
-        self.files.insert(name.as_bytes(), Dirent { inode, entry });
+    pub fn insert_entry<S: Into<Vec<u8>>>(&mut self, inode: INode, name: S, entry: Arc<dyn Entry>) {
+        self.files.insert(name.into(), Dirent { inode, entry });
     }
 }
 
@@ -120,39 +120,22 @@ struct Mutable {
     next_fh: u64,
 }
 
-pub struct DemoFileSystem {
+pub struct FileSystem {
     mutable: Mutex<Mutable>,
 }
 
-impl DemoFileSystem {
-    pub fn new() -> Self {
-        let text_txt_id = INode::new(2);
-
-        let mut root_dir = RootDirectory::new();
-        root_dir.insert_entry(
-            text_txt_id,
-            "test.txt",
-            Arc::new(StaticFile::new(
-                b"Hello from well-refactored FUSE implementaiton!",
-            )),
-        );
-
-        let mut inodes = HashMap::new();
+impl FileSystem {
+    pub fn new(root_files: Vec<(&str, Arc<dyn Entry>)>) -> Self {
+        let root_dir = RootDirectory::new();
+        let mut inodes: HashMap<INode, Arc<dyn Entry + 'static>> = HashMap::new();
         inodes.insert(INode::root_dir(), Arc::new(root_dir) as Arc<dyn Entry>);
-        inodes.insert(
-            text_txt_id,
-            Arc::new(StaticFile::new(
-                b"Hello from well-refactored FUSE implementaiton!",
-            )),
-        );
-
         Self {
             mutable: Mutex::new(Mutable { inodes, next_fh: 1 }),
         }
     }
 }
 
-impl virtio_fs::FileSystem for DemoFileSystem {
+impl virtio_fs::FileSystem for FileSystem {
     fn lookup(&self, dir_inode: INode, filename: &[u8]) -> Result<FuseEntryOut, FuseError> {
         let dirent = self
             .mutable

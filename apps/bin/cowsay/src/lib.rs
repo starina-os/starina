@@ -16,6 +16,12 @@ impl EventLoop for App {
 
     fn init(dispatcher: &dyn Dispatcher<Self::State>, env: Self::Env) -> Self {
         info!("cowsaying...");
+        let cmd = starina_linux::Command::new("cowsay")
+            .arg("-f")
+            .arg("dragon")
+            .spawn()
+            .expect("failed to execute process");
+
         panic!("cowsaid");
     }
 }
