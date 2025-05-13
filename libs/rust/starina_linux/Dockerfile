@@ -48,12 +48,9 @@ RUN mkdir -p /rootfs/tmp
 RUN mkdir -p /rootfs/var
 RUN mkdir -p /rootfs/virtfs
 
-# Build cowsay
-RUN apt-get install -y curl tar golang
-RUN mkdir -p /cowsay
-RUN curl -sLo cowsay.tar.gz https://github.com/Code-Hex/Neo-cowsay/archive/refs/tags/v2.0.4.tar.gz
-RUN tar xf cowsay.tar.gz -C /cowsay --strip-components=1
-RUN cd /cowsay && GOARCH=riscv64 GOOS=linux go build -o /rootfs/bin/cowsay .
+RUN apt-get install -y golang
+ADD catsay.go /catsay.go
+RUN CGO_ENABLED=0 GOARCH=riscv64 GOOS=linux go build -o /rootfs/bin/catsay /catsay.go
 
 RUN mknod /rootfs/dev/console c 5 1
 

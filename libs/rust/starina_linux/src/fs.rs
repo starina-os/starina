@@ -3,12 +3,14 @@ use starina::prelude::*;
 use starina::sync::Arc;
 use starina::sync::Mutex;
 
+use crate::ReadDirCompleter;
 use crate::virtio::virtio_fs;
 use crate::virtio::virtio_fs::INodeNo;
 use crate::virtio::virtio_fs::ReadCompleter;
 use crate::virtio::virtio_fs::ReadResult;
 use crate::virtio::virtio_fs::fuse::Errno;
 use crate::virtio::virtio_fs::fuse::FuseAttr;
+use crate::virtio::virtio_fs::fuse::FuseDirent;
 use crate::virtio::virtio_fs::fuse::FuseEntryOut;
 use crate::virtio::virtio_fs::fuse::FuseFlushIn;
 use crate::virtio::virtio_fs::fuse::FuseGetAttrIn;
@@ -25,6 +27,7 @@ pub trait INode {
     fn attr(&self) -> Result<FuseAttr, Errno>;
     fn lookup(&self, filename: &[u8]) -> Result<Dirent, Errno>;
     fn read(&self, offset: u64, size: u32, completer: ReadCompleter) -> ReadResult;
+    fn readdir(&self, offset: u64, size: u32, completer: ReadDirCompleter) -> ReadResult;
     fn write(&self, offset: u64, data: &[u8]) -> Result<u32, Errno>;
 
     fn open(&self, flags: u32) -> Result<(), Errno> {
@@ -56,8 +59,13 @@ impl<T: FileLike> INode for T {
     }
 
     fn write(&self, offset: u64, data: &[u8]) -> Result<u32, Errno> {
+        info!("FileLike WRITE @@@@@@@@@@@@@@@@@\n");
         let len = self.write_at(offset as usize, data)?;
         Ok(len as u32)
+    }
+
+    fn readdir(&self, offset: u64, size: u32, completer: ReadDirCompleter) -> ReadResult {
+        completer.error(Errno::ENOTDIR)
     }
 }
 
@@ -95,6 +103,26 @@ impl INode for Directory {
     fn lookup(&self, filename: &[u8]) -> Result<Dirent, Errno> {
         let dirent = self.files.get(filename).ok_or(Errno::TODO)?;
         Ok(dirent.clone())
+    }
+
+    fn readdir(&self, _offset: u64, _size: u32, completer: ReadDirCompleter) -> ReadResult {
+        info!("readdir: offset={}, size={}", _offset, _size);
+        let Some((name, dirent)) = self.files.iter().skip(0).next() else {
+            panic!("readdir: no more entries");
+            return completer.error(Errno::TODO);
+        };
+
+        const DT_REG: u32 = 0x08;
+
+        completer.complete(
+            FuseDirent {
+                ino: dirent.ino.0,
+                off: 0,
+                namelen: name.len() as u32,
+                file_type: DT_REG,
+            },
+            name,
+        )
     }
 
     fn read(&self, _offset: u64, _size: u32, _completer: ReadCompleter) -> ReadResult {
@@ -226,6 +254,20 @@ impl virtio_fs::FileSystem for FileSystem {
         };
 
         entry.read(read_in.offset, read_in.size, completer)
+    }
+
+    fn readdir(
+        &self,
+        ino: INodeNo,
+        read_in: FuseReadIn,
+        completer: ReadDirCompleter,
+    ) -> ReadResult {
+        let mutable = self.mutable.lock();
+        let Some(entry) = mutable.inodes.get(&ino) else {
+            return completer.error(Errno::TODO);
+        };
+
+        entry.readdir(read_in.offset, read_in.size, completer)
     }
 
     fn write(

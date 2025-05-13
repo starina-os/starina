@@ -2,13 +2,11 @@ use starina::prelude::*;
 use starina_linux::BufferedStdin;
 use starina_linux::BufferedStdout;
 
-pub fn cowsay(text: &str) {
+pub fn catsay(text: &str) {
     let stdin = BufferedStdin::new(text);
     let stdout = BufferedStdout::new();
 
-    starina_linux::Command::new("cowsay")
-        .arg("-f")
-        .arg("dragon")
+    starina_linux::Command::new("catsay")
         .stdin(stdin)
         .stdout(stdout.clone())
         .spawn()

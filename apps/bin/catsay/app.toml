@@ -1,7 +1,7 @@
-name = "cowsay"
+name = "catsay"
 
 [env]
 
 [[exports]]
 type = "service"
-service = "cowsay"
+service = "catsay"

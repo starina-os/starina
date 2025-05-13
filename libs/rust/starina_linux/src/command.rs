@@ -39,7 +39,15 @@ impl FileLike for BufferedStdin {
         }
 
         let read_len = min(size, self.0.len() - offset);
+
         let slice = &self.0[offset..offset + read_len];
+        info!(
+            "read_len: {}, size: {}, offset: {}, slice: {}",
+            read_len,
+            size,
+            offset,
+            core::str::from_utf8(slice).unwrap()
+        );
         completer.complete(slice)
     }
 
@@ -62,7 +70,7 @@ impl BufferedStdout {
 
 impl FileLike for BufferedStdout {
     fn size(&self) -> usize {
-        todo!()
+        0
     }
 
     fn read_at(&self, _offset: usize, _size: usize, _completer: ReadCompleter) -> ReadResult {

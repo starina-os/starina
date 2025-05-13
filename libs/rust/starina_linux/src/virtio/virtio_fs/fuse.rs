@@ -9,6 +9,7 @@
 pub enum Errno {
     TODO,
     EACCES = -13,
+    ENOTDIR = -20,
     EINVAL = -22,
     EHOSTDOWN = -112,
 }
@@ -182,6 +183,15 @@ pub struct FuseWriteOut {
     pub padding: u32,
 }
 
+#[derive(Debug, Clone, Copy, Default)]
+#[repr(C)]
+pub struct FuseDirent {
+    pub ino: u64,
+    pub off: u64,
+    pub namelen: u32,
+    pub file_type: u32,
+}
+
 // FUSE operations.
 pub const FUSE_LOOKUP: u32 = 1;
 pub const FUSE_GETATTR: u32 = 3;
@@ -191,3 +201,4 @@ pub const FUSE_WRITE: u32 = 16;
 pub const FUSE_RELEASE: u32 = 18;
 pub const FUSE_FLUSH: u32 = 25;
 pub const FUSE_INIT: u32 = 26;
+pub const FUSE_READDIR: u32 = 28;

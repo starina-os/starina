@@ -21,12 +21,12 @@ pub struct Env {
 }
 
 pub const APP_SPEC: ParsedAppSpec = ParsedAppSpec {
-    name: "cowsay",
+    name: "catsay",
     env: &[],
-    exports: &[ParsedExportItem::Service { service: "cowsay" }],
+    exports: &[ParsedExportItem::Service { service: "catsay" }],
     entrypoint,
 };
 
 extern "C" fn entrypoint(vsyscall: *const VsyscallPage) -> ! {
-    starina::eventloop::app_loop::<Env, crate::State, crate::App>("cowsay", vsyscall);
+    starina::eventloop::app_loop::<Env, crate::State, crate::App>("catsay", vsyscall);
 }

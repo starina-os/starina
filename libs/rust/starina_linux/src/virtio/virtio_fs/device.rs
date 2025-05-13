@@ -6,6 +6,8 @@ use starina::prelude::*;
 use super::fs::FileSystem;
 use super::fs::INodeNo;
 use super::fs::ReadCompleter;
+use super::fs::ReadDirCompleter;
+use super::fuse::Errno;
 use super::fuse::FUSE_FLUSH;
 use super::fuse::FUSE_GETATTR;
 use super::fuse::FUSE_INIT;
@@ -14,7 +16,6 @@ use super::fuse::FUSE_OPEN;
 use super::fuse::FUSE_READ;
 use super::fuse::FUSE_RELEASE;
 use super::fuse::FUSE_WRITE;
-use super::fuse::Errno;
 use super::fuse::FuseFlushIn;
 use super::fuse::FuseGetAttrIn;
 use super::fuse::FuseInHeader;
@@ -255,6 +256,19 @@ impl VirtioFs {
             Err(e) => reply.reply_error(e),
         }
     }
+
+    fn do_readdir(
+        &self,
+        in_header: FuseInHeader,
+        mut reader: DescChainReader<'_>,
+        reply: Reply<'_>,
+    ) -> Result<usize, guest_memory::Error> {
+        let readdir_in = reader.read::<FuseReadIn>()?;
+        let node_id = INodeNo::new(in_header.nodeid);
+        let readdir_reply = ReadDirCompleter(reply);
+        let result = self.fs.readdir(node_id, readdir_in, readdir_reply);
+        result.0
+    }
 }
 
 impl VirtioDevice for VirtioFs {
@@ -306,9 +320,9 @@ impl VirtioDevice for VirtioFs {
             FUSE_RELEASE => self.do_release(in_header, reader, reply),
             FUSE_READ => self.do_read(in_header, reader, reply),
             FUSE_WRITE => self.do_write(in_header, reader, reply),
+            FUSE_READDIR => self.do_readdir(in_header, reader, reply),
             _ => {
-                debug_warn!("virtio-fs: unknown opcode: {:x}", in_header.opcode);
-                return;
+                panic!("virtio-fs: unknown opcode: {:x}", in_header.opcode);
             }
         };
 

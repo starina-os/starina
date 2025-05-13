@@ -1,5 +1,6 @@
 use super::device::Reply;
 use super::fuse::Errno;
+use super::fuse::FuseDirent;
 use super::fuse::FuseEntryOut;
 use super::fuse::FuseFlushIn;
 use super::fuse::FuseGetAttrIn;
@@ -13,6 +14,7 @@ use super::fuse::FuseWriteOut;
 use crate::guest_memory;
 
 pub struct ReadCompleter<'a>(pub(super) Reply<'a>);
+
 pub struct ReadResult(pub(super) Result<usize, guest_memory::Error>);
 
 impl<'a> ReadCompleter<'a> {
@@ -23,6 +25,20 @@ impl<'a> ReadCompleter<'a> {
 
     pub fn complete(self, data: &[u8]) -> ReadResult {
         let result = self.0.do_reply(None as Option<()>, Some(data));
+        ReadResult(result)
+    }
+}
+
+pub struct ReadDirCompleter<'a>(pub(super) Reply<'a>);
+
+impl<'a> ReadDirCompleter<'a> {
+    pub fn error(self, error: Errno) -> ReadResult {
+        let result = self.0.reply_error(error);
+        ReadResult(result)
+    }
+
+    pub fn complete(self, dirent: FuseDirent, filename: &[u8]) -> ReadResult {
+        let result = self.0.do_reply(Some(dirent), Some(filename));
         ReadResult(result)
     }
 }
@@ -55,4 +71,10 @@ pub trait FileSystem {
         write_in: FuseWriteIn,
         data: &[u8],
     ) -> Result<FuseWriteOut, Errno>;
+    fn readdir(
+        &self,
+        ino: INodeNo,
+        readdir_in: FuseReadIn,
+        completer: ReadDirCompleter,
+    ) -> ReadResult;
 }

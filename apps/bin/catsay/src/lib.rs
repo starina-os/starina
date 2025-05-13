@@ -1,7 +1,7 @@
 #![no_std]
 
 pub mod autogen;
-mod cowsay;
+mod catsay;
 
 use starina::eventloop::Dispatcher;
 use starina::eventloop::EventLoop;
@@ -16,8 +16,8 @@ impl EventLoop for App {
     type State = State;
 
     fn init(_dispatcher: &dyn Dispatcher<Self::State>, _env: Self::Env) -> Self {
-        info!("cowsaying...");
-        cowsay::cowsay("Hello from Cow!");
+        info!("catsaying...");
+        catsay::catsay("Hello from Cow!");
         panic!("cowsaid");
     }
 }

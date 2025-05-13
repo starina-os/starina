@@ -39,11 +39,12 @@ async fn main() {
 
     let mut cmd = Command::new(&command_json.program)
         .args(&command_json.args)
-        .stdin(Stdio::from(stdin_file))
-        .stdout(Stdio::from(stdout_file))
+        .stdin(stdin_file)
+        .stdout(stdout_file)
         .spawn()
         .expect("failed to spawn command");
 
+    eprintln!("command: {:?}", cmd);
     let exit_status = cmd.wait().await.expect("failed to wait on command");
     eprintln!("command exited with status: {:?}", exit_status);
 
