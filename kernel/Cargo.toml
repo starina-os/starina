@@ -29,4 +29,4 @@ starina = { workspace = true, features = ["in-kernel"] }
 virtio_net = { workspace = true }
 tcpip = { workspace = true }
 http_server = { workspace = true }
-lx = { workspace = true }
+cowsay = { workspace = true }

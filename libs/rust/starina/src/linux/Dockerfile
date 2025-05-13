@@ -1,7 +1,7 @@
 # Builds a minimal Linux distro for Starina on Linux.
 #
-#   docker build -t lx-builder -f Dockerfile .
-#   docker run -v $PWD:/lx -it lx-builder cp /build/linux.elf /lx/linux.elf
+#   docker build -t linux-builder -f Dockerfile .
+#   docker run -v $PWD:/linux -it linux-builder cp /build/linux.elf /linux/linux.elf
 #
 
 #
@@ -80,5 +80,5 @@ COPY --from=initramfs-builder /initramfs.cpio /initramfs.cpio
 COPY --from=lxinit-builder /lxinit.debug /lxinit.debug
 COPY --from=lxinit-builder /lxinit /lxinit
 
-CMD make -C /lx/linux ARCH=riscv CROSS_COMPILE=riscv64-linux-gnu- -j$(nproc) \
-        olddefconfig Image
+ADD build-linux.sh /build-linux.sh
+CMD ["/build-linux.sh"]

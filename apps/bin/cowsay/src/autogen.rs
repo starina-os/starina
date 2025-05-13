@@ -18,15 +18,21 @@ use starina::syscall::VsyscallPage;
 #[derive(Debug, Deserialize)]
 pub struct Env {
     pub startup_ch: Channel,
+    pub tcpip: Channel,
 }
 
 pub const APP_SPEC: ParsedAppSpec = ParsedAppSpec {
-    name: "lx",
-    env: &[],
-    exports: &[ParsedExportItem::Service { service: "lx" }],
+    name: "http_server",
+    env: &[ParsedEnvItem {
+        name: "tcpip",
+        ty: ParsedEnvType::Service { service: "tcpip" },
+    }],
+    exports: &[ParsedExportItem::Service {
+        service: "http_server",
+    }],
     entrypoint,
 };
 
 extern "C" fn entrypoint(vsyscall: *const VsyscallPage) -> ! {
-    starina::eventloop::app_loop::<Env, crate::State, crate::App>("lx", vsyscall);
+    starina::eventloop::app_loop::<Env, crate::State, crate::App>("http_server", vsyscall);
 }

@@ -1,7 +1,0 @@
-name = "lx"
-
-[env]
-
-[[exports]]
-type = "service"
-service = "lx"

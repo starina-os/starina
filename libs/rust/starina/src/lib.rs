@@ -20,6 +20,7 @@ pub mod handle;
 pub mod hvspace;
 pub mod interrupt;
 pub mod iobus;
+pub mod linux;
 pub mod message;
 pub mod poll;
 pub mod sync;

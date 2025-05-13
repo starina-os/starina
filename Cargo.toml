@@ -5,8 +5,7 @@ members = [
     "libs/rust/*",
     "apps/drivers/virtio_net",
     "apps/servers/tcpip",
-    "apps/servers/lx",
-    "apps/servers/lx/lxinit",
+    "apps/bin/cowsay",
     "apps/bin/http_server",
 ]
 
@@ -38,4 +37,4 @@ virtio = { path = "libs/rust/virtio" }
 virtio_net = { path = "apps/drivers/virtio_net" }
 tcpip = { path = "apps/servers/tcpip" }
 http_server = { path = "apps/bin/http_server" }
-lx = { path = "apps/servers/lx" }
+cowsay = { path = "apps/bin/cowsay" }

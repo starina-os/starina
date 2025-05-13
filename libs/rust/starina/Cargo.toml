@@ -13,5 +13,9 @@ starina_utils = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 
+vm-fdt = { workspace = true, features = ["alloc"], optional = true }
+
 [features]
+default = ["linux"]
 in-kernel = []
+linux = ["vm-fdt"]
