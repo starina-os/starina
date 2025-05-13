@@ -22,7 +22,7 @@ WORKDIR /app
 ENV CARGO_TARGET_RISCV64GC_UNKNOWN_LINUX_MUSL_LINKER="riscv64-linux-gnu-gcc"
 ENV CARGO_PROFILE_RELEASE_OPT_LEVEL=z
 ENV CARGO_PROFILE_RELEASE_DEBUG=full
-ENV RUSTFLAGS="-C target-feature=+crt-static,+soft-float"
+ENV RUSTFLAGS="-C target-feature=+crt-static"
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/app/target \
     cargo build --release --target riscv64gc-unknown-linux-musl \

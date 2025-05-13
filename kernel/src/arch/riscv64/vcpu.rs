@@ -728,7 +728,21 @@ impl VCpu {
         hstatus |= 1 << 7; // SPV
         hstatus |= 1 << 21; // VTW
 
-        let sstatus = 1 << 8; // SPP
+        let mut sstatus = 0;
+        sstatus |= 1 << 8; // SPP
+        // sstatus &= !(0b11 << 13); // Clear FP
+        // sstatus |= (3 << 13); // FP
+
+        // unsafe {
+        //     let old_sstatus: u64;
+        //     asm!("csrr {}, sstatus", out(reg) old_sstatus);
+        //     println!("old_sstatus: {:x}", old_sstatus);
+
+        //     let tmp: [u8; 128] = [0; 128];
+        //     // asm!("csrw sstatus, {}", in(reg) sstatus);
+        //     asm!("fsd fs0, 0x10({})", in(reg) &raw const tmp as usize);
+        // }
+
         let hgatp = hvspace.arch().hgatp();
 
         let mut now: u64;
