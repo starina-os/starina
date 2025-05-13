@@ -22,7 +22,7 @@ WORKDIR /app
 ENV CARGO_TARGET_RISCV64GC_UNKNOWN_LINUX_MUSL_LINKER="riscv64-linux-gnu-gcc"
 ENV CARGO_PROFILE_RELEASE_OPT_LEVEL=z
 ENV CARGO_PROFILE_RELEASE_DEBUG=full
-ENV RUSTFLAGS="-C target-feature=+crt-static"
+ENV RUSTFLAGS="-C target-feature=+crt-static,+soft-float"
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/app/target \
     cargo build --release --target riscv64gc-unknown-linux-musl \
@@ -47,6 +47,13 @@ RUN mkdir -p /rootfs/sys
 RUN mkdir -p /rootfs/tmp
 RUN mkdir -p /rootfs/var
 RUN mkdir -p /rootfs/virtfs
+
+# Build cowsay
+RUN apt-get install -y curl tar golang
+RUN mkdir -p /cowsay
+RUN curl -sLo cowsay.tar.gz https://github.com/Code-Hex/Neo-cowsay/archive/refs/tags/v2.0.4.tar.gz
+RUN tar xf cowsay.tar.gz -C /cowsay --strip-components=1
+RUN cd /cowsay && GOARCH=riscv64 GOOS=linux go build -o /rootfs/bin/cowsay .
 
 RUN mknod /rootfs/dev/console c 5 1
 

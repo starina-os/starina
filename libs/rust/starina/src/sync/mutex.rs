@@ -11,6 +11,10 @@ impl<T> Mutex<T> {
             inner: spin::Mutex::new(data),
         }
     }
+
+    pub fn into_inner(self) -> T {
+        self.inner.into_inner()
+    }
 }
 
 impl<T: ?Sized> Mutex<T> {

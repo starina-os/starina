@@ -2,6 +2,7 @@ use starina::prelude::*;
 use starina::vcpu::VCpu;
 use starina_types::address::GPAddr;
 use starina_types::vcpu::VCpuExit;
+use starina_utils::static_assert;
 
 use crate::fs::FileSystem;
 use crate::guest_memory::GuestMemory;
@@ -21,7 +22,7 @@ const NUM_CPUS: u32 = 1;
 const GUEST_RAM_SIZE: usize = 64 * 1024 * 1024; // 64MB
 const PLIC_BASE_ADDR: GPAddr = GPAddr::new(0x0a00_0000);
 const PLIC_MMIO_SIZE: usize = plic_mmio_size(NUM_CPUS);
-debug_assert!(PLIC_BASE_ADDR.as_usize() + PLIC_MMIO_SIZE <= VIRTIO_FS_ADDR.as_usize());
+static_assert!(PLIC_BASE_ADDR.as_usize() + PLIC_MMIO_SIZE <= VIRTIO_FS_ADDR.as_usize());
 const VIRTIO_FS_ADDR: GPAddr = GPAddr::new(0x0b00_0000);
 const VIRTIO_FS_IRQ: u8 = 1;
 const GUEST_RAM_ADDR: GPAddr = GPAddr::new(0x8000_0000);
@@ -65,6 +66,9 @@ pub fn boot_linux(fs: FileSystem) {
         vcpu.inject_irqs(irq_trigger.clear_all());
         let exit = vcpu.run().unwrap();
         match exit {
+            VCpuExit::Reboot => {
+                break;
+            }
             VCpuExit::LoadPageFault { gpaddr, data } => {
                 bus.read(&mut memory, gpaddr, data).unwrap();
             }

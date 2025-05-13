@@ -4,6 +4,7 @@ use crate::address::GPAddr;
 
 pub const VCPU_EXIT_NONE: u8 = 0x0;
 pub const VCPU_EXIT_PAGE_FAULT: u8 = 0x1;
+pub const VCPU_EXIT_REBOOT: u8 = 0x2;
 
 #[derive(Debug, Clone, Copy)]
 #[non_exhaustive]
@@ -36,7 +37,7 @@ pub struct LoadInst {
 #[derive(Clone, Copy)]
 #[repr(C)]
 pub union ExitInfo {
-    none: (),
+    pub none: (),
     pub page_fault: ExitPageFault,
 }
 
@@ -59,6 +60,7 @@ impl fmt::Debug for VCpuExitState {
 
 #[derive(Debug)]
 pub enum VCpuExit<'a> {
+    Reboot,
     LoadPageFault { gpaddr: GPAddr, data: &'a mut [u8] },
     StorePageFault { gpaddr: GPAddr, data: &'a mut [u8] },
 }
@@ -92,7 +94,7 @@ impl VCpuExitState {
                     _ => panic!("unexpected page fault kind: {}", page_fault.kind as u8),
                 }
             }
-
+            VCPU_EXIT_REBOOT => VCpuExit::Reboot,
             _ => panic!("unexpected exit reason: {}", self.reason),
         }
     }

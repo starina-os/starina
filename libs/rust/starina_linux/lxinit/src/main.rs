@@ -1,18 +1,23 @@
 use std::fs::File;
-use std::io::Read;
+use std::process::Stdio;
 
 use nix::mount::MsFlags;
 use nix::mount::mount;
+use nix::sys::reboot::RebootMode;
+use nix::sys::reboot::reboot;
+use serde::Deserialize;
+use serde::Serialize;
+use tokio::process::Command;
 
-fn main() {
-    println!("");
-    println!("");
-    println!("");
-    println!("Hello World from lxinit!");
-    println!("");
-    println!("");
-    println!("");
+#[derive(Debug, Serialize, Deserialize)]
+struct CommandJson {
+    program: String,
+    args: Vec<String>,
+}
 
+#[tokio::main]
+async fn main() {
+    eprintln!("[linuxinit] mounting virtio-fs");
     mount(
         Some("virtfs"),
         "/virtfs",
@@ -22,31 +27,26 @@ fn main() {
     )
     .expect("failed to mount virtio-fs");
 
-    // Open /virtfs/test.txt
-    let mut file = File::open("/virtfs/test.txt").expect("failed to open /virtfs/test.txt");
-    let mut contents = Vec::new();
-    file.read_to_end(&mut contents)
-        .expect("failed to read /virtfs/test.txt");
+    eprintln!("[linuxinit] opening files");
+    let command_json_file = File::open("/virtfs/command").expect("failed to open /virtfs/command");
+    let stdin_file = File::open("/virtfs/stdin").expect("failed to open /virtfs/stdin");
+    let stdout_file = File::open("/virtfs/stdout").expect("failed to open /virtfs/stdout");
 
-    let contents = match std::str::from_utf8(&contents) {
-        Ok(s) => s,
-        Err(e) => {
-            eprintln!(
-                "failed to convert /virtfs/test.txt to UTF-8: {:?}: {:02x?}",
-                e, &contents
-            );
-            return;
-        }
-    };
+    eprintln!("[linuxinit] parsing command");
+    let command_json: CommandJson =
+        serde_json::from_reader(command_json_file).expect("failed to parse /virtfs/command");
+    eprintln!("command: {:?}", command_json);
 
-    println!("--------------------------------");
-    println!("/virtfs/test.txt: \"{}\"", contents);
-    println!("--------------------------------");
+    let mut cmd = Command::new(&command_json.program)
+        .args(&command_json.args)
+        .stdin(Stdio::from(stdin_file))
+        .stdout(Stdio::from(stdout_file))
+        .spawn()
+        .expect("failed to spawn command");
 
-    // List files in /virtfs
-    // println!("Listing files in /virtfs:");
-    // let files = std::fs::read_dir("/virtfs").expect("failed to read /virtfs");
-    // for file in files {
-    //     println!("{}", file.unwrap().path().display());
-    // }
+    let exit_status = cmd.wait().await.expect("failed to wait on command");
+    eprintln!("command exited with status: {:?}", exit_status);
+
+    eprintln!("[linuxinit] shuting down ...");
+    reboot(RebootMode::RB_HALT_SYSTEM).unwrap();
 }

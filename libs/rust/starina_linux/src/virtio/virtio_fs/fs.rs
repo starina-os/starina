@@ -1,6 +1,6 @@
 use super::device::Reply;
+use super::fuse::Errno;
 use super::fuse::FuseEntryOut;
-use super::fuse::FuseError;
 use super::fuse::FuseFlushIn;
 use super::fuse::FuseGetAttrIn;
 use super::fuse::FuseGetAttrOut;
@@ -16,7 +16,7 @@ pub struct ReadCompleter<'a>(pub(super) Reply<'a>);
 pub struct ReadResult(pub(super) Result<usize, guest_memory::Error>);
 
 impl<'a> ReadCompleter<'a> {
-    pub fn error(self, error: FuseError) -> ReadResult {
+    pub fn error(self, error: Errno) -> ReadResult {
         let result = self.0.reply_error(error);
         ReadResult(result)
     }
@@ -27,10 +27,11 @@ impl<'a> ReadCompleter<'a> {
     }
 }
 
+/// The inode number.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct INode(pub u64);
+pub struct INodeNo(pub u64);
 
-impl INode {
+impl INodeNo {
     pub const fn new(id: u64) -> Self {
         Self(id)
     }
@@ -42,17 +43,16 @@ impl INode {
 }
 
 pub trait FileSystem {
-    fn lookup(&self, dir_inode: INode, filename: &[u8]) -> Result<FuseEntryOut, FuseError>;
-    fn open(&self, inode: INode, open_in: FuseOpenIn) -> Result<FuseOpenOut, FuseError>;
-    fn getattr(&self, inode: INode, getattr_in: FuseGetAttrIn)
-    -> Result<FuseGetAttrOut, FuseError>;
-    fn flush(&self, inode: INode, flush_in: FuseFlushIn) -> Result<(), FuseError>;
-    fn release(&self, inode: INode, release_in: FuseReleaseIn) -> Result<(), FuseError>;
-    fn read(&self, inode: INode, read_in: FuseReadIn, completer: ReadCompleter) -> ReadResult;
+    fn lookup(&self, dir_ino: INodeNo, filename: &[u8]) -> Result<FuseEntryOut, Errno>;
+    fn open(&self, ino: INodeNo, open_in: FuseOpenIn) -> Result<FuseOpenOut, Errno>;
+    fn getattr(&self, ino: INodeNo, getattr_in: FuseGetAttrIn) -> Result<FuseGetAttrOut, Errno>;
+    fn flush(&self, ino: INodeNo, flush_in: FuseFlushIn) -> Result<(), Errno>;
+    fn release(&self, ino: INodeNo, release_in: FuseReleaseIn) -> Result<(), Errno>;
+    fn read(&self, ino: INodeNo, read_in: FuseReadIn, completer: ReadCompleter) -> ReadResult;
     fn write(
         &self,
-        inode: INode,
+        ino: INodeNo,
         write_in: FuseWriteIn,
         data: &[u8],
-    ) -> Result<FuseWriteOut, FuseError>;
+    ) -> Result<FuseWriteOut, Errno>;
 }

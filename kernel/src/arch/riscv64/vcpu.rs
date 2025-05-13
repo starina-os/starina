@@ -11,6 +11,7 @@ use starina::vcpu::ExitPageFaultKind;
 use starina::vcpu::LoadInst;
 use starina::vcpu::VCPU_EXIT_NONE;
 use starina::vcpu::VCPU_EXIT_PAGE_FAULT;
+use starina::vcpu::VCPU_EXIT_REBOOT;
 use starina::vcpu::VCpuExitState;
 
 use super::get_cpuvar;
@@ -411,13 +412,30 @@ impl Mutable {
             }
             //  Get SBI specification version
             (0x10, 0) => {
-                //  version 0.1
-                Ok(0x01)
+                //  version 0.3
+                Ok(0x03)
+            }
+            // Get SBI implementation ID
+            (0x10, 1) => {
+                // A placeholder value.
+                Ok(0x00)
+            }
+            // Get SBI implementation version
+            (0x10, 2) => {
+                // A placeholder value.
+                Ok(0x00)
             }
             // Probe SBI extension
             (0x10, 3) => {
-                // 0 means the extension is not supported.
-                Ok(0)
+                if context.a0 == 0x53525354
+                /* SRST */
+                {
+                    // Supported.
+                    Ok(1)
+                } else {
+                    // 0 means the extension is not supported.
+                    Ok(0)
+                }
             }
             // Get machine vendor ID
             (0x10, 4) => {
@@ -432,6 +450,23 @@ impl Mutable {
             // Get machine implementation ID
             (0x10, 6) => {
                 // "0 is always a legal value for this CSR" as per SBI spec.
+                Ok(0)
+            }
+            // System reset
+            (0x53525354, 0x00) => {
+                current_thread().exit_vcpu();
+                let mut exit = self.exit.take().unwrap();
+                exit.write(
+                    &Isolation::InKernel,
+                    0,
+                    VCpuExitState {
+                        irqs: 0, // FIXME: Do not override IRQ
+                        reason: VCPU_EXIT_REBOOT,
+                        info: ExitInfo { none: () },
+                    },
+                );
+
+                // FIXME:
                 Ok(0)
             }
             _ => {

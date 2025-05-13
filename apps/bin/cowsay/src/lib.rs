@@ -1,6 +1,7 @@
 #![no_std]
 
 pub mod autogen;
+mod cowsay;
 
 use starina::eventloop::Dispatcher;
 use starina::eventloop::EventLoop;
@@ -14,15 +15,9 @@ impl EventLoop for App {
     type Env = autogen::Env;
     type State = State;
 
-    fn init(dispatcher: &dyn Dispatcher<Self::State>, env: Self::Env) -> Self {
+    fn init(_dispatcher: &dyn Dispatcher<Self::State>, _env: Self::Env) -> Self {
         info!("cowsaying...");
-
-        starina_linux::Command::new("cowsay")
-            .arg("-f")
-            .arg("dragon")
-            .spawn()
-            .expect("failed to execute process");
-
+        cowsay::cowsay("Hello from Cow!");
         panic!("cowsaid");
     }
 }

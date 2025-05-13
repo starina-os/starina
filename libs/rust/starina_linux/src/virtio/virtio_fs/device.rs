@@ -4,7 +4,7 @@ use core::slice;
 use starina::prelude::*;
 
 use super::fs::FileSystem;
-use super::fs::INode;
+use super::fs::INodeNo;
 use super::fs::ReadCompleter;
 use super::fuse::FUSE_FLUSH;
 use super::fuse::FUSE_GETATTR;
@@ -14,7 +14,7 @@ use super::fuse::FUSE_OPEN;
 use super::fuse::FUSE_READ;
 use super::fuse::FUSE_RELEASE;
 use super::fuse::FUSE_WRITE;
-use super::fuse::FuseError;
+use super::fuse::Errno;
 use super::fuse::FuseFlushIn;
 use super::fuse::FuseGetAttrIn;
 use super::fuse::FuseInHeader;
@@ -77,7 +77,7 @@ impl<'a> Reply<'a> {
     }
 
     #[track_caller]
-    pub fn reply_error(mut self, error: FuseError) -> Result<usize, guest_memory::Error> {
+    pub fn reply_error(mut self, error: Errno) -> Result<usize, guest_memory::Error> {
         debug_warn!("reply_error from: {:?}", core::panic::Location::caller());
         let len = size_of::<FuseOutHeader>();
         self.desc_writer.write(FuseOutHeader {
@@ -123,7 +123,7 @@ impl VirtioFs {
 
         if init_in.major != 7 {
             warn!("virtio-fs: unsupported major version: {:x}", init_in.major);
-            return reply.reply_error(FuseError::TODO);
+            return reply.reply_error(Errno::TODO);
         }
 
         reply.reply(FuseInitOut {
@@ -147,7 +147,7 @@ impl VirtioFs {
     ) -> Result<usize, guest_memory::Error> {
         let filename_len = match (in_header.len as usize).checked_sub(size_of::<FuseInHeader>()) {
             Some(len) => len,
-            None => return reply.reply_error(FuseError::TODO),
+            None => return reply.reply_error(Errno::TODO),
         };
 
         let filename_with_nulls = reader.read_zerocopy(filename_len)?;
@@ -160,8 +160,8 @@ impl VirtioFs {
             .count();
         let filename = &filename_with_nulls[..filename_with_nulls.len() - trailing_nulls];
 
-        let dir_inode = INode::new(in_header.nodeid);
-        match self.fs.lookup(dir_inode, filename) {
+        let dir_ino = INodeNo::new(in_header.nodeid);
+        match self.fs.lookup(dir_ino, filename) {
             Ok(entry) => reply.reply(entry),
             Err(e) => reply.reply_error(e),
         }
@@ -174,8 +174,8 @@ impl VirtioFs {
         reply: Reply<'_>,
     ) -> Result<usize, guest_memory::Error> {
         let open_in = reader.read::<FuseOpenIn>()?;
-        let node_id = INode::new(in_header.nodeid);
-        match self.fs.open(node_id, open_in) {
+        let ino = INodeNo::new(in_header.nodeid);
+        match self.fs.open(ino, open_in) {
             Ok(out) => reply.reply(out),
             Err(e) => reply.reply_error(e),
         }
@@ -188,7 +188,7 @@ impl VirtioFs {
         reply: Reply<'_>,
     ) -> Result<usize, guest_memory::Error> {
         let getattr_in = reader.read::<FuseGetAttrIn>()?;
-        let node_id = INode::new(in_header.nodeid);
+        let node_id = INodeNo::new(in_header.nodeid);
         match self.fs.getattr(node_id, getattr_in) {
             Ok(out) => reply.reply(out),
             Err(e) => reply.reply_error(e),
@@ -202,7 +202,7 @@ impl VirtioFs {
         reply: Reply<'_>,
     ) -> Result<usize, guest_memory::Error> {
         let flush_in = reader.read::<FuseFlushIn>()?;
-        let node_id = INode::new(in_header.nodeid);
+        let node_id = INodeNo::new(in_header.nodeid);
         match self.fs.flush(node_id, flush_in) {
             Ok(()) => reply.reply_without_data(),
             Err(e) => reply.reply_error(e),
@@ -216,7 +216,7 @@ impl VirtioFs {
         reply: Reply<'_>,
     ) -> Result<usize, guest_memory::Error> {
         let release_in = reader.read::<FuseReleaseIn>()?;
-        let node_id = INode::new(in_header.nodeid);
+        let node_id = INodeNo::new(in_header.nodeid);
         match self.fs.release(node_id, release_in) {
             Ok(()) => reply.reply_without_data(),
             Err(e) => reply.reply_error(e),
@@ -230,7 +230,7 @@ impl VirtioFs {
         reply: Reply<'_>,
     ) -> Result<usize, guest_memory::Error> {
         let read_in = reader.read::<FuseReadIn>()?;
-        let node_id = INode::new(in_header.nodeid);
+        let node_id = INodeNo::new(in_header.nodeid);
         let read_reply = ReadCompleter(reply);
         let result = self.fs.read(node_id, read_in, read_reply);
         result.0
@@ -243,10 +243,10 @@ impl VirtioFs {
         reply: Reply<'_>,
     ) -> Result<usize, guest_memory::Error> {
         let write_in = reader.read::<FuseWriteIn>()?;
-        let node_id = INode::new(in_header.nodeid);
+        let node_id = INodeNo::new(in_header.nodeid);
         let len = match (write_in.size as usize).checked_sub(size_of::<FuseWriteIn>()) {
             Some(len) => len,
-            None => return reply.reply_error(FuseError::TODO),
+            None => return reply.reply_error(Errno::TODO),
         };
 
         let buf = reader.read_zerocopy(len)?;

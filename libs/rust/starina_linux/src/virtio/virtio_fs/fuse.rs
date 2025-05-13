@@ -6,8 +6,10 @@
 #[derive(Debug, Clone, Copy)]
 #[repr(i32)]
 #[allow(non_camel_case_types)]
-pub enum FuseError {
+pub enum Errno {
     TODO,
+    EACCES = -13,
+    EINVAL = -22,
     EHOSTDOWN = -112,
 }
 

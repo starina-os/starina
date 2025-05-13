@@ -1,17 +1,15 @@
-use core::cmp::min;
-
 use starina::collections::HashMap;
 use starina::prelude::*;
 use starina::sync::Arc;
 use starina::sync::Mutex;
 
 use crate::virtio::virtio_fs;
-use crate::virtio::virtio_fs::INode;
+use crate::virtio::virtio_fs::INodeNo;
 use crate::virtio::virtio_fs::ReadCompleter;
 use crate::virtio::virtio_fs::ReadResult;
+use crate::virtio::virtio_fs::fuse::Errno;
 use crate::virtio::virtio_fs::fuse::FuseAttr;
 use crate::virtio::virtio_fs::fuse::FuseEntryOut;
-use crate::virtio::virtio_fs::fuse::FuseError;
 use crate::virtio::virtio_fs::fuse::FuseFlushIn;
 use crate::virtio::virtio_fs::fuse::FuseGetAttrIn;
 use crate::virtio::virtio_fs::fuse::FuseGetAttrOut;
@@ -23,41 +21,70 @@ use crate::virtio::virtio_fs::fuse::FuseWriteIn;
 use crate::virtio::virtio_fs::fuse::FuseWriteOut;
 
 #[allow(unused)]
-pub trait Entry {
-    fn attr(&self) -> Result<FuseAttr, FuseError>;
-    fn lookup(&self, filename: &[u8]) -> Result<Dirent, FuseError>;
+pub trait INode {
+    fn attr(&self) -> Result<FuseAttr, Errno>;
+    fn lookup(&self, filename: &[u8]) -> Result<Dirent, Errno>;
     fn read(&self, offset: u64, size: u32, completer: ReadCompleter) -> ReadResult;
-    fn write(&self, offset: u64, size: u32, data: &[u8]) -> Result<u32, FuseError>;
+    fn write(&self, offset: u64, data: &[u8]) -> Result<u32, Errno>;
 
-    fn open(&self, flags: u32) -> Result<(), FuseError> {
+    fn open(&self, flags: u32) -> Result<(), Errno> {
         Ok(())
+    }
+}
+
+pub trait FileLike: INode {
+    fn size(&self) -> usize;
+    fn read_at(&self, offset: usize, size: usize, completer: ReadCompleter) -> ReadResult;
+    fn write_at(&self, offset: usize, data: &[u8]) -> Result<usize, Errno>;
+}
+
+impl<T: FileLike> INode for T {
+    fn attr(&self) -> Result<FuseAttr, Errno> {
+        Ok(FuseAttr {
+            size: self.size() as u64,
+            mode: 0o100644, // regular file mode
+            ..Default::default()
+        })
+    }
+
+    fn lookup(&self, _filename: &[u8]) -> Result<Dirent, Errno> {
+        todo!()
+    }
+
+    fn read(&self, offset: u64, size: u32, completer: ReadCompleter) -> ReadResult {
+        self.read_at(offset as usize, size as usize, completer)
+    }
+
+    fn write(&self, offset: u64, data: &[u8]) -> Result<u32, Errno> {
+        let len = self.write_at(offset as usize, data)?;
+        Ok(len as u32)
     }
 }
 
 #[derive(Clone)]
 pub struct Dirent {
-    inode: INode,
-    entry: Arc<dyn Entry>,
+    ino: INodeNo,
+    entry: Arc<dyn INode>,
 }
 
-struct RootDirectory {
+struct Directory {
     files: HashMap<Vec<u8>, Dirent>,
 }
 
-impl RootDirectory {
+impl Directory {
     pub fn new() -> Self {
         Self {
             files: HashMap::new(),
         }
     }
 
-    pub fn insert_entry<S: Into<Vec<u8>>>(&mut self, inode: INode, name: S, entry: Arc<dyn Entry>) {
-        self.files.insert(name.into(), Dirent { inode, entry });
+    pub fn insert_entry<S: Into<Vec<u8>>>(&mut self, ino: INodeNo, name: S, entry: Arc<dyn INode>) {
+        self.files.insert(name.into(), Dirent { ino, entry });
     }
 }
 
-impl Entry for RootDirectory {
-    fn attr(&self) -> Result<FuseAttr, FuseError> {
+impl INode for Directory {
+    fn attr(&self) -> Result<FuseAttr, Errno> {
         Ok(FuseAttr {
             size: 0,
             mode: 0o40755, // directory mode
@@ -65,8 +92,8 @@ impl Entry for RootDirectory {
         })
     }
 
-    fn lookup(&self, filename: &[u8]) -> Result<Dirent, FuseError> {
-        let dirent = self.files.get(filename).ok_or(FuseError::TODO)?;
+    fn lookup(&self, filename: &[u8]) -> Result<Dirent, Errno> {
+        let dirent = self.files.get(filename).ok_or(Errno::TODO)?;
         Ok(dirent.clone())
     }
 
@@ -74,80 +101,69 @@ impl Entry for RootDirectory {
         todo!()
     }
 
-    fn write(&self, _offset: u64, _size: u32, _data: &[u8]) -> Result<u32, FuseError> {
-        todo!()
-    }
-}
-
-struct StaticFile {
-    contents: &'static [u8],
-}
-
-impl StaticFile {
-    pub const fn new(contents: &'static [u8]) -> Self {
-        Self { contents }
-    }
-}
-
-impl Entry for StaticFile {
-    fn attr(&self) -> Result<FuseAttr, FuseError> {
-        Ok(FuseAttr {
-            size: self.contents.len() as u64,
-            mode: 0o100644, // regular file mode
-            ..Default::default()
-        })
-    }
-
-    fn lookup(&self, _filename: &[u8]) -> Result<Dirent, FuseError> {
-        todo!()
-    }
-
-    fn read(&self, offset: u64, size: u32, completer: ReadCompleter) -> ReadResult {
-        let file_size = self.contents.len() as usize;
-        let offset = offset as usize;
-        let read_len = min(size as usize, file_size.saturating_sub(offset));
-        let data = &self.contents[offset..offset + read_len];
-        completer.complete(data)
-    }
-
-    fn write(&self, _offset: u64, _size: u32, _data: &[u8]) -> Result<u32, FuseError> {
+    fn write(&self, _offset: u64, _data: &[u8]) -> Result<u32, Errno> {
         todo!()
     }
 }
 
 struct Mutable {
-    inodes: HashMap<INode, Arc<dyn Entry>>,
+    inodes: HashMap<INodeNo, Arc<dyn INode>>,
     next_fh: u64,
 }
 
-pub struct FileSystem {
-    mutable: Mutex<Mutable>,
+pub struct FileSystemBuilder {
+    next_ino: u64,
+    root_dir: Directory,
 }
 
-impl FileSystem {
-    pub fn new(root_files: Vec<(&str, Arc<dyn Entry>)>) -> Self {
-        let root_dir = RootDirectory::new();
-        let mut inodes: HashMap<INode, Arc<dyn Entry + 'static>> = HashMap::new();
-        inodes.insert(INode::root_dir(), Arc::new(root_dir) as Arc<dyn Entry>);
+impl FileSystemBuilder {
+    pub fn new() -> Self {
         Self {
+            next_ino: 2,
+            root_dir: Directory::new(),
+        }
+    }
+
+    pub fn add_root_file(&mut self, name: &str, file: Arc<dyn FileLike>) {
+        let ino = INodeNo::new(self.next_ino);
+        self.next_ino += 1;
+        self.root_dir
+            .insert_entry(ino, name, file as Arc<dyn INode>);
+    }
+
+    pub fn build(self) -> FileSystem {
+        let mut inodes = HashMap::with_capacity(self.root_dir.files.len() + 1);
+        for dirent in self.root_dir.files.values() {
+            inodes.insert(dirent.ino, dirent.entry.clone());
+        }
+
+        inodes.insert(
+            INodeNo::root_dir(),
+            Arc::new(self.root_dir) as Arc<dyn INode>,
+        );
+
+        FileSystem {
             mutable: Mutex::new(Mutable { inodes, next_fh: 1 }),
         }
     }
 }
+pub struct FileSystem {
+    mutable: Mutex<Mutable>,
+}
 
 impl virtio_fs::FileSystem for FileSystem {
-    fn lookup(&self, dir_inode: INode, filename: &[u8]) -> Result<FuseEntryOut, FuseError> {
+    fn lookup(&self, dir_ino: INodeNo, filename: &[u8]) -> Result<FuseEntryOut, Errno> {
         let dirent = self
             .mutable
             .lock()
             .inodes
-            .get(&dir_inode)
-            .ok_or(FuseError::TODO)?
+            .get(&dir_ino)
+            .ok_or(Errno::TODO)?
             .lookup(filename)?;
 
         let attr = dirent.entry.attr()?;
         Ok(FuseEntryOut {
-            nodeid: dirent.inode.0,
+            nodeid: dirent.ino.0,
             generation: 0,
             entry_valid: 0,
             attr_valid: 0,
@@ -157,12 +173,12 @@ impl virtio_fs::FileSystem for FileSystem {
         })
     }
 
-    fn open(&self, inode: INode, open_in: FuseOpenIn) -> Result<FuseOpenOut, FuseError> {
+    fn open(&self, ino: INodeNo, open_in: FuseOpenIn) -> Result<FuseOpenOut, Errno> {
         let mut mutable = self.mutable.lock();
         mutable
             .inodes
-            .get_mut(&inode)
-            .ok_or(FuseError::TODO)?
+            .get_mut(&ino)
+            .ok_or(Errno::TODO)?
             .open(open_in.flags)?;
 
         let fh = mutable.next_fh;
@@ -175,20 +191,16 @@ impl virtio_fs::FileSystem for FileSystem {
         })
     }
 
-    fn getattr(
-        &self,
-        inode: INode,
-        _getattr_in: FuseGetAttrIn,
-    ) -> Result<FuseGetAttrOut, FuseError> {
+    fn getattr(&self, ino: INodeNo, _getattr_in: FuseGetAttrIn) -> Result<FuseGetAttrOut, Errno> {
         let mut attr = self
             .mutable
             .lock()
             .inodes
-            .get(&inode)
-            .ok_or(FuseError::TODO)?
+            .get(&ino)
+            .ok_or(Errno::TODO)?
             .attr()?;
 
-        attr.ino = inode.0;
+        attr.ino = ino.0;
 
         Ok(FuseGetAttrOut {
             attr,
@@ -197,20 +209,20 @@ impl virtio_fs::FileSystem for FileSystem {
             dummy: 0,
         })
     }
-    fn flush(&self, inode: INode, _flush_in: FuseFlushIn) -> Result<(), FuseError> {
-        trace!("flush: inode={:?}", inode);
+    fn flush(&self, ino: INodeNo, _flush_in: FuseFlushIn) -> Result<(), Errno> {
+        trace!("flush: inode={:?}", ino);
         Ok(())
     }
 
-    fn release(&self, inode: INode, _release_in: FuseReleaseIn) -> Result<(), FuseError> {
-        trace!("release: inode={:?}", inode);
+    fn release(&self, ino: INodeNo, _release_in: FuseReleaseIn) -> Result<(), Errno> {
+        trace!("release: inode={:?}", ino);
         Ok(())
     }
 
-    fn read(&self, inode: INode, read_in: FuseReadIn, completer: ReadCompleter) -> ReadResult {
+    fn read(&self, ino: INodeNo, read_in: FuseReadIn, completer: ReadCompleter) -> ReadResult {
         let mutable = self.mutable.lock();
-        let Some(entry) = mutable.inodes.get(&inode) else {
-            return completer.error(FuseError::TODO);
+        let Some(entry) = mutable.inodes.get(&ino) else {
+            return completer.error(Errno::TODO);
         };
 
         entry.read(read_in.offset, read_in.size, completer)
@@ -218,17 +230,17 @@ impl virtio_fs::FileSystem for FileSystem {
 
     fn write(
         &self,
-        inode: INode,
+        ino: INodeNo,
         write_in: FuseWriteIn,
         data: &[u8],
-    ) -> Result<FuseWriteOut, FuseError> {
+    ) -> Result<FuseWriteOut, Errno> {
         let size = self
             .mutable
             .lock()
             .inodes
-            .get_mut(&inode)
-            .ok_or(FuseError::TODO)?
-            .write(write_in.offset, write_in.size, data)?;
+            .get_mut(&ino)
+            .ok_or(Errno::TODO)?
+            .write(write_in.offset, data)?;
 
         Ok(FuseWriteOut { size, padding: 0 })
     }

@@ -485,6 +485,8 @@ dependencies = [
 name = "starina_linux"
 version = "0.0.0"
 dependencies = [
+ "serde",
+ "serde_json",
  "starina",
  "starina_types",
  "starina_utils",

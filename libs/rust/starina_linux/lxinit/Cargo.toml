@@ -6,4 +6,11 @@ authors = ["Seiya Nuta <nuta@seiya.me>"]
 edition = "2024"
 
 [dependencies]
-nix = { version = "0.30.1", features = ["mount"] }
+tokio = { version = "1.45.0", features = [
+    "macros",
+    "rt-multi-thread",
+    "process",
+] }
+nix = { version = "0.30.1", features = ["mount", "reboot"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1" }
