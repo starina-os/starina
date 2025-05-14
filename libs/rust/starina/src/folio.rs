@@ -6,9 +6,11 @@ use starina_types::handle::HandleId;
 use starina_types::vmspace::PageProtect;
 use starina_utils::alignment::is_aligned;
 
+use crate::handle::Handleable;
 use crate::handle::OwnedHandle;
 use crate::iobus::IoBus;
 use crate::syscall;
+use crate::vmspace::SELF_VMSPACE;
 
 /// The ownership of a contiguous page-aliged memory region.
 ///
@@ -53,7 +55,11 @@ impl Folio {
     }
 }
 
-const SELF_VMSPACE: HandleId = HandleId::from_raw(0);
+impl Handleable for Folio {
+    fn handle_id(&self) -> HandleId {
+        self.handle.id()
+    }
+}
 
 pub struct MmioFolio {
     _folio: Folio,
