@@ -31,6 +31,7 @@ mod cpuvar;
 mod device_tree;
 mod folio;
 mod handle;
+mod hvspace;
 mod interrupt;
 mod iobus;
 mod isolation;
@@ -44,6 +45,7 @@ mod startup;
 mod syscall;
 mod thread;
 mod utils;
+mod vcpu;
 mod vmspace;
 
 const EARLY_RAM_SIZE: usize = 256 * 1024;
@@ -62,6 +64,7 @@ pub fn boot(bootinfo: BootInfo) -> ! {
     let device_tree = device_tree::parse(bootinfo.dtb).expect("failed to parse device tree");
     cpuvar::percpu_init(bootinfo.cpu_id);
     arch::percpu_init();
+    // arch::hypervisor_test();
     startup::load_inkernel_apps(device_tree);
     thread::switch_thread();
 }

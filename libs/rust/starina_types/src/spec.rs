@@ -25,6 +25,7 @@ pub enum ExportItem {
 pub struct AppSpec {
     pub name: String,
     pub env: HashMap<String, EnvType>,
+    #[serde(default)]
     pub exports: Vec<ExportItem>,
 }
 

@@ -1,4 +1,5 @@
 use starina_types::address::DAddr;
+use starina_types::address::GPAddr;
 use starina_types::address::VAddr;
 use starina_types::error::ErrorCode;
 use starina_types::handle::HandleId;
@@ -6,6 +7,7 @@ use starina_types::interrupt::IrqMatcher;
 use starina_types::message::MessageInfo;
 use starina_types::poll::Readiness;
 pub use starina_types::syscall::*;
+use starina_types::vcpu::VCpuExitState;
 use starina_types::vmspace::PageProtect;
 
 fn syscall(
@@ -199,5 +201,53 @@ pub fn interrupt_create(irq_matcher: IrqMatcher) -> Result<HandleId, ErrorCode> 
 
 pub fn interrupt_ack(handle: HandleId) -> Result<(), ErrorCode> {
     syscall(SYS_INTERRUPT_ACK, handle.as_raw() as isize, 0, 0, 0, 0)?;
+    Ok(())
+}
+
+pub fn sys_hvspace_create() -> Result<HandleId, ErrorCode> {
+    let ret = syscall(SYS_HVSPACE_CREATE, 0, 0, 0, 0, 0)?;
+    let id = unsafe { HandleId::from_raw_isize(ret.as_isize()).unwrap_unchecked() };
+    Ok(id)
+}
+
+pub fn sys_hvspace_map(
+    handle: HandleId,
+    gpaddr: GPAddr,
+    folio: HandleId,
+    len: usize,
+    prot: PageProtect,
+) -> Result<(), ErrorCode> {
+    syscall(
+        SYS_HVSPACE_MAP,
+        handle.as_raw() as isize,
+        gpaddr.as_usize() as isize,
+        folio.as_raw() as isize,
+        len.try_into().unwrap(),
+        prot.as_raw() as isize,
+    )?;
+    Ok(())
+}
+
+pub fn sys_vcpu_create(
+    hvspace: HandleId,
+    entry: usize,
+    a0: usize,
+    a1: usize,
+) -> Result<HandleId, ErrorCode> {
+    let ret = syscall(
+        SYS_VCPU_CREATE,
+        hvspace.as_raw() as isize,
+        entry.try_into().unwrap(),
+        a0.try_into().unwrap(),
+        a1.try_into().unwrap(),
+        0,
+    )?;
+    // SAFETY: The syscall returns a valid handle ID.
+    let id = unsafe { HandleId::from_raw_isize(ret.as_isize()).unwrap_unchecked() };
+    Ok(id)
+}
+
+pub fn sys_vcpu_run(vcpu: HandleId, exit: *mut VCpuExitState) -> Result<(), ErrorCode> {
+    syscall(SYS_VCPU_RUN, vcpu.as_raw() as isize, exit as isize, 0, 0, 0)?;
     Ok(())
 }

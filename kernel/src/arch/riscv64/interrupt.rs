@@ -47,20 +47,19 @@ pub extern "C" fn interrupt_handler() -> ! {
         (false, 7) => "store/AMO access fault",
         (false, 8) => "environment call from U-mode",
         (false, 9) => "environment call from S-mode",
-        (false, 10) => "reserved",
+        (false, 10) => "Environment call from VS-mode",
         (false, 11) => "environment call from M-mode",
         (false, 12) => "instruction page fault",
         (false, 13) => "load page fault",
         (false, 15) => "store/AMO page fault",
+        (false, 20) => "instruction guest-page fault",
+        (false, 21) => "load guest-page fault",
+        (false, 22) => "virtual instruction",
+        (false, 23) => "store/AMO guest-page fault",
         _ => "unknown",
     };
 
     let sepc = unsafe { (*cpuvar.arch.context).sepc } as u64;
-
-    trace!(
-        "interrupt: {} (scause={:#x}), sepc: {:#x}, stval: {:#x}",
-        scause_str, scause, sepc, stval
-    );
 
     if (is_intr, code) == (true, 9) {
         use_plic(|plic| {
@@ -81,8 +80,19 @@ pub extern "C" fn interrupt_handler() -> ! {
         // let a5 = unsafe { (*cpuvar.arch.context).a5 } as isize;
         // let ret = syscall_handler(a0, a1, a2, a3, a4, a5);
         todo!()
+    } else if (is_intr, code) == (true, 5) {
+        // info!("interrupt: supervisor timer interrupt");
+        use crate::thread::TIMER_QUEUE;
+        while let Some(thread) = TIMER_QUEUE.lock().pop() {
+            thread.resume_from_idle_vcpu();
+        }
+
+        switch_thread();
     } else {
-        panic!("unhandled intrrupt");
+        panic!(
+            "unhandled interrupt: {} (scause={:#x}), sepc: {:#x}, stval: {:#x}",
+            scause_str, scause, sepc, stval
+        );
     }
 }
 pub static INTERRUPT_CONTROLLER: PlicWrapper = PlicWrapper::new();
