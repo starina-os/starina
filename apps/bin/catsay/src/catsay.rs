@@ -6,7 +6,7 @@ pub fn catsay(text: &str) {
     let stdin = BufferedStdin::new(text);
     let stdout = BufferedStdout::new();
 
-    starina_linux::Command::new("catsay")
+    starina_linux::Command::new("/bin/catsay")
         .stdin(stdin)
         .stdout(stdout.clone())
         .spawn()

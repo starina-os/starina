@@ -10,10 +10,12 @@ use super::fs::ReadDirCompleter;
 use super::fuse::Errno;
 use super::fuse::FUSE_FLUSH;
 use super::fuse::FUSE_GETATTR;
+use super::fuse::FUSE_GETXATTR;
 use super::fuse::FUSE_INIT;
 use super::fuse::FUSE_LOOKUP;
 use super::fuse::FUSE_OPEN;
 use super::fuse::FUSE_READ;
+use super::fuse::FUSE_READDIR;
 use super::fuse::FUSE_RELEASE;
 use super::fuse::FUSE_WRITE;
 use super::fuse::FuseFlushIn;
@@ -316,8 +318,9 @@ impl VirtioDevice for VirtioFs {
             FUSE_READ => self.do_read(in_header, reader, reply),
             FUSE_WRITE => self.do_write(in_header, reader, reply),
             FUSE_READDIR => self.do_readdir(in_header, reader, reply),
+            FUSE_GETXATTR => reply.reply_error(Errno::EOPNOTSUPP),
             _ => {
-                panic!("virtio-fs: unknown opcode: {:x}", in_header.opcode);
+                panic!("virtio-fs: unknown opcode: {}", in_header.opcode);
             }
         };
 

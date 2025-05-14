@@ -12,6 +12,7 @@ pub enum Errno {
     ENOTDIR = -20,
     EINVAL = -22,
     EHOSTDOWN = -112,
+    EOPNOTSUPP = -95,
 }
 
 /// `struct fuse_in_header`.
@@ -199,6 +200,7 @@ pub const FUSE_OPEN: u32 = 14;
 pub const FUSE_READ: u32 = 15;
 pub const FUSE_WRITE: u32 = 16;
 pub const FUSE_RELEASE: u32 = 18;
+pub const FUSE_GETXATTR: u32 = 22;
 pub const FUSE_FLUSH: u32 = 25;
 pub const FUSE_INIT: u32 = 26;
 pub const FUSE_READDIR: u32 = 28;
