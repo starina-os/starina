@@ -6,8 +6,6 @@ use crate::guest_memory::GuestMemory;
 
 #[derive(Debug)]
 pub enum Error {
-    AllocFolio(ErrorCode),
-    VmSpaceMap(ErrorCode),
     AllocRam(crate::guest_memory::Error),
     TooShortImage,
     InvalidMagic,
