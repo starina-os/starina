@@ -151,6 +151,13 @@ pub fn iobus_map(iobus: HandleId, daddr: Option<DAddr>, len: usize) -> Result<Ha
     Ok(id)
 }
 
+pub fn folio_alloc(len: usize) -> Result<HandleId, ErrorCode> {
+    let ret = syscall(SYS_FOLIO_ALLOC, len.try_into().unwrap(), 0, 0, 0, 0)?;
+    // SAFETY: The syscall returns a valid handle ID.
+    let id = unsafe { HandleId::from_raw_isize(ret.as_isize()).unwrap_unchecked() };
+    Ok(id)
+}
+
 pub fn folio_daddr(handle: HandleId) -> Result<DAddr, ErrorCode> {
     let ret = syscall(SYS_FOLIO_DADDR, handle.as_raw() as isize, 0, 0, 0, 0)?;
     // SAFETY: The syscall returns a valid device address.

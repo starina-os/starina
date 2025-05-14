@@ -46,6 +46,14 @@ pub struct Folio {
 }
 
 impl Folio {
+    pub fn alloc(size: usize) -> Result<Folio, ErrorCode> {
+        assert!(is_aligned(size, 0x1000));
+
+        let id = syscall::folio_alloc(size)?;
+        let handle = OwnedHandle::from_raw(id);
+        Ok(Folio { handle })
+    }
+
     pub const fn from_handle(handle: OwnedHandle) -> Self {
         Self { handle }
     }
