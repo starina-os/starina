@@ -26,3 +26,4 @@ pub mod sync;
 pub mod prelude;
 pub mod syscall;
 pub mod tls;
+pub mod vmspace;
