@@ -1,3 +1,5 @@
+use core::str::from_utf8;
+
 use starina::prelude::*;
 use starina_linux::BufferedStdin;
 use starina_linux::BufferedStdout;
@@ -12,5 +14,5 @@ pub fn catsay(text: &str) {
         .spawn()
         .expect("failed to execute process");
 
-    info!("stdout:\n\n{}\n", stdout.text().as_str());
+    info!("{}", from_utf8(&stdout.buffer()).unwrap());
 }

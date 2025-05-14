@@ -49,14 +49,14 @@ impl FileLike for BufferedStdin {
     }
 }
 
-pub struct BufferedStdout(Mutex<String>);
+pub struct BufferedStdout(Mutex<Vec<u8>>);
 
 impl BufferedStdout {
     pub fn new() -> Arc<Self> {
-        Arc::new(Self(Mutex::new(String::new())))
+        Arc::new(Self(Mutex::new(Vec::new())))
     }
 
-    pub fn text(&self) -> MutexGuard<'_, String> {
+    pub fn buffer(&self) -> MutexGuard<'_, Vec<u8>> {
         self.0.lock()
     }
 }
@@ -71,7 +71,7 @@ impl FileLike for BufferedStdout {
     }
 
     fn write_at(&self, _offset: usize, data: &[u8]) -> Result<usize, Errno> {
-        self.0.lock().push_str(core::str::from_utf8(data).unwrap());
+        self.0.lock().extend_from_slice(data);
         Ok(data.len())
     }
 }

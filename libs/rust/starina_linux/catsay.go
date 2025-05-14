@@ -14,6 +14,7 @@ func main() {
 	message := strings.TrimSpace(string(messageBytes))
 
 	width := len(message) + 2
+	fmt.Println()
 	fmt.Printf("      %s\n", strings.Repeat("_", width))
 	fmt.Printf("     < %s >\n", message)
 	fmt.Printf("      %s\n", strings.Repeat("-", width))
