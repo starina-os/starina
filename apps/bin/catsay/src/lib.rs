@@ -5,7 +5,6 @@ mod catsay;
 
 use starina::eventloop::Dispatcher;
 use starina::eventloop::EventLoop;
-use starina::prelude::*;
 
 pub enum State {}
 
@@ -16,8 +15,7 @@ impl EventLoop for App {
     type State = State;
 
     fn init(_dispatcher: &dyn Dispatcher<Self::State>, _env: Self::Env) -> Self {
-        info!("catsaying...");
-        catsay::catsay("Hello from Cow!");
-        panic!("cowsaid");
+        catsay::catsay("I'm a teapot!");
+        panic!("Done!");
     }
 }

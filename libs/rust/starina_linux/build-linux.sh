@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euv
+set -eu
 
 if [[ ! -d /linux/kernel ]]; then
     echo "Downloading Linux kernel..."

@@ -17,8 +17,8 @@ func main() {
 	fmt.Printf("      %s\n", strings.Repeat("_", width))
 	fmt.Printf("     < %s >\n", message)
 	fmt.Printf("      %s\n", strings.Repeat("-", width))
-	fmt.Println("             /")
-	fmt.Println("  /\\_/\\     /")
+	fmt.Println("           /")
+	fmt.Println("  /\\_/\\   /")
 	fmt.Println(" (o w o)")
 	fmt.Println("  > ^ <")
 }
