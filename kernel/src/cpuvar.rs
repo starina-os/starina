@@ -90,5 +90,5 @@ pub fn percpu_init(cpu_id: CpuId) {
         }
     }
 
-    arch::set_cpuvar(&mut cpuvars[cpu_id.as_usize()].0 as *mut CpuVar);
+    arch::set_cpuvar(&cpuvars[cpu_id.as_usize()].0 as *const CpuVar);
 }
