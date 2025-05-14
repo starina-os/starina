@@ -64,7 +64,6 @@ pub fn boot(bootinfo: BootInfo) -> ! {
     let device_tree = device_tree::parse(bootinfo.dtb).expect("failed to parse device tree");
     cpuvar::percpu_init(bootinfo.cpu_id);
     arch::percpu_init();
-    // arch::hypervisor_test();
     startup::load_inkernel_apps(device_tree);
     thread::switch_thread();
 }
