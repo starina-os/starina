@@ -1,0 +1,14 @@
+[package]
+name = "starina_linux"
+publish = false
+version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
+
+[dependencies]
+starina = { workspace = true }
+starina_types = { workspace = true }
+starina_utils = { workspace = true }
+serde_json = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+vm-fdt = { workspace = true, features = ["alloc"] }

@@ -1,4 +1,5 @@
 file build/kernel/debug/kernel
+add-symbol-file libs/rust/starina_linux/kernel/vmlinux
 set confirm off
 set history save on
 set print pretty on
