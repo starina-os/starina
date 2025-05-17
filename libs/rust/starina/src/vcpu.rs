@@ -10,7 +10,7 @@ use crate::syscall;
 #[derive(Debug)]
 pub struct VCpu {
     handle: OwnedHandle,
-    exit: VCpuExitState,
+    exit: VCpuRunState,
 }
 
 impl VCpu {
@@ -18,7 +18,7 @@ impl VCpu {
         let id = syscall::sys_vcpu_create(hvspace.handle_id(), entry, a0, a1)?;
         Ok(Self {
             handle: OwnedHandle::from_raw(id),
-            exit: VCpuExitState::new(),
+            exit: VCpuRunState::new(),
         })
     }
 

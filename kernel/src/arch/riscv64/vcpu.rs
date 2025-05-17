@@ -12,7 +12,7 @@ use starina::vcpu::LoadInst;
 use starina::vcpu::VCPU_EXIT_NONE;
 use starina::vcpu::VCPU_EXIT_PAGE_FAULT;
 use starina::vcpu::VCPU_EXIT_REBOOT;
-use starina::vcpu::VCpuExitState;
+use starina::vcpu::VCpuRunState;
 
 use super::get_cpuvar;
 use crate::arch::riscv64::csr::StvecMode;
@@ -454,25 +454,29 @@ impl Mutable {
             }
             // System reset
             (0x53525354, 0x00) => {
-                current_thread().exit_vcpu();
-                let mut exit = self.exit.take().unwrap();
-                exit.write(
-                    &Isolation::InKernel,
-                    0,
-                    VCpuExitState {
-                        irqs: 0, // FIXME: Do not override IRQ
-                        reason: VCPU_EXIT_REBOOT,
-                        info: ExitInfo { none: () },
-                    },
-                );
-
-                // FIXME:
+                self.trigger_vm_exit(VCPU_EXIT_REBOOT, ExitInfo::empty());
                 Ok(0)
             }
             _ => {
                 panic!("SBI: unknown eid={:x}, fid={:x}", eid, fid);
             }
         }
+    }
+
+    fn trigger_vm_exit(&mut self, exit_reason: u8, exit_info: ExitInfo) {
+        current_thread().exit_vcpu();
+
+        let mut exit = self.exit.take().expect("tried to VM-exit twice");
+        exit.write(
+            &Isolation::InKernel,
+            offset_of!(VCpuRunState, exit_reason),
+            exit_reason,
+        );
+        exit.write(
+            &Isolation::InKernel,
+            offset_of!(VCpuRunState, exit_info),
+            exit_info,
+        );
     }
 }
 
@@ -687,26 +691,16 @@ fn handle_guest_page_fault(
         return;
     }
 
-    // FIXME: isolation
-    current_thread().exit_vcpu();
-    let mut exit = mutable.exit.take().unwrap();
-    exit.write(
-        &Isolation::InKernel,
-        0,
-        VCpuExitState {
-            irqs: 0, // FIXME: Do not override IRQ
-            reason: VCPU_EXIT_PAGE_FAULT,
-            info: ExitInfo {
-                page_fault: ExitPageFault {
-                    gpaddr,
-                    data,
-                    kind,
-                    width,
-                    load_inst,
-                    inst_len,
-                },
-            },
-        },
+    mutable.trigger_vm_exit(
+        VCPU_EXIT_PAGE_FAULT,
+        ExitInfo::page_fault(ExitPageFault {
+            gpaddr,
+            data,
+            kind,
+            width,
+            load_inst,
+            inst_len,
+        }),
     );
 }
 
@@ -781,7 +775,7 @@ impl VCpu {
             return Err(ErrorCode::InUse);
         }
 
-        let exit_state: VCpuExitState = match exit.read(&Isolation::InKernel, 0) {
+        let run_state: VCpuRunState = match exit.read(&Isolation::InKernel, 0) {
             Ok(exit_state) => exit_state,
             Err(e) => {
                 debug_warn!("failed to read exit state: {:?}", e);
@@ -789,8 +783,8 @@ impl VCpu {
             }
         };
 
-        if exit_state.irqs != 0 {
-            mutable.plic.update(exit_state.irqs);
+        if run_state.irqs != 0 {
+            mutable.plic.update(run_state.irqs);
         }
 
         // FIXME:
@@ -799,9 +793,9 @@ impl VCpu {
             ptr as *mut Context
         };
 
-        match exit_state.reason {
+        match run_state.exit_reason {
             VCPU_EXIT_PAGE_FAULT => {
-                let page_fault = unsafe { &exit_state.info.page_fault };
+                let page_fault = run_state.exit_info.as_page_fault();
 
                 unsafe {
                     (*context).sepc += page_fault.inst_len as u64;
@@ -841,14 +835,14 @@ impl VCpu {
                     },
                     ExitPageFaultKind::Store => {}
                     _ => {
-                        panic!("unknown exit page fault kind: {:?}", exit_state.reason);
+                        panic!("unknown exit page fault kind: {:?}", run_state.exit_reason);
                         return Err(ErrorCode::InvalidState);
                     }
                 }
             }
             VCPU_EXIT_NONE => {}
             _ => {
-                trace!("unknown exit reason: {}", exit_state.reason);
+                trace!("unknown exit reason: {}", run_state.exit_reason);
                 return Err(ErrorCode::InvalidState);
             }
         }

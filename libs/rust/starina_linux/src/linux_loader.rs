@@ -1,5 +1,4 @@
 use starina::address::GPAddr;
-use starina::error::ErrorCode;
 use starina::prelude::*;
 
 use crate::guest_memory::GuestMemory;

@@ -2,7 +2,7 @@ use core::fmt;
 
 use starina::error::ErrorCode;
 use starina::poll::Readiness;
-use starina_types::vcpu::VCpuExitState;
+use starina_types::vcpu::VCpuRunState;
 
 use crate::arch;
 use crate::handle::Handleable;
