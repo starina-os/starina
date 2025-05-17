@@ -726,7 +726,7 @@ impl VCpu {
 
         let mut hstatus = 0;
         hstatus |= 1 << 7; // SPV
-        hstatus |= 1 << 21; // VTW
+        // hstatus |= 1 << 21; // VTW
         hstatus |= (3 << 13); // FP
 
         let mut sstatus = 0;
