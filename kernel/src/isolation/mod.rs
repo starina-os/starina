@@ -13,6 +13,7 @@ pub enum IsolationHeap {
 pub enum IsolationHeapMut {
     InKernel { ptr: *mut u8, len: usize },
 }
+
 impl IsolationHeap {
     pub fn read_to_vec(
         &self,
@@ -40,6 +41,12 @@ impl IsolationHeap {
 }
 
 impl IsolationHeapMut {
+    pub fn read<T: Copy>(&self, isolation: &Isolation, offset: usize) -> Result<T, ErrorCode> {
+        assert!(matches!(isolation, Isolation::InKernel));
+        let IsolationHeapMut::InKernel { ptr, .. } = self;
+        unsafe { Ok(core::ptr::read(ptr.add(offset) as *const T)) }
+    }
+
     pub fn write<T: Copy>(
         &mut self,
         isolation: &Isolation,
@@ -72,3 +79,6 @@ impl IsolationHeapMut {
         Ok(())
     }
 }
+
+unsafe impl Send for IsolationHeap {}
+unsafe impl Send for IsolationHeapMut {}

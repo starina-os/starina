@@ -193,6 +193,14 @@ pub fn user_entry(thread: *mut crate::arch::Thread) -> ! {
         asm!("csrw sstatus, {0}", in(reg) sstatus);
     }
 
+    // Clear SPV to go back to HS-mode.
+    unsafe {
+        let mut hstatus: u64;
+        asm!("csrr {0}, hstatus", out(reg) hstatus);
+        hstatus &= !(1 << 7);
+        asm!("csrw hstatus, {0}", in(reg) hstatus);
+    }
+
     unsafe {
         asm!(
             "sd a0, {context_offset}(tp)", // Update CpuVar.arch.context

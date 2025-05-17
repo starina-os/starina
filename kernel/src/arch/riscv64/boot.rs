@@ -66,6 +66,8 @@ pub fn percpu_init() {
         asm!("csrw sie, {}", in(reg) sie);
     }
 
+    super::vcpu::init();
+
     use_plic(|plic| {
         plic.init_per_cpu(get_cpuvar().cpu_id);
     });

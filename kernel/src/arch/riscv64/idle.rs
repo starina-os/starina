@@ -72,8 +72,6 @@ pub fn halt() -> ! {
 }
 
 pub fn idle() -> ! {
-    trace!("idle");
-
     if cfg!(feature = "exit-on-idle") {
         halt();
         panic!("failed to exit on idle");
@@ -89,6 +87,7 @@ pub fn idle() -> ! {
         asm!("csrsi sstatus, 1 << 1");
     }
 
+    info!("idle");
     loop {
         unsafe {
             asm!("wfi");

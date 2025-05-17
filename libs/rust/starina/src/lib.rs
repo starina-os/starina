@@ -17,11 +17,13 @@ pub mod collections;
 pub mod eventloop;
 pub mod folio;
 pub mod handle;
+pub mod hvspace;
 pub mod interrupt;
 pub mod iobus;
 pub mod message;
 pub mod poll;
 pub mod sync;
+pub mod vcpu;
 
 pub mod prelude;
 pub mod syscall;
