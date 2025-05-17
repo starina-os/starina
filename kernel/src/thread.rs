@@ -5,6 +5,7 @@ use starina_types::error::ErrorCode;
 use starina_types::syscall::RetVal;
 
 use crate::arch;
+use crate::arch::VmSpace;
 use crate::poll::Poll;
 use crate::process::KERNEL_PROCESS;
 use crate::process::Process;
@@ -12,6 +13,7 @@ use crate::refcount::SharedRef;
 use crate::scheduler::GLOBAL_SCHEDULER;
 use crate::spinlock::SpinLock;
 use crate::syscall::SyscallResult;
+use crate::vcpu::VCpu;
 
 static NUM_THREADS: AtomicUsize = AtomicUsize::new(0);
 
@@ -19,6 +21,9 @@ static NUM_THREADS: AtomicUsize = AtomicUsize::new(0);
 pub enum ThreadState {
     Runnable(Option<RetVal>),
     BlockedByPoll(SharedRef<Poll>),
+    RunVCpu(SharedRef<VCpu>),
+    IdleVCpu(SharedRef<VCpu>),
+    ExitVCpu(SharedRef<VCpu>),
     Exited,
 }
 
@@ -32,6 +37,9 @@ impl Mutable {
         &raw const self.arch as *mut _
     }
 }
+
+use alloc::vec::Vec;
+pub static TIMER_QUEUE: SpinLock<Vec<SharedRef<Thread>>> = SpinLock::new(Vec::new());
 
 pub struct Thread {
     mutable: SpinLock<Mutable>,
@@ -80,6 +88,11 @@ impl Thread {
 
     pub fn set_state(self: &SharedRef<Thread>, new_state: ThreadState) {
         let mut mutable = self.mutable.lock();
+        debug_assert!(matches!(
+            mutable.state,
+            ThreadState::Runnable(_) | ThreadState::BlockedByPoll(_)
+        ));
+
         let was_blocked = !matches!(mutable.state, ThreadState::Runnable(_));
 
         // Update the thread's state.
@@ -89,6 +102,38 @@ impl Thread {
         if was_blocked && matches!(mutable.state, ThreadState::Runnable(_)) {
             GLOBAL_SCHEDULER.push(self.clone());
         }
+    }
+
+    pub fn resume_from_idle_vcpu(self: &SharedRef<Self>) {
+        let mut mutable = self.mutable.lock();
+        let vcpu = match &mutable.state {
+            ThreadState::IdleVCpu(vcpu) => vcpu,
+            _ => panic!("thread is not idle"),
+        };
+
+        mutable.state = ThreadState::RunVCpu(vcpu.clone());
+        GLOBAL_SCHEDULER.push(self.clone());
+    }
+
+    pub fn idle_vcpu(self: &SharedRef<Self>) {
+        let mut mutable = self.mutable.lock();
+        let vcpu = match &mutable.state {
+            ThreadState::RunVCpu(vcpu) => vcpu,
+            _ => panic!("thread is not running a vcpu"),
+        };
+
+        TIMER_QUEUE.lock().push(self.clone());
+        mutable.state = ThreadState::IdleVCpu(vcpu.clone());
+    }
+
+    pub fn exit_vcpu(self: &SharedRef<Self>) {
+        let mut mutable = self.mutable.lock();
+        let vcpu = match &mutable.state {
+            ThreadState::RunVCpu(vcpu) => vcpu,
+            _ => panic!("thread is not running a vcpu"),
+        };
+
+        mutable.state = ThreadState::ExitVCpu(vcpu.clone());
     }
 }
 
@@ -110,7 +155,7 @@ pub fn switch_thread() -> ! {
             let is_idle = SharedRef::ptr_eq(&*current_thread, &cpuvar.idle_thread);
             let is_runnable = matches!(
                 current_thread.mutable.lock().state,
-                ThreadState::Runnable(_)
+                ThreadState::Runnable(_) | ThreadState::RunVCpu(_) | ThreadState::ExitVCpu(_)
             );
             (current_thread, is_idle, is_runnable)
         };
@@ -128,12 +173,15 @@ pub fn switch_thread() -> ! {
             arch::idle();
         };
 
+        // Make the next thread the current thread.
+        *current_thread = next;
+
         // Try unblocking the next thread.
         let arch_thread = {
-            let mut next_mutable = next.mutable.lock();
-            let retval = match &next_mutable.state {
+            let mut mutable = current_thread.mutable.lock();
+            let retval = match &mutable.state {
                 ThreadState::BlockedByPoll(poll) => {
-                    match poll.try_wait(&next) {
+                    match poll.try_wait(&current_thread) {
                         SyscallResult::Done(result) => {
                             // We've got an event. Resume the thread with a return
                             // value.
@@ -147,10 +195,25 @@ pub fn switch_thread() -> ! {
                         SyscallResult::Block(new_state) => {
                             // The thread is still blocked. We'll retry when the
                             // poll wakes us up again...
-                            next_mutable.state = new_state;
+                            mutable.state = new_state;
                             continue 'next_thread;
                         }
                     }
+                }
+                ThreadState::RunVCpu(vcpu) => {
+                    // Keep at least one reference to vcpu in the state to keep alive.
+                    let vcpu_ptr = unsafe { vcpu.arch_vcpu_ptr() };
+                    drop(mutable);
+                    drop(current_thread);
+                    arch::vcpu_entry(vcpu_ptr);
+                }
+                ThreadState::IdleVCpu(vcpu) => {
+                    continue 'next_thread;
+                }
+                ThreadState::ExitVCpu(vcpu) => {
+                    mutable.state = ThreadState::Runnable(None);
+                    // The return value from vcpu_run syscall.
+                    Some(RetVal::new(0))
                 }
                 ThreadState::Exited => {
                     continue 'next_thread;
@@ -160,7 +223,7 @@ pub fn switch_thread() -> ! {
 
             // The thread is runnable. Get ready to restore the thread's context.
             unsafe {
-                let arch = next_mutable.arch_thread_ptr();
+                let arch = mutable.arch_thread_ptr();
 
                 // If we're returning from a system call, set the return value.
                 if let Some(retval) = retval {
@@ -172,10 +235,7 @@ pub fn switch_thread() -> ! {
         };
 
         // Switch to the next thread's address space.
-        next.process().vmspace().switch();
-
-        // Make the next thread the current thread.
-        *current_thread = next;
+        current_thread.process().vmspace().switch();
 
         // Execute the pending continuation if any.
         drop(current_thread);

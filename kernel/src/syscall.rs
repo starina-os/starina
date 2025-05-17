@@ -1,4 +1,5 @@
 use starina::address::DAddr;
+use starina::address::GPAddr;
 use starina::address::VAddr;
 use starina::interrupt::Irq;
 use starina::interrupt::IrqMatcher;
@@ -10,6 +11,7 @@ use starina_types::message::MESSAGE_NUM_HANDLES_MAX;
 use starina_types::message::MessageInfo;
 use starina_types::poll::Readiness;
 use starina_types::syscall::*;
+use starina_types::vcpu::VCpuRunState;
 use starina_types::vmspace::PageProtect;
 
 use crate::arch;
@@ -18,6 +20,7 @@ use crate::channel::Channel;
 use crate::cpuvar::current_thread;
 use crate::folio::Folio;
 use crate::handle::Handle;
+use crate::hvspace::HvSpace;
 use crate::interrupt::Interrupt;
 use crate::iobus::IoBus;
 use crate::isolation::IsolationHeap;
@@ -27,6 +30,7 @@ use crate::refcount::SharedRef;
 use crate::thread::Thread;
 use crate::thread::ThreadState;
 use crate::thread::switch_thread;
+use crate::vcpu::VCpu;
 use crate::vmspace::VmSpace;
 
 pub enum SyscallResult {
@@ -238,6 +242,65 @@ fn interrupt_ack(current: &SharedRef<Thread>, handle: HandleId) -> Result<(), Er
     Ok(())
 }
 
+fn hvspace_create(current: &SharedRef<Thread>) -> Result<HandleId, ErrorCode> {
+    let hvspace = HvSpace::new()?;
+    let handle = Handle::new(
+        SharedRef::new(hvspace)?,
+        HandleRights::READ | HandleRights::WRITE,
+    );
+    let mut handle_table = current.process().handles().lock();
+    let handle_id = handle_table.insert(handle)?;
+    Ok(handle_id)
+}
+
+fn hvspace_map(
+    current: &SharedRef<Thread>,
+    hvspace_handle: HandleId,
+    gpaddr: GPAddr,
+    folio_handle: HandleId,
+    len: usize,
+    prot: PageProtect,
+) -> Result<(), ErrorCode> {
+    let mut handle_table = current.process().handles().lock();
+    let mut hvspace = handle_table.get::<HvSpace>(hvspace_handle)?;
+    let folio = handle_table.get::<Folio>(folio_handle)?;
+    hvspace.map(gpaddr, folio.into_object(), len, prot)?;
+    Ok(())
+}
+
+fn vcpu_create(
+    current: &SharedRef<Thread>,
+    hvspace_handle: HandleId,
+    entry: usize,
+    arg0: usize,
+    arg1: usize,
+) -> Result<HandleId, ErrorCode> {
+    let mut handle_table = current.process().handles().lock();
+    let hvspace = handle_table.get::<HvSpace>(hvspace_handle)?;
+    let vcpu = VCpu::new(hvspace.into_object(), entry, arg0, arg1)?;
+    let handle = Handle::new(SharedRef::new(vcpu)?, HandleRights::EXEC);
+    let handle_id = handle_table.insert(handle)?;
+    Ok(handle_id)
+}
+
+fn vcpu_run(
+    current: &SharedRef<Thread>,
+    vcpu_handle: HandleId,
+    exit: IsolationHeapMut,
+) -> Result<ThreadState, ErrorCode> {
+    let mut handle_table = current.process().handles().lock();
+    let vcpu = handle_table.get::<VCpu>(vcpu_handle)?;
+    if !vcpu.is_capable(HandleRights::EXEC) {
+        return Err(ErrorCode::NotAllowed);
+    }
+
+    // FIXME: Better isolation heap API
+    vcpu.update(exit)?;
+
+    let new_state = ThreadState::RunVCpu(vcpu.into_object());
+    Ok(new_state)
+}
+
 fn do_syscall(
     a0: isize,
     a1: isize,
@@ -341,6 +404,36 @@ fn do_syscall(
             let handle = HandleId::from_raw_isize(a0)?;
             interrupt_ack(&current, handle)?;
             Ok(SyscallResult::Done(RetVal::new(0)))
+        }
+        SYS_HVSPACE_CREATE => {
+            let ret = hvspace_create(&current)?;
+            Ok(SyscallResult::Done(ret.into()))
+        }
+        SYS_HVSPACE_MAP => {
+            let hvspace_handle = HandleId::from_raw_isize(a0)?;
+            let gpaddr = GPAddr::new(a1 as usize);
+            let folio_handle = HandleId::from_raw_isize(a2)?;
+            let len = a3 as usize;
+            let prot = PageProtect::from_raw_isize(a4)?;
+            hvspace_map(&current, hvspace_handle, gpaddr, folio_handle, len, prot)?;
+            Ok(SyscallResult::Done(RetVal::new(0)))
+        }
+        SYS_VCPU_CREATE => {
+            let hvspace_handle = HandleId::from_raw_isize(a0)?;
+            let entry = a1 as usize;
+            let arg0 = a2 as usize;
+            let arg1 = a3 as usize;
+            let ret = vcpu_create(&current, hvspace_handle, entry, arg0, arg1)?;
+            Ok(SyscallResult::Done(ret.into()))
+        }
+        SYS_VCPU_RUN => {
+            let vcpu_handle = HandleId::from_raw_isize(a0)?;
+            let exit = IsolationHeapMut::InKernel {
+                ptr: a1 as *mut u8,
+                len: size_of::<VCpuRunState>(),
+            };
+            let new_state = vcpu_run(&current, vcpu_handle, exit)?;
+            Ok(SyscallResult::Block(new_state))
         }
         _ => {
             debug_warn!("unknown syscall: {}", n);

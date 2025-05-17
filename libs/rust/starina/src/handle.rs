@@ -15,7 +15,8 @@ impl OwnedHandle {
 
 impl Drop for OwnedHandle {
     fn drop(&mut self) {
-        warn!("dropping handle {:?}", self.0);
+        // FIXME:
+        // warn!("dropping handle {:?}", self.0);
     }
 }
 

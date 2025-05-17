@@ -42,3 +42,10 @@ pub fn console_putchar(c: u8) {
         let _ = sbi_call(c as c_long, 0, 0, 0, 0, 0, 0, 1);
     }
 }
+
+pub fn set_timer(time: u64) {
+    // info!("set_timer: time={:x}", time);
+    unsafe {
+        let _ = sbi_call(time as c_long, 0, 0, 0, 0, 0, 0, 0);
+    }
+}
