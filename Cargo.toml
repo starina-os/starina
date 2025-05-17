@@ -5,6 +5,7 @@ members = [
     "libs/rust/*",
     "apps/drivers/virtio_net",
     "apps/servers/tcpip",
+    "apps/bin/catsay",
     "apps/bin/http_server",
 ]
 
@@ -23,6 +24,7 @@ serde_json = { version = "1", default-features = false, features = ["alloc"] }
 serde_bytes = { version = "0.11.17", default-features = false }
 toml = "0.8.20"
 fdt-rs = { version = "0", default-features = false }
+vm-fdt = { version = "0.3.0", default-features = false }
 
 kernel = { path = "kernel" }
 starina = { path = "libs/rust/starina" }
@@ -30,8 +32,10 @@ starina_types = { path = "libs/rust/starina_types" }
 starina_utils = { path = "libs/rust/starina_utils" }
 starina_driver_sdk = { path = "libs/rust/driver_sdk" }
 starina_build_sdk = { path = "libs/rust/build_sdk" }
+starina_linux = { path = "libs/rust/starina_linux" }
 virtio = { path = "libs/rust/virtio" }
 
 virtio_net = { path = "apps/drivers/virtio_net" }
 tcpip = { path = "apps/servers/tcpip" }
 http_server = { path = "apps/bin/http_server" }
+catsay = { path = "apps/bin/catsay" }
