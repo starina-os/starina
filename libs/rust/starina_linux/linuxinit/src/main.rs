@@ -27,7 +27,6 @@ async fn main() {
     )
     .expect("failed to mount virtio-fs");
 
-    eprintln!("[linuxinit] opening files");
     let command_json_file = File::open("/virtfs/command").expect("failed to open /virtfs/command");
 
     let stdin_file = OpenOptions::new()
@@ -40,10 +39,8 @@ async fn main() {
         .open("/virtfs/stdout")
         .expect("failed to open /virtfs/stdout");
 
-    eprintln!("[linuxinit] parsing command");
     let command_json: CommandJson =
         serde_json::from_reader(command_json_file).expect("failed to parse /virtfs/command");
-    eprintln!("command: {:?}", command_json);
 
     let mut cmd = Command::new(&command_json.program)
         .args(&command_json.args)
@@ -52,7 +49,6 @@ async fn main() {
         .spawn()
         .expect("failed to spawn command");
 
-    eprintln!("command: {:?}", cmd);
     let exit_status = cmd.wait().await.expect("failed to wait on command");
     eprintln!("command exited with status: {:?}", exit_status);
 
