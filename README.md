@@ -42,7 +42,7 @@ riscv64-elf-gdb -ex bt
 
 ## Is it Linux or POSIX compatible?
 
-No. Starina provides completely original APIs and fresh new development experiences. However, to make it easier to adapt to Starina, We plan to implement a [WSL2-like](https://learn.microsoft.com/en-us/windows/wsl/about#what-is-wsl-2) seamless Linux environment based on real Linux microVM + lightweight integration layer (akin to [LWK](https://en.wikipedia.org/wiki/Lightweight_kernel_operating_system) in [supercomputing](https://link.springer.com/book/10.1007/978-981-13-6624-6)).
+Starina provides a library which enables you to run Linux binaries in a lightweight VM similar to [WSL2](https://learn.microsoft.com/en-us/windows/wsl/about#what-is-wsl-2), in a `std::process::Command`-like API. See [the blog post](https://seiya.me/blog/hypervisor-as-a-library) for more details.
 
 ## Why Rust?
 
