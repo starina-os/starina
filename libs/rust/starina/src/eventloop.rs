@@ -40,6 +40,11 @@ pub trait Dispatcher<St> {
     fn add_interrupt(&self, state: St, interrupt: Interrupt) -> Result<(), ErrorCode>;
 }
 
+/// Replies (or responds) to a call.
+///
+/// This is similar to `resolve` and `reject` in JavaScript promises: this
+/// object provides `reply` and `abort` respectively to complete a call
+/// asynchronously.
 pub struct Completer<M>
 where
     M: Replyable,
@@ -65,6 +70,7 @@ where
         }
     }
 
+    /// Reply with a message. This typically means successful completion of a call.
     pub fn reply(mut self, message: M) -> Result<(), ErrorCode> {
         #[cfg(debug_assertions)]
         {
@@ -74,6 +80,7 @@ where
         self.sender.reply(self.call_id, message)
     }
 
+    /// Reply with an abort message. This means an error occurred while processing a call.
     pub fn abort(mut self, error: ErrorCode) {
         #[cfg(debug_assertions)]
         {
@@ -101,6 +108,7 @@ where
     }
 }
 
+/// A trait defining the main loop of an application.
 pub trait EventLoop: Send + Sync {
     type Env;
     type State: Send + Sync;
