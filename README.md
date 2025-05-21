@@ -12,7 +12,9 @@ The ultimate goal of this project is to create a production-ready OS to be a goo
 
 ## Roadmap for 2025
 
-This year, we focus on cloud computing domain, where Starina will be used as a tiny runtime for Linux containers.
+This year, we focus on cloud computing domain, and serve [https://starina.dev](https://starina.dev) with a modern Web framework running on Starina's Linux compatibility layer:
+
+![Architecture](./docs/architecture.svg)
 
 - [x] Prototyping an microkernel-based OS in Rust: [https://starina.dev](https://starina.dev) is served by Starina on Linux/QEMU hypervisor!
 - [x] Redesign the OS based on lessons learned
@@ -42,7 +44,7 @@ riscv64-elf-gdb -ex bt
 
 ## Is it Linux or POSIX compatible?
 
-Starina provides a library which enables you to run Linux binaries in a lightweight VM similar to [WSL2](https://learn.microsoft.com/en-us/windows/wsl/about#what-is-wsl-2), in a `std::process::Command`-like API. See [the blog post](https://seiya.me/blog/hypervisor-as-a-library) for more details.
+Starina API is a completely new design and is not POSIX compatible. For those who wants to run existing applications, you can also run Linux containers (lightweight VMs under the hood) with an ergonomic `std::process::Command`-like API. See [the blog post](https://seiya.me/blog/hypervisor-as-a-library) for more details.
 
 ## Why Rust?
 
