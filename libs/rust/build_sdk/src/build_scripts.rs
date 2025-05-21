@@ -17,7 +17,14 @@ pub fn autogen() {
 
     let mut env_str = String::new();
     let mut parsed_env_str = String::new();
+
+    let mut sorted_envs = Vec::with_capacity(app_spec.env.len());
     for (env_name, ty) in app_spec.env.iter() {
+        sorted_envs.push((env_name, ty));
+    }
+    sorted_envs.sort_by_key(|(name, _)| name.as_str());
+
+    for (env_name, ty) in sorted_envs {
         let (env_ty, parsed_env_ty) = match ty {
             EnvType::Service {
                 service: service_name,
