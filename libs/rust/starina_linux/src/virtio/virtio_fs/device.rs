@@ -81,7 +81,14 @@ impl<'a> Reply<'a> {
 
     #[track_caller]
     pub fn reply_error(mut self, error: Errno) -> Result<usize, guest_memory::Error> {
-        debug_warn!("reply_error from: {:?}", core::panic::Location::caller());
+        let caller = core::panic::Location::caller();
+        debug_warn!(
+            "replying FUSE error: {:?} from {}:{}",
+            error,
+            caller.file(),
+            caller.line()
+        );
+
         let len = size_of::<FuseOutHeader>();
         self.desc_writer.write(FuseOutHeader {
             len: len as u32,

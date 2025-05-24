@@ -12,3 +12,4 @@ starina_utils = { workspace = true }
 serde_json = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 vm-fdt = { workspace = true, features = ["alloc"] }
+thiserror = { workspace = true }

@@ -111,7 +111,7 @@ impl<'a> DescChainWriter<'a> {
             Some(desc) => desc,
             None => {
                 debug_warn!("virtqueue: desc chain writer: no more descriptors");
-                return Err(guest_memory::Error::TooLong);
+                return Err(guest_memory::Error::OutOfRange);
             }
         };
 
@@ -125,7 +125,7 @@ impl<'a> DescChainWriter<'a> {
             Some(desc) => desc,
             None => {
                 debug_warn!("virtqueue: desc chain writer: no more descriptors");
-                return Err(guest_memory::Error::TooLong);
+                return Err(guest_memory::Error::OutOfRange);
             }
         };
 
@@ -147,7 +147,7 @@ impl<'a> DescChainReader<'a> {
             Some(desc) => desc,
             None => {
                 debug_warn!("virtqueue: desc chain reader: no more descriptors");
-                return Err(guest_memory::Error::TooLong);
+                return Err(guest_memory::Error::OutOfRange);
             }
         };
 
@@ -161,7 +161,7 @@ impl<'a> DescChainReader<'a> {
             Some(desc) => desc,
             None => {
                 debug_warn!("virtqueue: desc chain reader: no more descriptors");
-                return Err(guest_memory::Error::TooLong);
+                return Err(guest_memory::Error::OutOfRange);
             }
         };
 

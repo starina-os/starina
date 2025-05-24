@@ -41,6 +41,11 @@ impl<'a> ReadDirCompleter<'a> {
         let result = self.0.do_reply(Some(dirent), Some(filename));
         ReadResult(result)
     }
+
+    pub fn complete_with_eof(self) -> ReadResult {
+        let result = self.0.do_reply(None as Option<()>, None);
+        ReadResult(result)
+    }
 }
 
 /// The inode number.

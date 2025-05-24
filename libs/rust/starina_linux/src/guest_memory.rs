@@ -11,16 +11,24 @@ use starina::hvspace::HvSpace;
 use starina::prelude::*;
 use starina::vmspace::PageProtect;
 use starina::vmspace::VmSpace;
+use thiserror::Error;
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum Error {
+    #[error("failed to allocate folio: {0}")]
     AllocFolio(ErrorCode),
+    #[error("failed to create hypervisor space: {0}")]
     CreateHvSpace(ErrorCode),
+    #[error("failed to map memory: {0}")]
     VmSpaceMap(ErrorCode),
+    #[error("failed to map RAM: {0}")]
     MapRam(ErrorCode),
+    #[error("out of RAM")]
     OutOfRam,
+    #[error("invalid address: {0}")]
     InvalidAddress(GPAddr),
-    TooLong,
+    #[error("out of range")]
+    OutOfRange,
 }
 
 fn align_up(size: usize, align: usize) -> usize {
@@ -111,11 +119,11 @@ impl GuestMemory {
         }
 
         let Some(end) = gpaddr.checked_add(size) else {
-            return Err(Error::TooLong);
+            return Err(Error::OutOfRange);
         };
 
         if end > self.end {
-            return Err(Error::TooLong);
+            return Err(Error::OutOfRange);
         }
 
         let offset = gpaddr.as_usize() - self.start.as_usize();
