@@ -17,6 +17,11 @@ struct CommandJson {
 
 #[tokio::main]
 async fn main() {
+    eprintln!("[linuxinit] running");
+    let url = "http://httpbin.org/anything";
+    let response = reqwest::get(url).await.unwrap();
+    eprintln!("[linuxinit] response: {:?}", response);
+
     eprintln!("[linuxinit] mounting virtio-fs");
     mount(
         Some("virtfs"),
