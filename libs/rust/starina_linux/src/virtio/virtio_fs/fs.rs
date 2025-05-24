@@ -1,3 +1,4 @@
+use super::Error;
 use super::device::Reply;
 use super::fuse::Errno;
 use super::fuse::FuseDirent;
@@ -11,11 +12,10 @@ use super::fuse::FuseReadIn;
 use super::fuse::FuseReleaseIn;
 use super::fuse::FuseWriteIn;
 use super::fuse::FuseWriteOut;
-use crate::guest_memory;
 
 pub struct ReadCompleter<'a>(pub(super) Reply<'a>);
 
-pub struct ReadResult(pub(super) Result<usize, guest_memory::Error>);
+pub struct ReadResult(pub(super) Result<usize, Error>);
 
 impl<'a> ReadCompleter<'a> {
     pub fn error(self, error: Errno) -> ReadResult {

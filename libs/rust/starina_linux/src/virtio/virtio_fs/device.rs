@@ -3,6 +3,7 @@ use core::slice;
 
 use starina::prelude::*;
 
+use super::Error;
 use super::fs::FileSystem;
 use super::fs::INodeNo;
 use super::fs::ReadCompleter;
@@ -28,7 +29,6 @@ use super::fuse::FuseOutHeader;
 use super::fuse::FuseReadIn;
 use super::fuse::FuseReleaseIn;
 use super::fuse::FuseWriteIn;
-use crate::guest_memory;
 use crate::guest_memory::GuestMemory;
 use crate::virtio::device::VirtioDevice;
 use crate::virtio::virtqueue::DescChain;
@@ -53,7 +53,7 @@ impl<'a> Reply<'a> {
         mut self,
         out: Option<T>,
         bytes: Option<&[u8]>,
-    ) -> Result<usize, guest_memory::Error> {
+    ) -> Result<usize, Error> {
         let mut len = size_of::<FuseOutHeader>();
         if out.is_some() {
             len += size_of::<T>();
@@ -80,7 +80,7 @@ impl<'a> Reply<'a> {
     }
 
     #[track_caller]
-    pub fn reply_error(mut self, error: Errno) -> Result<usize, guest_memory::Error> {
+    pub fn reply_error(mut self, error: Errno) -> Result<usize, Error> {
         let caller = core::panic::Location::caller();
         debug_warn!(
             "replying FUSE error: {:?} from {}:{}",
@@ -99,11 +99,11 @@ impl<'a> Reply<'a> {
         Ok(len)
     }
 
-    pub fn reply_without_data(self) -> Result<usize, guest_memory::Error> {
+    pub fn reply_without_data(self) -> Result<usize, Error> {
         self.do_reply(None as Option<()>, None)
     }
 
-    pub fn reply<T: Copy>(self, out: T) -> Result<usize, guest_memory::Error> {
+    pub fn reply<T: Copy>(self, out: T) -> Result<usize, Error> {
         self.do_reply(Some(out), None)
     }
 }
@@ -124,11 +124,7 @@ impl VirtioFs {
         Self { fs }
     }
 
-    fn do_init(
-        &self,
-        mut reader: DescChainReader<'_>,
-        reply: Reply<'_>,
-    ) -> Result<usize, guest_memory::Error> {
+    fn do_init(&self, mut reader: DescChainReader<'_>, reply: Reply<'_>) -> Result<usize, Error> {
         let init_in = reader.read::<FuseInitIn>()?;
 
         if init_in.major != 7 {
@@ -154,7 +150,7 @@ impl VirtioFs {
         in_header: FuseInHeader,
         mut reader: DescChainReader<'_>,
         reply: Reply<'_>,
-    ) -> Result<usize, guest_memory::Error> {
+    ) -> Result<usize, Error> {
         let filename_len = match (in_header.len as usize).checked_sub(size_of::<FuseInHeader>()) {
             Some(len) => len,
             None => return reply.reply_error(Errno::TODO),
@@ -182,7 +178,7 @@ impl VirtioFs {
         in_header: FuseInHeader,
         mut reader: DescChainReader<'_>,
         reply: Reply<'_>,
-    ) -> Result<usize, guest_memory::Error> {
+    ) -> Result<usize, Error> {
         let open_in = reader.read::<FuseOpenIn>()?;
         let ino = INodeNo::new(in_header.nodeid);
         match self.fs.open(ino, open_in) {
@@ -196,7 +192,7 @@ impl VirtioFs {
         in_header: FuseInHeader,
         mut reader: DescChainReader<'_>,
         reply: Reply<'_>,
-    ) -> Result<usize, guest_memory::Error> {
+    ) -> Result<usize, Error> {
         let getattr_in = reader.read::<FuseGetAttrIn>()?;
         let node_id = INodeNo::new(in_header.nodeid);
         match self.fs.getattr(node_id, getattr_in) {
@@ -210,7 +206,7 @@ impl VirtioFs {
         in_header: FuseInHeader,
         mut reader: DescChainReader<'_>,
         reply: Reply<'_>,
-    ) -> Result<usize, guest_memory::Error> {
+    ) -> Result<usize, Error> {
         let flush_in = reader.read::<FuseFlushIn>()?;
         let node_id = INodeNo::new(in_header.nodeid);
         match self.fs.flush(node_id, flush_in) {
@@ -224,7 +220,7 @@ impl VirtioFs {
         in_header: FuseInHeader,
         mut reader: DescChainReader<'_>,
         reply: Reply<'_>,
-    ) -> Result<usize, guest_memory::Error> {
+    ) -> Result<usize, Error> {
         let release_in = reader.read::<FuseReleaseIn>()?;
         let node_id = INodeNo::new(in_header.nodeid);
         match self.fs.release(node_id, release_in) {
@@ -238,7 +234,7 @@ impl VirtioFs {
         in_header: FuseInHeader,
         mut reader: DescChainReader<'_>,
         reply: Reply<'_>,
-    ) -> Result<usize, guest_memory::Error> {
+    ) -> Result<usize, Error> {
         let read_in = reader.read::<FuseReadIn>()?;
         let node_id = INodeNo::new(in_header.nodeid);
         let read_reply = ReadCompleter(reply);
@@ -251,7 +247,7 @@ impl VirtioFs {
         in_header: FuseInHeader,
         mut reader: DescChainReader<'_>,
         reply: Reply<'_>,
-    ) -> Result<usize, guest_memory::Error> {
+    ) -> Result<usize, Error> {
         let write_in = reader.read::<FuseWriteIn>()?;
         let node_id = INodeNo::new(in_header.nodeid);
         let buf = reader.read_zerocopy(write_in.size as usize)?;
@@ -266,7 +262,7 @@ impl VirtioFs {
         in_header: FuseInHeader,
         mut reader: DescChainReader<'_>,
         reply: Reply<'_>,
-    ) -> Result<usize, guest_memory::Error> {
+    ) -> Result<usize, Error> {
         let readdir_in = reader.read::<FuseReadIn>()?;
         let node_id = INodeNo::new(in_header.nodeid);
         let readdir_reply = ReadDirCompleter(reply);
