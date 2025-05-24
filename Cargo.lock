@@ -490,6 +490,7 @@ dependencies = [
  "starina",
  "starina_types",
  "starina_utils",
+ "thiserror",
  "vm-fdt",
 ]
 

@@ -50,7 +50,7 @@ pub fn boot_linux(fs: FileSystem) {
 
     let mut bus = Bus::new();
     let virtio_fs = VirtioFs::new(Box::new(fs));
-    let virtio_mmio_fs = VirtioMmio::new(irq_trigger.clone(), VIRTIO_FS_IRQ, virtio_fs).unwrap();
+    let virtio_mmio_fs = VirtioMmio::new(irq_trigger.clone(), VIRTIO_FS_IRQ, virtio_fs);
     bus.add_device(VIRTIO_FS_ADDR, VIRTIO_MMIO_SIZE, virtio_mmio_fs);
 
     // Fill registers that Linux expects:

@@ -63,7 +63,7 @@ impl<T: FileLike> INode for T {
         Ok(len as u32)
     }
 
-    fn readdir(&self, offset: u64, size: u32, completer: ReadDirCompleter) -> ReadResult {
+    fn readdir(&self, _offset: u64, _size: u32, completer: ReadDirCompleter) -> ReadResult {
         completer.error(Errno::ENOTDIR)
     }
 }
@@ -107,8 +107,7 @@ impl INode for Directory {
     fn readdir(&self, _offset: u64, _size: u32, completer: ReadDirCompleter) -> ReadResult {
         info!("readdir: offset={}, size={}", _offset, _size);
         let Some((name, dirent)) = self.files.iter().skip(0).next() else {
-            panic!("readdir: no more entries");
-            return completer.error(Errno::TODO);
+            return completer.complete_with_eof();
         };
 
         const DT_REG: u32 = 0x08;

@@ -1,3 +1,5 @@
+use core::fmt;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(isize)]
 pub enum ErrorCode {
@@ -37,5 +39,11 @@ impl From<isize> for ErrorCode {
         } else {
             ErrorCode::InvalidErrorCode
         }
+    }
+}
+
+impl fmt::Display for ErrorCode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
     }
 }

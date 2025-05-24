@@ -1,4 +1,3 @@
-use starina::error::ErrorCode;
 use starina::prelude::*;
 use starina::sync::Mutex;
 
@@ -53,12 +52,6 @@ const REG_CONFIG_START: u64 = 0x100;
 
 const VIRTIO_F_VERSION_1: u64 = 1 << 32;
 
-#[derive(Debug)]
-pub enum Error {
-    AllocFolio(ErrorCode),
-    VmSpaceMap(ErrorCode),
-}
-
 struct Mutable {
     device_features_select: u32,
     driver_features_select: u32,
@@ -77,18 +70,14 @@ pub struct VirtioMmio {
 }
 
 impl VirtioMmio {
-    pub fn new<D: VirtioDevice + 'static>(
-        irq_trigger: IrqTrigger,
-        irq: u8,
-        device: D,
-    ) -> Result<Self, Error> {
+    pub fn new<D: VirtioDevice + 'static>(irq_trigger: IrqTrigger, irq: u8, device: D) -> Self {
         let num_queues = device.num_queues();
         let mut queues = Vec::with_capacity(num_queues as usize);
         for _ in 0..num_queues {
             queues.push(Virtqueue::new());
         }
 
-        Ok(Self {
+        Self {
             irq,
             irq_trigger,
             device: Box::new(device),
@@ -100,7 +89,7 @@ impl VirtioMmio {
                 queue_select: 0,
                 queues,
             }),
-        })
+        }
     }
 }
 

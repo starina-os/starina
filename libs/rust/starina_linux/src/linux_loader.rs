@@ -1,12 +1,16 @@
 use starina::address::GPAddr;
 use starina::prelude::*;
+use thiserror::Error;
 
 use crate::guest_memory::GuestMemory;
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum Error {
+    #[error("failed to allocate RAM: {0}")]
     AllocRam(crate::guest_memory::Error),
+    #[error("image is too short")]
     TooShortImage,
+    #[error("invalid magic")]
     InvalidMagic,
 }
 
