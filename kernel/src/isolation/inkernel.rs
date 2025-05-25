@@ -29,7 +29,6 @@ impl Isolation for InKernel {
         let raw_ptr = ptr.0 as *mut u8;
         let dst = unsafe { slice::from_raw_parts_mut(raw_ptr, src.len()) };
         dst.copy_from_slice(src);
-
         Ok(())
     }
 }

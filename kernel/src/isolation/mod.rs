@@ -41,6 +41,7 @@ fn checked_ptr(
     Ok(IsolationPtr::new(ptr))
 }
 
+/// A slice in an isolation space.
 pub struct IsolationSlice {
     ptr: IsolationPtr,
     len: usize,
@@ -77,6 +78,7 @@ impl IsolationSlice {
     }
 }
 
+/// A mutable slice in an isolation space.
 pub struct IsolationSliceMut {
     slice: IsolationSlice,
 }
