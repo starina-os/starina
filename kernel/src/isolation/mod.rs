@@ -1,5 +1,6 @@
 use alloc::vec::Vec;
 use core::mem::MaybeUninit;
+use core::ops::Deref;
 use core::slice;
 
 use starina_types::error::ErrorCode;
@@ -28,12 +29,12 @@ fn checked_ptr(
     offset: usize,
     len: usize,
 ) -> Result<IsolationPtr, ErrorCode> {
-    // Check overflow.
+    // Check overflows.
     let ptr = base_ptr.checked_add(offset).ok_or(ErrorCode::TooLarge)?;
+    let end_offset = offset.checked_add(len).ok_or(ErrorCode::TooLarge)?;
 
-    // Check out of bounds.
-    // TODO: Should we consider overflow?
-    if offset + len > max_len {
+    // Check if it's within the slice bounds.
+    if end_offset > max_len {
         return Err(ErrorCode::TooLarge);
     }
 
@@ -54,8 +55,8 @@ impl IsolationSlice {
         let checked_ptr = checked_ptr(self.ptr.0, self.len, offset, size_of::<T>())?;
 
         let mut buf = MaybeUninit::uninit();
-        let buf_slice =
-            unsafe { slice::from_raw_parts_mut(buf.as_mut_ptr() as *mut u8, size_of::<T>()) };
+        let buf_ptr = buf.as_mut_ptr() as *mut u8;
+        let buf_slice = unsafe { slice::from_raw_parts_mut(buf_ptr, size_of::<T>()) };
 
         isolation.read_bytes(checked_ptr, buf_slice)?;
         Ok(unsafe { buf.assume_init() })
@@ -77,18 +78,14 @@ impl IsolationSlice {
 }
 
 pub struct IsolationSliceMut {
-    ptr: IsolationPtr,
-    len: usize,
+    slice: IsolationSlice,
 }
 
 impl IsolationSliceMut {
     pub const fn new(ptr: IsolationPtr, len: usize) -> Self {
-        Self { ptr, len }
-    }
-
-    pub fn read<T: Copy>(&self, isolation: &dyn Isolation, offset: usize) -> Result<T, ErrorCode> {
-        let slice = IsolationSlice::new(self.ptr, self.len);
-        slice.read(isolation, offset)
+        Self {
+            slice: IsolationSlice::new(ptr, len),
+        }
     }
 
     pub fn write<T: Copy>(
@@ -97,11 +94,9 @@ impl IsolationSliceMut {
         offset: usize,
         value: T,
     ) -> Result<(), ErrorCode> {
-        let checked_ptr = checked_ptr(self.ptr.0, self.len, offset, size_of::<T>())?;
-
-        let value_bytes =
-            unsafe { slice::from_raw_parts_mut(&value as *const T as *mut u8, size_of::<T>()) };
-
+        let checked_ptr = checked_ptr(self.slice.ptr.0, self.slice.len, offset, size_of::<T>())?;
+        let value_ptr = &value as *const T as *mut u8;
+        let value_bytes = unsafe { slice::from_raw_parts_mut(value_ptr, size_of::<T>()) };
         isolation.write_bytes(checked_ptr, value_bytes)?;
         Ok(())
     }
@@ -112,9 +107,16 @@ impl IsolationSliceMut {
         offset: usize,
         slice: &[u8],
     ) -> Result<(), ErrorCode> {
-        let checked_ptr = checked_ptr(self.ptr.0, self.len, offset, slice.len())?;
-
+        let checked_ptr = checked_ptr(self.slice.ptr.0, self.slice.len, offset, slice.len())?;
         isolation.write_bytes(checked_ptr, slice)
+    }
+}
+
+impl Deref for IsolationSliceMut {
+    type Target = IsolationSlice;
+
+    fn deref(&self) -> &Self::Target {
+        &self.slice
     }
 }
 
