@@ -40,12 +40,12 @@ impl VCpu {
         &raw const self.arch as *mut _
     }
 
-    pub fn update(
+    pub fn apply_state(
         &self,
         isolation: &dyn Isolation,
-        exit: IsolationSliceMut,
+        run_state: IsolationSliceMut,
     ) -> Result<(), ErrorCode> {
-        self.arch.update(isolation, exit)
+        self.arch.apply_state(isolation, run_state)
     }
 }
 
