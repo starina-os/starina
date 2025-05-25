@@ -2,6 +2,23 @@ use alloc::vec::Vec;
 
 use starina_types::error::ErrorCode;
 
+/// A pointer in an isolation space.
+///
+/// This is an opaque value and depends on the isolation implementation. For example,
+/// it is a raw kernel pointer in the in-kernel isolation, a user pointer in the
+/// user-space isolation, or a memory offset in WebAssembly isolation.
+pub struct IsolationPtr(usize);
+
+/// Memory isolation, such as in-kernel isolation or user-space isolation.
+///
+/// This trait defines how to access memory in an isolation space. The actual
+/// reading and writing operations are defined in the `IsolationHeap` and
+/// `IsolationHeapMut` types respectively.
+pub trait Isolation {
+    fn isolation_heap(&self, ptr: IsolationPtr, len: usize) -> IsolationHeap;
+    fn isolation_heap_mut(&mut self, ptr: IsolationPtr, len: usize) -> IsolationHeapMut;
+}
+
 pub enum IsolationHeap {
     InKernel { ptr: *const u8, len: usize },
 }
