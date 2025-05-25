@@ -125,7 +125,7 @@ impl Channel {
         // Copy message data into the kernel memory. Do this before locking
         // the peer channel for better performance. This memory copy might
         // take a long time.
-        let data = msgbuffer.read_to_vec(isolation, 0, msginfo.data_len())?;
+        let data = msgbuffer.read_to_vec(0, msginfo.data_len())?;
 
         // Move handles.
         //
@@ -142,7 +142,7 @@ impl Channel {
             //             not too many ones.
             let mut handle_ids: ArrayVec<HandleId, MESSAGE_NUM_HANDLES_MAX> = ArrayVec::new();
             for i in 0..num_handles {
-                let handle_id = handles.read(isolation, i * size_of::<HandleId>())?;
+                let handle_id = handles.read(i * size_of::<HandleId>())?;
 
                 // SAFETY: unwrap() won't panic because it should have enough
                 //         capacity up to MESSAGE_HANDLES_MAX_COUNT.
@@ -223,11 +223,11 @@ impl Channel {
         for (i, any_handle) in entry.handles.drain(..).enumerate() {
             // TODO: Define the expected behavior when it fails to add a handle.
             let handle_id = handle_table.insert(any_handle)?;
-            handles.write(isolation, i * size_of::<HandleId>(), handle_id)?;
+            handles.write(i * size_of::<HandleId>(), handle_id)?;
         }
 
         // Copy message data into the buffer.
-        msgbuffer.write_bytes(isolation, 0, &entry.data[0..entry.msginfo.data_len()])?;
+        msgbuffer.write_bytes(0, &entry.data[0..entry.msginfo.data_len()])?;
 
         Ok(entry.msginfo)
     }

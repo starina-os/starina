@@ -2,6 +2,10 @@ use alloc::vec::Vec;
 
 use starina_types::error::ErrorCode;
 
+mod inkernel;
+
+pub use inkernel::INKERNEL_ISOLATION;
+
 /// A pointer in an isolation space.
 ///
 /// This is an opaque value and depends on the isolation implementation. For example,
@@ -14,7 +18,7 @@ pub struct IsolationPtr(usize);
 /// This trait defines how to access memory in an isolation space. The actual
 /// reading and writing operations are defined in the `IsolationHeap` and
 /// `IsolationHeapMut` types respectively.
-pub trait Isolation {
+pub trait Isolation: Send + Sync {
     fn isolation_heap(&self, ptr: IsolationPtr, len: usize) -> IsolationHeap;
     fn isolation_heap_mut(&mut self, ptr: IsolationPtr, len: usize) -> IsolationHeapMut;
 }
@@ -64,13 +68,7 @@ impl IsolationHeapMut {
         Ok(())
     }
 
-    pub fn write_bytes(
-        &mut self,
-        isolation: &IsolationTy,
-        offset: usize,
-        slice: &[u8],
-    ) -> Result<(), ErrorCode> {
-        assert!(matches!(isolation, IsolationTy::InKernel));
+    pub fn write_bytes(&mut self, offset: usize, slice: &[u8]) -> Result<(), ErrorCode> {
         let IsolationHeapMut::InKernel { ptr, .. } = self;
         unsafe {
             core::ptr::copy(slice.as_ptr(), ptr.add(offset), slice.len());
