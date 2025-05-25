@@ -378,6 +378,16 @@ impl VmSpace {
     }
 
     pub fn switch(&self) {
+        let old_satp: u64;
+        unsafe {
+            asm!("csrr {}, satp", out(reg) old_satp);
+        }
+
+        if old_satp == self.satp {
+            trace!("switch: already in the same vmspace");
+            return;
+        }
+
         unsafe {
             // Do sfeence.vma before and even before switching the page
             // table to ensure all changes prior to this switch are visible.
