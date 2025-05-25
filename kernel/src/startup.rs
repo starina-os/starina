@@ -24,7 +24,6 @@ use crate::channel::Channel;
 use crate::handle::Handle;
 use crate::iobus::NOMMU_IOBUS;
 use crate::isolation;
-use crate::isolation::IsolationHeap;
 use crate::process::KERNEL_PROCESS;
 use crate::scheduler::GLOBAL_SCHEDULER;
 use crate::spinlock::SpinLock;

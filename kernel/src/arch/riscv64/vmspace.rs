@@ -378,6 +378,17 @@ impl VmSpace {
     }
 
     pub fn switch(&self) {
+        let old_satp: u64;
+        unsafe {
+            asm!("csrr {}, satp", out(reg) old_satp);
+        }
+
+        // Do nothing if the current CPU is already in the same page table so
+        // that we don't flush the TLB needlessly.
+        if old_satp == self.satp {
+            return;
+        }
+
         unsafe {
             // Do sfeence.vma before and even before switching the page
             // table to ensure all changes prior to this switch are visible.

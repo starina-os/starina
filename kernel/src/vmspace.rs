@@ -11,11 +11,6 @@ use crate::handle::Handleable;
 use crate::poll::Listener;
 use crate::refcount::SharedRef;
 
-pub static KERNEL_VMSPACE: spin::Lazy<SharedRef<VmSpace>> = spin::Lazy::new(|| {
-    let vmspace = VmSpace::new().expect("failed to create kernel vmspace");
-    SharedRef::new(vmspace).unwrap()
-});
-
 pub struct VmSpace {
     arch: arch::VmSpace,
 }

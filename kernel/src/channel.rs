@@ -14,8 +14,10 @@ use crate::cpuvar::current_thread;
 use crate::handle::AnyHandle;
 use crate::handle::HandleTable;
 use crate::handle::Handleable;
-use crate::isolation::IsolationHeap;
-use crate::isolation::IsolationHeapMut;
+use crate::isolation::Isolation;
+use crate::isolation::IsolationPtr;
+use crate::isolation::IsolationSlice;
+use crate::isolation::IsolationSliceMut;
 use crate::poll::Listener;
 use crate::poll::ListenerSet;
 use crate::refcount::SharedRef;
@@ -109,14 +111,12 @@ impl Channel {
 
     pub fn send(
         &self,
+        isolation: &dyn Isolation,
         handle_table: &mut HandleTable,
         msginfo: MessageInfo,
-        msgbuffer: &IsolationHeap,
-        handles: &IsolationHeap,
+        msgbuffer: IsolationSlice,
+        handles: IsolationSlice,
     ) -> Result<(), ErrorCode> {
-        let current_thread = current_thread();
-        let isolation = current_thread.process().isolation();
-
         if msginfo.data_len() > MESSAGE_DATA_LEN_MAX {
             debug_warn!("too large message data: {}", msginfo.data_len());
             return Err(ErrorCode::TooLarge);
@@ -175,12 +175,11 @@ impl Channel {
 
     pub fn recv(
         self: &SharedRef<Channel>,
+        isolation: &dyn Isolation,
         handle_table: &mut HandleTable,
-        msgbuffer: &mut IsolationHeapMut,
-        handles: &mut IsolationHeapMut,
+        msgbuffer: IsolationSliceMut,
+        handles: IsolationSliceMut,
     ) -> Result<MessageInfo, ErrorCode> {
-        let current_thread = current_thread();
-        let isolation = current_thread.process().isolation();
         let mut entry = {
             let mut mutable = self.mutable.lock();
             let entry = match mutable.queue.pop_front() {
