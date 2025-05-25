@@ -1,4 +1,9 @@
-use crate::isolation::Isolation;
+use core::slice;
+
+use starina::error::ErrorCode;
+
+use super::Isolation;
+use super::IsolationPtr;
 use crate::refcount::RefCounted;
 use crate::refcount::SharedRef;
 
@@ -13,16 +18,19 @@ impl InKernel {
 }
 
 impl Isolation for InKernel {
-    fn isolation_heap(&self, ptr: super::IsolationPtr, len: usize) -> super::IsolationHeap {
-        todo!()
+    fn read_bytes(&self, ptr: IsolationPtr, dst: &mut [u8]) -> Result<(), ErrorCode> {
+        let raw_ptr = ptr.0 as *const u8;
+        let src = unsafe { slice::from_raw_parts(raw_ptr, dst.len()) };
+        dst.copy_from_slice(src);
+        Ok(())
     }
 
-    fn isolation_heap_mut(
-        &mut self,
-        ptr: super::IsolationPtr,
-        len: usize,
-    ) -> super::IsolationHeapMut {
-        todo!()
+    fn write_bytes(&self, ptr: IsolationPtr, src: &[u8]) -> Result<(), ErrorCode> {
+        let raw_ptr = ptr.0 as *mut u8;
+        let dst = unsafe { slice::from_raw_parts_mut(raw_ptr, src.len()) };
+        dst.copy_from_slice(src);
+
+        Ok(())
     }
 }
 

@@ -23,8 +23,9 @@ use crate::handle::Handle;
 use crate::hvspace::HvSpace;
 use crate::interrupt::Interrupt;
 use crate::iobus::IoBus;
-use crate::isolation::IsolationHeap;
-use crate::isolation::IsolationHeapMut;
+use crate::isolation::IsolationPtr;
+use crate::isolation::IsolationSlice;
+use crate::isolation::IsolationSliceMut;
 use crate::poll::Poll;
 use crate::refcount::SharedRef;
 use crate::thread::Thread;
@@ -117,49 +118,42 @@ fn channel_send(
     current: &SharedRef<Thread>,
     ch: HandleId,
     msginfo: MessageInfo,
-    data: *const u8,
-    handles: *const HandleId,
+    data_ptr: IsolationPtr,
+    handles_ptr: IsolationPtr,
 ) -> Result<(), ErrorCode> {
-    let mut handle_table = current.process().handles().lock();
+    let process = current.process();
+    let isolation = process.isolation();
+    let mut handle_table = process.handles().lock();
     let ch = handle_table.get::<Channel>(ch)?;
 
     if !ch.is_capable(HandleRights::WRITE) {
         return Err(ErrorCode::NotAllowed);
     }
 
-    let data = IsolationHeap::InKernel {
-        ptr: data,
-        len: msginfo.data_len(),
-    };
-    let handles = IsolationHeap::InKernel {
-        ptr: handles as *const u8,
-        len: msginfo.num_handles(),
-    };
-    ch.send(&mut handle_table, msginfo, &data, &handles)
+    let data = IsolationSlice::new(data_ptr, msginfo.data_len() as usize);
+    let handles = IsolationSlice::new(handles_ptr, size_of::<HandleId>() * msginfo.num_handles());
+    ch.send(isolation, &mut handle_table, msginfo, data, handles)
 }
 
 fn channel_recv(
     current: &SharedRef<Thread>,
     handle: HandleId,
-    data: *mut u8,
-    handles: *mut HandleId,
+    data_ptr: IsolationPtr,
+    handles_ptr: IsolationPtr,
 ) -> Result<MessageInfo, ErrorCode> {
-    let mut handle_table = current.process().handles().lock();
+    let process = current.process();
+    let isolation = process.isolation();
+    let mut handle_table = process.handles().lock();
     let ch = handle_table.get::<Channel>(handle)?;
 
     if !ch.is_capable(HandleRights::READ) {
         return Err(ErrorCode::NotAllowed);
     }
 
-    let mut data = IsolationHeapMut::InKernel {
-        ptr: data,
-        len: MESSAGE_DATA_LEN_MAX,
-    };
-    let mut handles = IsolationHeapMut::InKernel {
-        ptr: handles as *mut u8,
-        len: MESSAGE_NUM_HANDLES_MAX,
-    };
-    let msginfo = ch.recv(&mut handle_table, &mut data, &mut handles)?;
+    let mut data = IsolationSliceMut::new(data_ptr, MESSAGE_DATA_LEN_MAX);
+    let mut handles =
+        IsolationSliceMut::new(handles_ptr, size_of::<HandleId>() * MESSAGE_NUM_HANDLES_MAX);
+    let msginfo = ch.recv(isolation, &mut handle_table, data, handles)?;
     Ok(msginfo)
 }
 
@@ -286,7 +280,7 @@ fn vcpu_create(
 fn vcpu_run(
     current: &SharedRef<Thread>,
     vcpu_handle: HandleId,
-    exit: IsolationHeapMut,
+    exit: IsolationSliceMut,
 ) -> Result<ThreadState, ErrorCode> {
     let mut handle_table = current.process().handles().lock();
     let vcpu = handle_table.get::<VCpu>(vcpu_handle)?;
@@ -294,8 +288,8 @@ fn vcpu_run(
         return Err(ErrorCode::NotAllowed);
     }
 
-    // FIXME: Better isolation heap API
-    vcpu.update(exit)?;
+    let isolation = current.process().isolation();
+    vcpu.update(isolation, exit)?;
 
     let new_state = ThreadState::RunVCpu(vcpu.into_object());
     Ok(new_state)
@@ -355,16 +349,16 @@ fn do_syscall(
         SYS_CHANNEL_SEND => {
             let ch = HandleId::from_raw_isize(a0)?;
             let msginfo = MessageInfo::from_raw_isize(a1)?;
-            let data = a2 as *const u8;
-            let handles = a3 as *const HandleId;
+            let data = IsolationPtr::new(a2 as usize);
+            let handles = IsolationPtr::new(a3 as usize);
             channel_send(&current, ch, msginfo, data, handles)?;
             Ok(SyscallResult::Done(RetVal::new(0)))
         }
         SYS_CHANNEL_RECV => {
             let handle = HandleId::from_raw_isize(a0)?;
-            let data = a1 as *mut u8;
-            let handles = a2 as *mut HandleId;
-            let msginfo = channel_recv(&current, handle, data, handles)?;
+            let data_ptr = IsolationPtr::new(a1 as usize);
+            let handles_ptr = IsolationPtr::new(a2 as usize);
+            let msginfo = channel_recv(&current, handle, data_ptr, handles_ptr)?;
             Ok(SyscallResult::Done(msginfo.into()))
         }
         SYS_VMSPACE_MAP => {
@@ -428,10 +422,8 @@ fn do_syscall(
         }
         SYS_VCPU_RUN => {
             let vcpu_handle = HandleId::from_raw_isize(a0)?;
-            let exit = IsolationHeapMut::InKernel {
-                ptr: a1 as *mut u8,
-                len: size_of::<VCpuRunState>(),
-            };
+            let exit_ptr = IsolationPtr::new(a1 as usize);
+            let exit = IsolationSliceMut::new(exit_ptr, size_of::<VCpuRunState>());
             let new_state = vcpu_run(&current, vcpu_handle, exit)?;
             Ok(SyscallResult::Block(new_state))
         }

@@ -1,4 +1,6 @@
 use alloc::vec::Vec;
+use core::mem::MaybeUninit;
+use core::slice;
 
 use starina_types::error::ErrorCode;
 
@@ -11,71 +13,115 @@ pub use inkernel::INKERNEL_ISOLATION;
 /// This is an opaque value and depends on the isolation implementation. For example,
 /// it is a raw kernel pointer in the in-kernel isolation, a user pointer in the
 /// user-space isolation, or a memory offset in WebAssembly isolation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct IsolationPtr(usize);
+
+impl IsolationPtr {
+    pub const fn new(ptr: usize) -> Self {
+        Self(ptr)
+    }
+}
+
+fn checked_ptr(
+    base_ptr: usize,
+    max_len: usize,
+    offset: usize,
+    len: usize,
+) -> Result<IsolationPtr, ErrorCode> {
+    // Check overflow.
+    let ptr = base_ptr.checked_add(offset).ok_or(ErrorCode::TooLarge)?;
+
+    // Check out of bounds.
+    // TODO: Should we consider overflow?
+    if offset + len > max_len {
+        return Err(ErrorCode::TooLarge);
+    }
+
+    Ok(IsolationPtr::new(ptr))
+}
+
+pub struct IsolationSlice {
+    ptr: IsolationPtr,
+    len: usize,
+}
+
+impl IsolationSlice {
+    pub const fn new(ptr: IsolationPtr, len: usize) -> Self {
+        Self { ptr, len }
+    }
+
+    pub fn read<T: Copy>(&self, isolation: &dyn Isolation, offset: usize) -> Result<T, ErrorCode> {
+        let checked_ptr = checked_ptr(self.ptr.0, self.len, offset, size_of::<T>())?;
+
+        let mut buf = MaybeUninit::uninit();
+        let buf_slice =
+            unsafe { slice::from_raw_parts_mut(buf.as_mut_ptr() as *mut u8, size_of::<T>()) };
+
+        isolation.read_bytes(checked_ptr, buf_slice)?;
+        Ok(unsafe { buf.assume_init() })
+    }
+
+    pub fn read_to_vec(
+        &self,
+        isolation: &dyn Isolation,
+        offset: usize,
+        len: usize,
+    ) -> Result<Vec<u8>, ErrorCode> {
+        let checked_ptr = checked_ptr(self.ptr.0, self.len, offset, len)?;
+
+        let mut buf = Vec::new();
+        buf.resize(len, 0);
+        isolation.read_bytes(checked_ptr, &mut buf)?;
+        Ok(buf)
+    }
+}
+
+pub struct IsolationSliceMut {
+    ptr: IsolationPtr,
+    len: usize,
+}
+
+impl IsolationSliceMut {
+    pub const fn new(ptr: IsolationPtr, len: usize) -> Self {
+        Self { ptr, len }
+    }
+
+    pub fn read<T: Copy>(&self, isolation: &dyn Isolation, offset: usize) -> Result<T, ErrorCode> {
+        let slice = IsolationSlice::new(self.ptr, self.len);
+        slice.read(isolation, offset)
+    }
+
+    pub fn write<T: Copy>(
+        &self,
+        isolation: &dyn Isolation,
+        offset: usize,
+        value: T,
+    ) -> Result<(), ErrorCode> {
+        let checked_ptr = checked_ptr(self.ptr.0, self.len, offset, size_of::<T>())?;
+
+        let value_bytes =
+            unsafe { slice::from_raw_parts_mut(&value as *const T as *mut u8, size_of::<T>()) };
+
+        isolation.write_bytes(checked_ptr, value_bytes)?;
+        Ok(())
+    }
+
+    pub fn write_bytes(
+        &self,
+        isolation: &dyn Isolation,
+        offset: usize,
+        slice: &[u8],
+    ) -> Result<(), ErrorCode> {
+        let checked_ptr = checked_ptr(self.ptr.0, self.len, offset, slice.len())?;
+
+        isolation.write_bytes(checked_ptr, slice)
+    }
+}
 
 /// Memory isolation, such as in-kernel isolation or user-space isolation.
 ///
-/// This trait defines how to access memory in an isolation space. The actual
-/// reading and writing operations are defined in the `IsolationHeap` and
-/// `IsolationHeapMut` types respectively.
+/// This trait defines how to access memory in an isolation space.
 pub trait Isolation: Send + Sync {
-    fn isolation_heap(&self, ptr: IsolationPtr, len: usize) -> IsolationHeap;
-    fn isolation_heap_mut(&mut self, ptr: IsolationPtr, len: usize) -> IsolationHeapMut;
+    fn read_bytes(&self, ptr: IsolationPtr, dst: &mut [u8]) -> Result<(), ErrorCode>;
+    fn write_bytes(&self, ptr: IsolationPtr, src: &[u8]) -> Result<(), ErrorCode>;
 }
-
-pub enum IsolationHeap {
-    InKernel { ptr: *const u8, len: usize },
-}
-
-pub enum IsolationHeapMut {
-    InKernel { ptr: *mut u8, len: usize },
-}
-
-impl IsolationHeap {
-    pub fn read_to_vec(&self, offset: usize, len: usize) -> Result<Vec<u8>, ErrorCode> {
-        let IsolationHeap::InKernel { ptr, .. } = self;
-        let slice = unsafe { core::slice::from_raw_parts(ptr.add(offset), len) };
-
-        let mut buf = Vec::new();
-        buf.try_reserve_exact(len)
-            .map_err(|_| ErrorCode::OutOfMemory)?;
-        buf.extend_from_slice(slice);
-
-        Ok(buf)
-    }
-
-    pub fn read<T: Copy>(&self, offset: usize) -> Result<T, ErrorCode> {
-        let IsolationHeap::InKernel { ptr, .. } = self;
-        unsafe { Ok(core::ptr::read(ptr.add(offset) as *const T)) }
-    }
-}
-
-impl IsolationHeapMut {
-    pub fn read<T: Copy>(&self, offset: usize) -> Result<T, ErrorCode> {
-        let IsolationHeapMut::InKernel { ptr, .. } = self;
-        unsafe { Ok(core::ptr::read(ptr.add(offset) as *const T)) }
-    }
-
-    pub fn write<T: Copy>(&mut self, offset: usize, value: T) -> Result<(), ErrorCode> {
-        let IsolationHeapMut::InKernel { ptr, .. } = self;
-        // TODO: size check
-        // TODO: wraparound check
-        // TODO: alignment check
-        unsafe {
-            core::ptr::write(ptr.add(offset) as *mut T, value);
-        }
-
-        Ok(())
-    }
-
-    pub fn write_bytes(&mut self, offset: usize, slice: &[u8]) -> Result<(), ErrorCode> {
-        let IsolationHeapMut::InKernel { ptr, .. } = self;
-        unsafe {
-            core::ptr::copy(slice.as_ptr(), ptr.add(offset), slice.len());
-        }
-        Ok(())
-    }
-}
-
-unsafe impl Send for IsolationHeap {}
-unsafe impl Send for IsolationHeapMut {}
