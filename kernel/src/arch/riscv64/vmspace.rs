@@ -383,8 +383,9 @@ impl VmSpace {
             asm!("csrr {}, satp", out(reg) old_satp);
         }
 
+        // Do nothing if the current CPU is already in the same page table so
+        // that we don't flush the TLB needlessly.
         if old_satp == self.satp {
-            trace!("switch: already in the same vmspace");
             return;
         }
 
