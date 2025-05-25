@@ -387,7 +387,7 @@ impl PlicEmu {
     }
 }
 struct Mutable {
-    exit: Option<IsolationSliceMut>,
+    run_state_slice: Option<IsolationSliceMut>,
     printer: ConsolePrinter,
     plic: PlicEmu,
 }
@@ -468,7 +468,7 @@ impl Mutable {
         let isolation = current_thread.process().isolation();
         current_thread.exit_vcpu();
 
-        let mut exit = self.exit.take().expect("tried to VM-exit twice");
+        let mut exit = self.run_state_slice.take().expect("tried to VM-exit twice");
         exit.write(
             isolation,
             offset_of!(VCpuRunState, exit_reason),
@@ -755,7 +755,7 @@ impl VCpu {
         };
 
         let mutable = Mutable {
-            exit: None,
+            run_state_slice: None,
             printer: ConsolePrinter::new(),
             plic: PlicEmu::new(),
         };
@@ -766,21 +766,21 @@ impl VCpu {
         })
     }
 
-    pub fn update(
+    pub fn apply_state(
         &self,
         isolation: &dyn Isolation,
-        exit: IsolationSliceMut,
+        run_state_slice: IsolationSliceMut,
     ) -> Result<(), ErrorCode> {
         let mut mutable = self.mutable.lock();
-        if mutable.exit.is_some() {
+        if mutable.run_state_slice.is_some() {
             debug_warn!("vCPU already in use");
             return Err(ErrorCode::InUse);
         }
 
-        let run_state: VCpuRunState = match exit.read(isolation, 0) {
-            Ok(exit_state) => exit_state,
+        let run_state: VCpuRunState = match run_state_slice.read(isolation, 0) {
+            Ok(run_state) => run_state,
             Err(e) => {
-                debug_warn!("failed to read exit state: {:?}", e);
+                debug_warn!("failed to read run state: {:?}", e);
                 return Err(e);
             }
         };
@@ -849,7 +849,7 @@ impl VCpu {
             }
         }
 
-        mutable.exit = Some(exit);
+        mutable.run_state_slice = Some(run_state_slice);
         Ok(())
     }
 }

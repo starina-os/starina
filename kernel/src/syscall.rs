@@ -290,7 +290,7 @@ fn vcpu_run(
     }
 
     let isolation = current.process().isolation();
-    vcpu.update(isolation, exit)?;
+    vcpu.apply_state(isolation, exit)?;
 
     let new_state = ThreadState::RunVCpu(vcpu.into_object());
     Ok(new_state)
