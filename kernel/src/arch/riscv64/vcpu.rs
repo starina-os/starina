@@ -36,7 +36,6 @@ use crate::arch::set_cpuvar;
 use crate::cpuvar::CpuVar;
 use crate::cpuvar::current_thread;
 use crate::hvspace::HvSpace;
-use crate::isolation::Isolation;
 use crate::isolation::IsolationHeapMut;
 use crate::spinlock::SpinLock;
 use crate::thread::switch_thread;
@@ -467,16 +466,8 @@ impl Mutable {
         current_thread().exit_vcpu();
 
         let mut exit = self.exit.take().expect("tried to VM-exit twice");
-        exit.write(
-            &Isolation::InKernel,
-            offset_of!(VCpuRunState, exit_reason),
-            exit_reason,
-        );
-        exit.write(
-            &Isolation::InKernel,
-            offset_of!(VCpuRunState, exit_info),
-            exit_info,
-        );
+        exit.write(offset_of!(VCpuRunState, exit_reason), exit_reason);
+        exit.write(offset_of!(VCpuRunState, exit_info), exit_info);
     }
 }
 
@@ -775,7 +766,7 @@ impl VCpu {
             return Err(ErrorCode::InUse);
         }
 
-        let run_state: VCpuRunState = match exit.read(&Isolation::InKernel, 0) {
+        let run_state: VCpuRunState = match exit.read(0) {
             Ok(exit_state) => exit_state,
             Err(e) => {
                 debug_warn!("failed to read exit state: {:?}", e);

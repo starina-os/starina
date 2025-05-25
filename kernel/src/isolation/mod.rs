@@ -2,10 +2,6 @@ use alloc::vec::Vec;
 
 use starina_types::error::ErrorCode;
 
-pub enum Isolation {
-    InKernel,
-}
-
 pub enum IsolationHeap {
     InKernel { ptr: *const u8, len: usize },
 }
@@ -15,13 +11,7 @@ pub enum IsolationHeapMut {
 }
 
 impl IsolationHeap {
-    pub fn read_to_vec(
-        &self,
-        isolation: &Isolation,
-        offset: usize,
-        len: usize,
-    ) -> Result<Vec<u8>, ErrorCode> {
-        assert!(matches!(isolation, Isolation::InKernel));
+    pub fn read_to_vec(&self, offset: usize, len: usize) -> Result<Vec<u8>, ErrorCode> {
         let IsolationHeap::InKernel { ptr, .. } = self;
         let slice = unsafe { core::slice::from_raw_parts(ptr.add(offset), len) };
 
@@ -33,27 +23,19 @@ impl IsolationHeap {
         Ok(buf)
     }
 
-    pub fn read<T: Copy>(&self, isolation: &Isolation, offset: usize) -> Result<T, ErrorCode> {
-        assert!(matches!(isolation, Isolation::InKernel));
+    pub fn read<T: Copy>(&self, offset: usize) -> Result<T, ErrorCode> {
         let IsolationHeap::InKernel { ptr, .. } = self;
         unsafe { Ok(core::ptr::read(ptr.add(offset) as *const T)) }
     }
 }
 
 impl IsolationHeapMut {
-    pub fn read<T: Copy>(&self, isolation: &Isolation, offset: usize) -> Result<T, ErrorCode> {
-        assert!(matches!(isolation, Isolation::InKernel));
+    pub fn read<T: Copy>(&self, offset: usize) -> Result<T, ErrorCode> {
         let IsolationHeapMut::InKernel { ptr, .. } = self;
         unsafe { Ok(core::ptr::read(ptr.add(offset) as *const T)) }
     }
 
-    pub fn write<T: Copy>(
-        &mut self,
-        isolation: &Isolation,
-        offset: usize,
-        value: T,
-    ) -> Result<(), ErrorCode> {
-        assert!(matches!(isolation, Isolation::InKernel));
+    pub fn write<T: Copy>(&mut self, offset: usize, value: T) -> Result<(), ErrorCode> {
         let IsolationHeapMut::InKernel { ptr, .. } = self;
         // TODO: size check
         // TODO: wraparound check
@@ -67,11 +49,11 @@ impl IsolationHeapMut {
 
     pub fn write_bytes(
         &mut self,
-        isolation: &Isolation,
+        isolation: &IsolationTy,
         offset: usize,
         slice: &[u8],
     ) -> Result<(), ErrorCode> {
-        assert!(matches!(isolation, Isolation::InKernel));
+        assert!(matches!(isolation, IsolationTy::InKernel));
         let IsolationHeapMut::InKernel { ptr, .. } = self;
         unsafe {
             core::ptr::copy(slice.as_ptr(), ptr.add(offset), slice.len());

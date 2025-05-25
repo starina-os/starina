@@ -2,7 +2,6 @@
 use core::fmt;
 
 use crate::handle::HandleTable;
-use crate::isolation::Isolation;
 use crate::refcount::RefCounted;
 use crate::refcount::SharedRef;
 use crate::spinlock::SpinLock;
@@ -12,11 +11,11 @@ use crate::vmspace::VmSpace;
 pub struct Process {
     vmspace: SharedRef<VmSpace>,
     handles: SpinLock<HandleTable>,
-    isolation: Isolation,
+    isolation: IsolationTy,
 }
 
 impl Process {
-    pub const fn create(vmspace: SharedRef<VmSpace>, isolation: Isolation) -> Process {
+    pub const fn create(vmspace: SharedRef<VmSpace>, isolation: IsolationTy) -> Process {
         Process {
             vmspace,
             handles: SpinLock::new(HandleTable::new()),
@@ -32,7 +31,7 @@ impl Process {
         &self.vmspace
     }
 
-    pub fn isolation(&self) -> &Isolation {
+    pub fn isolation(&self) -> &IsolationTy {
         &self.isolation
     }
 }
@@ -44,6 +43,6 @@ impl fmt::Debug for Process {
 }
 
 pub static KERNEL_PROCESS: spin::Lazy<SharedRef<Process>> = spin::Lazy::new(|| {
-    let process = Process::create(KERNEL_VMSPACE.clone(), Isolation::InKernel);
+    let process = Process::create(KERNEL_VMSPACE.clone());
     SharedRef::new(process).unwrap()
 });
