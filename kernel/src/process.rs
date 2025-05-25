@@ -9,15 +9,15 @@ use crate::refcount::SharedRef;
 use crate::spinlock::SpinLock;
 
 pub struct Process {
-    handles: SpinLock<HandleTable>,
     isolation: SharedRef<dyn Isolation>,
+    handles: SpinLock<HandleTable>,
 }
 
 impl Process {
     pub const fn create(isolation: SharedRef<dyn Isolation>) -> Process {
         Process {
-            handles: SpinLock::new(HandleTable::new()),
             isolation,
+            handles: SpinLock::new(HandleTable::new()),
         }
     }
 

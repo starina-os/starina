@@ -9,6 +9,7 @@ mod plic;
 mod riscv;
 mod sbi;
 mod serial;
+mod sv48;
 mod thread;
 mod vcpu;
 mod vmspace;
