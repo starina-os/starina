@@ -37,7 +37,7 @@ use crate::cpuvar::CpuVar;
 use crate::cpuvar::current_thread;
 use crate::hvspace::HvSpace;
 use crate::isolation::Isolation;
-use crate::isolation::IsolationHeapMut;
+use crate::isolation::IsolationSliceMut;
 use crate::spinlock::SpinLock;
 use crate::thread::switch_thread;
 
@@ -387,7 +387,7 @@ impl PlicEmu {
     }
 }
 struct Mutable {
-    exit: Option<IsolationHeapMut>,
+    exit: Option<IsolationSliceMut>,
     printer: ConsolePrinter,
     plic: PlicEmu,
 }
@@ -464,19 +464,17 @@ impl Mutable {
     }
 
     fn trigger_vm_exit(&mut self, exit_reason: u8, exit_info: ExitInfo) {
-        current_thread().exit_vcpu();
+        let current_thread = current_thread();
+        let isolation = current_thread.process().isolation();
+        current_thread.exit_vcpu();
 
         let mut exit = self.exit.take().expect("tried to VM-exit twice");
         exit.write(
-            &Isolation::InKernel,
+            isolation,
             offset_of!(VCpuRunState, exit_reason),
             exit_reason,
         );
-        exit.write(
-            &Isolation::InKernel,
-            offset_of!(VCpuRunState, exit_info),
-            exit_info,
-        );
+        exit.write(isolation, offset_of!(VCpuRunState, exit_info), exit_info);
     }
 }
 
@@ -768,14 +766,18 @@ impl VCpu {
         })
     }
 
-    pub fn update(&self, exit: IsolationHeapMut) -> Result<(), ErrorCode> {
+    pub fn update(
+        &self,
+        isolation: &dyn Isolation,
+        exit: IsolationSliceMut,
+    ) -> Result<(), ErrorCode> {
         let mut mutable = self.mutable.lock();
         if mutable.exit.is_some() {
             debug_warn!("vCPU already in use");
             return Err(ErrorCode::InUse);
         }
 
-        let run_state: VCpuRunState = match exit.read(&Isolation::InKernel, 0) {
+        let run_state: VCpuRunState = match exit.read(isolation, 0) {
             Ok(exit_state) => exit_state,
             Err(e) => {
                 debug_warn!("failed to read exit state: {:?}", e);

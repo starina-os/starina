@@ -7,7 +7,8 @@ use starina_types::vcpu::VCpuRunState;
 use crate::arch;
 use crate::handle::Handleable;
 use crate::hvspace::HvSpace;
-use crate::isolation::IsolationHeapMut;
+use crate::isolation::Isolation;
+use crate::isolation::IsolationSliceMut;
 use crate::poll::Listener;
 use crate::poll::Poll;
 use crate::refcount::SharedRef;
@@ -39,8 +40,12 @@ impl VCpu {
         &raw const self.arch as *mut _
     }
 
-    pub fn update(&self, exit: IsolationHeapMut) -> Result<(), ErrorCode> {
-        self.arch.update(exit)
+    pub fn update(
+        &self,
+        isolation: &dyn Isolation,
+        exit: IsolationSliceMut,
+    ) -> Result<(), ErrorCode> {
+        self.arch.update(isolation, exit)
     }
 }
 
