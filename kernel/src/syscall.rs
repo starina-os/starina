@@ -163,9 +163,10 @@ pub fn vmspace_map(
     folio: HandleId,
     prot: PageProtect,
 ) -> Result<VAddr, ErrorCode> {
+    let process = current.process();
     let mut handle_table = current.process().handles().lock();
     let vmspace = if handle.as_raw() == 0 {
-        current.process().vmspace().clone()
+        process.isolation().vmspace().clone()
     } else {
         let handle = handle_table.get::<VmSpace>(handle)?;
         if !handle.is_capable(HandleRights::WRITE) {

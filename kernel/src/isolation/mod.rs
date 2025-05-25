@@ -8,6 +8,10 @@ use starina_types::error::ErrorCode;
 mod inkernel;
 
 pub use inkernel::INKERNEL_ISOLATION;
+pub use inkernel::KERNEL_VMSPACE;
+
+use crate::refcount::SharedRef;
+use crate::vmspace::VmSpace;
 
 /// A pointer in an isolation space.
 ///
@@ -126,6 +130,7 @@ impl Deref for IsolationSliceMut {
 ///
 /// This trait defines how to access memory in an isolation space.
 pub trait Isolation: Send + Sync {
+    fn vmspace(&self) -> &SharedRef<VmSpace>;
     fn read_bytes(&self, ptr: IsolationPtr, dst: &mut [u8]) -> Result<(), ErrorCode>;
     fn write_bytes(&self, ptr: IsolationPtr, src: &[u8]) -> Result<(), ErrorCode>;
 }

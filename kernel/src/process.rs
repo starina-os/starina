@@ -7,22 +7,15 @@ use crate::isolation::Isolation;
 use crate::refcount::RefCounted;
 use crate::refcount::SharedRef;
 use crate::spinlock::SpinLock;
-use crate::vmspace::KERNEL_VMSPACE;
-use crate::vmspace::VmSpace;
 
 pub struct Process {
-    vmspace: SharedRef<VmSpace>,
     handles: SpinLock<HandleTable>,
     isolation: SharedRef<dyn Isolation>,
 }
 
 impl Process {
-    pub const fn create(
-        vmspace: SharedRef<VmSpace>,
-        isolation: SharedRef<dyn Isolation>,
-    ) -> Process {
+    pub const fn create(isolation: SharedRef<dyn Isolation>) -> Process {
         Process {
-            vmspace,
             handles: SpinLock::new(HandleTable::new()),
             isolation,
         }
@@ -30,10 +23,6 @@ impl Process {
 
     pub fn handles(&self) -> &SpinLock<HandleTable> {
         &self.handles
-    }
-
-    pub fn vmspace(&self) -> &SharedRef<VmSpace> {
-        &self.vmspace
     }
 
     pub fn isolation(&self) -> &dyn Isolation {
@@ -48,6 +37,6 @@ impl fmt::Debug for Process {
 }
 
 pub static KERNEL_PROCESS: spin::Lazy<SharedRef<Process>> = spin::Lazy::new(|| {
-    let process = Process::create(KERNEL_VMSPACE.clone(), INKERNEL_ISOLATION.clone());
+    let process = Process::create(INKERNEL_ISOLATION.clone());
     SharedRef::new(process).unwrap()
 });

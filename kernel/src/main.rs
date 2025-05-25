@@ -18,6 +18,7 @@ use arrayvec::ArrayVec;
 use channel::Channel;
 use cpuvar::CpuId;
 use handle::Handle;
+use isolation::KERNEL_VMSPACE;
 use starina::device_tree::DeviceTree;
 use starina_types::handle::HandleRights;
 
@@ -65,5 +66,9 @@ pub fn boot(bootinfo: BootInfo) -> ! {
     cpuvar::percpu_init(bootinfo.cpu_id);
     arch::percpu_init();
     startup::load_inkernel_apps(device_tree);
+
+    // Switch to the kernel's address space.
+    KERNEL_VMSPACE.switch();
+
     thread::switch_thread();
 }

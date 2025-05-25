@@ -6,6 +6,7 @@ use super::Isolation;
 use super::IsolationPtr;
 use crate::refcount::RefCounted;
 use crate::refcount::SharedRef;
+use crate::vmspace::VmSpace;
 
 pub struct InKernel {
     _private: (),
@@ -18,6 +19,10 @@ impl InKernel {
 }
 
 impl Isolation for InKernel {
+    fn vmspace(&self) -> &SharedRef<VmSpace> {
+        &KERNEL_VMSPACE
+    }
+
     fn read_bytes(&self, ptr: IsolationPtr, dst: &mut [u8]) -> Result<(), ErrorCode> {
         let raw_ptr = ptr.0 as *const u8;
         let src = unsafe { slice::from_raw_parts(raw_ptr, dst.len()) };
@@ -32,6 +37,11 @@ impl Isolation for InKernel {
         Ok(())
     }
 }
+
+pub static KERNEL_VMSPACE: spin::Lazy<SharedRef<VmSpace>> = spin::Lazy::new(|| {
+    let vmspace = VmSpace::new().expect("failed to create kernel vmspace");
+    SharedRef::new(vmspace).unwrap()
+});
 
 pub static INKERNEL_ISOLATION: SharedRef<dyn Isolation> = {
     static INNER: RefCounted<InKernel> = RefCounted::new(InKernel::new());

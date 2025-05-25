@@ -235,7 +235,7 @@ pub fn switch_thread() -> ! {
         };
 
         // Switch to the next thread's address space.
-        current_thread.process().vmspace().switch();
+        current_thread.process().isolation().vmspace().switch();
 
         // Execute the pending continuation if any.
         drop(current_thread);
