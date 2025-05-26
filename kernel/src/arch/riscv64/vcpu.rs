@@ -1119,16 +1119,10 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
                 "Only WFI is expected in virtual instruction trap"
             );
 
-            // info!(
-            //     "vcpu_trap_handler: virtual instruction, sepc={:x}",
-            //     context.sepc
-            // );
             context.sepc += 4; // size of virtual instruction
 
             if context.hvip == 0 {
-                // info!("no pending interrupt, going to idle");
                 let current = current_thread();
-                // context.hvip = 1 << 6; // FIXME: We'll
                 current.idle_vcpu();
             }
         }

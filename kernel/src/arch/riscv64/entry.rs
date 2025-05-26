@@ -178,13 +178,6 @@ pub fn user_entry(thread: *mut crate::arch::Thread) -> ! {
     unsafe {
         asm!("csrr {0}, sstatus", out(reg) sstatus);
         sstatus |= 1 << 8; // Set SPP to go back to kernel mode
-
-        // Clear SPIE to disable interrupts while running apps.
-        //
-        // FIXME: This is a dirty hack to prevent a null pointer dereference bug in memset,
-        //        which is presumerbly caused by incorrectly saving/restoring the `a1` register.
-        sstatus &= !(1 << 5);
-
         asm!("csrw sstatus, {0}", in(reg) sstatus);
     }
 
