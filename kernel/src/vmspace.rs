@@ -20,10 +20,6 @@ impl VmSpace {
         Ok(VmSpace { arch })
     }
 
-    pub fn arch(&self) -> &arch::VmSpace {
-        &self.arch
-    }
-
     pub fn map_anywhere(
         &self,
         folio: SharedRef<Folio>,

@@ -1,7 +1,5 @@
 use alloc::boxed::Box;
-use alloc::string::String;
 use alloc::vec;
-use alloc::vec::Vec;
 
 use arrayvec::ArrayVec;
 use hashbrown::HashMap;
@@ -22,7 +20,6 @@ use crate::handle::Handle;
 use crate::iobus::NOMMU_IOBUS;
 use crate::process::KERNEL_PROCESS;
 use crate::scheduler::GLOBAL_SCHEDULER;
-use crate::spinlock::SpinLock;
 use crate::thread::Thread;
 
 const INKERNEL_APPS: &[ParsedAppSpec] = &[
@@ -32,15 +29,7 @@ const INKERNEL_APPS: &[ParsedAppSpec] = &[
     catsay::autogen::APP_SPEC,
 ];
 
-static INSTANCES: SpinLock<Vec<Instance>> = SpinLock::new(Vec::new());
-
-struct Instance {
-    vsyscall_page: Box<VsyscallPage>,
-    environ_str: String,
-}
-
 pub fn load_inkernel_apps(device_tree: DeviceTree) {
-    let mut instances = INSTANCES.lock();
     let mut server_channels = HashMap::new();
     let mut client_channels = HashMap::new();
     for spec in INKERNEL_APPS {
@@ -111,7 +100,6 @@ pub fn load_inkernel_apps(device_tree: DeviceTree) {
                     // Enqueue a connect message to the server.
                     let (server_ch, client_ch) = Channel::new().unwrap();
                     {
-                        let server_handles = KERNEL_PROCESS.handles();
                         let server_ch_handle =
                             Handle::new(server_ch, HandleRights::READ | HandleRights::WRITE);
 
@@ -156,13 +144,9 @@ pub fn load_inkernel_apps(device_tree: DeviceTree) {
             environ_len: env_str.len(),
         });
 
-        let arg = unsafe { &*vsyscall_page as *const VsyscallPage } as usize;
+        let arg = &*vsyscall_page as *const VsyscallPage as usize;
         let thread = Thread::new_inkernel(spec.entrypoint as usize, arg as usize).unwrap();
 
         GLOBAL_SCHEDULER.push(thread);
-        instances.push(Instance {
-            vsyscall_page,
-            environ_str: env_str,
-        });
     }
 }

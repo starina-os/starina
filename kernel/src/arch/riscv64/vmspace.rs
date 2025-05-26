@@ -21,8 +21,6 @@ use crate::spinlock::SpinLock;
 pub const PAGE_SIZE: usize = 4096;
 pub(super) const PPN_SHIFT: usize = 12;
 
-pub const USERSPACE_START: VAddr = VAddr::new(0x0000_000a_0000_0000);
-pub const USERSPACE_END: VAddr = VAddr::new(0x0000_000a_ffff_ffff);
 const VALLOC_START: VAddr = VAddr::new(0x0000_000b_0000_0000);
 const VALLOC_END: VAddr = VAddr::new(0x0000_000b_ffff_ffff);
 
@@ -31,7 +29,7 @@ pub fn map_daddr(paddr: PAddr) -> Result<DAddr, ErrorCode> {
     Ok(DAddr::new(paddr.as_usize()))
 }
 
-pub fn unmap_daddr(daddr: DAddr) -> Result<(), ErrorCode> {
+pub fn unmap_daddr(_daddr: DAddr) -> Result<(), ErrorCode> {
     // We don't do anything in map_daddr. Nothing to unmap.
     Ok(())
 }
@@ -57,7 +55,7 @@ pub fn find_free_ram<F>(paddr: PAddr, len: usize, mut callback: F)
 where
     F: FnMut(PAddr, usize),
 {
-    let kernel_start = PAddr::new(&raw const __kernel_start as usize);
+    let _kernel_start = PAddr::new(&raw const __kernel_start as usize);
     let kernel_end = PAddr::new(&raw const __kernel_end as usize);
 
     // FIXME:
@@ -201,16 +199,6 @@ impl VmSpace {
                 valloc: VAlloc::new(),
             }),
         })
-    }
-
-    pub fn map_fixed(
-        &self,
-        vaddr: VAddr,
-        paddr: PAddr,
-        len: usize,
-        prot: PageProtect,
-    ) -> Result<(), ErrorCode> {
-        self.mutable.lock().table.map(vaddr, paddr, len, prot)
     }
 
     pub fn map_anywhere(

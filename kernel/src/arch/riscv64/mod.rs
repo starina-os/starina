@@ -18,7 +18,6 @@ pub use boot::percpu_init;
 pub use cpuvar::CpuVar;
 pub use cpuvar::get_cpuvar;
 pub use cpuvar::set_cpuvar;
-pub use entry::inkernel_syscall_entry;
 pub use entry::user_entry;
 pub use hvspace::HvSpace;
 pub use idle::halt;

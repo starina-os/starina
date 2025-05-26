@@ -123,10 +123,6 @@ impl Plic {
         self.listeners.insert(irq, listener);
     }
 
-    pub fn unregister_listener(&mut self, irq: Irq) {
-        self.listeners.remove(&irq);
-    }
-
     pub fn handle_interrupt(&mut self) {
         let irq = self.get_pending_irq();
         if let Some(listener) = self.listeners.get(&irq) {

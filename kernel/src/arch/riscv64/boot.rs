@@ -1,7 +1,6 @@
 use core::arch::asm;
 use core::arch::naked_asm;
 
-
 use super::get_cpuvar;
 use super::plic::use_plic;
 use crate::BootInfo;
@@ -19,17 +18,15 @@ use crate::cpuvar::CpuId;
 #[unsafe(link_section = ".text.boot")]
 #[unsafe(naked)]
 unsafe extern "C" fn riscv64_boot(hartid: u64, dtb: *const u8) -> ! {
-    unsafe {
-        naked_asm!(
-            // Note: Don't modify a0, a1 registers here: they are used as arguments to
-            //       rust_boot.
-            "mv ra, zero",
-            "mv fp, zero",
-            "la sp, __boot_stack_top",
-            "j {rust_boot}",
-            rust_boot = sym rust_boot,
-        );
-    }
+    naked_asm!(
+        // Note: Don't modify a0, a1 registers here: they are used as arguments to
+        //       rust_boot.
+        "mv ra, zero",
+        "mv fp, zero",
+        "la sp, __boot_stack_top",
+        "j {rust_boot}",
+        rust_boot = sym rust_boot,
+    );
 }
 
 unsafe extern "C" {

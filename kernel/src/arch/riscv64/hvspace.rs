@@ -102,13 +102,8 @@ impl HvPageTable {
 
         let mut offset = 0;
         while offset < len {
-            let remaining = len - offset;
-            let page_size = self.map_page(
-                gpaddr.checked_add(offset).unwrap(),
-                paddr.add(offset),
-                prot,
-                remaining,
-            )?;
+            let page_size =
+                self.map_page(gpaddr.checked_add(offset).unwrap(), paddr.add(offset), prot)?;
             offset += page_size;
         }
 
@@ -126,7 +121,6 @@ impl HvPageTable {
         gpaddr: GPAddr,
         paddr: PAddr,
         prot: PageProtect,
-        remaining: usize,
     ) -> Result<usize, ErrorCode> {
         assert!(is_aligned(gpaddr.as_usize(), PAGE_SIZE));
         assert!(is_aligned(paddr.as_usize(), PAGE_SIZE));

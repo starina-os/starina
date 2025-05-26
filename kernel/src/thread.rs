@@ -206,10 +206,10 @@ pub fn switch_thread() -> ! {
                     drop(current_thread);
                     arch::vcpu_entry(vcpu_ptr);
                 }
-                ThreadState::IdleVCpu(vcpu) => {
+                ThreadState::IdleVCpu(_vcpu) => {
                     continue 'next_thread;
                 }
-                ThreadState::ExitVCpu(vcpu) => {
+                ThreadState::ExitVCpu(_vcpu) => {
                     mutable.state = ThreadState::Runnable(None);
                     // The return value from vcpu_run syscall.
                     Some(RetVal::new(0))
