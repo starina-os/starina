@@ -32,7 +32,6 @@ use crate::arch::riscv64::riscv::SCAUSE_GUEST_LOAD_PAGE_FAULT;
 use crate::arch::riscv64::riscv::SCAUSE_GUEST_STORE_PAGE_FAULT;
 use crate::arch::riscv64::riscv::SCAUSE_HOST_TIMER_INTR;
 use crate::arch::riscv64::riscv::SCAUSE_VIRTUAL_INST;
-use crate::arch::set_cpuvar;
 use crate::cpuvar::CpuVar;
 use crate::cpuvar::current_thread;
 use crate::hvspace::HvSpace;
@@ -468,7 +467,7 @@ impl Mutable {
         let isolation = current_thread.process().isolation();
         current_thread.exit_vcpu();
 
-        let mut exit = self.run_state_slice.take().expect("tried to VM-exit twice");
+        let exit = self.run_state_slice.take().expect("tried to VM-exit twice");
         exit.write(
             isolation,
             offset_of!(VCpuRunState, exit_reason),
@@ -719,17 +718,17 @@ impl VCpu {
         let mut hstatus = 0;
         hstatus |= 1 << 7; // SPV
         // hstatus |= 1 << 21; // VTW
-        hstatus |= (3 << 13); // FP
+        hstatus |= 3 << 13; // FP
 
         let mut sstatus = 0;
         sstatus |= 1 << 8; // SPP
         sstatus &= !(0b11 << 13); // Clear FP
-        sstatus |= (3 << 13); // FP
+        sstatus |= 3 << 13; // FP
 
         let mut vsstatus = 0;
         vsstatus |= 1 << 8; // SPP
         vsstatus &= !(0b11 << 13); // Clear FP
-        vsstatus |= (3 << 13); // FP
+        vsstatus |= 3 << 13; // FP
 
         let hgatp = hvspace.arch().hgatp();
 

@@ -1,7 +1,5 @@
-use core::arch::asm;
 use core::mem;
 
-use arrayvec::ArrayVec;
 use starina::address::PAddr;
 use starina::address::VAddr;
 use starina::error::ErrorCode;

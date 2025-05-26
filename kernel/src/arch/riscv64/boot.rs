@@ -1,7 +1,6 @@
 use core::arch::asm;
 use core::arch::naked_asm;
 
-use arrayvec::ArrayVec;
 
 use super::get_cpuvar;
 use super::plic::use_plic;

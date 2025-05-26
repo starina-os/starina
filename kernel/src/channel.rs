@@ -10,12 +10,10 @@ use starina_types::message::MESSAGE_NUM_HANDLES_MAX;
 use starina_types::message::MessageInfo;
 use starina_types::poll::Readiness;
 
-use crate::cpuvar::current_thread;
 use crate::handle::AnyHandle;
 use crate::handle::HandleTable;
 use crate::handle::Handleable;
 use crate::isolation::Isolation;
-use crate::isolation::IsolationPtr;
 use crate::isolation::IsolationSlice;
 use crate::isolation::IsolationSliceMut;
 use crate::poll::Listener;

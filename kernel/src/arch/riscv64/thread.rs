@@ -1,8 +1,5 @@
 use core::alloc::GlobalAlloc;
 use core::alloc::Layout;
-use core::arch::asm;
-use core::arch::naked_asm;
-use core::mem::offset_of;
 
 use starina_types::syscall::RetVal;
 
