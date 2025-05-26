@@ -38,6 +38,19 @@ pub enum SyscallResult {
     Block(ThreadState),
 }
 
+fn console_write(
+    current: &SharedRef<Thread>,
+    str_ptr: IsolationPtr,
+    len: usize,
+) -> Result<(), ErrorCode> {
+    let slice = IsolationSlice::new(str_ptr, len);
+    let isolation = current.process().isolation();
+    // TODO: Avoid Vec allocation
+    let str = slice.read_to_vec(isolation, 0, len)?;
+    arch::console_write(str.as_slice());
+    Ok(())
+}
+
 fn handle_close(current: &SharedRef<Thread>, handle: HandleId) -> Result<(), ErrorCode> {
     let mut handle_table = current.process().handles().lock();
     handle_table.close(handle)?;
@@ -314,9 +327,9 @@ fn do_syscall(
             Ok(SyscallResult::Done(RetVal::new(0)))
         }
         SYS_CONSOLE_WRITE => {
-            // FIXME: use isolation heap
-            let buf = unsafe { core::slice::from_raw_parts(a0 as *const u8, a1 as usize) };
-            arch::console_write(buf);
+            let str_ptr = IsolationPtr::new(a0 as usize);
+            let len = a1 as usize;
+            console_write(&current, str_ptr, len)?;
             Ok(SyscallResult::Done(RetVal::new(0)))
         }
         SYS_POLL_CREATE => {
