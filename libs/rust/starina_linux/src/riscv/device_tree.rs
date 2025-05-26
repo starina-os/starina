@@ -22,7 +22,11 @@ pub fn build_fdt(
     fdt.property_u32("#size-cells", 0x2)?;
 
     let chosen_node = fdt.begin_node("chosen")?;
-    fdt.property_string("bootargs", "console=hvc earlycon=sbi quiet panic=-1")?;
+    fdt.property_string(
+        "bootargs",
+        // guest_ip=10.255.0.100, gateway_ip=10.255.0.1, dns0_ip=8.8.8.8
+        "console=hvc earlycon=sbi panic=-1 loglevel=7 ip=10.255.0.100::10.255.0.1:255.255.255.0::eth0:off:8.8.8.8:8.8.4.4",
+    )?;
     fdt.end_node(chosen_node)?;
 
     let memory_node = fdt.begin_node(&format!("memory@{:x}", guest_ram_start.as_usize()))?;

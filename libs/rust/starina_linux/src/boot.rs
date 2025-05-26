@@ -12,6 +12,7 @@ use crate::riscv::device_tree::build_fdt;
 use crate::virtio::device::VIRTIO_MMIO_SIZE;
 use crate::virtio::device::VirtioMmio;
 use crate::virtio::virtio_fs::VirtioFs;
+use crate::virtio::virtio_net::VirtioNet;
 
 const fn plic_mmio_size(num_cpus: u32) -> usize {
     0x200000 + (num_cpus as usize * 0x1000)
@@ -24,7 +25,9 @@ const PLIC_BASE_ADDR: GPAddr = GPAddr::new(0x0a00_0000);
 const PLIC_MMIO_SIZE: usize = plic_mmio_size(NUM_CPUS);
 static_assert!(PLIC_BASE_ADDR.as_usize() + PLIC_MMIO_SIZE <= VIRTIO_FS_ADDR.as_usize());
 const VIRTIO_FS_ADDR: GPAddr = GPAddr::new(0x0b00_0000);
+const VIRTIO_NET_ADDR: GPAddr = GPAddr::new(0x0b00_1000);
 const VIRTIO_FS_IRQ: u8 = 1;
+const VIRTIO_NET_IRQ: u8 = 2;
 const GUEST_RAM_ADDR: GPAddr = GPAddr::new(0x8000_0000);
 
 pub fn boot_linux(fs: FileSystem) {
@@ -36,7 +39,10 @@ pub fn boot_linux(fs: FileSystem) {
         GUEST_RAM_SIZE as u64,
         PLIC_BASE_ADDR,
         PLIC_MMIO_SIZE,
-        &[(VIRTIO_FS_ADDR, VIRTIO_FS_IRQ)],
+        &[
+            (VIRTIO_FS_ADDR, VIRTIO_FS_IRQ),
+            (VIRTIO_NET_ADDR, VIRTIO_NET_IRQ),
+        ],
     )
     .expect("failed to build device tree");
 
@@ -50,8 +56,11 @@ pub fn boot_linux(fs: FileSystem) {
 
     let mut bus = Bus::new();
     let virtio_fs = VirtioFs::new(Box::new(fs));
+    let virtio_net = VirtioNet::new();
     let virtio_mmio_fs = VirtioMmio::new(irq_trigger.clone(), VIRTIO_FS_IRQ, virtio_fs);
+    let virtio_mmio_net = VirtioMmio::new(irq_trigger.clone(), VIRTIO_NET_IRQ, virtio_net);
     bus.add_device(VIRTIO_FS_ADDR, VIRTIO_MMIO_SIZE, virtio_mmio_fs);
+    bus.add_device(VIRTIO_NET_ADDR, VIRTIO_MMIO_SIZE, virtio_mmio_net);
 
     // Fill registers that Linux expects:
     //
