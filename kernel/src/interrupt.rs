@@ -3,7 +3,6 @@ use starina::poll::Readiness;
 use starina_types::error::ErrorCode;
 use starina_types::interrupt::Irq;
 
-use crate::arch;
 use crate::arch::INTERRUPT_CONTROLLER;
 use crate::handle::Handleable;
 use crate::poll::Listener;

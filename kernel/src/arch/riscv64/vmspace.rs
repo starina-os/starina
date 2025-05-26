@@ -1,5 +1,4 @@
 use core::arch::asm;
-use core::mem;
 
 use starina::address::DAddr;
 use starina_types::address::PAddr;
@@ -192,7 +191,7 @@ pub struct VmSpace {
 
 impl VmSpace {
     pub fn new() -> Result<VmSpace, ErrorCode> {
-        let mut table = PageTable::new()?;
+        let table = PageTable::new()?;
         let table_paddr = table.l0_table.paddr().as_usize() as u64;
         let satp = SATP_MODE_SV48 | (table_paddr >> PPN_SHIFT);
         Ok(VmSpace {

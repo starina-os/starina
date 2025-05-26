@@ -5,7 +5,6 @@ use starina_types::error::ErrorCode;
 use starina_types::syscall::RetVal;
 
 use crate::arch;
-use crate::arch::VmSpace;
 use crate::poll::Poll;
 use crate::process::KERNEL_PROCESS;
 use crate::process::Process;

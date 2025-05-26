@@ -68,7 +68,7 @@ struct HvPageTable {
 impl HvPageTable {
     pub fn new() -> Result<HvPageTable, ErrorCode> {
         let l0_table = Folio::alloc(size_of::<Table>())?;
-        let mut table = HvPageTable { l0_table };
+        let table = HvPageTable { l0_table };
         Ok(table)
     }
 

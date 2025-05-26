@@ -7,20 +7,14 @@
 #![feature(allocator_api)]
 #![feature(fn_align)]
 #![feature(map_try_insert)]
-#![allow(unused)]
 
 extern crate alloc;
 
 use core::mem::MaybeUninit;
 
 use allocator::GLOBAL_ALLOCATOR;
-use arrayvec::ArrayVec;
-use channel::Channel;
 use cpuvar::CpuId;
-use handle::Handle;
 use isolation::KERNEL_VMSPACE;
-use starina::device_tree::DeviceTree;
-use starina_types::handle::HandleRights;
 
 #[macro_use]
 mod print;

@@ -1,7 +1,6 @@
 //! Virtual memory space management.
 use starina::error::ErrorCode;
 use starina::poll::Readiness;
-use starina_types::address::PAddr;
 use starina_types::address::VAddr;
 use starina_types::vmspace::PageProtect;
 

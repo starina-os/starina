@@ -1,6 +1,5 @@
 use alloc::boxed::Box;
 use alloc::string::String;
-use alloc::sync::Arc;
 use alloc::vec;
 use alloc::vec::Vec;
 
@@ -8,7 +7,6 @@ use arrayvec::ArrayVec;
 use hashbrown::HashMap;
 use starina::device_tree::BusNode;
 use starina::device_tree::DeviceTree;
-use starina::handle::HandleId;
 use starina::handle::HandleRights;
 use starina::message::MessageInfo;
 use starina::message::MessageKind;
@@ -18,12 +16,10 @@ use starina::spec::ParsedEnvItem;
 use starina::spec::ParsedEnvType;
 use starina::spec::ParsedExportItem;
 use starina::syscall::VsyscallPage;
-use starina_types::spec::AppSpec;
 
 use crate::channel::Channel;
 use crate::handle::Handle;
 use crate::iobus::NOMMU_IOBUS;
-use crate::isolation;
 use crate::process::KERNEL_PROCESS;
 use crate::scheduler::GLOBAL_SCHEDULER;
 use crate::spinlock::SpinLock;

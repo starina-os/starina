@@ -3,8 +3,6 @@ use core::alloc::Layout;
 use core::num::NonZeroUsize;
 
 use arrayvec::ArrayVec;
-use fdt_rs::index::DevTreeIndex;
-use starina::device_tree::DeviceTree;
 
 use crate::spinlock::SpinLock;
 

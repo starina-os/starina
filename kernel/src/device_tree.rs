@@ -16,7 +16,6 @@ use starina::device_tree::BusNode;
 use starina::device_tree::DeviceNode;
 use starina::device_tree::DeviceTree;
 use starina::device_tree::Reg;
-use starina::interrupt::IrqMatcher;
 use starina_utils::byte_size::ByteSize;
 
 use crate::allocator::GLOBAL_ALLOCATOR;
@@ -227,7 +226,7 @@ pub fn parse(dtb: *const u8) -> Result<DeviceTree, fdt_rs::error::DevTreeError> 
         };
 
         if device_type == "memory" {
-            let mut iter = RegParser::parse(node)?.expect("missing reg for a memory node");
+            let iter = RegParser::parse(node)?.expect("missing reg for a memory node");
             for reg in iter {
                 let addr: usize = reg.addr.try_into().unwrap();
                 let unchecked_size = reg.size.try_into().unwrap();

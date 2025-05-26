@@ -4,7 +4,6 @@ use core::fmt;
 use crate::handle::HandleTable;
 use crate::isolation::INKERNEL_ISOLATION;
 use crate::isolation::Isolation;
-use crate::refcount::RefCounted;
 use crate::refcount::SharedRef;
 use crate::spinlock::SpinLock;
 

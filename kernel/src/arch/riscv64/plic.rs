@@ -1,6 +1,5 @@
 use alloc::collections::BTreeMap;
 use alloc::string::String;
-use alloc::vec::Vec;
 
 use starina::device_tree::Reg;
 use starina_types::address::PAddr;

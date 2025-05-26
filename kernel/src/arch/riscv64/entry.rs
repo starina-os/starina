@@ -9,7 +9,6 @@ use super::cpuvar::CpuVar;
 use super::interrupt::interrupt_handler;
 use super::thread::Context;
 use crate::syscall::syscall_handler;
-use crate::thread::switch_thread;
 
 #[unsafe(naked)]
 #[unsafe(no_mangle)]

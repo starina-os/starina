@@ -1,7 +1,6 @@
 use starina::address::DAddr;
 use starina::address::GPAddr;
 use starina::address::VAddr;
-use starina::interrupt::Irq;
 use starina::interrupt::IrqMatcher;
 use starina_types::error::ErrorCode;
 use starina_types::handle::HandleId;
@@ -15,7 +14,6 @@ use starina_types::vcpu::VCpuRunState;
 use starina_types::vmspace::PageProtect;
 
 use crate::arch;
-use crate::arch::inkernel_syscall_entry;
 use crate::channel::Channel;
 use crate::cpuvar::current_thread;
 use crate::folio::Folio;
@@ -111,7 +109,7 @@ fn channel_create(current: &SharedRef<Thread>) -> Result<HandleId, ErrorCode> {
     let ch1_id = handle_table.insert(ch1_handle)?;
     let ch2_id = handle_table.insert(ch2_handle)?;
     assert!((ch1_id.as_raw() + 1) == ch2_id.as_raw()); // FIXME: guarantee this in HandleTable
-    Ok((ch1_id))
+    Ok(ch1_id)
 }
 
 fn channel_send(
@@ -150,8 +148,8 @@ fn channel_recv(
         return Err(ErrorCode::NotAllowed);
     }
 
-    let mut data = IsolationSliceMut::new(data_ptr, MESSAGE_DATA_LEN_MAX);
-    let mut handles =
+    let data = IsolationSliceMut::new(data_ptr, MESSAGE_DATA_LEN_MAX);
+    let handles =
         IsolationSliceMut::new(handles_ptr, size_of::<HandleId>() * MESSAGE_NUM_HANDLES_MAX);
     let msginfo = ch.recv(isolation, &mut handle_table, data, handles)?;
     Ok(msginfo)
@@ -164,7 +162,7 @@ pub fn vmspace_map(
     prot: PageProtect,
 ) -> Result<VAddr, ErrorCode> {
     let process = current.process();
-    let mut handle_table = current.process().handles().lock();
+    let handle_table = current.process().handles().lock();
     let vmspace = if handle.as_raw() == 0 {
         process.isolation().vmspace().clone()
     } else {
@@ -196,7 +194,7 @@ pub fn folio_alloc(current: &SharedRef<Thread>, len: usize) -> Result<HandleId, 
 }
 
 pub fn folio_daddr(current: &SharedRef<Thread>, handle: HandleId) -> Result<DAddr, ErrorCode> {
-    let mut handle_table = current.process().handles().lock();
+    let handle_table = current.process().handles().lock();
     let folio = handle_table.get::<Folio>(handle)?;
     let daddr = folio.daddr().ok_or(ErrorCode::NotADevice)?;
     Ok(daddr)
@@ -231,7 +229,7 @@ fn interrupt_create(
 }
 
 fn interrupt_ack(current: &SharedRef<Thread>, handle: HandleId) -> Result<(), ErrorCode> {
-    let mut handle_table = current.process().handles().lock();
+    let handle_table = current.process().handles().lock();
     let interrupt = handle_table.get::<Interrupt>(handle)?;
     interrupt.acknowledge()?;
     Ok(())
@@ -256,8 +254,8 @@ fn hvspace_map(
     len: usize,
     prot: PageProtect,
 ) -> Result<(), ErrorCode> {
-    let mut handle_table = current.process().handles().lock();
-    let mut hvspace = handle_table.get::<HvSpace>(hvspace_handle)?;
+    let handle_table = current.process().handles().lock();
+    let hvspace = handle_table.get::<HvSpace>(hvspace_handle)?;
     let folio = handle_table.get::<Folio>(folio_handle)?;
     hvspace.map(gpaddr, folio.into_object(), len, prot)?;
     Ok(())
@@ -283,7 +281,7 @@ fn vcpu_run(
     vcpu_handle: HandleId,
     exit: IsolationSliceMut,
 ) -> Result<ThreadState, ErrorCode> {
-    let mut handle_table = current.process().handles().lock();
+    let handle_table = current.process().handles().lock();
     let vcpu = handle_table.get::<VCpu>(vcpu_handle)?;
     if !vcpu.is_capable(HandleRights::EXEC) {
         return Err(ErrorCode::NotAllowed);
@@ -345,7 +343,7 @@ fn do_syscall(
         }
         SYS_CHANNEL_CREATE => {
             let ch1 = channel_create(&current)?;
-            Ok(SyscallResult::Done((ch1.into())))
+            Ok(SyscallResult::Done(ch1.into()))
         }
         SYS_CHANNEL_SEND => {
             let ch = HandleId::from_raw_isize(a0)?;

@@ -3,7 +3,6 @@ use starina::address::PAddr;
 use starina::error::ErrorCode;
 use starina::poll::Readiness;
 use starina_utils::alignment::is_aligned;
-use starina_utils::static_assert;
 
 use crate::arch::PAGE_SIZE;
 use crate::folio::Folio;
