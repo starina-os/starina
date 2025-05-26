@@ -86,6 +86,7 @@ impl DescChain {
             _head: &self,
             memory,
             descs: readable_descs,
+            current: None,
         };
 
         let writer = DescChainWriter {
@@ -138,21 +139,48 @@ pub struct DescChainReader<'a> {
     _head: &'a DescChain,
     memory: &'a GuestMemory,
     descs: VecDeque<VirtqDesc>,
+    current: Option<(VirtqDesc, usize /* offset */)>,
 }
 
 impl<'a> DescChainReader<'a> {
     pub fn read<T: Copy>(&mut self) -> Result<T, guest_memory::Error> {
-        // TODO: This assumes the guest provides a descriptor per one read in VMM.
-        let desc = match self.descs.pop_front() {
-            Some(desc) => desc,
-            None => {
-                debug_warn!("virtqueue: desc chain reader: no more descriptors");
+        let read_len = size_of::<T>();
+        loop {
+            let (desc, offset) = match self.current {
+                Some((desc, offset)) => (desc, offset),
+                None => {
+                    match self.descs.pop_front() {
+                        Some(desc) => (desc, 0),
+                        None => {
+                            debug_warn!("virtqueue: desc chain reader: no more descriptors");
+                            return Err(guest_memory::Error::OutOfRange);
+                        }
+                    }
+                }
+            };
+
+            let desc_len = desc.len.to_host() as usize;
+            if offset + read_len == desc_len {
+                // Try next descriptor.
+                self.current = None;
+                continue;
+            }
+
+            if offset + read_len > desc_len {
+                debug_warn!(
+                    "virtqueue: desc chain reader: tried to read an object which spans across multiple descriptors"
+                );
                 return Err(guest_memory::Error::OutOfRange);
             }
-        };
 
-        let value = self.memory.read(desc.gpaddr())?;
-        Ok(value)
+            let gpaddr = desc
+                .gpaddr()
+                .checked_add(offset)
+                .ok_or(guest_memory::Error::OutOfRange)?;
+            let value = self.memory.read(gpaddr)?;
+            self.current = Some((desc, offset + read_len));
+            return Ok(value);
+        }
     }
 
     pub fn read_zerocopy(&mut self, len: usize) -> Result<&[u8], guest_memory::Error> {
@@ -167,6 +195,35 @@ impl<'a> DescChainReader<'a> {
 
         let slice = self.memory.bytes_slice(desc.gpaddr(), len)?;
         Ok(slice)
+    }
+
+    // TODO: Terrible API name. Consider merging with `read_zerocopy`.
+    pub fn read_zerocopy2(&mut self) -> Result<Option<&[u8]>, guest_memory::Error> {
+        loop {
+            let (desc, offset) = match self.current {
+                Some((desc, offset)) => (desc, offset),
+                None => {
+                    match self.descs.pop_front() {
+                        Some(desc) => (desc, 0),
+                        None => return Ok(None),
+                    }
+                }
+            };
+
+            self.current = None;
+            if offset == desc.len.to_host() as usize {
+                continue;
+            }
+
+            let gpaddr = desc
+                .gpaddr()
+                .checked_add(offset)
+                .ok_or(guest_memory::Error::OutOfRange)?;
+
+            let len = desc.len.to_host() as usize - offset;
+            let slice = self.memory.bytes_slice(gpaddr, len)?;
+            return Ok(Some(slice));
+        }
     }
 }
 
@@ -194,6 +251,8 @@ struct VirtqUsed {
 }
 
 pub struct Virtqueue {
+    /// The queue index.
+    index: u32,
     /// Known as *Descriptor Table*.
     desc_gpaddr: GPAddr,
     /// Known as *Available Ring*.
@@ -207,8 +266,9 @@ pub struct Virtqueue {
 }
 
 impl Virtqueue {
-    pub fn new() -> Self {
+    pub fn new(index: u32) -> Self {
         Self {
+            index,
             desc_gpaddr: GPAddr::new(0),
             avail_gpaddr: GPAddr::new(0),
             used_gpaddr: GPAddr::new(0),
@@ -217,6 +277,10 @@ impl Virtqueue {
             num_descs: VIRTQUEUE_NUM_DESCS_MAX,
             irq_status: 0,
         }
+    }
+
+    pub fn index(&self) -> u32 {
+        self.index
     }
 
     pub fn set_queue_size(&mut self, value: u32) {

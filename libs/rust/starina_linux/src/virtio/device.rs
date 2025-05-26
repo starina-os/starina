@@ -73,8 +73,8 @@ impl VirtioMmio {
     pub fn new<D: VirtioDevice + 'static>(irq_trigger: IrqTrigger, irq: u8, device: D) -> Self {
         let num_queues = device.num_queues();
         let mut queues = Vec::with_capacity(num_queues as usize);
-        for _ in 0..num_queues {
-            queues.push(Virtqueue::new());
+        for i in 0..num_queues {
+            queues.push(Virtqueue::new(i));
         }
 
         Self {
