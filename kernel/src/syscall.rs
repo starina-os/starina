@@ -119,9 +119,7 @@ fn channel_create(current: &SharedRef<Thread>) -> Result<HandleId, ErrorCode> {
     let handle_table = &mut current.process().handles().lock();
     let ch1_handle = Handle::new(ch1, HandleRights::READ | HandleRights::WRITE);
     let ch2_handle = Handle::new(ch2, HandleRights::READ | HandleRights::WRITE);
-    let ch1_id = handle_table.insert(ch1_handle)?;
-    let ch2_id = handle_table.insert(ch2_handle)?;
-    assert!((ch1_id.as_raw() + 1) == ch2_id.as_raw()); // FIXME: guarantee this in HandleTable
+    let ch1_id = handle_table.insert_consecutive(ch1_handle, ch2_handle)?;
     Ok(ch1_id)
 }
 
