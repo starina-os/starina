@@ -10,14 +10,10 @@ use super::interrupt::interrupt_handler;
 #[unsafe(naked)]
 #[repr(align(4))]
 unsafe extern "C" fn idle_entry() -> ! {
-    unsafe {
-        naked_asm!(
-            r#"
-            j {resume_from_idle}
-            "#,
-            resume_from_idle = sym resume_from_idle,
-        );
-    }
+    naked_asm!(
+        "j {resume_from_idle}",
+        resume_from_idle = sym resume_from_idle,
+    );
 }
 
 fn resume_from_idle() -> ! {
@@ -26,7 +22,6 @@ fn resume_from_idle() -> ! {
     }
 
     interrupt_handler();
-    todo!()
 }
 
 pub fn halt() -> ! {
@@ -74,7 +69,6 @@ pub fn halt() -> ! {
 pub fn idle() -> ! {
     if cfg!(feature = "exit-on-idle") {
         halt();
-        panic!("failed to exit on idle");
     }
 
     unsafe {

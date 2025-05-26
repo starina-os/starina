@@ -109,159 +109,159 @@ impl Context {
                 // Do nothing.
             }
             // x1: ra
-            1 => unsafe {
+            1 => {
                 // trace!("load: RD=x1: ra");
                 self.ra = value;
-            },
+            }
             // x2: sp
-            2 => unsafe {
+            2 => {
                 // trace!("load: RD=x2: sp");
                 self.sp = value;
-            },
+            }
             // x3: gp
-            3 => unsafe {
+            3 => {
                 // trace!("load: RD=x3: gp");
                 self.gp = value;
-            },
+            }
             // x4: tp
-            4 => unsafe {
+            4 => {
                 // trace!("load: RD=x4: tp");
                 self.tp = value;
-            },
+            }
             // x5: t0
-            5 => unsafe {
+            5 => {
                 // trace!("load: RD=x5: t0");
                 self.t0 = value;
-            },
+            }
             // x6: t1
-            6 => unsafe {
+            6 => {
                 // trace!("load: RD=x6: t1");
                 self.t1 = value;
-            },
+            }
             // x7: t2
-            7 => unsafe {
+            7 => {
                 // trace!("load: RD=x7: t2");
                 self.t2 = value;
-            },
+            }
             // x8: s0
-            8 => unsafe {
+            8 => {
                 // trace!("load: RD=x8: s0");
                 self.s0 = value;
-            },
+            }
             // x9: s1
-            9 => unsafe {
+            9 => {
                 // trace!("load: RD=x9: s1");
                 self.s1 = value;
-            },
+            }
             // x10: a0
-            10 => unsafe {
+            10 => {
                 // trace!("load: RD=x10: a0");
                 self.a0 = value;
-            },
+            }
             // x11: a1
-            11 => unsafe {
+            11 => {
                 // trace!("load: RD=x11: a1");
                 self.a1 = value;
-            },
+            }
             // x12: a2
-            12 => unsafe {
+            12 => {
                 // trace!("load: RD=x12: a2");
                 self.a2 = value;
-            },
+            }
             // x13: a3
-            13 => unsafe {
+            13 => {
                 // trace!("load: RD=x13: a3");
                 self.a3 = value;
-            },
+            }
             // x14: a4
-            14 => unsafe {
+            14 => {
                 // trace!("load: RD=x14: a4");
                 self.a4 = value;
-            },
+            }
             // x15: a5
-            15 => unsafe {
+            15 => {
                 // trace!("load: RD=x15: a5");
                 self.a5 = value;
-            },
+            }
             // x16: a6
-            16 => unsafe {
+            16 => {
                 // trace!("load: RD=x16: a6");
                 self.a6 = value;
-            },
+            }
             // x17: a7
-            17 => unsafe {
+            17 => {
                 // trace!("load: RD=x17: a7");
                 self.a7 = value;
-            },
+            }
             // x18: s2
-            18 => unsafe {
+            18 => {
                 // trace!("load: RD=x18: s2");
                 self.s2 = value;
-            },
+            }
             // x19: s3
-            19 => unsafe {
+            19 => {
                 // trace!("load: RD=x19: s3");
                 self.s3 = value;
-            },
+            }
             // x20: s4
-            20 => unsafe {
+            20 => {
                 // trace!("load: RD=x20: s4");
                 self.s4 = value;
-            },
+            }
             // x21: s5
-            21 => unsafe {
+            21 => {
                 // trace!("load: RD=x21: s5");
                 self.s5 = value;
-            },
+            }
             // x22: s6
-            22 => unsafe {
+            22 => {
                 // trace!("load: RD=x22: s6");
                 self.s6 = value;
-            },
+            }
             // x23: s7
-            23 => unsafe {
+            23 => {
                 // trace!("load: RD=x23: s7");
                 self.s7 = value;
-            },
+            }
             // x24: s8
-            24 => unsafe {
+            24 => {
                 // trace!("load: RD=x24: s8");
                 self.s8 = value;
-            },
+            }
             // x25: s9
-            25 => unsafe {
+            25 => {
                 // trace!("load: RD=x25: s9");
                 self.s9 = value;
-            },
+            }
             // x26: s10
-            26 => unsafe {
+            26 => {
                 // trace!("load: RD=x26: s10");
                 self.s10 = value;
-            },
+            }
             // x27: s11
-            27 => unsafe {
+            27 => {
                 // trace!("load: RD=x27: s11");
                 self.s11 = value;
-            },
+            }
             // x28: t3
-            28 => unsafe {
+            28 => {
                 // trace!("load: RD=x28: t3");
                 self.t3 = value;
-            },
+            }
             // x29: t4
-            29 => unsafe {
+            29 => {
                 // trace!("load: RD=x29: t4");
                 self.t4 = value;
-            },
+            }
             // x30: t5
-            30 => unsafe {
+            30 => {
                 // trace!("load: RD=x30: t5");
                 self.t5 = value;
-            },
+            }
             // x31: t6
-            31 => unsafe {
+            31 => {
                 self.t6 = value;
-            },
+            }
             _ => {
                 panic!("unknown rd: {}", rd);
             }
@@ -467,13 +467,14 @@ impl Mutable {
         let isolation = current_thread.process().isolation();
         current_thread.exit_vcpu();
 
+        // FIXME: Handle error.
         let exit = self.run_state_slice.take().expect("tried to VM-exit twice");
-        exit.write(
+        let _ = exit.write(
             isolation,
             offset_of!(VCpuRunState, exit_reason),
             exit_reason,
         );
-        exit.write(isolation, offset_of!(VCpuRunState, exit_info), exit_info);
+        let _ = exit.write(isolation, offset_of!(VCpuRunState, exit_info), exit_info);
     }
 }
 
@@ -732,10 +733,6 @@ impl VCpu {
 
         let hgatp = hvspace.arch().hgatp();
 
-        let mut now: u64;
-        unsafe {
-            asm!("rdtime {}", out(reg) now);
-        }
         // let htimedelta = (-(now as i64)) as u64;
         let htimedelta = 0;
 
@@ -789,7 +786,7 @@ impl VCpu {
         }
 
         // FIXME:
-        let context = unsafe {
+        let context = {
             let ptr = (&self.context) as *const _ as usize;
             ptr as *mut Context
         };
@@ -837,7 +834,6 @@ impl VCpu {
                     ExitPageFaultKind::Store => {}
                     _ => {
                         panic!("unknown exit page fault kind: {:?}", run_state.exit_reason);
-                        return Err(ErrorCode::InvalidState);
                     }
                 }
             }
@@ -864,8 +860,8 @@ pub fn vcpu_entry(vcpu: *mut VCpu) -> ! {
         let mut hvip = context.hvip;
         context.hvip = 0;
 
-        let irq_pending = unsafe {
-            let mutable = unsafe { &mut (*vcpu).mutable }.lock();
+        let irq_pending = {
+            let mutable = (*vcpu).mutable.lock();
             mutable.plic.is_pending()
         };
 
@@ -1086,8 +1082,6 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
         _ => "unknown",
     };
 
-    let scause_code = scause & 0x7ff;
-
     let mut htval: u64;
     unsafe {
         asm!("csrr {}, htval", out(reg) htval);
@@ -1176,10 +1170,7 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
                 _ => {
                     panic!(
                         "VM exit: {} (sepc={:x}, htval={:x}, stval={:x})",
-                        scause_str,
-                        unsafe { context.sepc },
-                        htval,
-                        stval
+                        scause_str, context.sepc, htval, stval
                     );
                 }
             };
@@ -1192,88 +1183,86 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
 
 #[unsafe(naked)]
 pub extern "C" fn vcpu_trap_entry() -> ! {
-    unsafe {
-        naked_asm!(
-            // a0: *mut Context
-            "csrrw a0, sscratch, a0",
+    naked_asm!(
+        // a0: *mut Context
+        "csrrw a0, sscratch, a0",
 
-            "sd ra, {ra_offset}(a0)",
-            "sd sp, {sp_offset}(a0)",
-            "sd gp, {gp_offset}(a0)",
-            "sd tp, {tp_offset}(a0)",
-            "sd t0, {t0_offset}(a0)",
-            "sd t1, {t1_offset}(a0)",
-            "sd t2, {t2_offset}(a0)",
-            "sd s0, {s0_offset}(a0)",
-            "sd s1, {s1_offset}(a0)",
-            "sd a1, {a1_offset}(a0)",
-            "sd a2, {a2_offset}(a0)",
-            "sd a3, {a3_offset}(a0)",
-            "sd a4, {a4_offset}(a0)",
-            "sd a5, {a5_offset}(a0)",
-            "sd a6, {a6_offset}(a0)",
-            "sd a7, {a7_offset}(a0)",
-            "sd s2, {s2_offset}(a0)",
-            "sd s3, {s3_offset}(a0)",
-            "sd s4, {s4_offset}(a0)",
-            "sd s5, {s5_offset}(a0)",
-            "sd s6, {s6_offset}(a0)",
-            "sd s7, {s7_offset}(a0)",
-            "sd s8, {s8_offset}(a0)",
-            "sd s9, {s9_offset}(a0)",
-            "sd s10, {s10_offset}(a0)",
-            "sd s11, {s11_offset}(a0)",
-            "sd t3, {t3_offset}(a0)",
-            "sd t4, {t4_offset}(a0)",
-            "sd t5, {t5_offset}(a0)",
-            "sd t6, {t6_offset}(a0)",
+        "sd ra, {ra_offset}(a0)",
+        "sd sp, {sp_offset}(a0)",
+        "sd gp, {gp_offset}(a0)",
+        "sd tp, {tp_offset}(a0)",
+        "sd t0, {t0_offset}(a0)",
+        "sd t1, {t1_offset}(a0)",
+        "sd t2, {t2_offset}(a0)",
+        "sd s0, {s0_offset}(a0)",
+        "sd s1, {s1_offset}(a0)",
+        "sd a1, {a1_offset}(a0)",
+        "sd a2, {a2_offset}(a0)",
+        "sd a3, {a3_offset}(a0)",
+        "sd a4, {a4_offset}(a0)",
+        "sd a5, {a5_offset}(a0)",
+        "sd a6, {a6_offset}(a0)",
+        "sd a7, {a7_offset}(a0)",
+        "sd s2, {s2_offset}(a0)",
+        "sd s3, {s3_offset}(a0)",
+        "sd s4, {s4_offset}(a0)",
+        "sd s5, {s5_offset}(a0)",
+        "sd s6, {s6_offset}(a0)",
+        "sd s7, {s7_offset}(a0)",
+        "sd s8, {s8_offset}(a0)",
+        "sd s9, {s9_offset}(a0)",
+        "sd s10, {s10_offset}(a0)",
+        "sd s11, {s11_offset}(a0)",
+        "sd t3, {t3_offset}(a0)",
+        "sd t4, {t4_offset}(a0)",
+        "sd t5, {t5_offset}(a0)",
+        "sd t6, {t6_offset}(a0)",
 
-            "csrr t0, sscratch",
-            "sd t0, {a0_offset}(a0)",
+        "csrr t0, sscratch",
+        "sd t0, {a0_offset}(a0)",
 
-            // Restore the CpuVar pointer.
-            "ld tp, {cpuvar_ptr_offset}(a0)",
-            "csrw sscratch, tp",
+        // Restore the CpuVar pointer.
+        "ld tp, {cpuvar_ptr_offset}(a0)",
+        "csrw sscratch, tp",
 
-            "ld sp, {kernel_sp_offset}(tp)",
-            "j {vcpu_trap_handler}",
+        "ld sp, {kernel_sp_offset}(tp)",
+        "j {vcpu_trap_handler}",
 
-            vcpu_trap_handler = sym vcpu_trap_handler,
-            ra_offset = const offset_of!(VCpu, context.ra),
-            sp_offset = const offset_of!(VCpu, context.sp),
-            gp_offset = const offset_of!(VCpu, context.gp),
-            tp_offset = const offset_of!(VCpu, context.tp),
-            t0_offset = const offset_of!(VCpu, context.t0),
-            t1_offset = const offset_of!(VCpu, context.t1),
-            t2_offset = const offset_of!(VCpu, context.t2),
-            s0_offset = const offset_of!(VCpu, context.s0),
-            s1_offset = const offset_of!(VCpu, context.s1),
-            a0_offset = const offset_of!(VCpu, context.a0),
-            a1_offset = const offset_of!(VCpu, context.a1),
-            a2_offset = const offset_of!(VCpu, context.a2),
-            a3_offset = const offset_of!(VCpu, context.a3),
-            a4_offset = const offset_of!(VCpu, context.a4),
-            a5_offset = const offset_of!(VCpu, context.a5),
-            a6_offset = const offset_of!(VCpu, context.a6),
-            a7_offset = const offset_of!(VCpu, context.a7),
-            s2_offset = const offset_of!(VCpu, context.s2),
-            s3_offset = const offset_of!(VCpu, context.s3),
-            s4_offset = const offset_of!(VCpu, context.s4),
-            s5_offset = const offset_of!(VCpu, context.s5),
-            s6_offset = const offset_of!(VCpu, context.s6),
-            s7_offset = const offset_of!(VCpu, context.s7),
-            s8_offset = const offset_of!(VCpu, context.s8),
-            s9_offset = const offset_of!(VCpu, context.s9),
-            s10_offset = const offset_of!(VCpu, context.s10),
-            s11_offset = const offset_of!(VCpu, context.s11),
-            t3_offset = const offset_of!(VCpu, context.t3),
-            t4_offset = const offset_of!(VCpu, context.t4),
-            t5_offset = const offset_of!(VCpu, context.t5),
-            t6_offset = const offset_of!(VCpu, context.t6),
-            cpuvar_ptr_offset = const offset_of!(VCpu, context.cpuvar_ptr),
-            kernel_sp_offset = const offset_of!(CpuVar, arch.kernel_sp),
-        );
-    };
+        vcpu_trap_handler = sym vcpu_trap_handler,
+        ra_offset = const offset_of!(VCpu, context.ra),
+        sp_offset = const offset_of!(VCpu, context.sp),
+        gp_offset = const offset_of!(VCpu, context.gp),
+        tp_offset = const offset_of!(VCpu, context.tp),
+        t0_offset = const offset_of!(VCpu, context.t0),
+        t1_offset = const offset_of!(VCpu, context.t1),
+        t2_offset = const offset_of!(VCpu, context.t2),
+        s0_offset = const offset_of!(VCpu, context.s0),
+        s1_offset = const offset_of!(VCpu, context.s1),
+        a0_offset = const offset_of!(VCpu, context.a0),
+        a1_offset = const offset_of!(VCpu, context.a1),
+        a2_offset = const offset_of!(VCpu, context.a2),
+        a3_offset = const offset_of!(VCpu, context.a3),
+        a4_offset = const offset_of!(VCpu, context.a4),
+        a5_offset = const offset_of!(VCpu, context.a5),
+        a6_offset = const offset_of!(VCpu, context.a6),
+        a7_offset = const offset_of!(VCpu, context.a7),
+        s2_offset = const offset_of!(VCpu, context.s2),
+        s3_offset = const offset_of!(VCpu, context.s3),
+        s4_offset = const offset_of!(VCpu, context.s4),
+        s5_offset = const offset_of!(VCpu, context.s5),
+        s6_offset = const offset_of!(VCpu, context.s6),
+        s7_offset = const offset_of!(VCpu, context.s7),
+        s8_offset = const offset_of!(VCpu, context.s8),
+        s9_offset = const offset_of!(VCpu, context.s9),
+        s10_offset = const offset_of!(VCpu, context.s10),
+        s11_offset = const offset_of!(VCpu, context.s11),
+        t3_offset = const offset_of!(VCpu, context.t3),
+        t4_offset = const offset_of!(VCpu, context.t4),
+        t5_offset = const offset_of!(VCpu, context.t5),
+        t6_offset = const offset_of!(VCpu, context.t6),
+        cpuvar_ptr_offset = const offset_of!(VCpu, context.cpuvar_ptr),
+        kernel_sp_offset = const offset_of!(CpuVar, arch.kernel_sp),
+    );
 }
 
 pub fn init() {

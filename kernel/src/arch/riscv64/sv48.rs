@@ -55,37 +55,9 @@ impl Pte {
     }
 }
 
-fn is_large_page_aligned(
-    vaddr: VAddr,
-    paddr: PAddr,
-    remaining: usize,
-    level: usize,
-) -> Option<usize> {
-    let page_size = match level {
-        1 => 2 * 1024 * 1024,        // 2MiB pages (level 1)
-        2 => 1 * 1024 * 1024 * 1024, // 1GiB pages (level 2)
-        3 => return None,            // Not supported in Sv48
-        _ => unreachable!(),
-    };
-
-    if page_size > remaining {
-        return None;
-    }
-
-    if !is_aligned(vaddr.as_usize(), page_size) {
-        return None;
-    }
-
-    if !is_aligned(paddr.as_usize(), page_size) {
-        return None;
-    }
-
-    Some(page_size)
-}
-
 enum TableOrLeaf<'a> {
     Table(&'a mut Table),
-    Leaf(&'a mut Pte),
+    Leaf,
 }
 
 #[repr(transparent)]
@@ -115,7 +87,7 @@ impl Table {
         }
 
         if entry.is_leaf() {
-            return Ok(TableOrLeaf::Leaf(entry));
+            return Ok(TableOrLeaf::Leaf);
         }
 
         let child_table = paddr2table(entry.paddr())?;
@@ -138,7 +110,7 @@ fn walk_into_last_table(l0_table: &Folio, vaddr: VAddr) -> Result<&mut Table, Er
     for level in (1..=3).rev() {
         table = match table.get_child_table(vaddr, level) {
             Ok(TableOrLeaf::Table(table)) => table,
-            Ok(TableOrLeaf::Leaf(_)) => return Err(ErrorCode::AlreadyMapped),
+            Ok(TableOrLeaf::Leaf) => return Err(ErrorCode::AlreadyMapped),
             Err(e) => return Err(e),
         };
     }

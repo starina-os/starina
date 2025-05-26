@@ -310,7 +310,7 @@ fn do_syscall(
         }
         SYS_HANDLE_CLOSE => {
             let handle = HandleId::from_raw_isize(a0)?;
-            let ret = handle_close(&current, handle)?;
+            handle_close(&current, handle)?;
             Ok(SyscallResult::Done(RetVal::new(0)))
         }
         SYS_CONSOLE_WRITE => {

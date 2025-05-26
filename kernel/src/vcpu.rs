@@ -12,12 +12,7 @@ use crate::poll::Listener;
 use crate::poll::Poll;
 use crate::refcount::SharedRef;
 
-struct Mutable {
-    in_use: bool,
-}
-
 pub struct VCpu {
-    hvspace: SharedRef<HvSpace>,
     arch: arch::VCpu,
 }
 
@@ -29,7 +24,7 @@ impl VCpu {
         arg1: usize,
     ) -> Result<VCpu, ErrorCode> {
         let arch = arch::VCpu::new(&hvspace, entry, arg0, arg1)?;
-        Ok(VCpu { hvspace, arch })
+        Ok(VCpu { arch })
     }
 
     // FIXME:

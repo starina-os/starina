@@ -191,7 +191,6 @@ struct FoundBus {
 struct FoundInterruptController {
     name: String,
     is_compatible: bool,
-    interrupt_cells: u32,
 }
 
 pub fn parse(dtb: *const u8) -> Result<DeviceTree, fdt_rs::error::DevTreeError> {
@@ -314,7 +313,6 @@ pub fn parse(dtb: *const u8) -> Result<DeviceTree, fdt_rs::error::DevTreeError> 
 
         let node_name = node.name()?;
         let mut is_interrupt_controller = false;
-        let mut interrupt_cells = None;
         let mut compatible = Vec::new();
         let mut reg = Vec::new();
         let mut phandle = None;
@@ -329,9 +327,6 @@ pub fn parse(dtb: *const u8) -> Result<DeviceTree, fdt_rs::error::DevTreeError> 
                 }
                 "interrupt-controller" => {
                     is_interrupt_controller = true;
-                }
-                "#interrupt-cells" => {
-                    interrupt_cells = Some(prop.u32(0)?);
                 }
                 "phandle" => {
                     phandle = Some(prop.u32(0)?);
@@ -348,10 +343,6 @@ pub fn parse(dtb: *const u8) -> Result<DeviceTree, fdt_rs::error::DevTreeError> 
             continue;
         };
 
-        let Some(interrupt_cells) = interrupt_cells else {
-            continue;
-        };
-
         if compatible.is_empty() {
             continue;
         }
@@ -362,7 +353,6 @@ pub fn parse(dtb: *const u8) -> Result<DeviceTree, fdt_rs::error::DevTreeError> 
             FoundInterruptController {
                 name: node_name.to_owned(),
                 is_compatible,
-                interrupt_cells,
             },
         );
     }
