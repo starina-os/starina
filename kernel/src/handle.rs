@@ -114,6 +114,32 @@ impl HandleTable {
         Ok(handle_id)
     }
 
+    /// Insert two handles, and return the first ID.
+    ///
+    /// The IDs are guaranteed to be consecutive.
+    pub fn insert_consecutive<H: Into<AnyHandle>>(
+        &mut self,
+        first: H,
+        second: H,
+    ) -> Result<HandleId, ErrorCode> {
+        if self.handles.len() + 2 > NUM_HANDLES_MAX {
+            return Err(ErrorCode::TooManyHandles);
+        }
+
+        let first_id = HandleId::from_raw(self.next_id);
+        let second_id = HandleId::from_raw(self.next_id + 1);
+
+        if self.handles.contains_key(&first_id) || self.handles.contains_key(&second_id) {
+            return Err(ErrorCode::AlreadyExists);
+        }
+
+        self.handles.insert(first_id, first.into());
+        self.handles.insert(second_id, second.into());
+
+        self.next_id += 2;
+        Ok(first_id)
+    }
+
     pub fn is_movable(&self, handle: HandleId) -> bool {
         let exists = self.handles.get(&handle).is_some();
         exists
