@@ -39,13 +39,13 @@ impl EventLoop for App {
     type Env = autogen::Env;
     type State = State;
 
-    fn init(dispatcher: &dyn Dispatcher<Self::State>, mut env: Self::Env) -> Self {
+    fn init(dispatcher: &dyn Dispatcher<Self::State>, env: Self::Env) -> Self {
         dispatcher
             .add_channel(State::Startup, env.startup_ch)
             .unwrap();
 
         // Look for and initialize the virtio-net device.
-        let mut virtio_net = VirtioNet::init_or_panic(&env.device_tree, &mut env.iobus);
+        let mut virtio_net = VirtioNet::init_or_panic(&env.device_tree);
 
         // Start watching for interrupts.
         let interrupt = virtio_net.take_interrupt().unwrap();

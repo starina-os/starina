@@ -25,17 +25,16 @@
 //! ```no_run
 //! use starina::prelude::*;
 //! use starina::folio::MmioFolio;
-//! use starina::address::DAddr;
+//! use starina::address::Paddr;
 //! use starina_driver_sdk::mmio::{LittleEndian, MmioReg, ReadOnly};
 //!
-//! let iobus = todo!();
-//! const MMIO_BASE: DAddr = DAddr::new(0x101000);
+//! const MMIO_BASE: Paddr = Paddr::new(0x101000);
 //! const MMIO_SIZE: usize = 4096;
 //!
 //! static TIME_LOW_REG: MmioReg<LittleEndian, ReadOnly, u32> = MmioReg::new(0x00);
 //! static TIME_HIGH_REG: MmioReg<LittleEndian, ReadOnly, u32> = MmioReg::new(0x04);
 //!
-//! let mut folio = MmioFolio::create_pinned(iobus, MMIO_BASE, MMIO_SIZE).unwrap();
+//! let mut folio = MmioFolio::create_pinned( MMIO_BASE, MMIO_SIZE).unwrap();
 //! let low: u32 = TIME_LOW_REG.read(&mut folio);
 //! let high: u32 = TIME_HIGH_REG.read(&mut folio);
 //! let now: u64 = (high as u64) << 32 | (low as u64);

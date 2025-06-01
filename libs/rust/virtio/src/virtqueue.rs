@@ -3,10 +3,9 @@ use core::mem::size_of;
 use core::sync::atomic;
 use core::sync::atomic::Ordering;
 
-use starina::address::DAddr;
+use starina::address::PAddr;
 use starina::folio::MmioFolio;
 use starina::folio::page_size;
-use starina::iobus::IoBus;
 use starina::prelude::*;
 use starina_utils::alignment::align_up;
 
@@ -59,8 +58,8 @@ struct VirtqUsed {
 
 #[derive(Debug)]
 pub enum VirtqDescBuffer {
-    ReadOnlyFromDevice { daddr: DAddr, len: usize },
-    WritableFromDevice { daddr: DAddr, len: usize },
+    ReadOnlyFromDevice { paddr: PAddr, len: usize },
+    WritableFromDevice { paddr: PAddr, len: usize },
 }
 
 pub struct VirtqUsedChain {
@@ -82,7 +81,7 @@ pub struct VirtQueue {
 }
 
 impl VirtQueue {
-    pub fn new(iobus: &IoBus, index: u16, transport: &mut dyn VirtioTransport) -> VirtQueue {
+    pub fn new(index: u16, transport: &mut dyn VirtioTransport) -> VirtQueue {
         transport.select_queue(index);
 
         let num_descs = transport.queue_max_size();
@@ -95,10 +94,10 @@ impl VirtQueue {
             size_of::<u16>() * 3 + size_of::<VirtqUsedElem>() * (num_descs as usize);
         let virtq_size = used_ring_off + align_up(used_ring_size, page_size());
 
-        let folio = MmioFolio::create(iobus, virtq_size).expect("failed to allocate virtuqeue");
-        let descs = folio.daddr();
-        let avail = folio.daddr().add(avail_ring_off);
-        let used = folio.daddr().add(used_ring_off);
+        let folio = MmioFolio::create(virtq_size).expect("failed to allocate virtuqeue");
+        let descs = folio.paddr();
+        let avail = folio.paddr().add(avail_ring_off);
+        let used = folio.paddr().add(used_ring_off);
 
         transport.set_queue_desc_paddr(descs);
         transport.set_queue_driver_paddr(avail);
@@ -171,9 +170,9 @@ impl VirtQueue {
         for (i, buffer) in chain.iter().enumerate() {
             let desc = self.desc_mut(desc_index);
             let (addr, len, flags) = match buffer {
-                VirtqDescBuffer::ReadOnlyFromDevice { daddr, len } => (daddr, *len, 0),
-                VirtqDescBuffer::WritableFromDevice { daddr, len } => {
-                    (daddr, *len, VIRTQ_DESC_F_WRITE)
+                VirtqDescBuffer::ReadOnlyFromDevice { paddr, len } => (paddr, *len, 0),
+                VirtqDescBuffer::WritableFromDevice { paddr, len } => {
+                    (paddr, *len, VIRTQ_DESC_F_WRITE)
                 }
             };
 
@@ -224,12 +223,12 @@ impl VirtQueue {
             let desc = self.desc_mut(next_desc_index);
             used_descs.push(if desc.is_writable() {
                 VirtqDescBuffer::WritableFromDevice {
-                    daddr: DAddr::new(desc.addr as usize),
+                    paddr: PAddr::new(desc.addr as usize),
                     len: desc.len as usize,
                 }
             } else {
                 VirtqDescBuffer::ReadOnlyFromDevice {
-                    daddr: DAddr::new(desc.addr as usize),
+                    paddr: PAddr::new(desc.addr as usize),
                     len: desc.len as usize,
                 }
             });

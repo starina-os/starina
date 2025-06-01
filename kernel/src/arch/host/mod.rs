@@ -3,7 +3,7 @@
 use std::cell::RefCell;
 use std::io::Write;
 
-use starina::address::DAddr;
+use starina::address::Paddr;
 use starina::address::PAddr;
 use starina::address::VAddr;
 use starina::device_tree::Reg;
@@ -124,11 +124,11 @@ impl VmSpace {
     }
 }
 
-pub fn map_daddr(paddr: PAddr) -> Result<DAddr, ErrorCode> {
+pub fn map_paddr(paddr: PAddr) -> Result<Paddr, ErrorCode> {
     todo!()
 }
 
-pub fn unmap_daddr(daddr: DAddr) -> Result<(), ErrorCode> {
+pub fn unmap_paddr(paddr: Paddr) -> Result<(), ErrorCode> {
     todo!()
 }
 

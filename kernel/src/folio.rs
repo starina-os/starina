@@ -2,15 +2,13 @@
 use core::alloc::GlobalAlloc;
 use core::alloc::Layout;
 
-use starina::address::DAddr;
-use starina::error::ErrorCode;
-use starina::poll::Readiness;
 use starina_types::address::PAddr;
 use starina_types::address::VAddr;
+use starina_types::error::ErrorCode;
+use starina_types::poll::Readiness;
 use starina_utils::alignment::is_aligned;
 
 use crate::allocator::GLOBAL_ALLOCATOR;
-use crate::arch;
 use crate::arch::PAGE_SIZE;
 use crate::arch::vaddr2paddr;
 use crate::handle::Handleable;
@@ -19,7 +17,6 @@ use crate::poll::Poll;
 
 pub struct Folio {
     paddr: PAddr,
-    daddr: Option<DAddr>,
     len: usize,
 }
 
@@ -46,21 +43,13 @@ impl Folio {
 
         let folio = Self {
             paddr: vaddr2paddr(VAddr::new(ptr as usize)).unwrap(),
-            daddr: None,
             len,
         };
 
         Ok(folio)
     }
 
-    pub fn alloc_for_device(len: usize) -> Result<Folio, ErrorCode> {
-        let mut folio = Self::alloc(len)?;
-        let daddr = arch::map_daddr(folio.paddr())?;
-        folio.daddr = Some(daddr);
-        Ok(folio)
-    }
-
-    pub fn alloc_at(paddr: PAddr, len: usize) -> Result<Folio, ErrorCode> {
+    pub fn pin(paddr: PAddr, len: usize) -> Result<Folio, ErrorCode> {
         if len == 0 || !is_aligned(len, PAGE_SIZE) {
             return Err(ErrorCode::InvalidArg);
         }
@@ -72,11 +61,7 @@ impl Folio {
         // TODO: Make sure the paddr range is not owned by any other folio.
         // TODO: Check if the paddr is mappable - should not point to the kernel memory.
 
-        let folio = Self {
-            paddr,
-            daddr: None,
-            len,
-        };
+        let folio = Self { paddr, len };
 
         Ok(folio)
     }
@@ -87,20 +72,6 @@ impl Folio {
 
     pub fn paddr(&self) -> PAddr {
         self.paddr
-    }
-
-    pub fn daddr(&self) -> Option<DAddr> {
-        self.daddr
-    }
-}
-
-impl Drop for Folio {
-    fn drop(&mut self) {
-        if let Some(daddr) = self.daddr {
-            if let Err(e) = arch::unmap_daddr(daddr) {
-                debug_warn!("failed to unmap daddr: {:?}", e);
-            }
-        }
     }
 }
 

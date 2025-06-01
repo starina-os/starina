@@ -18,11 +18,17 @@ pub struct VmSpace {
 impl VmSpace {
     pub fn map_anywhere_current(
         folio: &Folio,
-        _len: usize,
+        len: usize,
         prot: PageProtect,
     ) -> Result<VAddr, ErrorCode> {
-        // FIXME: Pass len to syscall
-        let vaddr = syscall::vmspace_map(SELF_VMSPACE, folio.handle_id(), prot)?;
+        let vaddr = syscall::vmspace_map(
+            SELF_VMSPACE,
+            VAddr::new(0), /* anywhere */
+            len,
+            folio.handle_id(),
+            0,
+            prot,
+        )?;
         Ok(vaddr)
     }
 }

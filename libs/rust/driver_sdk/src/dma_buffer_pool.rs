@@ -1,10 +1,9 @@
 //! A DMA buffer allocator.
 //!
 //! This module provides a buffer pool for DMA operations.
-use starina::address::DAddr;
+use starina::address::PAddr;
 use starina::address::VAddr;
 use starina::folio::MmioFolio;
-use starina::iobus::IoBus;
 use starina::prelude::vec::Vec;
 use starina_utils::alignment::align_up;
 
@@ -29,14 +28,13 @@ pub struct BufferId(usize);
 /// ```no_run
 /// use starina_driver_sdk::DmaBufferPool;
 ///
-/// let iobus = todo!();
 /// const BUFFER_SIZE: usize = 4096;
 /// const NUM_BUFFERS: usize = 16;
 ///
-/// let mut pool = DmaBufferPool::new(iobus, BUFFER_SIZE, NUM_BUFFERS);
+/// let mut pool = DmaBufferPool::new(BUFFER_SIZE, NUM_BUFFERS);
 /// let buffer_id = pool.allocate().unwrap();
 ///
-/// let daddr = pool.daddr(buffer_id);
+/// let paddr = pool.paddr(buffer_id);
 /// let vaddr = pool.vaddr(buffer_id);
 ///
 /// // Do DMA operations here!
@@ -52,7 +50,7 @@ pub struct DmaBufferPool {
 
 pub struct BufferWriter {
     vaddr: VAddr,
-    daddr: DAddr,
+    paddr: PAddr,
     byte_offset: usize,
     size: usize,
 }
@@ -69,8 +67,8 @@ impl BufferWriter {
     /// This requires `self` to ensure you won't write to the buffer anymore
     /// when telling the address to the device. In other words, the buffer will
     /// be moved to the device.
-    pub fn finish(self) -> DAddr {
-        self.daddr
+    pub fn finish(self) -> PAddr {
+        self.paddr
     }
 
     pub fn write<T: Copy>(&mut self, value: T) -> Result<(), Error> {
@@ -133,9 +131,9 @@ pub enum Error {
 }
 
 impl DmaBufferPool {
-    pub fn new(iobus: &IoBus, buffer_size: usize, num_buffers: usize) -> DmaBufferPool {
+    pub fn new(buffer_size: usize, num_buffers: usize) -> DmaBufferPool {
         let len = align_up(buffer_size * num_buffers, 4096);
-        let folio = MmioFolio::create(iobus, len).unwrap();
+        let folio = MmioFolio::create(len).unwrap();
         let mut free_indices = Vec::new();
         for i in 0..num_buffers {
             free_indices.push(BufferId(i));
@@ -161,14 +159,14 @@ impl DmaBufferPool {
     }
 
     /// Converts a physical memory address to a buffer index.
-    pub fn daddr_to_id(&self, daddr: DAddr) -> Option<BufferId> {
+    pub fn paddr_to_id(&self, paddr: PAddr) -> Option<BufferId> {
         debug_assert!(
-            daddr.as_usize() % self.buffer_size == 0,
-            "daddr is not aligned"
+            paddr.as_usize() % self.buffer_size == 0,
+            "paddr is not aligned"
         );
 
-        // TODO: daddr may not be in the same folio
-        let offset = daddr.as_usize() - self.folio.daddr().as_usize();
+        // TODO: paddr may not be in the same folio
+        let offset = paddr.as_usize() - self.folio.paddr().as_usize();
         let index = offset / self.buffer_size;
         if index < self.num_buffers {
             Some(BufferId(index))
@@ -184,13 +182,13 @@ impl DmaBufferPool {
     }
 
     /// Returns the device memory address of a buffer.
-    pub fn daddr(&self, index: BufferId) -> DAddr {
+    pub fn paddr(&self, index: BufferId) -> PAddr {
         debug_assert!(index.0 < self.num_buffers);
-        self.folio.daddr().add(index.0 * self.buffer_size)
+        self.folio.paddr().add(index.0 * self.buffer_size)
     }
 
-    pub fn from_device(&mut self, daddr: DAddr) -> Option<BufferReader<'_>> {
-        let id = self.daddr_to_id(daddr)?;
+    pub fn from_device(&mut self, paddr: PAddr) -> Option<BufferReader<'_>> {
+        let id = self.paddr_to_id(paddr)?;
 
         let slice = unsafe {
             let ptr = self.vaddr(id).as_ptr();
@@ -206,11 +204,11 @@ impl DmaBufferPool {
     pub fn to_device(&mut self) -> Result<BufferWriter, Error> {
         let index = self.allocate().ok_or(Error::OutOfMemory)?;
         let vaddr = self.vaddr(index);
-        let daddr = self.daddr(index);
+        let paddr = self.paddr(index);
 
         Ok(BufferWriter {
             vaddr,
-            daddr,
+            paddr,
             byte_offset: 0,
             size: self.buffer_size,
         })

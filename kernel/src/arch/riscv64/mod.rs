@@ -30,7 +30,5 @@ pub use vcpu::vcpu_entry;
 pub use vmspace::PAGE_SIZE;
 pub use vmspace::VmSpace;
 pub use vmspace::find_free_ram;
-pub use vmspace::map_daddr;
 pub use vmspace::paddr2vaddr;
-pub use vmspace::unmap_daddr;
 pub use vmspace::vaddr2paddr;

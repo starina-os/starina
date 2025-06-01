@@ -12,7 +12,6 @@ use crate::syscall::VsyscallPage;
 pub enum EnvType {
     Service { service: String },
     DeviceTree { matches: Vec<String> },
-    IoBusMap,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -56,7 +55,6 @@ pub enum ParsedEnvType {
     DeviceTree {
         matches: &'static [ParsedDeviceMatch],
     },
-    IoBusMap,
     Service {
         service: &'static str,
     },

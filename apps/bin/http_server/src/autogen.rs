@@ -6,7 +6,6 @@ use serde::Deserialize;
 use starina::channel::Channel;
 use starina::collections::HashMap;
 use starina::device_tree::DeviceTree;
-use starina::iobus::IoBus;
 use starina::prelude::*;
 use starina::spec::ParsedAppSpec;
 use starina::spec::ParsedDeviceMatch;

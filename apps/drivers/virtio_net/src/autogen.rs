@@ -6,7 +6,6 @@ use serde::Deserialize;
 use starina::channel::Channel;
 use starina::collections::HashMap;
 use starina::device_tree::DeviceTree;
-use starina::iobus::IoBus;
 use starina::prelude::*;
 use starina::spec::ParsedAppSpec;
 use starina::spec::ParsedDeviceMatch;
@@ -19,23 +18,16 @@ use starina::syscall::VsyscallPage;
 pub struct Env {
     pub startup_ch: Channel,
     pub device_tree: DeviceTree,
-    pub iobus: HashMap<String, IoBus>,
 }
 
 pub const APP_SPEC: ParsedAppSpec = ParsedAppSpec {
     name: "virtio_net",
-    env: &[
-        ParsedEnvItem {
-            name: "device_tree",
-            ty: ParsedEnvType::DeviceTree {
-                matches: &[ParsedDeviceMatch::Compatible("virtio,mmio")],
-            },
+    env: &[ParsedEnvItem {
+        name: "device_tree",
+        ty: ParsedEnvType::DeviceTree {
+            matches: &[ParsedDeviceMatch::Compatible("virtio,mmio")],
         },
-        ParsedEnvItem {
-            name: "iobus",
-            ty: ParsedEnvType::IoBusMap,
-        },
-    ],
+    }],
     exports: &[ParsedExportItem::Service {
         service: "device/ethernet",
     }],

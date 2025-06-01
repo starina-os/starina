@@ -28,7 +28,6 @@ mod folio;
 mod handle;
 mod hvspace;
 mod interrupt;
-mod iobus;
 mod isolation;
 mod panic;
 mod poll;

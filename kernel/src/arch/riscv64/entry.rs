@@ -19,6 +19,7 @@ pub extern "C" fn inkernel_syscall_entry(
     _a3: isize,
     _a4: isize,
     _a5: isize,
+    _n: isize,
 ) -> RetVal {
     naked_asm!(
         // Disable interrupts in kernel.
