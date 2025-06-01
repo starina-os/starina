@@ -176,15 +176,14 @@ impl Poll {
 
         let readiness = handle.readiness()?;
         if readiness.contains(interests) {
-            // Are there any waiters waiting for an event?
+            if mutable.ready_handles.enqueue(id).is_err() {
+                debug_warn!("failed to enqueue a ready handle due to out-of-memory");
+            }
+
+            // Wake up a thread waiting for the event. Only one thread is woken
+            // up at a time to prevent a thundering herd.
             if let Some(waiter) = mutable.waiters.pop_front() {
                 waiter.wake();
-            } else {
-                // No threads are ready to receive the event. Deliver it later once
-                // a thread enters the wait state.
-                if mutable.ready_handles.enqueue(id).is_err() {
-                    debug_warn!("failed to enqueue a ready handle due to out-of-memory");
-                }
             }
         }
 
