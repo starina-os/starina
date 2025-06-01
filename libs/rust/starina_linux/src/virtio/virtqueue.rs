@@ -160,12 +160,6 @@ impl<'a> DescChainReader<'a> {
             };
 
             let desc_len = desc.len.to_host() as usize;
-            if offset + read_len == desc_len {
-                // Try next descriptor.
-                self.current = None;
-                continue;
-            }
-
             if offset + read_len > desc_len {
                 debug_warn!(
                     "virtqueue: desc chain reader: tried to read an object which spans across multiple descriptors"
@@ -178,7 +172,14 @@ impl<'a> DescChainReader<'a> {
                 .checked_add(offset)
                 .ok_or(guest_memory::Error::OutOfRange)?;
             let value = self.memory.read(gpaddr)?;
+
             self.current = Some((desc, offset + read_len));
+
+            if offset + read_len == desc_len {
+                // Try next descriptor.
+                self.current = None;
+            }
+
             return Ok(value);
         }
     }
