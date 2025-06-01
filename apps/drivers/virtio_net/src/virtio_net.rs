@@ -2,9 +2,9 @@ use core::mem::offset_of;
 
 use starina::address::PAddr;
 use starina::device_tree::DeviceTree;
-use starina::folio::MmioFolio;
 use starina::info;
 use starina::interrupt::Interrupt;
+use starina::mmio::MmioRegion;
 use starina::prelude::Box;
 use starina::prelude::vec::Vec;
 use starina_driver_sdk::DmaBufferPool;
@@ -52,7 +52,7 @@ fn probe(
 
         let paddr = PAddr::new(node.reg[0].addr as usize);
         let len = node.reg[0].size as usize;
-        let folio = MmioFolio::create_pinned(paddr, len).unwrap();
+        let folio = MmioRegion::pin(paddr, len).unwrap();
         let mut virtio = VirtioMmio::new(folio);
         let device_type = virtio.probe();
 

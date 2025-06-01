@@ -20,6 +20,7 @@ pub mod handle;
 pub mod hvspace;
 pub mod interrupt;
 pub mod message;
+pub mod mmio;
 pub mod poll;
 pub mod sync;
 pub mod vcpu;

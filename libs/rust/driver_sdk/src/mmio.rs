@@ -46,7 +46,7 @@
 //! ```
 use core::marker::PhantomData;
 
-use starina::folio::MmioFolio;
+use starina::mmio::MmioRegion;
 
 /// A trait for endianness conversion.
 pub trait Endianess {
@@ -157,12 +157,12 @@ impl<E: Endianess, A: Access, T: Copy> MmioReg<E, A, T> {
     ///
     /// This is useful when the MMIO register spans multiple words or unaligned
     /// length, such as MAC address (6 bytes).
-    pub fn do_read_with_offset(&self, folio: &mut MmioFolio, offset: usize) -> T {
+    pub fn do_read_with_offset(&self, folio: &mut MmioRegion, offset: usize) -> T {
         let vaddr = folio.vaddr().as_usize() + self.offset + offset * size_of::<T>();
         unsafe { core::ptr::read_volatile(vaddr as *const T) }
     }
 
-    fn do_write_with_offset(&self, folio: &mut MmioFolio, offset: usize, value: T) {
+    fn do_write_with_offset(&self, folio: &mut MmioRegion, offset: usize, value: T) {
         let vaddr = folio.vaddr().as_usize() + self.offset + offset * size_of::<T>();
         unsafe { core::ptr::write_volatile(vaddr as *mut T, value) };
     }
@@ -170,40 +170,40 @@ impl<E: Endianess, A: Access, T: Copy> MmioReg<E, A, T> {
 
 impl<E: Endianess, T: Copy> MmioReg<E, ReadOnly, T> {
     /// Reads a value from the MMIO register.
-    pub fn read(&self, folio: &mut MmioFolio) -> T {
+    pub fn read(&self, folio: &mut MmioRegion) -> T {
         self.do_read_with_offset(folio, 0)
     }
 
-    pub fn read_with_offset(&self, folio: &mut MmioFolio, offset: usize) -> T {
+    pub fn read_with_offset(&self, folio: &mut MmioRegion, offset: usize) -> T {
         self.do_read_with_offset(folio, offset)
     }
 }
 
 impl<E: Endianess, T: Copy> MmioReg<E, WriteOnly, T> {
     /// Writes a value to the MMIO register.
-    pub fn write(&self, folio: &mut MmioFolio, value: T) {
+    pub fn write(&self, folio: &mut MmioRegion, value: T) {
         self.do_write_with_offset(folio, 0, value)
     }
 }
 
 impl<E: Endianess, T: Copy> MmioReg<E, ReadWrite, T> {
     /// Reads a value from the MMIO register.
-    pub fn read(&self, folio: &mut MmioFolio) -> T {
+    pub fn read(&self, folio: &mut MmioRegion) -> T {
         self.do_read_with_offset(folio, 0)
     }
 
     /// Writes a value to the MMIO register with an offset.
-    pub fn read_with_offset(&self, folio: &mut MmioFolio, offset: usize) -> T {
+    pub fn read_with_offset(&self, folio: &mut MmioRegion, offset: usize) -> T {
         self.do_read_with_offset(folio, offset)
     }
 
     /// Writes a value to the MMIO register.
-    pub fn write(&self, folio: &mut MmioFolio, value: T) {
+    pub fn write(&self, folio: &mut MmioRegion, value: T) {
         self.do_write_with_offset(folio, 0, value)
     }
 
     /// Writes a value to the MMIO register with an offset.
-    pub fn write_with_offset(&self, folio: &mut MmioFolio, offset: usize, value: T) {
+    pub fn write_with_offset(&self, folio: &mut MmioRegion, offset: usize, value: T) {
         self.do_write_with_offset(folio, offset, value)
     }
 }
