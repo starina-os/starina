@@ -1,4 +1,4 @@
-use crate::address::DAddr;
+use crate::address::PAddr;
 use crate::address::VAddr;
 use crate::error::ErrorCode;
 use crate::handle::HandleId;
@@ -13,12 +13,11 @@ pub const SYS_POLL_CREATE: u8 = 5;
 pub const SYS_POLL_ADD: u8 = 6;
 pub const SYS_POLL_REMOVE: u8 = 7;
 pub const SYS_POLL_WAIT: u8 = 8;
-pub const SYS_FOLIO_CREATE: u8 = 9;
-pub const SYS_FOLIO_PADDR: u8 = 10;
-pub const SYS_FOLIO_CREATE_FIXED: u8 = 11;
+pub const SYS_FOLIO_ALLOC: u8 = 9;
+pub const SYS_FOLIO_PIN: u8 = 10;
+pub const SYS_FOLIO_PADDR: u8 = 11;
 pub const SYS_VMSPACE_MAP: u8 = 12;
 pub const SYS_BUSIO_MAP: u8 = 13;
-pub const SYS_FOLIO_DADDR: u8 = 14;
 pub const SYS_INTERRUPT_CREATE: u8 = 15;
 pub const SYS_INTERRUPT_ACK: u8 = 16;
 pub const SYS_THREAD_EXIT: u8 = 17;
@@ -26,7 +25,6 @@ pub const SYS_HVSPACE_CREATE: u8 = 18;
 pub const SYS_HVSPACE_MAP: u8 = 19;
 pub const SYS_VCPU_CREATE: u8 = 20;
 pub const SYS_VCPU_RUN: u8 = 21;
-pub const SYS_FOLIO_ALLOC: u8 = 22;
 
 #[repr(C)]
 pub struct VsyscallPage {
@@ -78,8 +76,8 @@ impl From<VAddr> for RetVal {
     }
 }
 
-impl From<DAddr> for RetVal {
-    fn from(value: DAddr) -> Self {
+impl From<PAddr> for RetVal {
+    fn from(value: PAddr) -> Self {
         RetVal(value.as_usize() as isize)
     }
 }

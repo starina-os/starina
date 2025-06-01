@@ -1,14 +1,11 @@
 use core::mem::offset_of;
 
-use starina::address::DAddr;
-use starina::collections::HashMap;
+use starina::address::PAddr;
 use starina::device_tree::DeviceTree;
 use starina::folio::MmioFolio;
 use starina::info;
 use starina::interrupt::Interrupt;
-use starina::iobus::IoBus;
 use starina::prelude::Box;
-use starina::prelude::String;
 use starina::prelude::vec::Vec;
 use starina_driver_sdk::DmaBufferPool;
 use virtio::DeviceType;
@@ -47,28 +44,25 @@ struct VirtioNetConfig {
 
 fn probe(
     device_tree: &DeviceTree,
-    iobus_map: &mut HashMap<String, IoBus>,
-) -> Option<(IoBus, Box<dyn VirtioTransport>, Vec<VirtQueue>, Interrupt)> {
+) -> Option<(Box<dyn VirtioTransport>, Vec<VirtQueue>, Interrupt)> {
     for (name, node) in &device_tree.devices {
         if !node.compatible.iter().any(|c| c == "virtio,mmio") {
             continue;
         }
 
-        let iobus = iobus_map.get(&node.bus).expect("missing iobus");
-        let daddr = DAddr::new(node.reg[0].addr as usize);
+        let paddr = PAddr::new(node.reg[0].addr as usize);
         let len = node.reg[0].size as usize;
-        let folio = MmioFolio::create_pinned(iobus, daddr, len).unwrap();
+        let folio = MmioFolio::create_pinned(paddr, len).unwrap();
         let mut virtio = VirtioMmio::new(folio);
         let device_type = virtio.probe();
 
         if device_type == Some(DeviceType::Net) {
             info!("found virtio-net device: {}", name);
             let mut transport = Box::new(virtio) as Box<dyn VirtioTransport>;
-            let virtqueues = transport.initialize(iobus, 0, 2).unwrap();
-            let iobus = iobus_map.remove(&node.bus).unwrap();
+            let virtqueues = transport.initialize(0, 2).unwrap();
             let interrupt =
                 Interrupt::create(node.interrupts[0]).expect("failed to create interrupt");
-            return Some((iobus, transport, virtqueues, interrupt));
+            return Some((transport, virtqueues, interrupt));
         }
     }
 
@@ -81,7 +75,6 @@ pub trait Receiver {
 
 pub struct VirtioNet {
     mac_addr: [u8; 6],
-    _iobus: IoBus,
     transport: Box<dyn VirtioTransport>,
     transmitq: VirtQueue,
     receiveq: VirtQueue,
@@ -92,9 +85,8 @@ pub struct VirtioNet {
 }
 
 impl VirtioNet {
-    pub fn init_or_panic(device_tree: &DeviceTree, iobus_map: &mut HashMap<String, IoBus>) -> Self {
-        let (iobus, mut transport, mut virtqueues, interrupt) =
-            probe(device_tree, iobus_map).unwrap();
+    pub fn init_or_panic(device_tree: &DeviceTree) -> Self {
+        let (mut transport, mut virtqueues, interrupt) = probe(device_tree).unwrap();
         assert!(transport.is_modern());
 
         let mut mac = [0; 6];
@@ -104,14 +96,12 @@ impl VirtioNet {
 
         let mut receiveq = virtqueues.remove(0 /* 1st queue */);
         let transmitq = virtqueues.remove(0 /* 2nd queue */);
-        let mut receiveq_buffers =
-            DmaBufferPool::new(&iobus, DMA_BUF_SIZE, receiveq.num_descs() as usize);
-        let transmitq_buffers =
-            DmaBufferPool::new(&iobus, DMA_BUF_SIZE, transmitq.num_descs() as usize);
+        let mut receiveq_buffers = DmaBufferPool::new(DMA_BUF_SIZE, receiveq.num_descs() as usize);
+        let transmitq_buffers = DmaBufferPool::new(DMA_BUF_SIZE, transmitq.num_descs() as usize);
 
         while let Some(i) = receiveq_buffers.allocate() {
             let chain = &[VirtqDescBuffer::WritableFromDevice {
-                daddr: receiveq_buffers.daddr(i),
+                paddr: receiveq_buffers.paddr(i),
                 len: DMA_BUF_SIZE,
             }];
 
@@ -120,7 +110,6 @@ impl VirtioNet {
         receiveq.notify(&mut *transport);
 
         Self {
-            _iobus: iobus,
             mac_addr: mac,
             transport,
             receiveq,
@@ -158,15 +147,15 @@ impl VirtioNet {
             })
             .unwrap();
         writer.write_bytes(payload).unwrap();
-        let daddr = writer.finish();
+        let paddr = writer.finish();
 
         self.transmitq.enqueue(&[
             VirtqDescBuffer::ReadOnlyFromDevice {
-                daddr,
+                paddr,
                 len: size_of::<VirtioNetModernHeader>(),
             },
             VirtqDescBuffer::ReadOnlyFromDevice {
-                daddr: daddr.add(size_of::<VirtioNetModernHeader>()),
+                paddr: paddr.add(size_of::<VirtioNetModernHeader>()),
                 len: payload.len(),
             },
         ]);
@@ -186,7 +175,7 @@ impl VirtioNet {
                 debug_assert!(descs.len() == 1);
                 let mut remaining = total_len;
                 for desc in descs {
-                    let VirtqDescBuffer::WritableFromDevice { daddr, len } = desc else {
+                    let VirtqDescBuffer::WritableFromDevice { paddr, len } = desc else {
                         panic!("unexpected desc");
                     };
 
@@ -195,8 +184,8 @@ impl VirtioNet {
 
                     let mut buf = self
                         .receiveq_buffers
-                        .from_device(daddr)
-                        .expect("invalid daddr");
+                        .from_device(paddr)
+                        .expect("invalid paddr");
 
                     let _header = buf.read::<VirtioNetModernHeader>();
                     let payload = buf.read_bytes(read_len).unwrap();
@@ -207,19 +196,19 @@ impl VirtioNet {
             }
 
             while let Some(VirtqUsedChain { descs, .. }) = self.transmitq.pop_used() {
-                let VirtqDescBuffer::ReadOnlyFromDevice { daddr, .. } = descs[0] else {
+                let VirtqDescBuffer::ReadOnlyFromDevice { paddr, .. } = descs[0] else {
                     panic!("unexpected desc");
                 };
                 let buffer_index = self
                     .transmitq_buffers
-                    .daddr_to_id(daddr)
-                    .expect("invalid daddr");
+                    .paddr_to_id(paddr)
+                    .expect("invalid paddr");
                 self.transmitq_buffers.free(buffer_index);
             }
 
             while let Some(buffer_index) = self.receiveq_buffers.allocate() {
                 let chain = &[VirtqDescBuffer::WritableFromDevice {
-                    daddr: self.receiveq_buffers.daddr(buffer_index),
+                    paddr: self.receiveq_buffers.paddr(buffer_index),
                     len: DMA_BUF_SIZE,
                 }];
 

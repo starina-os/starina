@@ -1,4 +1,4 @@
-use starina::address::DAddr;
+use starina::address::PAddr;
 use starina::folio::MmioFolio;
 use starina::prelude::*;
 use starina_driver_sdk::mmio::LittleEndian;
@@ -128,18 +128,18 @@ impl VirtioTransport for VirtioMmio {
         QUEUE_READY_REG.write(&mut self.mmio, 1);
     }
 
-    fn set_queue_desc_paddr(&mut self, daddr: DAddr) {
-        QUEUE_DESC_LOW_REG.write(&mut self.mmio, (daddr.as_usize() & 0xffff_ffff) as u32);
-        QUEUE_DESC_HIGH_REG.write(&mut self.mmio, (daddr.as_usize() >> 32) as u32);
+    fn set_queue_desc_paddr(&mut self, paddr: PAddr) {
+        QUEUE_DESC_LOW_REG.write(&mut self.mmio, (paddr.as_usize() & 0xffff_ffff) as u32);
+        QUEUE_DESC_HIGH_REG.write(&mut self.mmio, (paddr.as_usize() >> 32) as u32);
     }
 
-    fn set_queue_driver_paddr(&mut self, daddr: DAddr) {
-        QUEUE_DRIVER_LOW_REG.write(&mut self.mmio, (daddr.as_usize() & 0xffff_ffff) as u32);
-        QUEUE_DRIVER_HIGH_REG.write(&mut self.mmio, (daddr.as_usize() >> 32) as u32);
+    fn set_queue_driver_paddr(&mut self, paddr: PAddr) {
+        QUEUE_DRIVER_LOW_REG.write(&mut self.mmio, (paddr.as_usize() & 0xffff_ffff) as u32);
+        QUEUE_DRIVER_HIGH_REG.write(&mut self.mmio, (paddr.as_usize() >> 32) as u32);
     }
 
-    fn set_queue_device_paddr(&mut self, daddr: DAddr) {
-        QUEUE_DEVICE_LOW_REG.write(&mut self.mmio, (daddr.as_usize() & 0xffff_ffff) as u32);
-        QUEUE_DEVICE_HIGH_REG.write(&mut self.mmio, (daddr.as_usize() >> 32) as u32);
+    fn set_queue_device_paddr(&mut self, paddr: PAddr) {
+        QUEUE_DEVICE_LOW_REG.write(&mut self.mmio, (paddr.as_usize() & 0xffff_ffff) as u32);
+        QUEUE_DEVICE_HIGH_REG.write(&mut self.mmio, (paddr.as_usize() >> 32) as u32);
     }
 }

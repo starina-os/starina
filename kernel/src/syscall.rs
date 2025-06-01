@@ -1,5 +1,5 @@
-use starina::address::DAddr;
 use starina::address::GPAddr;
+use starina::address::PAddr;
 use starina::address::VAddr;
 use starina::interrupt::IrqMatcher;
 use starina_types::error::ErrorCode;
@@ -20,7 +20,6 @@ use crate::folio::Folio;
 use crate::handle::Handle;
 use crate::hvspace::HvSpace;
 use crate::interrupt::Interrupt;
-use crate::iobus::IoBus;
 use crate::isolation::IsolationPtr;
 use crate::isolation::IsolationSlice;
 use crate::isolation::IsolationSliceMut;
@@ -169,7 +168,10 @@ fn channel_recv(
 pub fn vmspace_map(
     current: &SharedRef<Thread>,
     handle: HandleId,
+    vaddr: VAddr,
+    len: usize,
     folio: HandleId,
+    offset: usize,
     prot: PageProtect,
 ) -> Result<VAddr, ErrorCode> {
     let process = current.process();
@@ -190,6 +192,21 @@ pub fn vmspace_map(
         return Err(ErrorCode::NotAllowed);
     }
 
+    if vaddr != VAddr::new(0) {
+        debug_warn!("vmspace_map syscall does not support vaddr != 0");
+        return Err(ErrorCode::NotSupported);
+    }
+
+    if folio.len() != len {
+        debug_warn!("vmspace_map syscall does not support folio.len != len");
+        return Err(ErrorCode::NotSupported);
+    }
+
+    if offset != 0 {
+        debug_warn!("vmspace_map syscall does not support offset != 0");
+        return Err(ErrorCode::NotSupported);
+    }
+
     let vaddr = vmspace.map_anywhere(folio.into_object(), prot)?;
     Ok(vaddr)
 }
@@ -204,29 +221,24 @@ pub fn folio_alloc(current: &SharedRef<Thread>, len: usize) -> Result<HandleId, 
     Ok(handle_id)
 }
 
-pub fn folio_daddr(current: &SharedRef<Thread>, handle: HandleId) -> Result<DAddr, ErrorCode> {
+pub fn folio_paddr(current: &SharedRef<Thread>, handle: HandleId) -> Result<PAddr, ErrorCode> {
     let handle_table = current.process().handles().lock();
     let folio = handle_table.get::<Folio>(handle)?;
-    let daddr = folio.daddr().ok_or(ErrorCode::NotADevice)?;
-    Ok(daddr)
+    Ok(folio.paddr())
 }
 
-fn busio_map(
+pub fn folio_pin(
     current: &SharedRef<Thread>,
-    handle: HandleId,
-    daddr: Option<DAddr>,
+    paddr: PAddr,
     len: usize,
 ) -> Result<HandleId, ErrorCode> {
-    let mut handle_table = current.process().handles().lock();
-    let busio = handle_table.get::<IoBus>(handle)?;
-    if !busio.is_capable(HandleRights::WRITE) {
-        return Err(ErrorCode::NotAllowed);
-    }
-
-    let folio = busio.map(daddr, len)?;
-    let handle = Handle::new(SharedRef::new(folio)?, HandleRights::MAP);
-    let folio_id = handle_table.insert(handle)?;
-    Ok(folio_id)
+    let folio = Folio::pin(paddr, len)?;
+    let handle: Handle<Folio> = Handle::new(
+        SharedRef::new(folio)?,
+        HandleRights::READ | HandleRights::WRITE | HandleRights::MAP,
+    );
+    let handle_id = current.process().handles().lock().insert(handle)?;
+    Ok(handle_id)
 }
 
 fn interrupt_create(
@@ -311,6 +323,7 @@ fn do_syscall(
     a2: isize,
     a3: isize,
     a4: isize,
+    a5: isize,
     n: isize,
     current: &SharedRef<Thread>,
 ) -> Result<SyscallResult, ErrorCode> {
@@ -373,9 +386,12 @@ fn do_syscall(
         }
         SYS_VMSPACE_MAP => {
             let handle = HandleId::from_raw_isize(a0)?;
-            let folio = HandleId::from_raw_isize(a1)?;
-            let prot = PageProtect::from_raw_isize(a2)?;
-            let ret = vmspace_map(&current, handle, folio, prot)?;
+            let vaddr = VAddr::new(a1 as usize);
+            let len = a2 as usize;
+            let folio = HandleId::from_raw_isize(a3)?;
+            let offset = a4 as usize;
+            let prot = PageProtect::from_raw_isize(a5)?;
+            let ret = vmspace_map(&current, handle, vaddr, len, folio, offset, prot)?;
             Ok(SyscallResult::Done(ret.into()))
         }
         SYS_FOLIO_ALLOC => {
@@ -383,20 +399,15 @@ fn do_syscall(
             let ret = folio_alloc(&current, len)?;
             Ok(SyscallResult::Done(ret.into()))
         }
-        SYS_FOLIO_DADDR => {
-            let handle = HandleId::from_raw_isize(a0)?;
-            let daddr = folio_daddr(&current, handle)?;
-            Ok(SyscallResult::Done(daddr.into()))
+        SYS_FOLIO_PIN => {
+            let paddr = PAddr::new(a0 as usize);
+            let len = a1 as usize;
+            let ret = folio_pin(&current, paddr, len)?;
+            Ok(SyscallResult::Done(ret.into()))
         }
-        SYS_BUSIO_MAP => {
+        SYS_FOLIO_PADDR => {
             let handle = HandleId::from_raw_isize(a0)?;
-            let daddr = if a1 == 0 {
-                None
-            } else {
-                Some(DAddr::new(a1 as usize))
-            };
-            let len = a2 as usize;
-            let ret = busio_map(&current, handle, daddr, len)?;
+            let ret = folio_paddr(&current, handle)?;
             Ok(SyscallResult::Done(ret.into()))
         }
         SYS_INTERRUPT_CREATE => {
@@ -444,9 +455,17 @@ fn do_syscall(
     }
 }
 
-pub fn syscall_handler(a0: isize, a1: isize, a2: isize, a3: isize, a4: isize, n: isize) -> ! {
+pub fn syscall_handler(
+    a0: isize,
+    a1: isize,
+    a2: isize,
+    a3: isize,
+    a4: isize,
+    a5: isize,
+    n: isize,
+) -> ! {
     let current = current_thread();
-    let new_state = match do_syscall(a0, a1, a2, a3, a4, n, &current) {
+    let new_state = match do_syscall(a0, a1, a2, a3, a4, a5, n, &current) {
         Ok(SyscallResult::Done(value)) => ThreadState::Runnable(Some(value.into())),
         Ok(SyscallResult::Err(err)) => ThreadState::Runnable(Some(err.into())),
         Ok(SyscallResult::Block(state)) => state,

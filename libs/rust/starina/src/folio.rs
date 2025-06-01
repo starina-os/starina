@@ -1,5 +1,5 @@
 //! A contiguous page-aliged memory block.
-use starina_types::address::DAddr;
+use starina_types::address::PAddr;
 use starina_types::address::VAddr;
 use starina_types::error::ErrorCode;
 use starina_types::handle::HandleId;
@@ -8,7 +8,6 @@ use starina_utils::alignment::is_aligned;
 
 use crate::handle::Handleable;
 use crate::handle::OwnedHandle;
-use crate::iobus::IoBus;
 use crate::syscall;
 use crate::vmspace::SELF_VMSPACE;
 
@@ -54,12 +53,20 @@ impl Folio {
         Ok(Folio { handle })
     }
 
+    pub fn pin(paddr: PAddr, size: usize) -> Result<Folio, ErrorCode> {
+        assert!(is_aligned(size, 0x1000));
+
+        let id = syscall::folio_pin(paddr, size)?;
+        let handle = OwnedHandle::from_raw(id);
+        Ok(Folio { handle })
+    }
+
     pub const fn from_handle(handle: OwnedHandle) -> Self {
         Self { handle }
     }
 
-    pub fn daddr(&self) -> Result<DAddr, ErrorCode> {
-        syscall::folio_daddr(self.handle.id())
+    pub fn paddr(&self) -> Result<PAddr, ErrorCode> {
+        syscall::folio_paddr(self.handle.id())
     }
 }
 
@@ -71,7 +78,7 @@ impl Handleable for Folio {
 
 pub struct MmioFolio {
     _folio: Folio,
-    daddr: DAddr,
+    paddr: PAddr,
     vaddr: VAddr,
     len: usize,
 }
@@ -79,21 +86,24 @@ pub struct MmioFolio {
 impl MmioFolio {
     /// Allocates a folio at an arbitrary physical address, and maps it to the
     /// current process's address space.
-    pub fn create(bus: &IoBus, len: usize) -> Result<MmioFolio, ErrorCode> {
+    pub fn create(len: usize) -> Result<MmioFolio, ErrorCode> {
         debug_assert!(is_aligned(len, 0x1000));
 
-        let folio = bus.map(None, len)?;
+        let folio = Folio::alloc(len)?;
         let vaddr = syscall::vmspace_map(
             SELF_VMSPACE,
+            VAddr::new(0), /* anywhere */
+            len,
             folio.handle.id(),
+            0,
             PageProtect::READABLE | PageProtect::WRITEABLE,
         )?;
 
-        let daddr = folio.daddr()?;
+        let paddr = folio.paddr()?;
 
         Ok(MmioFolio {
             _folio: folio,
-            daddr,
+            paddr,
             vaddr,
             len,
         })
@@ -101,20 +111,23 @@ impl MmioFolio {
 
     /// Allocates a folio at a specific physical address (`paddr`), and maps it to the
     /// current process's address space.
-    pub fn create_pinned(bus: &IoBus, daddr: DAddr, len: usize) -> Result<MmioFolio, ErrorCode> {
-        debug_assert!(is_aligned(daddr.as_usize(), 0x1000));
+    pub fn create_pinned(paddr: PAddr, len: usize) -> Result<MmioFolio, ErrorCode> {
+        debug_assert!(is_aligned(paddr.as_usize(), 0x1000));
         debug_assert!(is_aligned(len, 0x1000));
 
-        let folio = bus.map(Some(daddr), len)?;
+        let folio = Folio::pin(paddr, len)?;
         let vaddr = syscall::vmspace_map(
             SELF_VMSPACE,
+            VAddr::new(0), /* anywhere */
+            len,
             folio.handle.id(),
+            0,
             PageProtect::READABLE | PageProtect::WRITEABLE,
         )?;
 
         Ok(MmioFolio {
             _folio: folio,
-            daddr,
+            paddr,
             vaddr,
             len,
         })
@@ -147,8 +160,8 @@ impl MmioFolio {
     }
 
     /// Returns the start address of the folio in device memory space.
-    pub fn daddr(&self) -> DAddr {
-        self.daddr
+    pub fn paddr(&self) -> PAddr {
+        self.paddr
     }
 }
 

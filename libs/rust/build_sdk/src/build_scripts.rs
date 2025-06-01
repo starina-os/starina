@@ -43,10 +43,6 @@ pub fn autogen() {
                     format!("ParsedEnvType::DeviceTree {{ matches: &[{matches_str}] }}");
                 ("DeviceTree", parsed_env_ty)
             }
-            EnvType::IoBusMap => {
-                let parsed_env_ty = format!("ParsedEnvType::IoBusMap");
-                ("HashMap<String, IoBus>", parsed_env_ty)
-            }
         };
 
         env_str.push_str(&format!("    pub {env_name}: {env_ty},\n"));
@@ -76,7 +72,6 @@ use starina::prelude::*;
 use starina::channel::Channel;
 use starina::collections::HashMap;
 use starina::device_tree::DeviceTree;
-use starina::iobus::IoBus;
 use starina::spec::ParsedAppSpec;
 use starina::spec::ParsedEnvType;
 use starina::spec::ParsedEnvItem;

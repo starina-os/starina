@@ -3,7 +3,6 @@ use alloc::vec;
 
 use arrayvec::ArrayVec;
 use hashbrown::HashMap;
-use starina::device_tree::BusNode;
 use starina::device_tree::DeviceTree;
 use starina::handle::HandleRights;
 use starina::message::MessageInfo;
@@ -17,16 +16,15 @@ use starina::syscall::VsyscallPage;
 
 use crate::channel::Channel;
 use crate::handle::Handle;
-use crate::iobus::NOMMU_IOBUS;
 use crate::process::KERNEL_PROCESS;
 use crate::scheduler::GLOBAL_SCHEDULER;
 use crate::thread::Thread;
 
 const INKERNEL_APPS: &[ParsedAppSpec] = &[
-    // virtio_net::autogen::APP_SPEC,
-    // tcpip::autogen::APP_SPEC,
-    // http_server::autogen::APP_SPEC,
-    catsay::autogen::APP_SPEC,
+    virtio_net::autogen::APP_SPEC,
+    tcpip::autogen::APP_SPEC,
+    http_server::autogen::APP_SPEC,
+    // catsay::autogen::APP_SPEC,
 ];
 
 pub fn load_inkernel_apps(device_tree: DeviceTree) {
@@ -52,24 +50,6 @@ pub fn load_inkernel_apps(device_tree: DeviceTree) {
         let mut env = serde_json::Map::new();
         for ParsedEnvItem { name: env_name, ty } in spec.env {
             let value = match ty {
-                ParsedEnvType::IoBusMap => {
-                    let mut buses = HashMap::new();
-                    for (name, node) in &device_tree.buses {
-                        let bus = match node {
-                            BusNode::NoMmu => NOMMU_IOBUS.clone(),
-                        };
-
-                        let handle = Handle::new(bus, HandleRights::WRITE);
-                        let handle_id = KERNEL_PROCESS
-                            .handles()
-                            .lock()
-                            .insert(handle)
-                            .expect("failed to insert iobus");
-                        buses.insert(name, handle_id.as_raw());
-                    }
-
-                    serde_json::json!(buses)
-                }
                 ParsedEnvType::DeviceTree { matches } => {
                     let mut devices = HashMap::new();
                     for (name, node) in &device_tree.devices {
@@ -88,7 +68,6 @@ pub fn load_inkernel_apps(device_tree: DeviceTree) {
 
                     serde_json::json!({
                         "devices": devices,
-                        "buses": device_tree.buses,
                     })
                 }
                 ParsedEnvType::Service { service: name } => {

@@ -10,7 +10,6 @@ use crate::interrupt::IrqMatcher;
 /// The device tree. This is the root of the device tree.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DeviceTree {
-    pub buses: HashMap<String, BusNode>,
     pub devices: HashMap<String, DeviceNode>,
 }
 
@@ -18,14 +17,8 @@ pub struct DeviceTree {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DeviceNode {
     pub compatible: Vec<String>,
-    pub bus: String,
     pub reg: Vec<Reg>,
     pub interrupts: Vec<IrqMatcher>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub enum BusNode {
-    NoMmu,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

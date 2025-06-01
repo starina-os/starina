@@ -12,7 +12,6 @@ use fdt_rs::prelude::*;
 use fdt_rs::spec::fdt_header;
 use hashbrown::HashMap;
 use starina::address::PAddr;
-use starina::device_tree::BusNode;
 use starina::device_tree::DeviceNode;
 use starina::device_tree::DeviceTree;
 use starina::device_tree::Reg;
@@ -182,7 +181,6 @@ impl<'a, 'i, 'dt> Iterator for RegParser<'a, 'i, 'dt> {
 #[derive(Debug)]
 struct FoundBus {
     is_referenced: bool,
-    bus: BusNode,
     address_cells: u32,
     size_cells: u32,
 }
@@ -291,7 +289,6 @@ pub fn parse(dtb: *const u8) -> Result<DeviceTree, fdt_rs::error::DevTreeError> 
                 node_name.to_owned(),
                 FoundBus {
                     is_referenced: false,
-                    bus: BusNode::NoMmu,
                     address_cells,
                     size_cells,
                 },
@@ -426,19 +423,11 @@ pub fn parse(dtb: *const u8) -> Result<DeviceTree, fdt_rs::error::DevTreeError> 
             node_name.to_owned(),
             DeviceNode {
                 compatible,
-                bus: parent_name.to_owned(),
                 reg,
                 interrupts,
             },
         );
     }
 
-    let mut buses = HashMap::new();
-    for (name, bus) in found_buses {
-        if bus.is_referenced {
-            buses.insert(name, bus.bus);
-        }
-    }
-
-    Ok(DeviceTree { devices, buses })
+    Ok(DeviceTree { devices })
 }

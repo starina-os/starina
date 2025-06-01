@@ -1,6 +1,5 @@
 use core::arch::asm;
 
-use starina::address::DAddr;
 use starina_types::address::PAddr;
 use starina_types::address::VAddr;
 use starina_types::error::ErrorCode;
@@ -23,16 +22,6 @@ pub(super) const PPN_SHIFT: usize = 12;
 
 const VALLOC_START: VAddr = VAddr::new(0x0000_000b_0000_0000);
 const VALLOC_END: VAddr = VAddr::new(0x0000_000b_ffff_ffff);
-
-pub fn map_daddr(paddr: PAddr) -> Result<DAddr, ErrorCode> {
-    // We don't have IOMMU. Device will see the same address as the kernel.
-    Ok(DAddr::new(paddr.as_usize()))
-}
-
-pub fn unmap_daddr(_daddr: DAddr) -> Result<(), ErrorCode> {
-    // We don't do anything in map_daddr. Nothing to unmap.
-    Ok(())
-}
 
 pub fn vaddr2paddr(vaddr: VAddr) -> Result<PAddr, ErrorCode> {
     // Identical mapping.

@@ -79,7 +79,7 @@ impl Plic {
         let plic_paddr: usize = reg[0].addr as usize;
 
         trace!("PLIC: paddr={:#x}", plic_paddr);
-        let folio = Folio::alloc_at(PAddr::new(plic_paddr), PLIC_SIZE).unwrap();
+        let folio = Folio::pin(PAddr::new(plic_paddr), PLIC_SIZE).unwrap();
         let mmio_folio = MmioFolio::from_folio(folio).unwrap();
 
         Plic {

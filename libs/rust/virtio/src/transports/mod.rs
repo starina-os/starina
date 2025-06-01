@@ -1,5 +1,4 @@
-use starina::address::DAddr;
-use starina::iobus::IoBus;
+use starina::address::PAddr;
 use starina::prelude::*;
 
 use super::DeviceType;
@@ -46,9 +45,9 @@ pub trait VirtioTransport: Send + Sync {
     fn set_queue_size(&mut self, queue_size: u16);
     fn notify_queue(&mut self, index: u16);
     fn enable_queue(&mut self);
-    fn set_queue_desc_paddr(&mut self, paddr: DAddr);
-    fn set_queue_driver_paddr(&mut self, paddr: DAddr);
-    fn set_queue_device_paddr(&mut self, paddr: DAddr);
+    fn set_queue_desc_paddr(&mut self, paddr: PAddr);
+    fn set_queue_driver_paddr(&mut self, paddr: PAddr);
+    fn set_queue_device_paddr(&mut self, paddr: PAddr);
 }
 
 impl dyn VirtioTransport {
@@ -59,7 +58,6 @@ impl dyn VirtioTransport {
 
     pub fn initialize(
         &mut self,
-        iobus: &IoBus,
         features: u64,
         num_virtqueues: u16,
     ) -> Result<Vec<VirtQueue>, VirtioAttachError> {
@@ -88,7 +86,7 @@ impl dyn VirtioTransport {
         // Initialize virtqueues.
         let mut virtqueues = Vec::new();
         for index in 0..num_virtqueues {
-            virtqueues.push(VirtQueue::new(iobus, index, self));
+            virtqueues.push(VirtQueue::new(index, self));
         }
 
         self.set_device_status_bit(VIRTIO_STATUS_DRIVER_OK);
