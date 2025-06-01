@@ -54,7 +54,7 @@ pub struct DescChain {
 }
 
 impl DescChain {
-    pub fn reader_writer<'a>(
+    pub fn split<'a>(
         &'a self,
         vq: &mut Virtqueue,
         memory: &'a GuestMemory,

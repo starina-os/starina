@@ -300,7 +300,7 @@ impl VirtioDevice for VirtioFs {
     /// endianness. We don't have a check for the endianness but the guest
     /// should fail because we will handle their FUSE_INIT as an invalid request.
     fn process(&self, memory: &mut GuestMemory, vq: &mut Virtqueue, chain: DescChain) {
-        let (mut reader, writer) = chain.reader_writer(vq, memory).unwrap();
+        let (mut reader, writer) = chain.split(vq, memory).unwrap();
 
         let in_header = match reader.read::<FuseInHeader>() {
             Ok(in_header) => in_header,
