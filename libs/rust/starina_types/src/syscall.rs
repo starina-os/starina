@@ -17,14 +17,13 @@ pub const SYS_FOLIO_ALLOC: u8 = 9;
 pub const SYS_FOLIO_PIN: u8 = 10;
 pub const SYS_FOLIO_PADDR: u8 = 11;
 pub const SYS_VMSPACE_MAP: u8 = 12;
-pub const SYS_BUSIO_MAP: u8 = 13;
-pub const SYS_INTERRUPT_CREATE: u8 = 15;
-pub const SYS_INTERRUPT_ACK: u8 = 16;
-pub const SYS_THREAD_EXIT: u8 = 17;
-pub const SYS_HVSPACE_CREATE: u8 = 18;
-pub const SYS_HVSPACE_MAP: u8 = 19;
-pub const SYS_VCPU_CREATE: u8 = 20;
-pub const SYS_VCPU_RUN: u8 = 21;
+pub const SYS_INTERRUPT_CREATE: u8 = 13;
+pub const SYS_INTERRUPT_ACK: u8 = 14;
+pub const SYS_THREAD_EXIT: u8 = 15;
+pub const SYS_HVSPACE_CREATE: u8 = 16;
+pub const SYS_HVSPACE_MAP: u8 = 17;
+pub const SYS_VCPU_CREATE: u8 = 18;
+pub const SYS_VCPU_RUN: u8 = 19;
 
 #[repr(C)]
 pub struct VsyscallPage {
