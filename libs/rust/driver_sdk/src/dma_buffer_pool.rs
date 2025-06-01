@@ -3,7 +3,7 @@
 //! This module provides a buffer pool for DMA operations.
 use starina::address::PAddr;
 use starina::address::VAddr;
-use starina::folio::MmioFolio;
+use starina::mmio::MmioRegion;
 use starina::prelude::vec::Vec;
 use starina_utils::alignment::align_up;
 
@@ -42,7 +42,7 @@ pub struct BufferId(usize);
 /// pool.free(buffer_id);
 /// ```
 pub struct DmaBufferPool {
-    folio: MmioFolio,
+    folio: MmioRegion,
     free_indices: Vec<BufferId>,
     buffer_size: usize,
     num_buffers: usize,
@@ -133,7 +133,7 @@ pub enum Error {
 impl DmaBufferPool {
     pub fn new(buffer_size: usize, num_buffers: usize) -> DmaBufferPool {
         let len = align_up(buffer_size * num_buffers, 4096);
-        let folio = MmioFolio::create(len).unwrap();
+        let folio = MmioRegion::create(len).unwrap();
         let mut free_indices = Vec::new();
         for i in 0..num_buffers {
             free_indices.push(BufferId(i));

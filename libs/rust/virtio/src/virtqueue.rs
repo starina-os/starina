@@ -4,8 +4,8 @@ use core::sync::atomic;
 use core::sync::atomic::Ordering;
 
 use starina::address::PAddr;
-use starina::folio::MmioFolio;
 use starina::folio::page_size;
+use starina::mmio::MmioRegion;
 use starina::prelude::*;
 use starina_utils::alignment::align_up;
 
@@ -70,7 +70,7 @@ pub struct VirtqUsedChain {
 /// A virtqueue.
 pub struct VirtQueue {
     #[allow(dead_code)]
-    folio: MmioFolio,
+    folio: MmioRegion,
     index: u16,
     num_descs: u16,
     last_used_index: u16,
@@ -94,7 +94,7 @@ impl VirtQueue {
             size_of::<u16>() * 3 + size_of::<VirtqUsedElem>() * (num_descs as usize);
         let virtq_size = used_ring_off + align_up(used_ring_size, page_size());
 
-        let folio = MmioFolio::create(virtq_size).expect("failed to allocate virtuqeue");
+        let folio = MmioRegion::create(virtq_size).expect("failed to allocate virtuqeue");
         let descs = folio.paddr();
         let avail = folio.paddr().add(avail_ring_off);
         let used = folio.paddr().add(used_ring_off);
