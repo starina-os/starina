@@ -12,6 +12,7 @@ cd "$(dirname "$0")"
 
 export CARGO_TARGET_DIR=build
 export CARGO_TERM_HYPERLINKS=false
+export STARINA_RUN_SH=1
 
 cargo_cmd=build
 if [[ -n ${CHECK_ONLY:-} ]]; then
