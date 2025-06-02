@@ -208,7 +208,7 @@ pub fn switch_thread() -> ! {
                         SyscallResult::Done(result) => {
                             // We've got an event. Resume the thread with a return
                             // value.
-                            Some(result.into())
+                            Some(result)
                         }
                         SyscallResult::Err(err) => {
                             // The poll is no longer valid. Return the error as a

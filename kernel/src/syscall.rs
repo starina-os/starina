@@ -163,7 +163,7 @@ fn channel_send(
         return Err(ErrorCode::NotAllowed);
     }
 
-    let data = IsolationSlice::new(data_ptr, msginfo.data_len() as usize);
+    let data = IsolationSlice::new(data_ptr, msginfo.data_len());
     let handles = IsolationSlice::new(handles_ptr, size_of::<HandleId>() * msginfo.num_handles());
     ch.send(isolation, &mut handle_table, msginfo, data, handles)
 }
@@ -342,6 +342,7 @@ fn vcpu_run(
     Ok(new_state)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn do_syscall(
     a0: isize,
     a1: isize,
@@ -359,46 +360,46 @@ fn do_syscall(
         }
         SYS_HANDLE_CLOSE => {
             let handle = HandleId::from_raw_isize(a0)?;
-            handle_close(&current, handle)?;
+            handle_close(current, handle)?;
             Ok(SyscallResult::Done(RetVal::new(0)))
         }
         SYS_THREAD_SPAWN => {
             let process_handle = HandleId::from_raw_isize(a0)?;
             let pc = a1 as usize;
             let arg = a2 as usize;
-            let thread = thread_spawn(&current, process_handle, pc, arg)?;
+            let thread = thread_spawn(current, process_handle, pc, arg)?;
             Ok(SyscallResult::Done(thread.into()))
         }
         SYS_CONSOLE_WRITE => {
             let str_ptr = IsolationPtr::new(a0 as usize);
             let len = a1 as usize;
-            console_write(&current, str_ptr, len)?;
+            console_write(current, str_ptr, len)?;
             Ok(SyscallResult::Done(RetVal::new(0)))
         }
         SYS_POLL_CREATE => {
-            let poll = poll_create(&current)?;
+            let poll = poll_create(current)?;
             Ok(SyscallResult::Done(poll.into()))
         }
         SYS_POLL_ADD => {
             let poll = HandleId::from_raw_isize(a0)?;
             let object = HandleId::from_raw_isize(a1)?;
             let interests = Readiness::from_raw_isize(a2)?;
-            poll_add(&current, poll, object, interests)?;
+            poll_add(current, poll, object, interests)?;
             Ok(SyscallResult::Done(RetVal::new(0)))
         }
         SYS_POLL_REMOVE => {
             let poll = HandleId::from_raw_isize(a0)?;
             let object = HandleId::from_raw_isize(a1)?;
-            poll_remove(&current, poll, object)?;
+            poll_remove(current, poll, object)?;
             Ok(SyscallResult::Done(RetVal::new(0)))
         }
         SYS_POLL_WAIT => {
             let poll = HandleId::from_raw_isize(a0)?;
-            let ret = poll_wait(&current, poll);
+            let ret = poll_wait(current, poll);
             Ok(ret)
         }
         SYS_CHANNEL_CREATE => {
-            let ch1 = channel_create(&current)?;
+            let ch1 = channel_create(current)?;
             Ok(SyscallResult::Done(ch1.into()))
         }
         SYS_CHANNEL_SEND => {
@@ -406,14 +407,14 @@ fn do_syscall(
             let msginfo = MessageInfo::from_raw_isize(a1)?;
             let data = IsolationPtr::new(a2 as usize);
             let handles = IsolationPtr::new(a3 as usize);
-            channel_send(&current, ch, msginfo, data, handles)?;
+            channel_send(current, ch, msginfo, data, handles)?;
             Ok(SyscallResult::Done(RetVal::new(0)))
         }
         SYS_CHANNEL_RECV => {
             let handle = HandleId::from_raw_isize(a0)?;
             let data_ptr = IsolationPtr::new(a1 as usize);
             let handles_ptr = IsolationPtr::new(a2 as usize);
-            let msginfo = channel_recv(&current, handle, data_ptr, handles_ptr)?;
+            let msginfo = channel_recv(current, handle, data_ptr, handles_ptr)?;
             Ok(SyscallResult::Done(msginfo.into()))
         }
         SYS_VMSPACE_MAP => {
@@ -423,37 +424,37 @@ fn do_syscall(
             let folio = HandleId::from_raw_isize(a3)?;
             let offset = a4 as usize;
             let prot = PageProtect::from_raw_isize(a5)?;
-            let ret = vmspace_map(&current, handle, vaddr, len, folio, offset, prot)?;
+            let ret = vmspace_map(current, handle, vaddr, len, folio, offset, prot)?;
             Ok(SyscallResult::Done(ret.into()))
         }
         SYS_FOLIO_ALLOC => {
             let len = a0 as usize;
-            let ret = folio_alloc(&current, len)?;
+            let ret = folio_alloc(current, len)?;
             Ok(SyscallResult::Done(ret.into()))
         }
         SYS_FOLIO_PIN => {
             let paddr = PAddr::new(a0 as usize);
             let len = a1 as usize;
-            let ret = folio_pin(&current, paddr, len)?;
+            let ret = folio_pin(current, paddr, len)?;
             Ok(SyscallResult::Done(ret.into()))
         }
         SYS_FOLIO_PADDR => {
             let handle = HandleId::from_raw_isize(a0)?;
-            let ret = folio_paddr(&current, handle)?;
+            let ret = folio_paddr(current, handle)?;
             Ok(SyscallResult::Done(ret.into()))
         }
         SYS_INTERRUPT_CREATE => {
             let irq_matcher = IrqMatcher::from_raw_isize(a0)?;
-            let ret = interrupt_create(&current, irq_matcher)?;
+            let ret = interrupt_create(current, irq_matcher)?;
             Ok(SyscallResult::Done(ret.into()))
         }
         SYS_INTERRUPT_ACK => {
             let handle = HandleId::from_raw_isize(a0)?;
-            interrupt_ack(&current, handle)?;
+            interrupt_ack(current, handle)?;
             Ok(SyscallResult::Done(RetVal::new(0)))
         }
         SYS_HVSPACE_CREATE => {
-            let ret = hvspace_create(&current)?;
+            let ret = hvspace_create(current)?;
             Ok(SyscallResult::Done(ret.into()))
         }
         SYS_HVSPACE_MAP => {
@@ -462,7 +463,7 @@ fn do_syscall(
             let folio_handle = HandleId::from_raw_isize(a2)?;
             let len = a3 as usize;
             let prot = PageProtect::from_raw_isize(a4)?;
-            hvspace_map(&current, hvspace_handle, gpaddr, folio_handle, len, prot)?;
+            hvspace_map(current, hvspace_handle, gpaddr, folio_handle, len, prot)?;
             Ok(SyscallResult::Done(RetVal::new(0)))
         }
         SYS_VCPU_CREATE => {
@@ -470,14 +471,14 @@ fn do_syscall(
             let entry = a1 as usize;
             let arg0 = a2 as usize;
             let arg1 = a3 as usize;
-            let ret = vcpu_create(&current, hvspace_handle, entry, arg0, arg1)?;
+            let ret = vcpu_create(current, hvspace_handle, entry, arg0, arg1)?;
             Ok(SyscallResult::Done(ret.into()))
         }
         SYS_VCPU_RUN => {
             let vcpu_handle = HandleId::from_raw_isize(a0)?;
             let exit_ptr = IsolationPtr::new(a1 as usize);
             let exit = IsolationSliceMut::new(exit_ptr, size_of::<VCpuRunState>());
-            let new_state = vcpu_run(&current, vcpu_handle, exit)?;
+            let new_state = vcpu_run(current, vcpu_handle, exit)?;
             Ok(SyscallResult::Block(new_state))
         }
         _ => {
@@ -498,7 +499,7 @@ pub fn syscall_handler(
 ) -> ! {
     let current = current_thread();
     let new_state = match do_syscall(a0, a1, a2, a3, a4, a5, n, &current) {
-        Ok(SyscallResult::Done(value)) => ThreadState::Runnable(Some(value.into())),
+        Ok(SyscallResult::Done(value)) => ThreadState::Runnable(Some(value)),
         Ok(SyscallResult::Err(err)) => ThreadState::Runnable(Some(err.into())),
         Ok(SyscallResult::Block(state)) => state,
         Err(err) => ThreadState::Runnable(Some(err.into())),
