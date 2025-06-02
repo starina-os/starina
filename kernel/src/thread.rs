@@ -1,10 +1,13 @@
 use core::sync::atomic::AtomicUsize;
 use core::sync::atomic::Ordering;
 
+use starina::poll::Readiness;
 use starina_types::error::ErrorCode;
 use starina_types::syscall::RetVal;
 
 use crate::arch;
+use crate::handle::Handleable;
+use crate::poll::Listener;
 use crate::poll::Poll;
 use crate::process::KERNEL_PROCESS;
 use crate::process::Process;
@@ -139,6 +142,27 @@ impl Thread {
 impl Drop for Thread {
     fn drop(&mut self) {
         NUM_THREADS.fetch_sub(1, Ordering::Relaxed);
+    }
+}
+
+impl Handleable for Thread {
+    fn close(&self) {
+        // Nothing to do.
+    }
+
+    fn add_listener(&self, _listener: Listener) -> Result<(), ErrorCode> {
+        debug_warn!("unsupported method at {}:{}", file!(), line!());
+        Err(ErrorCode::NotSupported)
+    }
+
+    fn remove_listener(&self, _poll: &Poll) -> Result<(), ErrorCode> {
+        debug_warn!("unsupported method at {}:{}", file!(), line!());
+        Err(ErrorCode::NotSupported)
+    }
+
+    fn readiness(&self) -> Result<Readiness, ErrorCode> {
+        debug_warn!("unsupported method at {}:{}", file!(), line!());
+        Err(ErrorCode::NotSupported)
     }
 }
 
