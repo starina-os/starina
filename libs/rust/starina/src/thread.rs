@@ -1,6 +1,7 @@
 use starina_types::error::ErrorCode;
 use starina_types::handle::HandleId;
 
+use crate::handle::Handleable;
 use crate::handle::OwnedHandle;
 use crate::prelude::*;
 use crate::syscall;
@@ -63,5 +64,11 @@ impl Thread {
         Ok(Thread {
             _handle: OwnedHandle::from_raw(handle),
         })
+    }
+}
+
+impl Handleable for Thread {
+    fn handle_id(&self) -> HandleId {
+        self._handle.id()
     }
 }
