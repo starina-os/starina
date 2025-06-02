@@ -2,7 +2,6 @@ use core::panic::PanicInfo;
 use core::sync::atomic::AtomicU8;
 use core::sync::atomic::Ordering;
 
-
 use crate::arch;
 
 /// Panic counter. Every time the kernel panics, this counter is incremented.
