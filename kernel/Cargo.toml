@@ -30,3 +30,4 @@ virtio_net = { workspace = true }
 tcpip = { workspace = true }
 http_server = { workspace = true }
 catsay = { workspace = true }
+autotest = { workspace = true }
