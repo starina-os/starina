@@ -57,6 +57,21 @@ pub fn console_write(s: &[u8]) {
     );
 }
 
+pub fn thread_spawn(process: HandleId, entry: usize, arg: usize) -> Result<HandleId, ErrorCode> {
+    let ret = syscall(
+        SYS_THREAD_SPAWN,
+        process.as_raw() as isize,
+        entry.try_into().unwrap(),
+        arg.try_into().unwrap(),
+        0,
+        0,
+        0,
+    )?;
+    // SAFETY: The syscall returns a valid handle ID.
+    let id = unsafe { HandleId::from_raw_isize(ret.as_isize()).unwrap_unchecked() };
+    Ok(id)
+}
+
 pub fn thread_exit() -> ! {
     let _ = syscall(SYS_THREAD_EXIT, 0, 0, 0, 0, 0, 0);
     unreachable!("thread_exit returned");
