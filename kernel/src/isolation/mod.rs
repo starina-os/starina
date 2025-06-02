@@ -1,3 +1,4 @@
+use alloc::vec;
 use alloc::vec::Vec;
 use core::mem::MaybeUninit;
 use core::ops::Deref;
@@ -75,8 +76,7 @@ impl IsolationSlice {
     ) -> Result<Vec<u8>, ErrorCode> {
         let checked_ptr = checked_ptr(self.ptr.0, self.len, offset, len)?;
 
-        let mut buf = Vec::new();
-        buf.resize(len, 0);
+        let mut buf = vec![0; len];
         isolation.read_bytes(checked_ptr, &mut buf)?;
         Ok(buf)
     }

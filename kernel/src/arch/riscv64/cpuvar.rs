@@ -36,13 +36,13 @@ pub fn get_cpuvar() -> &'static crate::cpuvar::CpuVar {
         asm!("mv {}, tp", out(reg) cpuvar);
     }
 
-    debug_assert!(cpuvar.is_null() == false);
+    debug_assert!(!cpuvar.is_null());
     debug_assert!(unsafe { (*cpuvar).arch.magic } == CPUVAR_MAGIC);
     unsafe { &*cpuvar }
 }
 
 pub fn set_cpuvar(cpuvar: *const crate::cpuvar::CpuVar) {
-    debug_assert!(cpuvar.is_null() == false);
+    debug_assert!(!cpuvar.is_null());
     debug_assert!(unsafe { (*cpuvar).arch.magic } == CPUVAR_MAGIC);
 
     // Store the address of the current CPU's `CpuVar` to `tp`.

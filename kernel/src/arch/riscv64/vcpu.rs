@@ -1104,7 +1104,7 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
             }
         }
         SCAUSE_ECALL_FROM_VS => {
-            let (error, value) = match mutable.handle_sbi_call(&context) {
+            let (error, value) = match mutable.handle_sbi_call(context) {
                 Ok(value) => (0, value),
                 Err(error) => (error, 0),
             };

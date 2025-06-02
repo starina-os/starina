@@ -80,10 +80,10 @@ impl Listener {
         //
         // IDEA: Should we wake up the most-recently-added thread? It's not fair,
         //       but it might perform better if its working set is in the cache.
-        if self.interests.contains(readiness) {
-            if let Some(waiter) = mutable.waiters.pop_front() {
-                waiter.wake();
-            }
+        if self.interests.contains(readiness)
+            && let Some(waiter) = mutable.waiters.pop_front()
+        {
+            waiter.wake();
         }
     }
 }

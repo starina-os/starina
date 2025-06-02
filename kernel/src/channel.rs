@@ -99,7 +99,7 @@ impl Channel {
         peer_mutable.queue.push_back(MessageEntry {
             msginfo,
             data: msgbuffer,
-            handles: handles,
+            handles,
         });
 
         // So the peer has at least one message to read. Wake up a listener if any.

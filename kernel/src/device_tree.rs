@@ -210,11 +210,8 @@ pub fn parse(dtb: *const u8) -> Result<DeviceTree, fdt_rs::error::DevTreeError> 
         let mut device_type = None;
         for prop in node.props() {
             let prop_name = prop.name()?;
-            match prop_name {
-                "device_type" => {
-                    device_type = Some(prop.str()?);
-                }
-                _ => {}
+            if prop_name == "device_type" {
+                device_type = Some(prop.str()?);
             }
         }
 

@@ -141,8 +141,7 @@ impl HandleTable {
     }
 
     pub fn is_movable(&self, handle: HandleId) -> bool {
-        let exists = self.handles.get(&handle).is_some();
-        exists
+        self.handles.contains_key(&handle)
     }
 
     pub fn get_any(&self, handle: HandleId) -> Result<AnyHandle, ErrorCode> {
