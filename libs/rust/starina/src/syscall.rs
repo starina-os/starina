@@ -57,6 +57,11 @@ pub fn console_write(s: &[u8]) {
     );
 }
 
+pub fn thread_exit() -> ! {
+    let _ = syscall(SYS_THREAD_EXIT, 0, 0, 0, 0, 0, 0);
+    unreachable!("thread_exit returned");
+}
+
 pub fn poll_create() -> Result<HandleId, ErrorCode> {
     let ret = syscall(SYS_POLL_CREATE, 0, 0, 0, 0, 0, 0)?;
     // SAFETY: The syscall returns a valid handle ID.
