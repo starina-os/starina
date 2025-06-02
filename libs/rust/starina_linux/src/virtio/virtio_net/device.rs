@@ -26,13 +26,13 @@ impl VirtioNet {
     }
 
     /// Processes a host-to-guest packet.
-    fn process_rx(&self, memory: &mut GuestMemory, vq: &mut Virtqueue, chain: DescChain) {
+    fn process_rx(&self, _memory: &mut GuestMemory, _vq: &mut Virtqueue, _chain: DescChain) {
         todo!()
     }
 
     /// Processes a guest-to-host packet.
     fn process_tx(&self, memory: &mut GuestMemory, vq: &mut Virtqueue, chain: DescChain) {
-        let (mut reader, writer) = chain.split(vq, memory).unwrap();
+        let (mut reader, _writer) = chain.split(vq, memory).unwrap();
         let header = match reader.read::<VirtioNetHdr>() {
             Ok(header) => header,
             Err(e) => {
@@ -46,7 +46,7 @@ impl VirtioNet {
         // We don't support any flags yet.
         assert_eq!(header.flags, 0);
 
-        let hdr_len: u16 = header.hdr_len.to_host();
+        let _hdr_len: u16 = header.hdr_len.to_host();
         let packet = match reader.read_zerocopy2() {
             Ok(packet) => packet,
             Err(e) => {
@@ -76,7 +76,7 @@ impl VirtioDevice for VirtioNet {
         0
     }
 
-    fn config_read(&self, offset: u64, buf: &mut [u8]) {
+    fn config_read(&self, _offset: u64, _buf: &mut [u8]) {
         todo!()
     }
 
