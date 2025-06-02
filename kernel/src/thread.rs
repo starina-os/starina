@@ -183,11 +183,13 @@ pub fn switch_thread() -> ! {
             (current_thread, is_idle, is_runnable)
         };
 
-        let next = if is_runnable && !is_idle {
+        if is_runnable && !is_idle {
             // If the current thread is still runnable, prioritize it because
             // it might be sending multiple messages in a row.
-            current_thread.clone()
-        } else if let Some(next) = GLOBAL_SCHEDULER.schedule() {
+            GLOBAL_SCHEDULER.push(current_thread.clone());
+        }
+
+        let next = if let Some(next) = GLOBAL_SCHEDULER.schedule() {
             // Get the next thread to run. If the runqueue is empty, run the
             // idle thread.
             next
