@@ -37,13 +37,6 @@ else
   cp build/kernel/debug/kernel starina.elf
 fi
 
-
-if [[ -n ${REPLAY:-} ]]; then
-  RR_MODE=replay
-else
-  RR_MODE=record
-fi
-
 if [[ -n ${BUILD_ONLY:-} ]]; then
   exit 0
 fi
