@@ -63,7 +63,7 @@ fn thread_create(
     }
 
     let process = current.process();
-    if SharedRef::ptr_eq(process, &KERNEL_PROCESS) {
+    if !SharedRef::ptr_eq(process, &KERNEL_PROCESS) {
         debug_warn!("thread_create syscall supports only in-kernel process (for now)");
         return Err(ErrorCode::NotSupported);
     }
