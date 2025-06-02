@@ -3,8 +3,8 @@
 use std::cell::RefCell;
 use std::io::Write;
 
-use starina::address::Paddr;
 use starina::address::PAddr;
+use starina::address::Paddr;
 use starina::address::VAddr;
 use starina::device_tree::Reg;
 use starina::error::ErrorCode;
