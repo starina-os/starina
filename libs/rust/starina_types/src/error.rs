@@ -1,8 +1,25 @@
 use core::fmt;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[repr(isize)]
-pub enum ErrorCode {
+macro_rules! define_errors {
+    ($($name:ident = $value:expr),* $(,)?) => {
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+        #[repr(isize)]
+        pub enum ErrorCode {
+            $($name = $value,)*
+        }
+
+        impl From<isize> for ErrorCode {
+            fn from(value: isize) -> Self {
+                match value {
+                    $($value => ErrorCode::$name,)*
+                    _ => ErrorCode::InvalidErrorCode,
+                }
+            }
+        }
+    };
+}
+
+define_errors!(
     NotSupported = -1,
     NotAllowed = -2,
     NotFound = -3,
@@ -29,18 +46,8 @@ pub enum ErrorCode {
     InvalidUri = -24,
     AlreadyHeld = -25,
     TooSmall = -26,
-    InUse = -27,
-}
-
-impl From<isize> for ErrorCode {
-    fn from(value: isize) -> Self {
-        if (-27..0).contains(&value) {
-            unsafe { core::mem::transmute(value) }
-        } else {
-            ErrorCode::InvalidErrorCode
-        }
-    }
-}
+    InUse = -27
+);
 
 impl fmt::Display for ErrorCode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
