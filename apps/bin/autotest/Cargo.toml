@@ -1,0 +1,13 @@
+[package]
+name = "autotest"
+publish = false
+version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
+
+[dependencies]
+starina = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+
+[build-dependencies]
+starina_build_sdk = { workspace = true }

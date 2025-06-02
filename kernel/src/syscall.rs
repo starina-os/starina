@@ -24,6 +24,7 @@ use crate::isolation::IsolationPtr;
 use crate::isolation::IsolationSlice;
 use crate::isolation::IsolationSliceMut;
 use crate::poll::Poll;
+use crate::process::KERNEL_PROCESS;
 use crate::refcount::SharedRef;
 use crate::thread::Thread;
 use crate::thread::ThreadState;
@@ -48,6 +49,30 @@ fn console_write(
     let str = slice.read_to_vec(isolation, 0, len)?;
     arch::console_write(str.as_slice());
     Ok(())
+}
+
+fn thread_create(
+    current: &SharedRef<Thread>,
+    process_handle: HandleId,
+    pc: usize,
+    arg: usize,
+) -> Result<HandleId, ErrorCode> {
+    if process_handle.as_raw() != 0 {
+        debug_warn!("thread_create syscall does not support process != 0");
+        return Err(ErrorCode::NotSupported);
+    }
+
+    let process = current.process();
+    if SharedRef::ptr_eq(process, &KERNEL_PROCESS) {
+        debug_warn!("thread_create syscall supports only in-kernel process (for now)");
+        return Err(ErrorCode::NotSupported);
+    }
+
+    let thread = Thread::new_inkernel(pc, arg)?;
+    let handle = Handle::new(thread, HandleRights::READ | HandleRights::WRITE);
+
+    let handle_id = process.handles().lock().insert(handle)?;
+    Ok(handle_id)
 }
 
 fn handle_close(current: &SharedRef<Thread>, handle: HandleId) -> Result<(), ErrorCode> {
@@ -336,6 +361,13 @@ fn do_syscall(
             let handle = HandleId::from_raw_isize(a0)?;
             handle_close(&current, handle)?;
             Ok(SyscallResult::Done(RetVal::new(0)))
+        }
+        SYS_THREAD_CREATE => {
+            let process_handle = HandleId::from_raw_isize(a0)?;
+            let pc = a1 as usize;
+            let arg = a2 as usize;
+            let thread = thread_create(&current, process_handle, pc, arg)?;
+            Ok(SyscallResult::Done(thread.into()))
         }
         SYS_CONSOLE_WRITE => {
             let str_ptr = IsolationPtr::new(a0 as usize);

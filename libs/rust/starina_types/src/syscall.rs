@@ -24,6 +24,7 @@ pub const SYS_HVSPACE_CREATE: u8 = 16;
 pub const SYS_HVSPACE_MAP: u8 = 17;
 pub const SYS_VCPU_CREATE: u8 = 18;
 pub const SYS_VCPU_RUN: u8 = 19;
+pub const SYS_THREAD_CREATE: u8 = 20;
 
 #[repr(C)]
 pub struct VsyscallPage {
