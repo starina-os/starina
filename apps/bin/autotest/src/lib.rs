@@ -1,49 +1,37 @@
 #![no_std]
 
-pub mod autogen;
-
-use starina::eventloop::Dispatcher;
-use starina::eventloop::EventLoop;
 use starina::prelude::*;
-use starina::thread::Thread;
+use starina::spec::ParsedAppSpec;
 
-#[derive(Debug)]
-pub enum State {}
+pub const APP_SPEC: ParsedAppSpec = ParsedAppSpec {
+    name: "autotest",
+    env: &[],
+    exports: &[],
+    main,
+};
 
-pub struct App {}
-
-fn do_main() {
+fn main(_env_json: &[u8]) {
     info!("running automated tests...");
-    Thread::spawn(|| {
-        for i in 0.. {
-            if i % 100000 == 0 {
-                starina::syscall::console_write(b"A");
-            }
-        }
-    })
-    .unwrap();
-    Thread::spawn(|| {
-        for i in 0.. {
-            if i % 100000 == 0 {
-                starina::syscall::console_write(b"B");
-            }
-        }
-    })
-    .unwrap();
+    // Thread::spawn(|| {
+    //     for i in 0.. {
+    //         if i % 100000 == 0 {
+    //             starina::syscall::console_write(b"A");
+    //         }
+    //     }
+    // })
+    // .unwrap();
+    // Thread::spawn(|| {
+    //     for i in 0.. {
+    //         if i % 100000 == 0 {
+    //             starina::syscall::console_write(b"B");
+    //         }
+    //     }
+    // })
+    // .unwrap();
 
-    for i in 0.. {
-        if i % 100000 == 0 {
-            starina::syscall::console_write(b"C");
-        }
-    }
-}
-
-impl EventLoop for App {
-    type Env = autogen::Env;
-    type State = State;
-
-    fn init(dispatcher: &dyn Dispatcher<Self::State>, env: Self::Env) -> Self {
-        do_main();
-        todo!()
-    }
+    // for i in 0.. {
+    //     if i % 100000 == 0 {
+    //         starina::syscall::console_write(b"C");
+    //     }
+    // }
 }

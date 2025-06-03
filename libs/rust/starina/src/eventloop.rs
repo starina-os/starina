@@ -3,7 +3,6 @@ use core::marker::PhantomData;
 
 use hashbrown::HashMap;
 use serde::de::DeserializeOwned;
-use starina_types::syscall::VsyscallPage;
 
 use crate::channel::Channel;
 use crate::channel::ChannelReceiver;
@@ -26,7 +25,6 @@ use crate::message::Replyable;
 use crate::message::StreamDataMsg;
 use crate::poll::Poll;
 use crate::poll::Readiness;
-use crate::tls;
 
 /// Trait defining the Dispatcher interface for EventLoop applications
 pub trait Dispatcher<St> {
@@ -400,20 +398,12 @@ impl<St> Dispatcher<St> for PollDispatcher<St> {
     }
 }
 
-pub fn app_loop<Env, St, A>(program_name: &'static str, vsyscall: *const VsyscallPage) -> !
+pub fn app_loop<Env, St, A>(_program_name: &'static str, env_json: &[u8]) -> !
 where
     Env: DeserializeOwned,
     St: Send + Sync,
     A: EventLoop<Env = Env, State = St>,
 {
-    tls::init_thread_local(program_name);
-
-    let env_json = unsafe {
-        let ptr = (*vsyscall).environ_ptr;
-        let len = (*vsyscall).environ_len;
-        core::slice::from_raw_parts(ptr, len)
-    };
-
     let env: Env = serde_json::from_slice(env_json).expect("failed to parse env");
 
     let poll = Poll::create().unwrap();

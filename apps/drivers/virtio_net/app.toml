@@ -1,8 +1,0 @@
-name = "virtio_net"
-
-[env]
-device_tree = { type = "devicetree", matches = ["virtio,mmio"] }
-
-[[exports]]
-type = "service"
-service = "device/ethernet"

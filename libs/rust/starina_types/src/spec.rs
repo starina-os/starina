@@ -5,8 +5,6 @@ use hashbrown::HashMap;
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::syscall::VsyscallPage;
-
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum EnvType {
@@ -36,7 +34,7 @@ pub struct ParsedAppSpec {
     pub name: &'static str,
     pub env: &'static [ParsedEnvItem],
     pub exports: &'static [ParsedExportItem],
-    pub entrypoint: extern "C" fn(vsyscall: *const VsyscallPage) -> !,
+    pub main: fn(env: &[u8]),
 }
 
 #[derive(Debug)]

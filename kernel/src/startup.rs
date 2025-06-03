@@ -21,6 +21,7 @@ use crate::scheduler::GLOBAL_SCHEDULER;
 use crate::thread::Thread;
 
 const INKERNEL_APPS: &[ParsedAppSpec] = &[
+    autotest::APP_SPEC,
     virtio_net::autogen::APP_SPEC,
     tcpip::autogen::APP_SPEC,
     http_server::autogen::APP_SPEC,
@@ -121,10 +122,13 @@ pub fn load_inkernel_apps(device_tree: DeviceTree) {
         let vsyscall_page = Box::new(VsyscallPage {
             environ_ptr: env_str.as_ptr(),
             environ_len: env_str.len(),
+            name: spec.name.as_ptr(),
+            name_len: spec.name.len(),
+            main: spec.main,
         });
 
         let arg = &*vsyscall_page as *const VsyscallPage as usize;
-        let thread = Thread::new_inkernel(spec.entrypoint as usize, arg as usize).unwrap();
+        let thread = Thread::new_inkernel(starina::start::start as usize, arg as usize).unwrap();
 
         GLOBAL_SCHEDULER.push(thread);
     }

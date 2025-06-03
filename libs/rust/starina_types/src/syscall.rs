@@ -30,6 +30,9 @@ pub const SYS_THREAD_SPAWN: u8 = 20;
 pub struct VsyscallPage {
     pub environ_ptr: *const u8,
     pub environ_len: usize,
+    pub main: fn(environ: &[u8]),
+    pub name: *const u8,
+    pub name_len: usize,
 }
 
 /// SAFETY: VsyscallPage is pre-allocated, the same across threads, and immutable.
