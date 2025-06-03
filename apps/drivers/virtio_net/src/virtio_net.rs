@@ -1,4 +1,5 @@
 use core::mem::offset_of;
+use core::ops::ControlFlow;
 
 use starina::address::PAddr;
 use starina::device_tree::DeviceTree;
@@ -69,10 +70,6 @@ fn probe(
     None
 }
 
-pub trait Receiver {
-    fn receive(&mut self, data: &[u8]);
-}
-
 pub struct VirtioNet {
     mac_addr: [u8; 6],
     transport: Box<dyn VirtioTransport>,
@@ -81,7 +78,6 @@ pub struct VirtioNet {
     transmitq_buffers: DmaBufferPool,
     receiveq_buffers: DmaBufferPool,
     interrupt: Option<Interrupt>,
-    receiver: Option<Box<dyn Receiver + Send + Sync>>,
 }
 
 impl VirtioNet {
@@ -117,12 +113,7 @@ impl VirtioNet {
             receiveq_buffers,
             transmitq_buffers,
             interrupt: Some(interrupt),
-            receiver: None,
         }
-    }
-
-    pub fn set_receiver(&mut self, receiver: impl Receiver + Send + Sync + 'static) {
-        self.receiver = Some(Box::new(receiver));
     }
 
     pub fn mac_addr(&self) -> &[u8; 6] {
@@ -162,7 +153,10 @@ impl VirtioNet {
         self.transmitq.notify(&mut *self.transport);
     }
 
-    pub fn handle_interrupt(&mut self) {
+    pub fn handle_interrupt<F>(&mut self, mut receive: F)
+    where
+        F: FnMut(&[u8]) -> ControlFlow<()>,
+    {
         loop {
             let status = self.transport.read_isr_status();
             self.transport.ack_interrupt(status);
@@ -189,8 +183,16 @@ impl VirtioNet {
 
                     let _header = buf.read::<VirtioNetModernHeader>();
                     let payload = buf.read_bytes(read_len).unwrap();
-                    if let Some(receiver) = self.receiver.as_mut() {
-                        receiver.receive(payload);
+
+                    match receive(payload) {
+                        ControlFlow::Continue(()) => {
+                            // Do nothing - continue reading packets.
+                        }
+                        ControlFlow::Break(()) => {
+                            // Backpressure: stop reading packets.
+                            // FIXME: self.receiveq needs peek_used method to keep the descriptor in the queue.
+                            todo!();
+                        }
                     }
                 }
             }

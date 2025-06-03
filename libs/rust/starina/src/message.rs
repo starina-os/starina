@@ -518,6 +518,16 @@ impl Drop for OwnedMessageBuffer {
     }
 }
 
+pub enum Message2<'a> {
+    Connect(ConnectMsg),
+    Open((CallId, OpenMsg<'a>)),
+    OpenReply((CallId, OpenReplyMsg)),
+    FramedData(FramedDataMsg<'a>),
+    StreamData(StreamDataMsg<'a>),
+    Abort((CallId, AbortMsg)),
+    Error(ErrorMsg),
+}
+
 pub struct AnyMessage {
     pub msginfo: MessageInfo,
     pub buffer: OwnedMessageBuffer,
@@ -526,5 +536,40 @@ pub struct AnyMessage {
 impl AnyMessage {
     pub unsafe fn new(buffer: OwnedMessageBuffer, msginfo: MessageInfo) -> Self {
         Self { buffer, msginfo }
+    }
+
+    pub fn parse(&mut self) -> Option<Message2<'_>> {
+        match self.msginfo.kind() {
+            // FIXME: Verify the # of handles too.
+            kind if kind == MessageKind::Connect as usize => {
+                Receivable::deserialize_from_buffer(self.msginfo, &mut self.buffer)
+                    .map(Message2::Connect)
+            }
+            kind if kind == MessageKind::Open as usize => {
+                Receivable::deserialize_from_buffer(self.msginfo, &mut self.buffer)
+                    .map(Message2::Open)
+            }
+            kind if kind == MessageKind::OpenReply as usize => {
+                Receivable::deserialize_from_buffer(self.msginfo, &mut self.buffer)
+                    .map(Message2::OpenReply)
+            }
+            kind if kind == MessageKind::FramedData as usize => {
+                Receivable::deserialize_from_buffer(self.msginfo, &mut self.buffer)
+                    .map(Message2::FramedData)
+            }
+            kind if kind == MessageKind::StreamData as usize => {
+                Receivable::deserialize_from_buffer(self.msginfo, &mut self.buffer)
+                    .map(Message2::StreamData)
+            }
+            kind if kind == MessageKind::Abort as usize => {
+                Receivable::deserialize_from_buffer(self.msginfo, &mut self.buffer)
+                    .map(Message2::Abort)
+            }
+            kind if kind == MessageKind::Error as usize => {
+                Receivable::deserialize_from_buffer(self.msginfo, &mut self.buffer)
+                    .map(Message2::Error)
+            }
+            _ => None,
+        }
     }
 }

@@ -22,7 +22,7 @@ use crate::thread::Thread;
 
 const INKERNEL_APPS: &[ParsedAppSpec] = &[
     autotest::APP_SPEC,
-    virtio_net::autogen::APP_SPEC,
+    virtio_net::APP_SPEC,
     tcpip::autogen::APP_SPEC,
     http_server::autogen::APP_SPEC,
     // catsay::autogen::APP_SPEC,

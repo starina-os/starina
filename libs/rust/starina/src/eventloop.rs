@@ -23,7 +23,7 @@ use crate::message::OpenReplyMsg;
 use crate::message::Receivable;
 use crate::message::Replyable;
 use crate::message::StreamDataMsg;
-use crate::poll::Poll;
+use crate::poll::RawPoll;
 use crate::poll::Readiness;
 
 /// Trait defining the Dispatcher interface for EventLoop applications
@@ -237,12 +237,12 @@ pub struct ObjectWithState<St> {
 
 /// A dispatcher that uses `Poll` to wait for events.
 pub struct PollDispatcher<St> {
-    poll: Poll,
+    poll: RawPoll,
     objects: spin::RwLock<HashMap<HandleId, Arc<ObjectWithState<St>>>>,
 }
 
 impl<St> PollDispatcher<St> {
-    pub fn new(poll: Poll) -> Self {
+    pub fn new(poll: RawPoll) -> Self {
         Self {
             poll,
             objects: spin::RwLock::new(HashMap::new()),
@@ -406,7 +406,7 @@ where
 {
     let env: Env = serde_json::from_slice(env_json).expect("failed to parse env");
 
-    let poll = Poll::create().unwrap();
+    let poll = RawPoll::create().unwrap();
     let dispatcher = PollDispatcher::new(poll);
     let app: A = A::init(&dispatcher, env);
 
