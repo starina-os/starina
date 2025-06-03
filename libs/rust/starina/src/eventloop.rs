@@ -12,7 +12,6 @@ use crate::handle::HandleId;
 use crate::handle::Handleable;
 use crate::interrupt::Interrupt;
 use crate::message::AbortMsg;
-use crate::message::AnyMessage;
 use crate::message::CallId;
 use crate::message::ConnectMsg;
 use crate::message::ErrorMsg;
@@ -23,6 +22,7 @@ use crate::message::OpenReplyMsg;
 use crate::message::Receivable;
 use crate::message::Replyable;
 use crate::message::StreamDataMsg;
+use crate::message::OwnedMessage;
 use crate::poll::RawPoll;
 use crate::poll::Readiness;
 
@@ -203,7 +203,7 @@ pub trait EventLoop: Send + Sync {
 
     // Callback for unknown messages.
     #[allow(unused_variables)]
-    fn on_unknown_message(&self, ctx: Context<Self::State>, msg: AnyMessage) {
+    fn on_unknown_message(&self, ctx: Context<Self::State>, msg: OwnedMessage) {
         debug_warn!("ignored message: {}", msg.msginfo.kind());
     }
 

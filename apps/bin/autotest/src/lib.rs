@@ -1,9 +1,9 @@
 #![no_std]
 
 use starina::prelude::*;
-use starina::spec::ParsedAppSpec;
+use starina::spec::AppSpec;
 
-pub const APP_SPEC: ParsedAppSpec = ParsedAppSpec {
+pub const APP_SPEC: AppSpec = AppSpec {
     name: "autotest",
     env: &[],
     exports: &[],

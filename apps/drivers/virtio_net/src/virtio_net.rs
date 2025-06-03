@@ -1,5 +1,4 @@
 use core::mem::offset_of;
-use core::ops::ControlFlow;
 
 use starina::address::PAddr;
 use starina::device_tree::DeviceTree;
@@ -155,7 +154,7 @@ impl VirtioNet {
 
     pub fn handle_interrupt<F>(&mut self, mut receive: F)
     where
-        F: FnMut(&[u8]) -> ControlFlow<()>,
+        F: FnMut(&[u8]),
     {
         loop {
             let status = self.transport.read_isr_status();
@@ -184,16 +183,7 @@ impl VirtioNet {
                     let _header = buf.read::<VirtioNetModernHeader>();
                     let payload = buf.read_bytes(read_len).unwrap();
 
-                    match receive(payload) {
-                        ControlFlow::Continue(()) => {
-                            // Do nothing - continue reading packets.
-                        }
-                        ControlFlow::Break(()) => {
-                            // Backpressure: stop reading packets.
-                            // FIXME: self.receiveq needs peek_used method to keep the descriptor in the queue.
-                            todo!();
-                        }
-                    }
+                    receive(payload);
                 }
             }
 

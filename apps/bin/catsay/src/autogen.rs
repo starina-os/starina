@@ -7,11 +7,11 @@ use starina::channel::Channel;
 use starina::collections::HashMap;
 use starina::device_tree::DeviceTree;
 use starina::prelude::*;
-use starina::spec::ParsedAppSpec;
-use starina::spec::ParsedDeviceMatch;
-use starina::spec::ParsedEnvItem;
-use starina::spec::ParsedEnvType;
-use starina::spec::ParsedExportItem;
+use starina::spec::AppSpec;
+use starina::spec::ExportItem;
+use starina::spec::DeviceMatch;
+use starina::spec::EnvItem;
+use starina::spec::EnvType;
 use starina::syscall::VsyscallPage;
 
 #[derive(Debug, Deserialize)]
@@ -19,10 +19,10 @@ pub struct Env {
     pub startup_ch: Channel,
 }
 
-pub const APP_SPEC: ParsedAppSpec = ParsedAppSpec {
+pub const APP_SPEC: AppSpec = AppSpec {
     name: "catsay",
     env: &[],
-    exports: &[ParsedExportItem::Service { service: "catsay" }],
+    exports: &[ExportItem::Service { service: "catsay" }],
     main,
 };
 

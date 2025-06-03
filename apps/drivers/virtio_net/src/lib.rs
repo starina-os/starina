@@ -1,7 +1,5 @@
 #![no_std]
 
-use core::ops::ControlFlow;
-
 use serde::Deserialize;
 use starina::channel::Channel;
 use starina::channel::ChannelReceiver;
@@ -10,24 +8,32 @@ use starina::error::ErrorCode;
 use starina::handle::Handleable;
 use starina::interrupt::Interrupt;
 use starina::message::FramedDataMsg;
-use starina::message::Message2;
+use starina::message::Message;
 use starina::poll::Poll;
 use starina::poll::Readiness;
 use starina::prelude::*;
-use starina::spec::ParsedAppSpec;
-use starina::spec::ParsedDeviceMatch;
-use starina::spec::ParsedEnvItem;
-use starina::spec::ParsedEnvType;
-use starina::spec::ParsedExportItem;
+use starina::spec::AppSpec;
+use starina::spec::DeviceMatch;
+use starina::spec::EnvItem;
+use starina::spec::EnvType;
+use starina::spec::ExportItem;
 use virtio_net::VirtioNet;
 
 mod virtio_net;
 
-pub enum State {
-    Startup(Channel),
-    Interrupt(Interrupt),
-    Upstream(ChannelReceiver),
-}
+pub const APP_SPEC: AppSpec = AppSpec {
+    name: "virtio_net",
+    env: &[EnvItem {
+        name: "device_tree",
+        ty: EnvType::DeviceTree {
+            matches: &[DeviceMatch::Compatible("virtio,mmio")],
+        },
+    }],
+    exports: &[ExportItem::Service {
+        service: "device/ethernet",
+    }],
+    main,
+};
 
 #[derive(Debug, Deserialize)]
 pub struct Env {
@@ -35,19 +41,11 @@ pub struct Env {
     pub device_tree: DeviceTree,
 }
 
-pub const APP_SPEC: ParsedAppSpec = ParsedAppSpec {
-    name: "virtio_net",
-    env: &[ParsedEnvItem {
-        name: "device_tree",
-        ty: ParsedEnvType::DeviceTree {
-            matches: &[ParsedDeviceMatch::Compatible("virtio,mmio")],
-        },
-    }],
-    exports: &[ParsedExportItem::Service {
-        service: "device/ethernet",
-    }],
-    main,
-};
+pub enum State {
+    Startup(Channel),
+    Interrupt(Interrupt),
+    Upstream(ChannelReceiver),
+}
 
 fn main(env_json: &[u8]) {
     let env: Env = serde_json::from_slice(env_json).expect("failed to deserialize env");
@@ -66,7 +64,7 @@ fn main(env_json: &[u8]) {
     poll.add(
         env.startup_ch.handle_id(),
         State::Startup(env.startup_ch),
-        Readiness::READABLE,
+        Readiness::READABLE | Readiness::CLOSED, /* FIXME: This should guarantee level-triggered */
     )
     .unwrap();
 
@@ -75,7 +73,7 @@ fn main(env_json: &[u8]) {
     poll.add(
         interrupt.handle_id(),
         State::Interrupt(interrupt),
-        Readiness::READABLE,
+        Readiness::READABLE | Readiness::CLOSED, /* FIXME: This should guarantee level-triggered */
     )
     .unwrap();
 
@@ -83,72 +81,79 @@ fn main(env_json: &[u8]) {
     loop {
         let (state, readiness) = poll.wait().unwrap();
         match &*state {
-            State::Startup(ch) => {
-                info!("startup: connected to channel");
-                if readiness.contains(Readiness::READABLE) {
-                    let mut m = ch.recv().unwrap();
-                    let Some(m) = m.parse() else {
-                        debug_warn!("failed to parse a message, ignoring");
-                        continue;
-                    };
+            State::Startup(ch) if readiness.contains(Readiness::READABLE) => {
+                let mut m = ch.recv().unwrap();
+                let Some(m) = m.parse() else {
+                    debug_warn!("failed to parse a message, ignoring");
+                    continue;
+                };
 
-                    match m {
-                        Message2::Connect(m) => {
-                            let (sender, receiver) = m.handle.split();
-                            upstream_sender = Some(sender);
-                            poll.add(
-                                receiver.handle().id(),
-                                State::Upstream(receiver),
-                                Readiness::READABLE,
-                            )
-                            .unwrap();
-                        }
-                        _ => {
-                            debug_warn!("unhandled message");
-                        }
+                match m {
+                    Message::Connect { handle } => {
+                        let (sender, receiver) = handle.split();
+                        upstream_sender = Some(sender);
+                        poll.add(
+                            receiver.handle().id(),
+                            State::Upstream(receiver),
+                            Readiness::READABLE | Readiness::CLOSED, /* FIXME: This should guarantee level-triggered */
+                        )
+                        .unwrap();
+                    }
+                    _ => {
+                        debug_warn!("unhandled message");
                     }
                 }
             }
-            State::Upstream(ch) => {
-                if readiness.contains(Readiness::READABLE) {
-                    let mut m = ch.recv().unwrap();
-                    let Some(m) = m.parse() else {
-                        debug_warn!("failed to parse a message, ignoring");
-                        continue;
-                    };
+            State::Startup(_) => {
+                panic!("unexpected readiness for startup channel: {:?}", readiness);
+            }
+            State::Upstream(ch) if readiness.contains(Readiness::READABLE) => {
+                let mut m = ch.recv().unwrap();
+                let Some(m) = m.parse() else {
+                    debug_warn!("failed to parse a message, ignoring");
+                    continue;
+                };
 
-                    match m {
-                        Message2::FramedData(m) => {
-                            trace!("transmitting {} bytes", m.data.len());
-                            virtio_net.transmit(m.data);
-                        }
-                        _ => {
-                            debug_warn!("unhandled message");
-                        }
+                match m {
+                    Message::FramedData { data } => {
+                        trace!("transmitting {} bytes", data.len());
+                        virtio_net.transmit(data);
+                    }
+                    _ => {
+                        debug_warn!("unhandled message");
                     }
                 }
             }
-            State::Interrupt(interrupt) => {
-                info!("interrupt: received interrupt");
-                if readiness.contains(Readiness::READABLE) {
-                    interrupt.acknowledge().unwrap();
-                    virtio_net.handle_interrupt(|data| {
-                        if let Some(sender) = upstream_sender.as_ref() {
-                            match sender.send(FramedDataMsg { data }) {
-                                Ok(()) => {}
-                                Err(ErrorCode::Full) => {
-                                    debug_warn!("backpressure: upstream channel is full");
-                                    return ControlFlow::Break(());
-                                }
-                                Err(err) => {
-                                    error!("failed to forward a packet to upstream: {:?}", err);
-                                }
-                            }
-                        }
+            State::Upstream(ch) if readiness.contains(Readiness::CLOSED) => {
+                warn!("upstream channel closed, stopping transmission");
+                poll.remove(ch.handle().id()).unwrap();
+                upstream_sender = None;
+            }
+            &State::Upstream(_) => {
+                panic!("unexpected readiness for upstream channel: {:?}", readiness);
+            }
+            State::Interrupt(interrupt) if readiness.contains(Readiness::READABLE) => {
+                trace!("interrupt: received interrupt");
+                interrupt.acknowledge().unwrap();
+                virtio_net.handle_interrupt(|data| {
+                    let Some(sender) = upstream_sender.as_ref() else {
+                        debug_warn!("upstream channel is not connected, dropping packet");
+                        return;
+                    };
 
-                        ControlFlow::Continue(())
-                    });
-                }
+                    if let Err(err) = sender.send(FramedDataMsg { data }) {
+                        if err == ErrorCode::Full {
+                            // We don't backpressure the virtqueue because both the upstream
+                            // and the peer over the network should retry later.
+                            debug_warn!("upstream channel is full, dropping packet");
+                        } else {
+                            error!("failed to send packet upstream: {:?}", err);
+                        }
+                    }
+                });
+            }
+            State::Interrupt(_) => {
+                panic!("unexpected readiness for interrupt: {:?}", readiness);
             }
         }
     }

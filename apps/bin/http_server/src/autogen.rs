@@ -7,11 +7,11 @@ use starina::channel::Channel;
 use starina::collections::HashMap;
 use starina::device_tree::DeviceTree;
 use starina::prelude::*;
-use starina::spec::ParsedAppSpec;
-use starina::spec::ParsedDeviceMatch;
-use starina::spec::ParsedEnvItem;
-use starina::spec::ParsedEnvType;
-use starina::spec::ParsedExportItem;
+use starina::spec::AppSpec;
+use starina::spec::DeviceMatch;
+use starina::spec::EnvItem;
+use starina::spec::EnvType;
+use starina::spec::ExportItem;
 use starina::syscall::VsyscallPage;
 
 #[derive(Debug, Deserialize)]
@@ -20,13 +20,13 @@ pub struct Env {
     pub tcpip: Channel,
 }
 
-pub const APP_SPEC: ParsedAppSpec = ParsedAppSpec {
+pub const APP_SPEC: AppSpec = AppSpec {
     name: "http_server",
-    env: &[ParsedEnvItem {
+    env: &[EnvItem {
         name: "tcpip",
-        ty: ParsedEnvType::Service { service: "tcpip" },
+        ty: EnvType::Service { service: "tcpip" },
     }],
-    exports: &[ParsedExportItem::Service {
+    exports: &[ExportItem::Service {
         service: "http_server",
     }],
     main,

@@ -7,11 +7,11 @@ use starina::channel::Channel;
 use starina::collections::HashMap;
 use starina::device_tree::DeviceTree;
 use starina::prelude::*;
-use starina::spec::ParsedAppSpec;
-use starina::spec::ParsedDeviceMatch;
-use starina::spec::ParsedEnvItem;
-use starina::spec::ParsedEnvType;
-use starina::spec::ParsedExportItem;
+use starina::spec::AppSpec;
+use starina::spec::DeviceMatch;
+use starina::spec::EnvItem;
+use starina::spec::EnvType;
+use starina::spec::ExportItem;
 use starina::syscall::VsyscallPage;
 
 #[derive(Debug, Deserialize)]
@@ -20,15 +20,15 @@ pub struct Env {
     pub driver: Channel,
 }
 
-pub const APP_SPEC: ParsedAppSpec = ParsedAppSpec {
+pub const APP_SPEC: AppSpec = AppSpec {
     name: "tcpip",
-    env: &[ParsedEnvItem {
+    env: &[EnvItem {
         name: "driver",
-        ty: ParsedEnvType::Service {
+        ty: EnvType::Service {
             service: "device/ethernet",
         },
     }],
-    exports: &[ParsedExportItem::Service { service: "tcpip" }],
+    exports: &[ExportItem::Service { service: "tcpip" }],
     main,
 };
 

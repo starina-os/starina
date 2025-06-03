@@ -6,9 +6,9 @@ use crate::error::ErrorCode;
 use crate::handle::HandleId;
 use crate::handle::Handleable;
 use crate::handle::OwnedHandle;
-use crate::message::AnyMessage;
 use crate::message::CallId;
 use crate::message::Callable;
+use crate::message::OwnedMessage;
 use crate::message::OwnedMessageBuffer;
 use crate::message::Replyable;
 use crate::message::Sendable;
@@ -60,12 +60,12 @@ impl Channel {
         Ok(())
     }
 
-    pub fn recv(&self) -> Result<AnyMessage, ErrorCode> {
+    pub fn recv(&self) -> Result<OwnedMessage, ErrorCode> {
         let mut buffer = OwnedMessageBuffer::alloc();
         let msginfo =
             syscall::channel_recv(self.0.id(), buffer.data_mut_ptr(), buffer.handles_mut_ptr())?;
 
-        let msg = unsafe { AnyMessage::new(buffer, msginfo) };
+        let msg = OwnedMessage::new(buffer, msginfo);
         Ok(msg)
     }
 
@@ -115,7 +115,7 @@ impl ChannelSender {
 }
 
 impl ChannelReceiver {
-    pub fn recv(&self) -> Result<AnyMessage, ErrorCode> {
+    pub fn recv(&self) -> Result<OwnedMessage, ErrorCode> {
         self.0.recv()
     }
 
