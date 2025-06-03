@@ -10,6 +10,3 @@ starina = { workspace = true }
 starina_driver_sdk = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 virtio = { workspace = true }
-
-[build-dependencies]
-starina_build_sdk = { workspace = true }

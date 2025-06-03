@@ -22,6 +22,7 @@ pub mod interrupt;
 pub mod message;
 pub mod mmio;
 pub mod poll;
+pub mod start;
 pub mod sync;
 pub mod thread;
 pub mod vcpu;

@@ -10,6 +10,3 @@ starina = { workspace = true }
 starina_utils = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 starina_linux = { workspace = true }
-
-[build-dependencies]
-starina_build_sdk = { workspace = true }

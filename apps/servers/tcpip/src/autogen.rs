@@ -29,9 +29,9 @@ pub const APP_SPEC: ParsedAppSpec = ParsedAppSpec {
         },
     }],
     exports: &[ParsedExportItem::Service { service: "tcpip" }],
-    entrypoint,
+    main,
 };
 
-extern "C" fn entrypoint(vsyscall: *const VsyscallPage) -> ! {
-    starina::eventloop::app_loop::<Env, crate::State, crate::App>("tcpip", vsyscall);
+fn main(env_json: &[u8]) {
+    starina::eventloop::app_loop::<Env, crate::State, crate::App>("tcpip", env_json);
 }

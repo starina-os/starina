@@ -1,8 +1,0 @@
-name = "http_server"
-
-[env]
-
-# Empty exports array since this app doesn't export any services
-[[exports]]
-type = "service"
-service = "autotest"
