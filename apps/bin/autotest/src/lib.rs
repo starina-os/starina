@@ -3,7 +3,7 @@
 use starina::prelude::*;
 use starina::spec::AppSpec;
 
-pub const APP_SPEC: AppSpec = AppSpec {
+pub const SPEC: AppSpec = AppSpec {
     name: "autotest",
     env: &[],
     exports: &[],

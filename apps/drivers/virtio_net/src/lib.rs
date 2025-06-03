@@ -21,7 +21,7 @@ use virtio_net::VirtioNet;
 
 mod virtio_net;
 
-pub const APP_SPEC: AppSpec = AppSpec {
+pub const SPEC: AppSpec = AppSpec {
     name: "virtio_net",
     env: &[EnvItem {
         name: "device_tree",
@@ -83,13 +83,8 @@ fn main(env_json: &[u8]) {
         match &*state {
             State::Startup(ch) if readiness.contains(Readiness::READABLE) => {
                 let mut m = ch.recv().unwrap();
-                let Some(m) = m.parse() else {
-                    debug_warn!("failed to parse a message, ignoring");
-                    continue;
-                };
-
-                match m {
-                    Message::Connect { handle } => {
+                match m.parse() {
+                    Some(Message::Connect { handle }) => {
                         let (sender, receiver) = handle.split();
                         upstream_sender = Some(sender);
                         poll.add(
@@ -100,7 +95,7 @@ fn main(env_json: &[u8]) {
                         .unwrap();
                     }
                     _ => {
-                        debug_warn!("unhandled message");
+                        debug_warn!("unhandled message: {:?}", m.msginfo);
                     }
                 }
             }
@@ -109,22 +104,17 @@ fn main(env_json: &[u8]) {
             }
             State::Upstream(ch) if readiness.contains(Readiness::READABLE) => {
                 let mut m = ch.recv().unwrap();
-                let Some(m) = m.parse() else {
-                    debug_warn!("failed to parse a message, ignoring");
-                    continue;
-                };
-
-                match m {
-                    Message::FramedData { data } => {
+                match m.parse() {
+                    Some(Message::FramedData { data }) => {
                         trace!("transmitting {} bytes", data.len());
                         virtio_net.transmit(data);
                     }
                     _ => {
-                        debug_warn!("unhandled message");
+                        debug_warn!("unhandled message {:?}", m.msginfo);
                     }
                 }
             }
-            State::Upstream(ch) if readiness.contains(Readiness::CLOSED) => {
+            State::Upstream(ch) if readiness == Readiness::CLOSED => {
                 warn!("upstream channel closed, stopping transmission");
                 poll.remove(ch.handle().id()).unwrap();
                 upstream_sender = None;

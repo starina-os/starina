@@ -21,9 +21,9 @@ use crate::scheduler::GLOBAL_SCHEDULER;
 use crate::thread::Thread;
 
 const INKERNEL_APPS: &[AppSpec] = &[
-    autotest::APP_SPEC,
-    virtio_net::APP_SPEC,
-    tcpip::autogen::APP_SPEC,
+    autotest::SPEC,
+    virtio_net::SPEC,
+    tcpip::SPEC,
     http_server::autogen::APP_SPEC,
     // catsay::autogen::APP_SPEC,
 ];
