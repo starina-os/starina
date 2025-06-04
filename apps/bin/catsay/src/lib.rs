@@ -6,7 +6,7 @@ use serde::Deserialize;
 use starina::spec::AppSpec;
 use starina::spec::ExportItem;
 
-pub const APP_SPEC: AppSpec = AppSpec {
+pub const SPEC: AppSpec = AppSpec {
     name: "catsay",
     env: &[],
     exports: &[ExportItem::Service { service: "catsay" }],
