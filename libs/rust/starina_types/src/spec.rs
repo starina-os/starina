@@ -1,64 +1,29 @@
-use alloc::string::String;
-use alloc::vec::Vec;
-
-use hashbrown::HashMap;
-use serde::Deserialize;
-use serde::Serialize;
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(tag = "type", rename_all = "lowercase")]
-pub enum EnvType {
-    Service { service: String },
-    DeviceTree { matches: Vec<String> },
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(tag = "type", rename_all = "lowercase")]
-pub enum ExportItem {
-    Service { service: String },
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct AppSpec {
-    pub name: String,
-    pub env: HashMap<String, EnvType>,
-    pub exports: Vec<ExportItem>,
-}
-
-/// `AppSpec`, in a pre-compiled form.
-///
-/// This is the format used by the kernel to load apps efficiently,
-/// without parsing `app.toml` again at runtime.
 #[derive(Debug)]
-pub struct ParsedAppSpec {
+pub struct AppSpec {
     pub name: &'static str,
-    pub env: &'static [ParsedEnvItem],
-    pub exports: &'static [ParsedExportItem],
+    pub env: &'static [EnvItem],
+    pub exports: &'static [ExportItem],
     pub main: fn(env: &[u8]),
 }
 
 #[derive(Debug)]
-pub enum ParsedDeviceMatch {
+pub enum DeviceMatch {
     Compatible(&'static str),
 }
 
 #[derive(Debug)]
-pub struct ParsedEnvItem {
+pub struct EnvItem {
     pub name: &'static str,
-    pub ty: ParsedEnvType,
+    pub ty: EnvType,
 }
 
 #[derive(Debug)]
-pub enum ParsedEnvType {
-    DeviceTree {
-        matches: &'static [ParsedDeviceMatch],
-    },
-    Service {
-        service: &'static str,
-    },
+pub enum EnvType {
+    DeviceTree { matches: &'static [DeviceMatch] },
+    Service { service: &'static str },
 }
 
 #[derive(Debug)]
-pub enum ParsedExportItem {
+pub enum ExportItem {
     Service { service: &'static str },
 }
