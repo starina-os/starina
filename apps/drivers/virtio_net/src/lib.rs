@@ -1,86 +1,150 @@
 #![no_std]
 
-pub mod autogen;
-
-use starina::channel::ChannelSender;
-use starina::eventloop::Context;
-use starina::eventloop::Dispatcher;
-use starina::eventloop::EventLoop;
+use serde::Deserialize;
+use starina::channel::Channel;
+use starina::channel::ChannelReceiver;
+use starina::device_tree::DeviceTree;
+use starina::error::ErrorCode;
+use starina::handle::Handleable;
 use starina::interrupt::Interrupt;
-use starina::message::ConnectMsg;
 use starina::message::FramedDataMsg;
+use starina::message::Message;
+use starina::poll::Poll;
+use starina::poll::Readiness;
 use starina::prelude::*;
-use starina::sync::Mutex;
+use starina::spec::AppSpec;
+use starina::spec::DeviceMatch;
+use starina::spec::EnvItem;
+use starina::spec::EnvType;
+use starina::spec::ExportItem;
 use virtio_net::VirtioNet;
 
 mod virtio_net;
 
-struct ReceiverImpl(ChannelSender);
+pub const SPEC: AppSpec = AppSpec {
+    name: "virtio_net",
+    env: &[EnvItem {
+        name: "device_tree",
+        ty: EnvType::DeviceTree {
+            matches: &[DeviceMatch::Compatible("virtio,mmio")],
+        },
+    }],
+    exports: &[ExportItem::Service {
+        service: "device/ethernet",
+    }],
+    main,
+};
 
-impl virtio_net::Receiver for ReceiverImpl {
-    fn receive(&mut self, data: &[u8]) {
-        if let Err(err) = self.0.send(FramedDataMsg { data }) {
-            debug_warn!("failed to forward a packet to upstream: {:?}", err);
+#[derive(Debug, Deserialize)]
+struct Env {
+    pub startup_ch: Channel,
+    pub device_tree: DeviceTree,
+}
+
+enum State {
+    Startup(Channel),
+    Interrupt(Interrupt),
+    Upstream(ChannelReceiver),
+}
+
+fn main(env_json: &[u8]) {
+    let env: Env = serde_json::from_slice(env_json).expect("failed to deserialize env");
+
+    // Look for and initialize the virtio-net device.
+    let mut virtio_net = VirtioNet::init_or_panic(&env.device_tree);
+
+    // Read its MAC address.
+    let mac = virtio_net.mac_addr();
+    debug!(
+        "MAC address: {:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}",
+        mac[0], mac[1], mac[2], mac[3], mac[4], mac[5],
+    );
+
+    let poll = Poll::new().unwrap();
+    poll.add(
+        env.startup_ch.handle_id(),
+        State::Startup(env.startup_ch),
+        Readiness::READABLE | Readiness::CLOSED, /* FIXME: This should guarantee level-triggered */
+    )
+    .unwrap();
+
+    // Start watching for interrupts.
+    let interrupt = virtio_net.take_interrupt().unwrap();
+    poll.add(
+        interrupt.handle_id(),
+        State::Interrupt(interrupt),
+        Readiness::READABLE | Readiness::CLOSED, /* FIXME: This should guarantee level-triggered */
+    )
+    .unwrap();
+
+    let mut upstream_sender = None;
+    loop {
+        let (state, readiness) = poll.wait().unwrap();
+        match &*state {
+            State::Startup(ch) if readiness.contains(Readiness::READABLE) => {
+                let mut m = ch.recv().unwrap();
+                match m.parse() {
+                    Some(Message::Connect { handle }) => {
+                        let (sender, receiver) = handle.split();
+                        upstream_sender = Some(sender);
+                        poll.add(
+                            receiver.handle().id(),
+                            State::Upstream(receiver),
+                            Readiness::READABLE | Readiness::CLOSED, /* FIXME: This should guarantee level-triggered */
+                        )
+                        .unwrap();
+                    }
+                    _ => {
+                        debug_warn!("unhandled message: {:?}", m.msginfo);
+                    }
+                }
+            }
+            State::Startup(_) => {
+                panic!("unexpected readiness for startup channel: {:?}", readiness);
+            }
+            State::Upstream(ch) if readiness.contains(Readiness::READABLE) => {
+                let mut m = ch.recv().unwrap();
+                match m.parse() {
+                    Some(Message::FramedData { data }) => {
+                        trace!("transmitting {} bytes", data.len());
+                        virtio_net.transmit(data);
+                    }
+                    _ => {
+                        debug_warn!("unhandled message {:?}", m.msginfo);
+                    }
+                }
+            }
+            State::Upstream(ch) if readiness == Readiness::CLOSED => {
+                warn!("upstream channel closed, stopping transmission");
+                poll.remove(ch.handle().id()).unwrap();
+                upstream_sender = None;
+            }
+            &State::Upstream(_) => {
+                panic!("unexpected readiness for upstream channel: {:?}", readiness);
+            }
+            State::Interrupt(interrupt) if readiness.contains(Readiness::READABLE) => {
+                trace!("interrupt: received interrupt");
+                interrupt.acknowledge().unwrap();
+                virtio_net.handle_interrupt(|data| {
+                    let Some(sender) = upstream_sender.as_ref() else {
+                        debug_warn!("upstream channel is not connected, dropping packet");
+                        return;
+                    };
+
+                    if let Err(err) = sender.send(FramedDataMsg { data }) {
+                        if err == ErrorCode::Full {
+                            // We don't backpressure the virtqueue because both the upstream
+                            // and the peer over the network should retry later.
+                            debug_warn!("upstream channel is full, dropping packet");
+                        } else {
+                            error!("failed to send packet upstream: {:?}", err);
+                        }
+                    }
+                });
+            }
+            State::Interrupt(_) => {
+                panic!("unexpected readiness for interrupt: {:?}", readiness);
+            }
         }
-    }
-}
-
-pub enum State {
-    Startup,
-    Interrupt,
-    Upstream,
-}
-
-pub struct App {
-    virtio_net: Mutex<VirtioNet>,
-}
-
-impl EventLoop for App {
-    type Env = autogen::Env;
-    type State = State;
-
-    fn init(dispatcher: &dyn Dispatcher<Self::State>, env: Self::Env) -> Self {
-        dispatcher
-            .add_channel(State::Startup, env.startup_ch)
-            .unwrap();
-
-        // Look for and initialize the virtio-net device.
-        let mut virtio_net = VirtioNet::init_or_panic(&env.device_tree);
-
-        // Start watching for interrupts.
-        let interrupt = virtio_net.take_interrupt().unwrap();
-        dispatcher
-            .add_interrupt(State::Interrupt, interrupt)
-            .expect("failed to add interrupt");
-
-        // Read its MAC address.
-        let mac = virtio_net.mac_addr();
-        debug!(
-            "MAC address: {:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}",
-            mac[0], mac[1], mac[2], mac[3], mac[4], mac[5],
-        );
-
-        Self {
-            virtio_net: Mutex::new(virtio_net),
-        }
-    }
-
-    fn on_connect(&self, ctx: Context<Self::State>, msg: ConnectMsg) {
-        let upstream = ctx
-            .dispatcher
-            .add_channel(State::Upstream, msg.handle)
-            .unwrap();
-
-        self.virtio_net.lock().set_receiver(ReceiverImpl(upstream));
-    }
-
-    fn on_framed_data(&self, _ctx: Context<Self::State>, msg: FramedDataMsg<'_>) {
-        trace!("frame data received: {} bytes", msg.data.len());
-        self.virtio_net.lock().transmit(msg.data);
-    }
-
-    fn on_interrupt(&self, interrupt: &Interrupt) {
-        interrupt.acknowledge().unwrap();
-        self.virtio_net.lock().handle_interrupt();
     }
 }

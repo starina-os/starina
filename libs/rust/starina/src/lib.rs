@@ -14,7 +14,6 @@ pub mod log;
 
 pub mod channel;
 pub mod collections;
-pub mod eventloop;
 pub mod folio;
 pub mod handle;
 pub mod hvspace;

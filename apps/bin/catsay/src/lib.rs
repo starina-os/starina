@@ -1,22 +1,22 @@
 #![no_std]
 
-pub mod autogen;
 mod catsay;
 
-use starina::eventloop::Dispatcher;
-use starina::eventloop::EventLoop;
-use starina::syscall;
+use serde::Deserialize;
+use starina::spec::AppSpec;
+use starina::spec::ExportItem;
 
-pub enum State {}
+pub const SPEC: AppSpec = AppSpec {
+    name: "catsay",
+    env: &[],
+    exports: &[ExportItem::Service { service: "catsay" }],
+    main,
+};
 
-pub struct App {}
+#[derive(Debug, Deserialize)]
+struct Env {}
 
-impl EventLoop for App {
-    type Env = autogen::Env;
-    type State = State;
-
-    fn init(_dispatcher: &dyn Dispatcher<Self::State>, _env: Self::Env) -> Self {
-        catsay::catsay("I'm a teapot!");
-        syscall::thread_exit();
-    }
+fn main(env_json: &[u8]) {
+    let _env: Env = serde_json::from_slice(env_json).unwrap();
+    catsay::catsay("I'm a teapot!");
 }

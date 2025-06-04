@@ -1,7 +1,0 @@
-name = "catsay"
-
-[env]
-
-[[exports]]
-type = "service"
-service = "catsay"

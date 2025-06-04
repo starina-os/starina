@@ -1,6 +1,6 @@
 use core::fmt;
 
-use starina::channel::ChannelSender;
+use starina::channel::Channel;
 use starina::error::ErrorCode;
 use starina::message::StreamDataMsg;
 use starina::prelude::*;
@@ -10,10 +10,10 @@ use crate::http::request_parser::Part;
 use crate::http::response_writer::HttpResponseWriter;
 use crate::http::response_writer::Writer;
 
-pub struct ChannelWriter<'a>(&'a ChannelSender);
+pub struct ChannelWriter<'a>(&'a Channel);
 
 impl<'a> ChannelWriter<'a> {
-    pub fn new(tcpip_sender: &'a ChannelSender) -> Self {
+    pub fn new(tcpip_sender: &'a Channel) -> Self {
         Self(tcpip_sender)
     }
 }

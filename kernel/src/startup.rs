@@ -7,11 +7,11 @@ use starina::device_tree::DeviceTree;
 use starina::handle::HandleRights;
 use starina::message::MessageInfo;
 use starina::message::MessageKind;
-use starina::spec::ParsedAppSpec;
-use starina::spec::ParsedDeviceMatch;
-use starina::spec::ParsedEnvItem;
-use starina::spec::ParsedEnvType;
-use starina::spec::ParsedExportItem;
+use starina::spec::AppSpec;
+use starina::spec::DeviceMatch;
+use starina::spec::EnvItem;
+use starina::spec::EnvType;
+use starina::spec::ExportItem;
 use starina::syscall::VsyscallPage;
 
 use crate::channel::Channel;
@@ -20,12 +20,12 @@ use crate::process::KERNEL_PROCESS;
 use crate::scheduler::GLOBAL_SCHEDULER;
 use crate::thread::Thread;
 
-const INKERNEL_APPS: &[ParsedAppSpec] = &[
-    autotest::APP_SPEC,
-    virtio_net::autogen::APP_SPEC,
-    tcpip::autogen::APP_SPEC,
-    http_server::autogen::APP_SPEC,
-    // catsay::autogen::APP_SPEC,
+const INKERNEL_APPS: &[AppSpec] = &[
+    autotest::SPEC,
+    virtio_net::SPEC,
+    tcpip::SPEC,
+    http_server::SPEC,
+    catsay::SPEC,
 ];
 
 pub fn load_inkernel_apps(device_tree: DeviceTree) {
@@ -34,7 +34,7 @@ pub fn load_inkernel_apps(device_tree: DeviceTree) {
     for spec in INKERNEL_APPS {
         for export in spec.exports {
             match export {
-                ParsedExportItem::Service { service: name } => {
+                ExportItem::Service { service: name } => {
                     let (ch1, ch2) = Channel::new().unwrap();
                     assert!(
                         server_channels.insert(spec.name, ch1).is_none(),
@@ -49,14 +49,14 @@ pub fn load_inkernel_apps(device_tree: DeviceTree) {
     for spec in INKERNEL_APPS {
         info!("startup: starting \"{}\"", spec.name);
         let mut env = serde_json::Map::new();
-        for ParsedEnvItem { name: env_name, ty } in spec.env {
+        for EnvItem { name: env_name, ty } in spec.env {
             let value = match ty {
-                ParsedEnvType::DeviceTree { matches } => {
+                EnvType::DeviceTree { matches } => {
                     let mut devices = HashMap::new();
                     for (name, node) in &device_tree.devices {
                         let should_add = matches.iter().any(|m| {
                             match m {
-                                ParsedDeviceMatch::Compatible(compatible) => {
+                                DeviceMatch::Compatible(compatible) => {
                                     node.compatible.iter().any(|c| c == compatible)
                                 }
                             }
@@ -71,7 +71,7 @@ pub fn load_inkernel_apps(device_tree: DeviceTree) {
                         "devices": devices,
                     })
                 }
-                ParsedEnvType::Service { service: name } => {
+                EnvType::Service { service: name } => {
                     let ch = match client_channels.get(name) {
                         Some(ch) => ch.clone(),
                         None => panic!("service not found: {} (requested by {})", name, spec.name),

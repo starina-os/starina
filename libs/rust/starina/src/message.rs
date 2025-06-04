@@ -518,13 +518,76 @@ impl Drop for OwnedMessageBuffer {
     }
 }
 
-pub struct AnyMessage {
+pub enum Message<'a> {
+    Connect { handle: Channel },
+    Open { call_id: CallId, uri: &'a [u8] },
+    OpenReply { call_id: CallId, handle: Channel },
+    FramedData { data: &'a [u8] },
+    StreamData { data: &'a [u8] },
+    Abort { call_id: CallId, reason: ErrorCode },
+    Error { reason: ErrorCode },
+}
+
+pub struct OwnedMessage {
     pub msginfo: MessageInfo,
     pub buffer: OwnedMessageBuffer,
 }
 
-impl AnyMessage {
-    pub unsafe fn new(buffer: OwnedMessageBuffer, msginfo: MessageInfo) -> Self {
+impl OwnedMessage {
+    pub fn new(buffer: OwnedMessageBuffer, msginfo: MessageInfo) -> Self {
         Self { buffer, msginfo }
+    }
+
+    pub fn parse(&mut self) -> Option<Message<'_>> {
+        match self.msginfo.kind() {
+            // FIXME: Verify the # of handles too.
+            kind if kind == MessageKind::Connect as usize => {
+                Receivable::deserialize_from_buffer(self.msginfo, &mut self.buffer)
+                    .map(|m: ConnectMsg| Message::Connect { handle: m.handle })
+            }
+            kind if kind == MessageKind::Open as usize => {
+                Receivable::deserialize_from_buffer(self.msginfo, &mut self.buffer).map(
+                    |(call_id, m): (CallId, OpenMsg)| {
+                        Message::Open {
+                            call_id,
+                            uri: m.uri,
+                        }
+                    },
+                )
+            }
+            kind if kind == MessageKind::OpenReply as usize => {
+                Receivable::deserialize_from_buffer(self.msginfo, &mut self.buffer).map(
+                    |(call_id, m): (CallId, OpenReplyMsg)| {
+                        Message::OpenReply {
+                            call_id,
+                            handle: m.handle,
+                        }
+                    },
+                )
+            }
+            kind if kind == MessageKind::FramedData as usize => {
+                Receivable::deserialize_from_buffer(self.msginfo, &mut self.buffer)
+                    .map(|m: FramedDataMsg| Message::FramedData { data: m.data })
+            }
+            kind if kind == MessageKind::StreamData as usize => {
+                Receivable::deserialize_from_buffer(self.msginfo, &mut self.buffer)
+                    .map(|m: StreamDataMsg| Message::StreamData { data: m.data })
+            }
+            kind if kind == MessageKind::Abort as usize => {
+                Receivable::deserialize_from_buffer(self.msginfo, &mut self.buffer).map(
+                    |(call_id, m): (CallId, AbortMsg)| {
+                        Message::Abort {
+                            call_id,
+                            reason: m.reason,
+                        }
+                    },
+                )
+            }
+            kind if kind == MessageKind::Error as usize => {
+                Receivable::deserialize_from_buffer(self.msginfo, &mut self.buffer)
+                    .map(|m: ErrorMsg| Message::Error { reason: m.reason })
+            }
+            _ => None,
+        }
     }
 }
