@@ -24,7 +24,7 @@ const INKERNEL_APPS: &[AppSpec] = &[
     autotest::SPEC,
     virtio_net::SPEC,
     tcpip::SPEC,
-    http_server::autogen::APP_SPEC,
+    http_server::SPEC,
     // catsay::autogen::APP_SPEC,
 ];
 

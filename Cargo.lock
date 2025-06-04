@@ -195,6 +195,7 @@ name = "http_server"
 version = "0.0.0"
 dependencies = [
  "serde",
+ "serde_json",
  "starina",
 ]
 

@@ -47,7 +47,7 @@ pub const SPEC: AppSpec = AppSpec {
 };
 
 #[derive(Debug, Deserialize)]
-pub struct Env {
+struct Env {
     pub startup_ch: Channel,
     pub driver: Channel,
 }
@@ -60,11 +60,11 @@ fn parse_addr(addr: &str) -> Option<(Ipv4Addr, u16)> {
 }
 
 #[derive(Debug)]
-pub enum State {
+enum State {
     Startup(Channel),
     Driver(ChannelReceiver),
     Control(Channel),
-    Listen(ChannelReceiver),
+    Listen,
     Data {
         smol_handle: SocketHandle,
         ch: ChannelReceiver,
@@ -166,7 +166,7 @@ fn main(env_json: &[u8]) {
                         let (our_tx, our_rx) = our_ch.split();
                         poll.add(
                             our_rx.handle().id(),
-                            State::Listen(our_rx),
+                            State::Listen,
                             Readiness::READABLE | Readiness::CLOSED,
                         )
                         .unwrap();
@@ -192,7 +192,7 @@ fn main(env_json: &[u8]) {
             State::Control(_) => {
                 panic!("unexpected readiness for control channel: {:?}", readiness);
             }
-            State::Listen(_) => {
+            State::Listen => {
                 debug_warn!("got a message from a listen channel");
             }
             State::Data { ch, smol_handle } if readiness.contains(Readiness::READABLE) => {

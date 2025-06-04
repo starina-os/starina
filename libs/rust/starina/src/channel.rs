@@ -109,6 +109,10 @@ impl ChannelSender {
         self.0.reply(call_id, msg)
     }
 
+    pub fn call(&self, call_id: CallId, msg: impl Callable) -> Result<(), ErrorCode> {
+        self.0.call(call_id, msg)
+    }
+
     pub fn handle(&self) -> &OwnedHandle {
         &self.0.0
     }

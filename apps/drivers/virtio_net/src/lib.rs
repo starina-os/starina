@@ -36,12 +36,12 @@ pub const SPEC: AppSpec = AppSpec {
 };
 
 #[derive(Debug, Deserialize)]
-pub struct Env {
+struct Env {
     pub startup_ch: Channel,
     pub device_tree: DeviceTree,
 }
 
-pub enum State {
+enum State {
     Startup(Channel),
     Interrupt(Interrupt),
     Upstream(ChannelReceiver),
