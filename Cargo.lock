@@ -57,6 +57,7 @@ name = "catsay"
 version = "0.0.0"
 dependencies = [
  "serde",
+ "serde_json",
  "starina",
  "starina_linux",
  "starina_utils",
