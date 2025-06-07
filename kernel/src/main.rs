@@ -38,6 +38,7 @@ mod spinlock;
 mod startup;
 mod syscall;
 mod thread;
+mod timer;
 mod utils;
 mod vcpu;
 mod vmspace;
