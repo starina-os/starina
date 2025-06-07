@@ -3,6 +3,7 @@
     "code-model": "medium",
     "cpu": "generic-rv64",
     "os": "none",
+    "env": "eabi",
     "crt-objects-fallback": "false",
     "data-layout": "e-m:e-p:64:64-i64:64-i128:128-n32:64-S128",
     "eh-frame-header": false,

@@ -31,3 +31,4 @@ tcpip = { workspace = true }
 http_server = { workspace = true }
 catsay = { workspace = true }
 autotest = { workspace = true }
+hello_swift = { workspace = true }

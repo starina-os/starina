@@ -5,8 +5,10 @@ members = [
     "libs/rust/*",
     "apps/drivers/virtio_net",
     "apps/servers/tcpip",
+    "apps/bin/autotest",
     "apps/bin/catsay",
     "apps/bin/http_server",
+    "apps/bin/hello_swift",
 ]
 
 [workspace.package]
@@ -40,3 +42,4 @@ tcpip = { path = "apps/servers/tcpip" }
 http_server = { path = "apps/bin/http_server" }
 catsay = { path = "apps/bin/catsay" }
 autotest = { path = "apps/bin/autotest" }
+hello_swift = { path = "apps/bin/hello_swift" }

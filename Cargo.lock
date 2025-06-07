@@ -192,6 +192,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "hello_swift"
+version = "0.0.0"
+dependencies = [
+ "serde",
+ "starina",
+]
+
+[[package]]
 name = "http_server"
 version = "0.0.0"
 dependencies = [
@@ -215,6 +223,7 @@ dependencies = [
  "catsay",
  "fdt-rs",
  "hashbrown 0.15.2",
+ "hello_swift",
  "http_server",
  "rustc-hash",
  "serde_json",

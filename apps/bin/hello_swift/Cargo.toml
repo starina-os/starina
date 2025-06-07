@@ -1,0 +1,10 @@
+[package]
+name = "hello_swift"
+publish = false
+version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
+
+[dependencies]
+starina = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
