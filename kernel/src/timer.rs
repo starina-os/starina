@@ -66,7 +66,14 @@ impl Timer {
 
 impl Handleable for Timer {
     fn close(&self) {
-        // TODO: Should we do anything here?
+        let mut mutable = self.mutable.lock();
+
+        // Mark the timer as expired so it will be removed from the global
+        // active list on the next timer interrupt. This prevents the timer
+        // from being processed further.
+        mutable.state = State::Expired;
+
+        mutable.listeners.notify_all(Readiness::CLOSED);
     }
 
     fn add_listener(&self, listener: crate::poll::Listener) -> Result<(), ErrorCode> {

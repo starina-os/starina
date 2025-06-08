@@ -1,3 +1,5 @@
+use core::cmp::min;
+
 use starina::address::GPAddr;
 use starina::address::PAddr;
 use starina::address::VAddr;
@@ -46,9 +48,22 @@ fn console_write(
 ) -> Result<(), ErrorCode> {
     let slice = IsolationSlice::new(str_ptr, len);
     let isolation = current.process().isolation();
-    // TODO: Avoid Vec allocation
-    let str = slice.read_to_vec(isolation, 0, len)?;
-    arch::console_write(str.as_slice());
+
+    let mut tmp = [0u8; 512];
+    let mut remaining = len;
+    let mut offset = 0;
+
+    while remaining > 0 {
+        let chunk_len = min(remaining, tmp.len());
+        let buf = &mut tmp[..chunk_len];
+
+        slice.read_to_slice(isolation, offset, buf)?;
+        arch::console_write(buf);
+
+        offset += chunk_len;
+        remaining -= chunk_len;
+    }
+
     Ok(())
 }
 

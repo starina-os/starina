@@ -80,6 +80,16 @@ impl IsolationSlice {
         isolation.read_bytes(checked_ptr, &mut buf)?;
         Ok(buf)
     }
+
+    pub fn read_to_slice(
+        &self,
+        isolation: &dyn Isolation,
+        offset: usize,
+        buf: &mut [u8],
+    ) -> Result<(), ErrorCode> {
+        let checked_ptr = checked_ptr(self.ptr.0, self.len, offset, buf.len())?;
+        isolation.read_bytes(checked_ptr, buf)
+    }
 }
 
 /// A mutable slice in an isolation space.
