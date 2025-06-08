@@ -6,12 +6,9 @@ use crate::error::ErrorCode;
 use crate::handle::HandleId;
 use crate::handle::Handleable;
 use crate::handle::OwnedHandle;
-use crate::message::CallId;
-use crate::message::Callable;
+use crate::message::Message;
 use crate::message::OwnedMessage;
 use crate::message::OwnedMessageBuffer;
-use crate::message::Replyable;
-use crate::message::Sendable;
 use crate::syscall;
 
 #[derive(Debug)]
@@ -29,23 +26,12 @@ impl Channel {
         Self(handle)
     }
 
-    pub fn send(&self, msg: impl Sendable) -> Result<(), ErrorCode> {
+    pub fn send(&self, msg: Message<'_>) -> Result<(), ErrorCode> {
         let mut buffer = OwnedMessageBuffer::alloc();
-        let msginfo = msg.serialize_to_buffer(&mut buffer)?;
+        let msginfo = msg.serialize(&mut buffer)?;
         self.do_send(msginfo, buffer)
     }
 
-    pub fn call(&self, call_id: CallId, msg: impl Callable) -> Result<(), ErrorCode> {
-        let mut buffer = OwnedMessageBuffer::alloc();
-        let msginfo = msg.serialize_to_buffer(call_id, &mut buffer)?;
-        self.do_send(msginfo, buffer)
-    }
-
-    pub fn reply(&self, call_id: CallId, msg: impl Replyable) -> Result<(), ErrorCode> {
-        let mut buffer = OwnedMessageBuffer::alloc();
-        let msginfo = msg.serialize_to_buffer(call_id, &mut buffer)?;
-        self.do_send(msginfo, buffer)
-    }
 
     fn do_send(&self, msginfo: MessageInfo, buffer: OwnedMessageBuffer) -> Result<(), ErrorCode> {
         syscall::channel_send(
@@ -101,17 +87,10 @@ pub struct ChannelSender(Arc<Channel>);
 pub struct ChannelReceiver(Arc<Channel>);
 
 impl ChannelSender {
-    pub fn send(&self, msg: impl Sendable) -> Result<(), ErrorCode> {
+    pub fn send(&self, msg: Message<'_>) -> Result<(), ErrorCode> {
         self.0.send(msg)
     }
 
-    pub fn reply(&self, call_id: CallId, msg: impl Replyable) -> Result<(), ErrorCode> {
-        self.0.reply(call_id, msg)
-    }
-
-    pub fn call(&self, call_id: CallId, msg: impl Callable) -> Result<(), ErrorCode> {
-        self.0.call(call_id, msg)
-    }
 
     pub fn handle(&self) -> &OwnedHandle {
         &self.0.0

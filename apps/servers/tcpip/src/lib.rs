@@ -18,12 +18,7 @@ use starina::channel::Channel;
 use starina::channel::ChannelReceiver;
 use starina::error::ErrorCode;
 use starina::handle::Handleable;
-use starina::message::AbortMsg;
-use starina::message::ConnectMsg;
-use starina::message::FramedDataMsg;
 use starina::message::Message;
-use starina::message::OpenReplyMsg;
-use starina::message::StreamDataMsg;
 use starina::poll::Poll;
 use starina::poll::Readiness;
 use starina::prelude::*;
@@ -93,7 +88,7 @@ fn main(env_json: &[u8]) {
 
     let transmit = move |data: &[u8]| {
         trace!("transmit {} bytes", data.len());
-        if let Err(err) = driver_tx.send(FramedDataMsg { data }) {
+        if let Err(err) = driver_tx.send(Message::FramedData { data }) {
             debug_warn!("failed to send: {:?}", err);
         }
     };
@@ -135,24 +130,20 @@ fn main(env_json: &[u8]) {
                         let uri = core::str::from_utf8(uri).unwrap();
                         info!("got open message: {}", uri);
                         let Some(("tcp-listen", rest)) = uri.split_once(':') else {
-                            ch.reply(
+                            ch.send(Message::Abort {
                                 call_id,
-                                AbortMsg {
-                                    reason: ErrorCode::InvalidUri,
-                                },
-                            )
+                                reason: ErrorCode::InvalidUri,
+                            })
                             .unwrap();
                             continue 'mainloop;
                         };
 
                         let Some((ip, port)) = parse_addr(rest) else {
                             debug_warn!("invalid tcp-listen message: {}", uri);
-                            ch.reply(
+                            ch.send(Message::Abort {
                                 call_id,
-                                AbortMsg {
-                                    reason: ErrorCode::InvalidUri,
-                                },
-                            )
+                                reason: ErrorCode::InvalidUri,
+                            })
                             .unwrap();
                             continue 'mainloop;
                         };
@@ -177,7 +168,10 @@ fn main(env_json: &[u8]) {
                             tcpip.tcp_listen(listen_addr, our_tx).unwrap();
                         }
 
-                        if let Err(err) = ch.reply(call_id, OpenReplyMsg { handle: their_ch }) {
+                        if let Err(err) = ch.send(Message::OpenReply {
+                            call_id,
+                            handle: their_ch,
+                        }) {
                             debug_warn!("failed to send open reply message: {:?}", err);
                         }
                     }
@@ -242,7 +236,7 @@ fn tcpip_poll<'a>(poll: &Poll<State>, tcpip: &mut TcpIp<'a>) {
     tcpip.poll(|ev| {
         match ev {
             SocketEvent::Data { ch, data } => {
-                ch.send(StreamDataMsg { data }).unwrap(); // FIXME: what if backpressure happens?
+                ch.send(Message::StreamData { data }).unwrap(); // FIXME: what if backpressure happens?
             }
             SocketEvent::Close { ch } => {
                 debug_warn!("closing a socket");
@@ -261,7 +255,7 @@ fn tcpip_poll<'a>(poll: &Poll<State>, tcpip: &mut TcpIp<'a>) {
                 )
                 .expect("failed to get channel sender");
 
-                ch.send(ConnectMsg { handle: their_ch }).unwrap(); // FIXME: what if backpressure happens?
+                ch.send(Message::Connect { handle: their_ch }).unwrap(); // FIXME: what if backpressure happens?
 
                 // The socket has become an esblished socket, so replace the old
                 // sender handle with a new data channel.

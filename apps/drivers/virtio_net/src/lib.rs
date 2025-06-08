@@ -7,7 +7,6 @@ use starina::device_tree::DeviceTree;
 use starina::error::ErrorCode;
 use starina::handle::Handleable;
 use starina::interrupt::Interrupt;
-use starina::message::FramedDataMsg;
 use starina::message::Message;
 use starina::poll::Poll;
 use starina::poll::Readiness;
@@ -131,7 +130,7 @@ fn main(env_json: &[u8]) {
                         return;
                     };
 
-                    if let Err(err) = sender.send(FramedDataMsg { data }) {
+                    if let Err(err) = sender.send(Message::FramedData { data }) {
                         if err == ErrorCode::Full {
                             // We don't backpressure the virtqueue because both the upstream
                             // and the peer over the network should retry later.

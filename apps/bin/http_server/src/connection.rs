@@ -2,7 +2,7 @@ use core::fmt;
 
 use starina::channel::Channel;
 use starina::error::ErrorCode;
-use starina::message::StreamDataMsg;
+use starina::message::Message;
 use starina::prelude::*;
 
 use crate::http::request_parser::HttpRequestParser;
@@ -22,7 +22,7 @@ impl<'a> Writer for ChannelWriter<'a> {
     type Error = ErrorCode;
 
     fn write(&mut self, buf: &[u8]) -> Result<(), Self::Error> {
-        self.0.send(StreamDataMsg { data: buf })
+        self.0.send(Message::StreamData { data: buf })
     }
 }
 

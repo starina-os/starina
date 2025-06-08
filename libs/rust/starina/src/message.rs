@@ -1,6 +1,7 @@
 use alloc::boxed::Box;
 use core::mem;
 use core::mem::MaybeUninit;
+use core::mem::size_of;
 use core::ops::Deref;
 use core::ops::DerefMut;
 use core::ptr;
@@ -29,7 +30,7 @@ pub enum MessageKind {
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 #[repr(transparent)]
-pub struct CallId(pub u32);
+pub struct CallId(u32);
 
 impl From<u32> for CallId {
     fn from(value: u32) -> Self {
@@ -67,7 +68,8 @@ impl MessageBuffer {
     }
 }
 
-pub struct DataWriter<'a> {
+/// A helper to serialize the data part of a message.
+struct DataWriter<'a> {
     data: &'a mut [MaybeUninit<u8>; MESSAGE_DATA_LEN_MAX],
     offset: usize,
 }
@@ -123,7 +125,8 @@ impl<'a> DataWriter<'a> {
     }
 }
 
-pub struct HandlesWriter<'a> {
+/// A helper to serialize handles into a message.
+struct HandlesWriter<'a> {
     handles: &'a mut [HandleId; MESSAGE_NUM_HANDLES_MAX],
 }
 
@@ -142,7 +145,8 @@ impl<'a> HandlesWriter<'a> {
     }
 }
 
-pub struct DataReader<'a> {
+/// A helper to deserialize a message.
+struct DataReader<'a> {
     data: &'a [MaybeUninit<u8>; MESSAGE_DATA_LEN_MAX],
 }
 
@@ -178,7 +182,8 @@ impl<'a> DataReader<'a> {
     }
 }
 
-pub struct HandlesReader<'a> {
+/// A helper to deserialize handles from a message.
+struct HandlesReader<'a> {
     handles: &'a mut [HandleId; MESSAGE_NUM_HANDLES_MAX],
 }
 
@@ -187,13 +192,13 @@ impl<'a> HandlesReader<'a> {
         HandlesReader { handles }
     }
 
-    fn as_channel<const I: usize>(&mut self, msginfo: MessageInfo) -> Channel {
-        debug_assert!(I < msginfo.num_handles() as usize);
+    fn as_channel(&mut self, msginfo: MessageInfo, index: usize) -> Channel {
+        debug_assert!(index < msginfo.num_handles() as usize);
 
-        let handle_id = self.handles[I];
+        let handle_id = self.handles[index];
 
         // Mark as moved.
-        self.handles[I] = HandleId::from_raw(0);
+        self.handles[index] = HandleId::from_raw(0);
 
         let handle = OwnedHandle::from_raw(handle_id);
         let channel = Channel::from_handle(handle);
@@ -201,279 +206,17 @@ impl<'a> HandlesReader<'a> {
     }
 }
 
-pub trait Sendable: Sized {
-    fn serialize(
-        self,
-        data: DataWriter<'_>,
-        handles: HandlesWriter<'_>,
-    ) -> Result<MessageInfo, ErrorCode>;
-
-    fn serialize_to_buffer(self, buffer: &mut MessageBuffer) -> Result<MessageInfo, ErrorCode> {
-        let data = DataWriter::new(&mut buffer.data);
-        let handles = HandlesWriter::new(&mut buffer.handles);
-        self.serialize(data, handles)
-    }
-}
-
-pub trait Replyable: Sized {
-    fn serialize(
-        self,
-        call_id: CallId,
-        data: DataWriter<'_>,
-        handles: HandlesWriter<'_>,
-    ) -> Result<MessageInfo, ErrorCode>;
-
-    fn serialize_to_buffer(
-        self,
-        call_id: CallId,
-        buffer: &mut MessageBuffer,
-    ) -> Result<MessageInfo, ErrorCode> {
-        let data = DataWriter::new(&mut buffer.data);
-        let handles = HandlesWriter::new(&mut buffer.handles);
-        self.serialize(call_id, data, handles)
-    }
-}
-
-pub trait Callable: Sized {
-    fn serialize(
-        self,
-        call_id: CallId,
-        data: DataWriter<'_>,
-        handles: HandlesWriter<'_>,
-    ) -> Result<MessageInfo, ErrorCode>;
-
-    fn serialize_to_buffer(
-        self,
-        call_id: CallId,
-        buffer: &mut MessageBuffer,
-    ) -> Result<MessageInfo, ErrorCode> {
-        let data = DataWriter::new(&mut buffer.data);
-        let handles = HandlesWriter::new(&mut buffer.handles);
-        self.serialize(call_id, data, handles)
-    }
-}
-
-pub trait Receivable<'a>: Sized {
-    fn deserialize(
-        msginfo: MessageInfo,
-        data: DataReader<'a>,
-        handles: HandlesReader<'a>,
-    ) -> Option<Self>;
-
-    fn deserialize_from_buffer(
-        msginfo: MessageInfo,
-        buffer: &'a mut MessageBuffer,
-    ) -> Option<Self> {
-        let data = DataReader::new(&buffer.data);
-        let handles = HandlesReader::new(&mut buffer.handles);
-        Self::deserialize(msginfo, data, handles)
-    }
-}
-
-pub struct OpenMsg<'a> {
-    pub uri: &'a [u8],
-}
-
-impl Callable for OpenMsg<'_> {
-    fn serialize(
-        self,
-        call_id: CallId,
-        data: DataWriter<'_>,
-        _handles: HandlesWriter<'_>,
-    ) -> Result<MessageInfo, ErrorCode> {
-        let len = data.header_then_bytes(call_id, self.uri);
-        Ok(MessageInfo::new(MessageKind::Open as i32, len, 0))
-    }
-}
-
-impl<'a> Receivable<'a> for (CallId, OpenMsg<'a>) {
-    fn deserialize(
-        msginfo: MessageInfo,
-        data: DataReader<'a>,
-        _handles: HandlesReader<'a>,
-    ) -> Option<Self> {
-        let (call_id, uri) = data.header_then_bytes(msginfo)?;
-        Some((*call_id, OpenMsg { uri }))
-    }
-}
-
-pub struct OpenReplyMsg {
-    pub handle: Channel,
-}
-
-impl<'a> Receivable<'a> for (CallId, OpenReplyMsg) {
-    fn deserialize(
-        msginfo: MessageInfo,
-        data: DataReader<'a>,
-        mut handles: HandlesReader<'a>,
-    ) -> Option<Self> {
-        let call_id = data.header_only(msginfo);
-        let handle = handles.as_channel::<0>(msginfo);
-        Some((*call_id, OpenReplyMsg { handle }))
-    }
-}
-
-impl Replyable for OpenReplyMsg {
-    fn serialize(
-        self,
-        call_id: CallId,
-        data: DataWriter<'_>,
-        mut handles: HandlesWriter<'_>,
-    ) -> Result<MessageInfo, ErrorCode> {
-        let len = data.header_only(call_id);
-        handles.write(0, self.handle);
-        Ok(MessageInfo::new(MessageKind::OpenReply as i32, len, 1))
-    }
-}
-
-pub struct ConnectMsg {
-    pub handle: Channel,
-}
-
-impl Sendable for ConnectMsg {
-    fn serialize(
-        self,
-        _data: DataWriter<'_>,
-        mut handles: HandlesWriter<'_>,
-    ) -> Result<MessageInfo, ErrorCode> {
-        handles.write(0, self.handle);
-        Ok(MessageInfo::new(MessageKind::Connect as i32, 0, 1))
-    }
-}
-
-impl<'a> Receivable<'a> for ConnectMsg {
-    fn deserialize(
-        msginfo: MessageInfo,
-        _data: DataReader<'a>,
-        mut handles: HandlesReader<'a>,
-    ) -> Option<Self> {
-        let handle = handles.as_channel::<0>(msginfo);
-        Some(ConnectMsg { handle })
-    }
-}
-
-pub struct FramedDataMsg<'a> {
-    pub data: &'a [u8],
-}
-
-impl Sendable for FramedDataMsg<'_> {
-    fn serialize(
-        self,
-        data: DataWriter<'_>,
-        _handles: HandlesWriter<'_>,
-    ) -> Result<MessageInfo, ErrorCode> {
-        let len = data.bytes_only(self.data);
-        Ok(MessageInfo::new(MessageKind::FramedData as i32, len, 0))
-    }
-}
-
-impl<'a> Receivable<'a> for FramedDataMsg<'a> {
-    fn deserialize(
-        msginfo: MessageInfo,
-        data: DataReader<'a>,
-        _handles: HandlesReader<'a>,
-    ) -> Option<Self> {
-        let bytes = data.bytes_only(msginfo)?;
-        Some(FramedDataMsg { data: bytes })
-    }
-}
-
-pub struct StreamDataMsg<'a> {
-    pub data: &'a [u8],
-}
-
-impl Sendable for StreamDataMsg<'_> {
-    fn serialize(
-        self,
-        data: DataWriter<'_>,
-        _handles: HandlesWriter<'_>,
-    ) -> Result<MessageInfo, ErrorCode> {
-        let len = data.bytes_only(self.data);
-        Ok(MessageInfo::new(MessageKind::StreamData as i32, len, 0))
-    }
-}
-
-impl<'a> Receivable<'a> for StreamDataMsg<'a> {
-    fn deserialize(
-        msginfo: MessageInfo,
-        data: DataReader<'a>,
-        _handles: HandlesReader<'a>,
-    ) -> Option<Self> {
-        let bytes = data.bytes_only(msginfo)?;
-        Some(StreamDataMsg { data: bytes })
-    }
-}
-
 #[derive(Clone, Copy)]
 #[repr(C)]
-struct RawAbort {
+struct RawAbortMsg {
     call_id: CallId,
     reason: ErrorCode,
 }
 
-pub struct AbortMsg {
-    pub reason: ErrorCode,
-}
-
-impl Replyable for AbortMsg {
-    fn serialize(
-        self,
-        call_id: CallId,
-        data: DataWriter<'_>,
-        _handles: HandlesWriter<'_>,
-    ) -> Result<MessageInfo, ErrorCode> {
-        let len = data.header_only(RawAbort {
-            call_id,
-            reason: self.reason,
-        });
-        Ok(MessageInfo::new(MessageKind::Abort as i32, len as u16, 0))
-    }
-}
-
-impl<'a> Receivable<'a> for (CallId, AbortMsg) {
-    fn deserialize(
-        msginfo: MessageInfo,
-        data: DataReader<'a>,
-        _handles: HandlesReader<'a>,
-    ) -> Option<Self> {
-        let raw: &RawAbort = data.header_only(msginfo);
-        Some((raw.call_id, AbortMsg { reason: raw.reason }))
-    }
-}
-
 #[derive(Clone, Copy)]
 #[repr(C)]
-struct RawError {
+struct RawErrorMsg {
     reason: ErrorCode,
-}
-
-#[derive(Debug, Clone)]
-pub struct ErrorMsg {
-    pub reason: ErrorCode,
-}
-
-impl Sendable for ErrorMsg {
-    fn serialize(
-        self,
-        data: DataWriter<'_>,
-        _handles: HandlesWriter<'_>,
-    ) -> Result<MessageInfo, ErrorCode> {
-        let len = data.header_only(RawError {
-            reason: self.reason,
-        });
-        Ok(MessageInfo::new(MessageKind::Error as i32, len as u16, 0))
-    }
-}
-
-impl<'a> Receivable<'a> for ErrorMsg {
-    fn deserialize(
-        msginfo: MessageInfo,
-        data: DataReader<'a>,
-        _handles: HandlesReader<'a>,
-    ) -> Option<Self> {
-        let raw: &RawError = data.header_only(msginfo);
-        Some(ErrorMsg { reason: raw.reason })
-    }
 }
 
 pub struct OwnedMessageBuffer(Box<MessageBuffer>);
@@ -528,6 +271,108 @@ pub enum Message<'a> {
     Error { reason: ErrorCode },
 }
 
+impl<'a> Message<'a> {
+    pub fn serialize(self, buffer: &mut MessageBuffer) -> Result<MessageInfo, ErrorCode> {
+        let data = DataWriter::new(&mut buffer.data);
+        let mut handles = HandlesWriter::new(&mut buffer.handles);
+
+        match self {
+            Message::Connect { handle } => {
+                handles.write(0, handle);
+                Ok(MessageInfo::new(MessageKind::Connect as i32, 0, 1))
+            }
+            Message::Open { call_id, uri } => {
+                let len = data.header_then_bytes(call_id, uri);
+                Ok(MessageInfo::new(MessageKind::Open as i32, len, 0))
+            }
+            Message::OpenReply { call_id, handle } => {
+                let len = data.header_only(call_id);
+                handles.write(0, handle);
+                Ok(MessageInfo::new(MessageKind::OpenReply as i32, len, 1))
+            }
+            Message::FramedData { data: msg_data } => {
+                let len = data.bytes_only(msg_data);
+                Ok(MessageInfo::new(MessageKind::FramedData as i32, len, 0))
+            }
+            Message::StreamData { data: msg_data } => {
+                let len = data.bytes_only(msg_data);
+                Ok(MessageInfo::new(MessageKind::StreamData as i32, len, 0))
+            }
+            Message::Abort { call_id, reason } => {
+                let len = data.header_only(RawAbortMsg { call_id, reason });
+                Ok(MessageInfo::new(MessageKind::Abort as i32, len, 0))
+            }
+            Message::Error { reason } => {
+                let len = data.header_only(RawErrorMsg { reason });
+                Ok(MessageInfo::new(MessageKind::Error as i32, len, 0))
+            }
+        }
+    }
+
+    pub fn deserialize(msginfo: MessageInfo, buffer: &'a mut MessageBuffer) -> Option<Self> {
+        let data = DataReader::new(&buffer.data);
+        let mut handles = HandlesReader::new(&mut buffer.handles);
+
+        match msginfo.kind() {
+            kind if kind == MessageKind::Connect as usize => {
+                if msginfo.num_handles() != 1 {
+                    debug_warn!(
+                        "invalid number of handles for Connect message: {}",
+                        msginfo.num_handles()
+                    );
+                    return None;
+                }
+
+                let handle = handles.as_channel(msginfo, 0);
+                Some(Message::Connect { handle })
+            }
+            kind if kind == MessageKind::Open as usize => {
+                let (call_id, uri) = data.header_then_bytes(msginfo)?;
+                Some(Message::Open {
+                    call_id: *call_id,
+                    uri,
+                })
+            }
+            kind if kind == MessageKind::OpenReply as usize => {
+                if msginfo.num_handles() != 1 {
+                    debug_warn!(
+                        "invalid number of handles for OpenReply message: {}",
+                        msginfo.num_handles()
+                    );
+                    return None;
+                }
+
+                let call_id = data.header_only(msginfo);
+                let handle = handles.as_channel(msginfo, 0);
+                Some(Message::OpenReply {
+                    call_id: *call_id,
+                    handle,
+                })
+            }
+            kind if kind == MessageKind::FramedData as usize => {
+                let data = data.bytes_only(msginfo)?;
+                Some(Message::FramedData { data })
+            }
+            kind if kind == MessageKind::StreamData as usize => {
+                let data = data.bytes_only(msginfo)?;
+                Some(Message::StreamData { data })
+            }
+            kind if kind == MessageKind::Abort as usize => {
+                let raw: &RawAbortMsg = data.header_only(msginfo);
+                Some(Message::Abort {
+                    call_id: raw.call_id,
+                    reason: raw.reason,
+                })
+            }
+            kind if kind == MessageKind::Error as usize => {
+                let raw: &RawErrorMsg = data.header_only(msginfo);
+                Some(Message::Error { reason: raw.reason })
+            }
+            _ => None,
+        }
+    }
+}
+
 pub struct OwnedMessage {
     pub msginfo: MessageInfo,
     pub buffer: OwnedMessageBuffer,
@@ -539,55 +384,6 @@ impl OwnedMessage {
     }
 
     pub fn parse(&mut self) -> Option<Message<'_>> {
-        match self.msginfo.kind() {
-            // FIXME: Verify the # of handles too.
-            kind if kind == MessageKind::Connect as usize => {
-                Receivable::deserialize_from_buffer(self.msginfo, &mut self.buffer)
-                    .map(|m: ConnectMsg| Message::Connect { handle: m.handle })
-            }
-            kind if kind == MessageKind::Open as usize => {
-                Receivable::deserialize_from_buffer(self.msginfo, &mut self.buffer).map(
-                    |(call_id, m): (CallId, OpenMsg)| {
-                        Message::Open {
-                            call_id,
-                            uri: m.uri,
-                        }
-                    },
-                )
-            }
-            kind if kind == MessageKind::OpenReply as usize => {
-                Receivable::deserialize_from_buffer(self.msginfo, &mut self.buffer).map(
-                    |(call_id, m): (CallId, OpenReplyMsg)| {
-                        Message::OpenReply {
-                            call_id,
-                            handle: m.handle,
-                        }
-                    },
-                )
-            }
-            kind if kind == MessageKind::FramedData as usize => {
-                Receivable::deserialize_from_buffer(self.msginfo, &mut self.buffer)
-                    .map(|m: FramedDataMsg| Message::FramedData { data: m.data })
-            }
-            kind if kind == MessageKind::StreamData as usize => {
-                Receivable::deserialize_from_buffer(self.msginfo, &mut self.buffer)
-                    .map(|m: StreamDataMsg| Message::StreamData { data: m.data })
-            }
-            kind if kind == MessageKind::Abort as usize => {
-                Receivable::deserialize_from_buffer(self.msginfo, &mut self.buffer).map(
-                    |(call_id, m): (CallId, AbortMsg)| {
-                        Message::Abort {
-                            call_id,
-                            reason: m.reason,
-                        }
-                    },
-                )
-            }
-            kind if kind == MessageKind::Error as usize => {
-                Receivable::deserialize_from_buffer(self.msginfo, &mut self.buffer)
-                    .map(|m: ErrorMsg| Message::Error { reason: m.reason })
-            }
-            _ => None,
-        }
+        Message::deserialize(self.msginfo, &mut self.buffer)
     }
 }
