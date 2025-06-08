@@ -219,7 +219,15 @@ pub fn parse(dtb: *const u8) -> Result<DeviceTree, fdt_rs::error::DevTreeError> 
             continue;
         };
 
-        if device_type == "memory" {
+        if device_type == "cpu" {
+            for prop in node.props() {
+                let prop_name = prop.name()?;
+                if prop_name == "timebase-frequency" {
+                    let timebase_freq = prop.u32(0)?;
+                    crate::arch::set_timer_frequency(timebase_freq as u64);
+                }
+            }
+        } else if device_type == "memory" {
             let iter = RegParser::parse(node)?.expect("missing reg for a memory node");
             for reg in iter {
                 let addr: usize = reg.addr.try_into().unwrap();

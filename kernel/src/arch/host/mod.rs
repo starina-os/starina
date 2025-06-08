@@ -16,6 +16,12 @@ use starina_types::vmspace::PageProtect;
 use crate::interrupt::Interrupt;
 use crate::refcount::SharedRef;
 
+mod timer;
+
+pub use timer::get_monotonic_time;
+pub use timer::schedule_timer_interrupt;
+pub use timer::set_timer_frequency;
+
 pub const PAGE_SIZE: usize = 4096;
 
 pub fn percpu_init() {
@@ -138,6 +144,14 @@ pub fn vaddr2paddr(vaddr: VAddr) -> Result<PAddr, ErrorCode> {
 
 pub fn paddr2vaddr(paddr: PAddr) -> Result<VAddr, ErrorCode> {
     todo!()
+}
+
+pub fn find_free_ram<F>(paddr: PAddr, size: usize, callback: F)
+where
+    F: Fn(PAddr, usize),
+{
+    // For host, just call the callback with the original parameters
+    callback(paddr, size);
 }
 
 pub static INTERRUPT_CONTROLLER: InterruptController = InterruptController {};

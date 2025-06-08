@@ -29,6 +29,7 @@ use crate::refcount::SharedRef;
 use crate::thread::Thread;
 use crate::thread::ThreadState;
 use crate::thread::switch_thread;
+use crate::timer::Timer;
 use crate::vcpu::VCpu;
 use crate::vmspace::VmSpace;
 
@@ -342,6 +343,24 @@ fn vcpu_run(
     Ok(new_state)
 }
 
+fn timer_create(current: &SharedRef<Thread>) -> Result<HandleId, ErrorCode> {
+    let timer = SharedRef::new(Timer::new())?;
+    let handle = Handle::new(timer, HandleRights::READ | HandleRights::WRITE);
+    let handle_id = current.process().handles().lock().insert(handle)?;
+    Ok(handle_id)
+}
+
+fn timer_set(
+    current: &SharedRef<Thread>,
+    timer_handle: HandleId,
+    timeout_ns: u64,
+) -> Result<(), ErrorCode> {
+    let handle_table = current.process().handles().lock();
+    let timer = handle_table.get::<Timer>(timer_handle)?;
+    timer.set_timeout(timeout_ns)?;
+    Ok(())
+}
+
 #[allow(clippy::too_many_arguments)]
 fn do_syscall(
     a0: isize,
@@ -480,6 +499,18 @@ fn do_syscall(
             let exit = IsolationSliceMut::new(exit_ptr, size_of::<VCpuRunState>());
             let new_state = vcpu_run(current, vcpu_handle, exit)?;
             Ok(SyscallResult::Block(new_state))
+        }
+        SYS_TIMER_CRREATE => {
+            let ret = timer_create(current)?;
+            Ok(SyscallResult::Done(ret.into()))
+        }
+        SYS_TIMER_SET => {
+            let timer_handle = HandleId::from_raw_isize(a0)?;
+            let timeout_ns_low = a1 as u32 as u64;
+            let timeout_ns_high = a2 as u32 as u64;
+            let timeout_ns = timeout_ns_low | (timeout_ns_high << 32);
+            timer_set(current, timer_handle, timeout_ns)?;
+            Ok(SyscallResult::Done(RetVal::new(0)))
         }
         _ => {
             debug_warn!("unknown syscall: {}", n);

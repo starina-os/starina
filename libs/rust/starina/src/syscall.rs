@@ -293,3 +293,22 @@ pub fn sys_vcpu_run(vcpu: HandleId, exit: *mut VCpuRunState) -> Result<(), Error
     )?;
     Ok(())
 }
+
+pub fn timer_create() -> Result<HandleId, ErrorCode> {
+    let ret = syscall(SYS_TIMER_CRREATE, 0, 0, 0, 0, 0, 0)?;
+    let id = unsafe { HandleId::from_raw_isize(ret.as_isize()).unwrap_unchecked() };
+    Ok(id)
+}
+
+pub fn timer_set(timer: HandleId, timeout_ns: u64) -> Result<(), ErrorCode> {
+    syscall(
+        SYS_TIMER_SET,
+        timer.as_raw() as isize,
+        (timeout_ns & 0xFFFFFFFF) as isize,
+        ((timeout_ns >> 32) & 0xFFFFFFFF) as isize,
+        0,
+        0,
+        0,
+    )?;
+    Ok(())
+}

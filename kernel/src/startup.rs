@@ -22,10 +22,10 @@ use crate::thread::Thread;
 
 const INKERNEL_APPS: &[AppSpec] = &[
     autotest::SPEC,
-    virtio_net::SPEC,
-    tcpip::SPEC,
-    http_server::SPEC,
-    catsay::SPEC,
+    // virtio_net::SPEC,
+    // tcpip::SPEC,
+    // http_server::SPEC,
+    // catsay::SPEC,
 ];
 
 pub fn load_inkernel_apps(device_tree: DeviceTree) {

@@ -11,6 +11,7 @@ mod sbi;
 mod serial;
 mod sv48;
 mod thread;
+mod timer;
 mod vcpu;
 mod vmspace;
 
@@ -25,6 +26,9 @@ pub use idle::idle;
 pub use interrupt::INTERRUPT_CONTROLLER;
 pub use serial::console_write;
 pub use thread::Thread;
+pub use timer::get_monotonic_time;
+pub use timer::schedule_timer_interrupt;
+pub use timer::set_timer_frequency;
 pub use vcpu::VCpu;
 pub use vcpu::vcpu_entry;
 pub use vmspace::PAGE_SIZE;
