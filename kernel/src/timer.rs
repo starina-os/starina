@@ -162,11 +162,10 @@ fn reschedule_timer(global_timer: &GlobalTimer) {
     let mut earliest = None;
     for timer in &global_timer.actives {
         let mutable = timer.mutable.lock();
-        if let State::Pending(expires_ticks) = mutable.state {
-            if earliest.is_none() || is_tick_before(expires_ticks, earliest.unwrap()) {
+        if let State::Pending(expires_ticks) = mutable.state
+            && (earliest.is_none() || is_tick_before(expires_ticks, earliest.unwrap())) {
                 earliest = Some(expires_ticks);
             }
-        }
     }
 
     if let Some(timeout) = earliest {

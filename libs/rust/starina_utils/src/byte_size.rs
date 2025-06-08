@@ -34,7 +34,7 @@ impl ByteSize {
             i += 1;
         }
 
-        write!(f, "{} {}", value, unit)
+        write!(f, "{value} {unit}")
     }
 }
 

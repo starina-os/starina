@@ -38,7 +38,7 @@ fn main() {
         .arg("run")
         .arg("--rm")
         .arg("-v")
-        .arg(format!("{}:/linux", manifest_dir))
+        .arg(format!("{manifest_dir}:/linux"))
         .arg("starina-linux")
         .current_dir(&manifest_dir)
         .status()

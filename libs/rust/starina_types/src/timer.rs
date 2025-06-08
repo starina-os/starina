@@ -1,5 +1,3 @@
-use core::fmt;
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct MonotonicTime(u64);

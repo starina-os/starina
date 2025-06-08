@@ -11,4 +11,3 @@ pub unsafe fn write_stvec(addr: usize, mode: StvecMode) {
         asm!("csrw stvec, {}", in(reg) (addr | mode as usize));
     }
 }
-

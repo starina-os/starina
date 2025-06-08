@@ -8,7 +8,7 @@ pub enum Error {
 }
 
 /// See <https://github.com/riscv-non-isa/riscv-sbi-doc/blob/master/src/binary-encoding.adoc>
-#[warn(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments)]
 unsafe fn sbi_call(
     a0: c_long,
     a1: c_long,
