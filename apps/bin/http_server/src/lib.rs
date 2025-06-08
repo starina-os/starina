@@ -127,9 +127,10 @@ fn main(env_json: &[u8]) {
                     }
                 }
             }
-            State::Listen(_) if readiness == Readiness::CLOSED => {
-                // TODO: Keep handling data channels until they are closed.
-                todo!("listen channel closed");
+            State::Listen(ch) if readiness == Readiness::CLOSED => {
+                warn!("listen channel closed, server shutting down");
+                poll.remove(ch.handle_id()).unwrap();
+                break;
             }
             State::Listen(_) => {
                 panic!("unexpected readiness for listen channel: {:?}", readiness);

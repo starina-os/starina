@@ -234,8 +234,11 @@ impl Handleable for Channel {
     fn close(&self) {
         let mutable = self.mutable.lock();
         if let Some(peer) = &mutable.peer {
-            peer.mutable.lock().peer = None;
+            let mut peer_mutable = peer.mutable.lock();
+            peer_mutable.peer = None;
+            peer_mutable.listeners.notify_all(Readiness::CLOSED);
         }
+        mutable.listeners.notify_all(Readiness::CLOSED);
     }
 
     fn add_listener(&self, listener: Listener) -> Result<(), ErrorCode> {
@@ -260,6 +263,9 @@ impl Handleable for Channel {
             if peer_mutable.queue.len() < MESSAGE_QUEUE_MAX_LEN {
                 readiness |= Readiness::WRITABLE;
             }
+        } else {
+            // Peer is disconnected, channel is closed
+            readiness |= Readiness::CLOSED;
         }
 
         Ok(readiness)

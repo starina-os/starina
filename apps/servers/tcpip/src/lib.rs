@@ -187,7 +187,8 @@ fn main(env_json: &[u8]) {
                 }
             }
             State::Control(_) if readiness == Readiness::CLOSED => {
-                todo!()
+                debug_warn!("control channel closed");
+                break 'mainloop;
             }
             State::Control(_) => {
                 panic!("unexpected readiness for control channel: {:?}", readiness);
@@ -208,8 +209,9 @@ fn main(env_json: &[u8]) {
                     }
                 }
             }
-            State::Data { .. } if readiness == Readiness::CLOSED => {
-                todo!()
+            State::Data { ch, smol_handle } if readiness == Readiness::CLOSED => {
+                debug_warn!("data channel closed for socket {:?}", smol_handle);
+                poll.remove(ch.handle().id()).unwrap();
             }
             State::Data { .. } => {
                 panic!("unexpected readiness for data channel: {:?}", readiness);
@@ -227,7 +229,7 @@ fn main(env_json: &[u8]) {
                 }
             }
             State::Driver { .. } if readiness == Readiness::CLOSED => {
-                todo!()
+                panic!("driver channel closed");
             }
             State::Driver { .. } => {
                 panic!("unexpected readiness for driver channel: {:?}", readiness);
