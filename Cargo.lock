@@ -447,6 +447,7 @@ name = "starina"
 version = "0.0.0"
 dependencies = [
  "hashbrown 0.15.2",
+ "log",
  "serde",
  "serde_json",
  "spin",
@@ -520,7 +521,6 @@ dependencies = [
 name = "tcpip"
 version = "0.0.0"
 dependencies = [
- "log",
  "serde",
  "serde_json",
  "smoltcp",

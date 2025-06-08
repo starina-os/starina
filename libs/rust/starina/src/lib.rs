@@ -12,6 +12,12 @@ pub use starina_types::spec;
 #[macro_use]
 pub mod log;
 
+pub use log::debug;
+pub use log::error;
+pub use log::info;
+pub use log::trace;
+pub use log::warn;
+
 pub mod channel;
 pub mod collections;
 pub mod folio;

@@ -1,7 +1,6 @@
 #![no_std]
 
 mod device;
-mod smoltcp_logger;
 mod tcpip;
 
 use core::net::Ipv4Addr;
@@ -68,7 +67,6 @@ enum State {
 
 fn main(env_json: &[u8]) {
     let env: Env = serde_json::from_slice(env_json).expect("failed to deserialize env");
-    smoltcp_logger::init();
 
     let poll = Poll::new().unwrap();
     poll.add(

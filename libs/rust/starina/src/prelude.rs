@@ -28,9 +28,9 @@ pub use alloc::string::ToString;
 pub use alloc::vec;
 pub use alloc::vec::Vec;
 
-pub use crate::debug;
 pub use crate::debug_warn;
-pub use crate::error;
-pub use crate::info;
-pub use crate::trace;
-pub use crate::warn;
+pub use crate::log::debug;
+pub use crate::log::error;
+pub use crate::log::info;
+pub use crate::log::trace;
+pub use crate::log::warn;
