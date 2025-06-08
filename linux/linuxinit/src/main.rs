@@ -1,5 +1,6 @@
 use std::fs::File;
 use std::fs::OpenOptions;
+use std::net::SocketAddr;
 
 use nix::mount::MsFlags;
 use nix::mount::mount;
@@ -7,6 +8,7 @@ use nix::sys::reboot::RebootMode;
 use nix::sys::reboot::reboot;
 use serde::Deserialize;
 use serde::Serialize;
+use tokio::net::UdpSocket;
 use tokio::process::Command;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -17,6 +19,36 @@ struct CommandJson {
 
 #[tokio::main]
 async fn main() {
+    eprintln!("[linuxinit] mounting sysfs");
+    mount(
+        Some("sysfs"),
+        "/sys",
+        Some("sysfs"),
+        MsFlags::empty(),
+        None as Option<&str>,
+    )
+    .expect("failed to mount sysfs");
+
+    eprintln!("[linuxinit] mounting procfs");
+    mount(
+        Some("proc"),
+        "/proc",
+        Some("proc"),
+        MsFlags::empty(),
+        None as Option<&str>,
+    )
+    .expect("failed to mount procfs");
+
+    eprintln!("[linuxinit] mounting tmpfs");
+    mount(
+        Some("tmpfs"),
+        "/tmp",
+        Some("tmpfs"),
+        MsFlags::empty(),
+        None as Option<&str>,
+    )
+    .expect("failed to mount tmpfs");
+
     eprintln!("[linuxinit] mounting virtio-fs");
     mount(
         Some("virtfs"),
