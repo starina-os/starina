@@ -4,11 +4,21 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"strings"
 )
 
 func main() {
+	// DNS query
+	ips, err := net.LookupIP("seiya.me")
+	if err != nil {
+		fmt.Printf("DNS lookup failed: %v\n", err)
+	} else {
+		fmt.Printf("seiya.me resolves to: %v\n", ips)
+	}
+
+	// Original catsay functionality
 	reader := bufio.NewReader(os.Stdin)
 	messageBytes, _ := io.ReadAll(reader)
 	message := strings.TrimSpace(string(messageBytes))

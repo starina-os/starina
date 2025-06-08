@@ -8,7 +8,6 @@ use nix::sys::reboot::RebootMode;
 use nix::sys::reboot::reboot;
 use serde::Deserialize;
 use serde::Serialize;
-use tokio::net::UdpSocket;
 use tokio::process::Command;
 
 #[derive(Debug, Serialize, Deserialize)]
