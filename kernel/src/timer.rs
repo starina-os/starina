@@ -5,6 +5,7 @@ use core::sync::atomic::Ordering;
 
 use starina::error::ErrorCode;
 use starina::poll::Readiness;
+use starina_types::timer::MonotonicTime;
 
 use crate::arch;
 use crate::handle::Handleable;
@@ -97,7 +98,7 @@ impl fmt::Debug for Timer {
     }
 }
 
-static TIMER_FREQ: AtomicU64 = AtomicU64::new(0);
+pub static TIMER_FREQ: AtomicU64 = AtomicU64::new(0);
 
 struct GlobalTimer {
     actives: Vec<SharedRef<Timer>>,
@@ -115,6 +116,12 @@ static GLOBAL_TIMER: SpinLock<GlobalTimer> = SpinLock::new(GlobalTimer::new());
 
 fn ns_to_ticks(ns: u64, freq: u64) -> u64 {
     (ns * freq) / 1_000_000_000
+}
+
+fn ticks_to_monotonic_time(ticks: u64, freq: u64) -> MonotonicTime {
+    // Convert ticks to nanoseconds: nanos = ticks * 1_000_000_000 / freq
+    let nanos = ticks * 1_000_000_000 / freq;
+    MonotonicTime::from_nanos(nanos)
 }
 
 /// Compare two tick values considering potential wrapping.
@@ -139,6 +146,15 @@ pub fn init(freq: u64) {
 
     TIMER_FREQ.store(freq, Ordering::Relaxed);
     info!("timer initialized with frequency: {} Hz", freq);
+}
+
+/// Get the current monotonic time since kernel boot.
+pub fn now() -> MonotonicTime {
+    let freq = TIMER_FREQ.load(Ordering::Relaxed);
+    debug_assert_ne!(freq, 0, "timer not initialized");
+
+    let ticks = arch::read_timer();
+    ticks_to_monotonic_time(ticks, freq)
 }
 
 // Reschedule for the next earliest timer.

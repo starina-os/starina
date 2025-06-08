@@ -7,6 +7,7 @@ use starina_types::interrupt::IrqMatcher;
 use starina_types::message::MessageInfo;
 use starina_types::poll::Readiness;
 pub use starina_types::syscall::*;
+use starina_types::timer::MonotonicTime;
 use starina_types::vcpu::VCpuRunState;
 use starina_types::vmspace::PageProtect;
 
@@ -311,4 +312,9 @@ pub fn timer_set(timer: HandleId, duration_ns: u64) -> Result<(), ErrorCode> {
         0,
     )?;
     Ok(())
+}
+
+pub fn timer_now() -> Result<MonotonicTime, ErrorCode> {
+    let ret = syscall(SYS_TIMER_NOW, 0, 0, 0, 0, 0, 0)?;
+    Ok(MonotonicTime::from(ret))
 }

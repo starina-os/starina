@@ -14,12 +14,13 @@ use starina::channel::ChannelSender;
 use starina::collections::HashMap;
 use starina::error::ErrorCode;
 use starina::prelude::*;
+use starina::timer;
 
 use crate::device::NetDevice;
 
 fn now() -> Instant {
-    // FIXME:
-    Instant::from_millis(0)
+    let monotonic_time = timer::now();
+    Instant::from_millis(monotonic_time.as_millis() as i64)
 }
 
 #[derive(Debug, PartialEq, Eq)]

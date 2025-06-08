@@ -8,6 +8,7 @@ use starina::poll::Readiness;
 use starina::prelude::*;
 use starina::spec::AppSpec;
 use starina::timer::Timer;
+use starina::timer::now;
 
 pub const SPEC: AppSpec = AppSpec {
     name: "autotest",
@@ -60,7 +61,8 @@ fn test_dynamic_timers() {
 
         let tick_in_cycle = (cycle_count % ticks_per_interval) + 1;
         info!(
-            "TICK #{} at {} ({}/{})",
+            "[{}] TICK #{} at {} ({}/{})",
+            now().as_millis(),
             cycle_count + 1,
             interval_name,
             tick_in_cycle,

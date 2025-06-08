@@ -3,6 +3,7 @@ use crate::address::VAddr;
 use crate::error::ErrorCode;
 use crate::handle::HandleId;
 use crate::poll::Readiness;
+use crate::timer::MonotonicTime;
 
 pub const SYS_CONSOLE_WRITE: u8 = 0;
 pub const SYS_HANDLE_CLOSE: u8 = 1;
@@ -27,6 +28,7 @@ pub const SYS_VCPU_RUN: u8 = 19;
 pub const SYS_THREAD_SPAWN: u8 = 20;
 pub const SYS_TIMER_CRREATE: u8 = 21;
 pub const SYS_TIMER_SET: u8 = 22;
+pub const SYS_TIMER_NOW: u8 = 23;
 
 #[repr(C)]
 pub struct VsyscallPage {
@@ -122,5 +124,17 @@ impl From<RetVal> for (HandleId, Readiness) {
 impl From<RetVal> for HandleId {
     fn from(value: RetVal) -> Self {
         HandleId::from_raw(value.0 as i32)
+    }
+}
+
+impl From<MonotonicTime> for RetVal {
+    fn from(value: MonotonicTime) -> Self {
+        RetVal(value.as_nanos() as isize)
+    }
+}
+
+impl From<RetVal> for MonotonicTime {
+    fn from(value: RetVal) -> Self {
+        MonotonicTime::from_nanos(value.0 as u64)
     }
 }

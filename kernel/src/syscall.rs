@@ -510,6 +510,10 @@ fn do_syscall(
             timer_set(current, timer_handle, duration_ns)?;
             Ok(SyscallResult::Done(RetVal::new(0)))
         }
+        SYS_TIMER_NOW => {
+            let now = crate::timer::now();
+            Ok(SyscallResult::Done(now.into()))
+        }
         _ => {
             debug_warn!("unknown syscall: {}", n);
             Err(ErrorCode::InvalidSyscall)
