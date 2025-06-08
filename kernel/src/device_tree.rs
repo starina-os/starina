@@ -206,6 +206,24 @@ pub fn parse(dtb: *const u8) -> Result<DeviceTree, fdt_rs::error::DevTreeError> 
     let mut vec = vec![0u8; layout.size() + layout.align()];
     let devtree_index = DevTreeIndex::new(devtree, vec.as_mut_slice())?;
 
+    // Look for timebase-frequency on the cpus node
+    let mut timebase_frequency = None;
+    for node in devtree_index.nodes() {
+        let node_name = node.name()?;
+        if node_name == "cpus" {
+            for prop in node.props() {
+                let prop_name = prop.name()?;
+                if prop_name == "timebase-frequency" {
+                    let timebase_freq = prop.u32(0)?;
+                    timebase_frequency = Some(timebase_freq as u64);
+                }
+            }
+        }
+    }
+
+    let timebase_frequency =
+        timebase_frequency.expect("timebase-frequency not found in device tree");
+
     for node in devtree_index.nodes() {
         let mut device_type = None;
         for prop in node.props() {
@@ -426,5 +444,8 @@ pub fn parse(dtb: *const u8) -> Result<DeviceTree, fdt_rs::error::DevTreeError> 
         );
     }
 
-    Ok(DeviceTree { devices })
+    Ok(DeviceTree {
+        devices,
+        timer_freq: timebase_frequency,
+    })
 }

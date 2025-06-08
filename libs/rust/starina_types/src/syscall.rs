@@ -25,6 +25,8 @@ pub const SYS_HVSPACE_MAP: u8 = 17;
 pub const SYS_VCPU_CREATE: u8 = 18;
 pub const SYS_VCPU_RUN: u8 = 19;
 pub const SYS_THREAD_SPAWN: u8 = 20;
+pub const SYS_TIMER_CRREATE: u8 = 21;
+pub const SYS_TIMER_SET: u8 = 22;
 
 #[repr(C)]
 pub struct VsyscallPage {

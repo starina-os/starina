@@ -140,6 +140,21 @@ pub fn paddr2vaddr(paddr: PAddr) -> Result<VAddr, ErrorCode> {
     todo!()
 }
 
+pub fn find_free_ram<F>(paddr: PAddr, size: usize, callback: F)
+where
+    F: Fn(PAddr, usize),
+{
+    todo!()
+}
+
+pub fn read_timer() -> u64 {
+    todo!()
+}
+
+pub fn set_timer(ticks: u64) {
+    todo!()
+}
+
 pub static INTERRUPT_CONTROLLER: InterruptController = InterruptController {};
 
 pub struct InterruptController {}

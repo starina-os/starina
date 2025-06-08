@@ -11,6 +11,7 @@ use crate::interrupt::IrqMatcher;
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DeviceTree {
     pub devices: HashMap<String, DeviceNode>,
+    pub timer_freq: u64,
 }
 
 /// A node in the device tree.

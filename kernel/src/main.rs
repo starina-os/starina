@@ -38,6 +38,7 @@ mod spinlock;
 mod startup;
 mod syscall;
 mod thread;
+mod timer;
 mod utils;
 mod vcpu;
 mod vmspace;
@@ -56,6 +57,7 @@ pub fn boot(bootinfo: BootInfo) -> ! {
     GLOBAL_ALLOCATOR.add_region(EARLY_RAM.as_ptr() as *mut _, EARLY_RAM.len());
 
     let device_tree = device_tree::parse(bootinfo.dtb).expect("failed to parse device tree");
+    timer::init(device_tree.timer_freq);
     cpuvar::percpu_init(bootinfo.cpu_id);
     arch::percpu_init();
     startup::load_inkernel_apps(device_tree);

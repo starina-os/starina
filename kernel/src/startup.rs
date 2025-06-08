@@ -68,6 +68,7 @@ pub fn load_inkernel_apps(device_tree: DeviceTree) {
                     }
 
                     serde_json::json!({
+                        "timer_freq": device_tree.timer_freq,
                         "devices": devices,
                     })
                 }
