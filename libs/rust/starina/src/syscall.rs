@@ -296,7 +296,7 @@ pub fn sys_vcpu_run(vcpu: HandleId, exit: *mut VCpuRunState) -> Result<(), Error
 }
 
 pub fn timer_create() -> Result<HandleId, ErrorCode> {
-    let ret = syscall(SYS_TIMER_CRREATE, 0, 0, 0, 0, 0, 0)?;
+    let ret = syscall(SYS_TIMER_CREATE, 0, 0, 0, 0, 0, 0)?;
     let id = unsafe { HandleId::from_raw_isize(ret.as_isize()).unwrap_unchecked() };
     Ok(id)
 }

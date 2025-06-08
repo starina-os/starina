@@ -32,7 +32,6 @@ impl Channel {
         self.do_send(msginfo, buffer)
     }
 
-
     fn do_send(&self, msginfo: MessageInfo, buffer: OwnedMessageBuffer) -> Result<(), ErrorCode> {
         syscall::channel_send(
             self.0.id(),
@@ -90,7 +89,6 @@ impl ChannelSender {
     pub fn send(&self, msg: Message<'_>) -> Result<(), ErrorCode> {
         self.0.send(msg)
     }
-
 
     pub fn handle(&self) -> &OwnedHandle {
         &self.0.0

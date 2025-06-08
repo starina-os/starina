@@ -500,7 +500,7 @@ fn do_syscall(
             let new_state = vcpu_run(current, vcpu_handle, exit)?;
             Ok(SyscallResult::Block(new_state))
         }
-        SYS_TIMER_CRREATE => {
+        SYS_TIMER_CREATE => {
             let ret = timer_create(current)?;
             Ok(SyscallResult::Done(ret.into()))
         }

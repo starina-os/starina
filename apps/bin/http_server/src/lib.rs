@@ -65,7 +65,12 @@ fn main(env_json: &[u8]) {
 
     let open_call_id = CallId::from(1);
     let uri = b"tcp-listen:0.0.0.0:80";
-    tcpip_tx.send(Message::Open { call_id: open_call_id, uri }).unwrap();
+    tcpip_tx
+        .send(Message::Open {
+            call_id: open_call_id,
+            uri,
+        })
+        .unwrap();
 
     let listen_ch = 'initloop: loop {
         let (state, readiness) = poll.wait().unwrap();
