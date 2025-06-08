@@ -141,6 +141,12 @@ impl PlicWrapper {
         });
     }
 
+    pub fn disable_irq(&self, irq: Irq) {
+        use_plic(|plic| {
+            plic.disable_irq(irq);
+        });
+    }
+
     pub fn acknowledge_irq(&self, irq: Irq) {
         use_plic(|plic| {
             plic.acknowledge(irq);

@@ -113,6 +113,20 @@ impl Plic {
         enable.write(&mut self.folio, value);
     }
 
+    pub fn disable_irq(&mut self, irq: Irq) {
+        assert!((irq.as_raw() as usize) < IRQ_MAX);
+        trace!("PLIC: disabling irq={}", irq.as_raw());
+
+        // Set priority to 0 to disable the interrupt
+        priority_reg(irq).write(&mut self.folio, 0);
+
+        // Clear the enable bit
+        let enable = enable_reg(irq);
+        let mut value = enable.read(&mut self.folio);
+        value &= !(1 << ((irq.as_raw() as usize) % 32));
+        enable.write(&mut self.folio, value);
+    }
+
     pub fn acknowledge(&mut self, irq: Irq) {
         assert!((irq.as_raw() as usize) < IRQ_MAX);
 

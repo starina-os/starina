@@ -49,7 +49,10 @@ impl Interrupt {
     }
 
     pub fn acknowledge(&self) -> Result<(), ErrorCode> {
-        self.mutable.lock().active = false;
+        let mut mutable = self.mutable.lock();
+        mutable.active = false;
+        drop(mutable);
+
         INTERRUPT_CONTROLLER.acknowledge_irq(self.irq);
         Ok(())
     }
@@ -57,7 +60,11 @@ impl Interrupt {
 
 impl Handleable for Interrupt {
     fn close(&self) {
-        // Do nothing
+        let mutable = self.mutable.lock();
+        mutable.listeners.notify_all(Readiness::CLOSED);
+        drop(mutable);
+
+        INTERRUPT_CONTROLLER.disable_irq(self.irq);
     }
 
     fn add_listener(&self, listener: Listener) -> Result<(), ErrorCode> {
