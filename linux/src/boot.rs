@@ -245,7 +245,6 @@ pub fn boot_linux(fs: FileSystem, ports: &[Port], tcpip_ch: Channel) {
             }
             VCpuExit::Idle => {
                 // FIXME:
-                info!("idle");
                 timer.set_timeout(Duration::from_millis(1)).unwrap();
                 poll3.wait().unwrap();
             }
