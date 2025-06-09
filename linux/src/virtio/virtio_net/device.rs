@@ -95,17 +95,17 @@ impl VirtioDevice for VirtioNet {
     }
 
     fn process(&self, memory: &mut GuestMemory, vq: &mut Virtqueue, chain: DescChain) {
-        let (reader, _) = chain.split(vq, memory).unwrap();
         match vq.index() {
             0 => {
                 // receiveq: Do nothing.
             }
             1 => {
+                let (reader, _) = chain.split(vq, memory).unwrap();
                 self.process_tx(reader);
+                // FIXME: VIRQ_IRQSTATUS_QUEUE causes a hang.
+                // vq.push_used(memory, chain, 0);
             }
             i => panic!("unexpected virtio-net queue index: {}", i),
         }
-
-        vq.push_used(memory, chain, 0);
     }
 }
