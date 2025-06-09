@@ -1,5 +1,6 @@
 use starina::address::GPAddr;
 use starina::prelude::*;
+use starina::sync::Arc;
 
 use crate::guest_memory::GuestMemory;
 
@@ -21,7 +22,7 @@ pub trait Device {
 struct Region {
     start: GPAddr,
     end: GPAddr,
-    device: Box<dyn Device>,
+    device: Arc<dyn Device>,
 }
 
 impl Region {
@@ -45,7 +46,7 @@ impl Bus {
         }
     }
 
-    pub fn add_device(&mut self, start: GPAddr, size: usize, device: impl Device + 'static) {
+    pub fn add_device(&mut self, start: GPAddr, size: usize, device: Arc<dyn Device>) {
         let end = start.checked_add(size).unwrap();
 
         assert!(
@@ -54,11 +55,7 @@ impl Bus {
                 .all(|region| !region.overlaps(start, end))
         );
 
-        self.regions.push(Region {
-            start,
-            end,
-            device: Box::new(device),
-        });
+        self.regions.push(Region { start, end, device });
     }
 
     fn find_mmio_device(&self, gpaddr: GPAddr) -> Result<(&dyn Device, u64), Error> {

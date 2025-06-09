@@ -311,6 +311,7 @@ impl VirtioDevice for VirtioFs {
         };
 
         let reply = Reply::new(writer, in_header.unique);
+        info!("virtio-fs: processing request: {:?}", in_header);
         let result = match in_header.opcode {
             FUSE_INIT => self.do_init(reader, reply),
             FUSE_LOOKUP => self.do_lookup(in_header, reader, reply),

@@ -31,6 +31,9 @@ impl VirtioNet {
 
     /// Processes a guest-to-host packet.
     fn process_tx(&self, memory: &mut GuestMemory, vq: &mut Virtqueue, chain: DescChain) {
+        info!("virtio-net tx is SKIPPED");
+        return;
+
         let (mut reader, _writer) = chain.split(vq, memory).unwrap();
         let header = match reader.read::<VirtioNetHdr>() {
             Ok(header) => header,

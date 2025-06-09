@@ -1,9 +1,20 @@
+use starina::channel::Channel;
+use starina::channel::ChannelReceiver;
+use starina::collections::HashMap;
+use starina::error::ErrorCode;
+use starina::handle::Handleable;
+use starina::message::CallId;
+use starina::message::Message;
+use starina::poll::Poll;
+use starina::poll::Readiness;
 use starina::prelude::*;
+use starina::sync::Arc;
 use starina::vcpu::VCpu;
 use starina_types::address::GPAddr;
 use starina_types::vcpu::VCpuExit;
 use starina_utils::static_assert;
 
+use crate::Port;
 use crate::fs::FileSystem;
 use crate::guest_memory::GuestMemory;
 use crate::guest_net::GuestNet;
@@ -31,7 +42,17 @@ const VIRTIO_FS_IRQ: u8 = 1;
 const VIRTIO_NET_IRQ: u8 = 2;
 const GUEST_RAM_ADDR: GPAddr = GPAddr::new(0x8000_0000);
 
-pub fn boot_linux(fs: FileSystem) {
+enum PortForward {
+    TcpListen { listen_ch: Channel },
+    TcpEstablished { data_ch: Channel },
+}
+
+enum State {
+    Tcpip(ChannelReceiver),
+    PortForward(PortForward),
+}
+
+pub fn boot_linux(fs: FileSystem, ports: &[Port], tcpip_ch: Channel) {
     let mut memory = GuestMemory::new(GUEST_RAM_ADDR, GUEST_RAM_SIZE).unwrap();
 
     // Network configuration (moved from device_tree.rs)
@@ -81,10 +102,73 @@ pub fn boot_linux(fs: FileSystem) {
     let mut bus = Bus::new();
     let virtio_fs = VirtioFs::new(Box::new(fs));
     let virtio_net = VirtioNet::new(guest_net);
-    let virtio_mmio_fs = VirtioMmio::new(irq_trigger.clone(), VIRTIO_FS_IRQ, virtio_fs);
-    let virtio_mmio_net = VirtioMmio::new(irq_trigger.clone(), VIRTIO_NET_IRQ, virtio_net);
+    let virtio_mmio_fs = Arc::new(VirtioMmio::new(
+        irq_trigger.clone(),
+        VIRTIO_FS_IRQ,
+        virtio_fs,
+    ));
+    let virtio_mmio_net = Arc::new(VirtioMmio::new(
+        irq_trigger.clone(),
+        VIRTIO_NET_IRQ,
+        virtio_net,
+    ));
     bus.add_device(VIRTIO_FS_ADDR, VIRTIO_MMIO_SIZE, virtio_mmio_fs);
-    bus.add_device(VIRTIO_NET_ADDR, VIRTIO_MMIO_SIZE, virtio_mmio_net);
+    bus.add_device(VIRTIO_NET_ADDR, VIRTIO_MMIO_SIZE, virtio_mmio_net.clone());
+
+    let poll = Poll::new().unwrap();
+    let (tcpip_tx, tcpip_rx) = tcpip_ch.split();
+    poll.add(
+        tcpip_rx.handle().id(),
+        State::Tcpip(tcpip_rx),
+        Readiness::READABLE | Readiness::CLOSED,
+    )
+    .unwrap();
+
+    let mut remaining_ports = HashMap::with_capacity(ports.len());
+    for (index, port) in ports.iter().enumerate() {
+        let Port::Tcp { host, guest } = port;
+        let open_call_id = CallId::from(index as u32);
+        let uri = format!("tcp-listen:0.0.0.0:{}", host);
+        tcpip_tx
+            .send(Message::Open {
+                call_id: open_call_id,
+                uri: uri.as_bytes(),
+            })
+            .unwrap();
+        remaining_ports.insert(open_call_id, port);
+    }
+
+    info!("waiting for tcpip to open ports...");
+
+    let mut poll2 = Poll::new().unwrap();
+    while !remaining_ports.is_empty() {
+        let (state, readiness) = poll.wait().unwrap();
+        match &*state {
+            State::Tcpip(ch) if readiness.contains(Readiness::READABLE) => {
+                let mut m = ch.recv().unwrap();
+                match m.parse() {
+                    Some(Message::OpenReply { call_id, handle }) => {
+                        poll2
+                            .add(
+                                handle.handle_id(),
+                                State::PortForward(PortForward::TcpListen { listen_ch: handle }),
+                                Readiness::READABLE,
+                            )
+                            .unwrap();
+                        remaining_ports.remove(&call_id);
+                    }
+                    _ => {
+                        panic!("unexpected message from tcpip: {:?}", m);
+                    }
+                }
+            }
+            _ => {
+                panic!("unexpected state");
+            }
+        }
+    }
+
+    info!("all ports are open");
 
     // Fill registers that Linux expects:
     //
@@ -96,6 +180,54 @@ pub fn boot_linux(fs: FileSystem) {
 
     let mut vcpu = VCpu::new(memory.hvspace(), entry.as_usize(), a0, a1).unwrap();
     loop {
+        match poll2.try_wait() {
+            Ok((state, readiness)) => {
+                match &*state {
+                    State::PortForward(PortForward::TcpListen { listen_ch })
+                        if readiness.contains(Readiness::READABLE) =>
+                    {
+                        let mut m = listen_ch.recv().unwrap();
+                        match m.parse() {
+                            Some(Message::Connect { handle }) => {
+                                poll2
+                                    .add(
+                                        handle.handle_id(),
+                                        State::PortForward(PortForward::TcpEstablished {
+                                            data_ch: handle,
+                                        }),
+                                        Readiness::READABLE,
+                                    )
+                                    .unwrap();
+                            }
+                            _ => {
+                                panic!("listen-ch: unexpected message from tcpip: {:?}", m);
+                            }
+                        }
+                    }
+                    State::PortForward(PortForward::TcpEstablished { data_ch })
+                        if readiness.contains(Readiness::READABLE) =>
+                    {
+                        let mut m = data_ch.recv().unwrap();
+                        match m.parse() {
+                            Some(Message::StreamData { data }) => {
+                                // port_forwarder.send()
+                            }
+                            _ => {
+                                panic!("data-ch: unexpected message from tcpip: {:?}", m);
+                            }
+                        }
+                    }
+                    _ => {
+                        panic!("poll2: unexpected state");
+                    }
+                }
+            }
+            Err(ErrorCode::WouldBlock) => {}
+            Err(e) => {
+                panic!("poll2: {:?}", e);
+            }
+        }
+
         vcpu.inject_irqs(irq_trigger.clear_all());
         let exit = vcpu.run().unwrap();
         match exit {
