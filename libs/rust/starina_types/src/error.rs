@@ -46,7 +46,8 @@ define_errors!(
     InvalidUri = -24,
     AlreadyHeld = -25,
     TooSmall = -26,
-    InUse = -27
+    InUse = -27,
+    WouldBlock = -28
 );
 
 impl fmt::Display for ErrorCode {

@@ -29,6 +29,10 @@ impl RawPoll {
     pub fn wait(&self) -> Result<(HandleId, Readiness), ErrorCode> {
         syscall::poll_wait(self.0.id())
     }
+
+    pub fn try_wait(&self) -> Result<(HandleId, Readiness), ErrorCode> {
+        syscall::poll_try_wait(self.0.id())
+    }
 }
 
 impl Handleable for RawPoll {
@@ -73,6 +77,25 @@ impl<S> Poll<S> {
     pub fn wait(&self) -> Result<(Arc<S>, Readiness), ErrorCode> {
         loop {
             let (id, readiness) = self.raw_poll.wait()?;
+            let state = self.states.lock().get(&id).cloned();
+
+            match state {
+                Some(state) => {
+                    return Ok((state, readiness));
+                }
+                None => {
+                    // If the state is not found, it might have been removed
+                    // after the poll was woken up. Ignore it.
+                    debug_warn!("state not found for handle {:?} in poll", id);
+                    continue;
+                }
+            }
+        }
+    }
+
+    pub fn try_wait(&self) -> Result<(Arc<S>, Readiness), ErrorCode> {
+        loop {
+            let (id, readiness) = self.raw_poll.try_wait()?;
             let state = self.states.lock().get(&id).cloned();
 
             match state {
