@@ -184,22 +184,9 @@ impl<'a> DescChainReader<'a> {
         }
     }
 
-    pub fn read_zerocopy(&mut self, len: usize) -> Result<&[u8], guest_memory::Error> {
-        // TODO: This assumes the guest provides a descriptor per one read in VMM.
-        let desc = match self.descs.pop_front() {
-            Some(desc) => desc,
-            None => {
-                debug_warn!("virtqueue: desc chain reader: no more descriptors");
-                return Err(guest_memory::Error::OutOfRange);
-            }
-        };
+    pub fn read_bytes(&mut self, len: usize) -> Result<Option<&[u8]>, guest_memory::Error> {
+        debug_assert!(len > 0);
 
-        let slice = self.memory.bytes_slice(desc.gpaddr(), len)?;
-        Ok(slice)
-    }
-
-    // TODO: Terrible API name. Consider merging with `read_zerocopy`.
-    pub fn read_zerocopy2(&mut self) -> Result<Option<&[u8]>, guest_memory::Error> {
         loop {
             let (desc, offset) = match self.current {
                 Some((desc, offset)) => (desc, offset),
@@ -211,8 +198,9 @@ impl<'a> DescChainReader<'a> {
                 }
             };
 
-            self.current = None;
-            if offset == desc.len.to_host() as usize {
+            let desc_len = desc.len.to_host() as usize;
+            if offset >= desc_len {
+                self.current = None;
                 continue;
             }
 
@@ -221,10 +209,33 @@ impl<'a> DescChainReader<'a> {
                 .checked_add(offset)
                 .ok_or(guest_memory::Error::OutOfRange)?;
 
-            let len = desc.len.to_host() as usize - offset;
-            let slice = self.memory.bytes_slice(gpaddr, len)?;
+            let available_len = desc_len - offset;
+            let read_len = len.min(available_len);
+            let slice = self.memory.bytes_slice(gpaddr, read_len)?;
+
+            self.current = Some((desc, offset + read_len));
+            if offset + read_len == desc_len {
+                self.current = None;
+            }
+
             return Ok(Some(slice));
         }
+    }
+
+    pub fn read_zerocopy(&mut self, len: usize) -> Result<&[u8], guest_memory::Error> {
+        match self.read_bytes(len)? {
+            Some(slice) => Ok(slice),
+            None => {
+                debug_warn!("virtqueue: desc chain reader: no more descriptors");
+                Err(guest_memory::Error::OutOfRange)
+            }
+        }
+    }
+}
+
+impl<'a> guest_net::PacketReader for DescChainReader<'a> {
+    fn read_bytes(&mut self, read_len: usize) -> Result<&[u8], guest_memory::Error> {
+        self.read_zerocopy(read_len)
     }
 }
 
@@ -320,7 +331,7 @@ impl Virtqueue {
         self.irq_status &= !value;
     }
 
-    fn pop_avail(&mut self, memory: &mut GuestMemory) -> Option<DescChain> {
+    pub fn pop_avail(&mut self, memory: &mut GuestMemory) -> Option<DescChain> {
         // TODO: fence here
 
         let avail = match memory.read::<VirtqAvail>(self.avail_gpaddr) {
