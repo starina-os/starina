@@ -80,9 +80,9 @@ pub fn boot_linux(fs: FileSystem) {
 
     let mut bus = Bus::new();
     let virtio_fs = VirtioFs::new(Box::new(fs));
-    let virtio_net = VirtioNet::new();
     let virtio_mmio_fs = VirtioMmio::new(irq_trigger.clone(), VIRTIO_FS_IRQ, virtio_fs);
     let virtio_mmio_net = VirtioMmio::new(irq_trigger.clone(), VIRTIO_NET_IRQ, virtio_net);
+    let virtio_net = VirtioNet::new(guest_net);
     bus.add_device(VIRTIO_FS_ADDR, VIRTIO_MMIO_SIZE, virtio_mmio_fs);
     bus.add_device(VIRTIO_NET_ADDR, VIRTIO_MMIO_SIZE, virtio_mmio_net);
 
