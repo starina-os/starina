@@ -404,7 +404,7 @@ impl Mutable {
             }
             (0x02, 0x00) => {
                 // TODO: implement
-                Ok(-1)
+                Err(-1)
             }
             // Set timer
             (0x00, 0) => {
@@ -1122,9 +1122,7 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
 
             context.sepc += 4; // size of virtual instruction
 
-            if context.hvip == 0 {
-                mutable.trigger_vm_exit(VCPU_EXIT_IDLE, ExitInfo::empty());
-            }
+            mutable.trigger_vm_exit(VCPU_EXIT_IDLE, ExitInfo::empty());
         }
         _ => {
             match scause {
