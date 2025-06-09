@@ -9,6 +9,7 @@ use starina::vcpu::ExitInfo;
 use starina::vcpu::ExitPageFault;
 use starina::vcpu::ExitPageFaultKind;
 use starina::vcpu::LoadInst;
+use starina::vcpu::VCPU_EXIT_IDLE;
 use starina::vcpu::VCPU_EXIT_NONE;
 use starina::vcpu::VCPU_EXIT_PAGE_FAULT;
 use starina::vcpu::VCPU_EXIT_REBOOT;
@@ -718,7 +719,7 @@ impl VCpu {
 
         let mut hstatus = 0;
         hstatus |= 1 << 7; // SPV
-        // hstatus |= 1 << 21; // VTW
+        hstatus |= 1 << 21; // VTW
         hstatus |= 3 << 13; // FP
 
         let mut sstatus = 0;
@@ -837,7 +838,7 @@ impl VCpu {
                     }
                 }
             }
-            VCPU_EXIT_NONE => {}
+            VCPU_EXIT_IDLE | VCPU_EXIT_NONE => {}
             _ => {
                 trace!("unknown exit reason: {}", run_state.exit_reason);
                 return Err(ErrorCode::InvalidState);
@@ -1122,8 +1123,7 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
             context.sepc += 4; // size of virtual instruction
 
             if context.hvip == 0 {
-                let current = current_thread();
-                current.idle_vcpu();
+                mutable.trigger_vm_exit(VCPU_EXIT_IDLE, ExitInfo::empty());
             }
         }
         _ => {

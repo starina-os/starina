@@ -1,3 +1,5 @@
+use core::time::Duration;
+
 use starina::channel::Channel;
 use starina::channel::ChannelReceiver;
 use starina::collections::HashMap;
@@ -9,6 +11,7 @@ use starina::poll::Poll;
 use starina::poll::Readiness;
 use starina::prelude::*;
 use starina::sync::Arc;
+use starina::timer::Timer;
 use starina::vcpu::VCpu;
 use starina_types::address::GPAddr;
 use starina_types::vcpu::VCpuExit;
@@ -170,6 +173,12 @@ pub fn boot_linux(fs: FileSystem, ports: &[Port], tcpip_ch: Channel) {
 
     info!("all ports are open");
 
+    let timer = Timer::new().unwrap();
+    let poll3 = Poll::new().unwrap();
+    poll3
+        .add(timer.handle_id(), (), Readiness::READABLE)
+        .unwrap();
+
     // Fill registers that Linux expects:
     //
     // > $a0 to contain the hartid of the current core.
@@ -233,6 +242,11 @@ pub fn boot_linux(fs: FileSystem, ports: &[Port], tcpip_ch: Channel) {
         match exit {
             VCpuExit::Reboot => {
                 break;
+            }
+            VCpuExit::Idle => {
+                // FIXME:
+                timer.set_timeout(Duration::from_millis(1)).unwrap();
+                poll3.wait().unwrap();
             }
             VCpuExit::LoadPageFault { gpaddr, data } => {
                 bus.read(&mut memory, gpaddr, data).unwrap();
