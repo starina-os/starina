@@ -14,7 +14,7 @@ pub fn catsay(text: &str) {
         .stdout(stdout.clone())
         .port(Port::Tcp {
             host: 8080,
-            port: 8080,
+            guest: 8080,
         })
         .spawn()
         .expect("failed to execute process");

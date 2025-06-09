@@ -79,7 +79,7 @@ impl FileLike for BufferedStdout {
 
 #[derive(Debug)]
 pub enum Port {
-    Tcp { host: u16, port: u16 },
+    Tcp { host: u16, guest: u16 },
 }
 
 #[derive(Debug)]
