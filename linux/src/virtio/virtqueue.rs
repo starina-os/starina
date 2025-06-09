@@ -320,7 +320,7 @@ impl Virtqueue {
         self.irq_status &= !value;
     }
 
-    fn pop_avail(&mut self, memory: &mut GuestMemory) -> Option<DescChain> {
+    pub fn pop_avail(&mut self, memory: &mut GuestMemory) -> Option<DescChain> {
         // TODO: fence here
 
         let avail = match memory.read::<VirtqAvail>(self.avail_gpaddr) {

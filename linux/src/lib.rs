@@ -4,6 +4,7 @@ mod boot;
 mod command;
 mod fs;
 mod guest_memory;
+mod guest_net;
 mod interrupt;
 mod linux_loader;
 mod mmio;

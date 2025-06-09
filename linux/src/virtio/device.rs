@@ -91,6 +91,12 @@ impl VirtioMmio {
             }),
         }
     }
+
+    pub fn use_vq<T>(&self, index: u32, f: impl FnOnce(&mut Virtqueue) -> T) -> T {
+        let mut mutable = self.mutable.lock();
+        let vq = mutable.queues.get_mut(index as usize).unwrap();
+        f(vq)
+    }
 }
 
 impl mmio::Device for VirtioMmio {

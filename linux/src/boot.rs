@@ -111,11 +111,13 @@ pub fn boot_linux(fs: FileSystem, ports: &[Port]) {
                 let mut m = ch.recv().unwrap();
                 match m.parse() {
                     Some(Message::OpenReply { call_id, handle }) => {
-                        poll2.add(
-                            handle.handle_id(),
-                            State::PortForward(PortForward::TcpListen { listen_ch: handle }),
-                            Readiness::READABLE,
-                        );
+                        poll2
+                            .add(
+                                handle.handle_id(),
+                                State::PortForward(PortForward::TcpListen { listen_ch: handle }),
+                                Readiness::READABLE,
+                            )
+                            .unwrap();
                         remaining_ports.remove(&call_id);
                     }
                     _ => {
