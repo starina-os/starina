@@ -94,6 +94,7 @@ impl DescChain {
             _head: &self,
             memory,
             descs: writable_descs,
+            current: None,
         };
 
         Ok((reader, writer))
@@ -104,34 +105,92 @@ pub struct DescChainWriter<'a> {
     _head: &'a DescChain,
     memory: &'a GuestMemory,
     descs: VecDeque<VirtqDesc>,
+    current: Option<(VirtqDesc, usize /* offset */)>,
 }
 
 impl<'a> DescChainWriter<'a> {
     pub fn write<T: Copy>(&mut self, value: T) -> Result<(), guest_memory::Error> {
-        // TODO: This assumes the guest provides a descriptor per one write in VMM.
-        let desc = match self.descs.pop_front() {
-            Some(desc) => desc,
-            None => {
-                debug_warn!("virtqueue: desc chain writer: no more descriptors");
+        let write_len = size_of::<T>();
+        loop {
+            let (desc, offset) = match self.current {
+                Some((desc, offset)) => (desc, offset),
+                None => {
+                    match self.descs.pop_front() {
+                        Some(desc) => (desc, 0),
+                        None => {
+                            debug_warn!("virtqueue: desc chain writer: no more descriptors");
+                            return Err(guest_memory::Error::OutOfRange);
+                        }
+                    }
+                }
+            };
+
+            let desc_len = desc.len.to_host() as usize;
+            if offset + write_len > desc_len {
+                debug_warn!(
+                    "virtqueue: desc chain writer: tried to write an object which spans across multiple descriptors"
+                );
                 return Err(guest_memory::Error::OutOfRange);
             }
-        };
 
-        self.memory.write(desc.gpaddr(), value)?;
-        Ok(())
+            let gpaddr = desc
+                .gpaddr()
+                .checked_add(offset)
+                .ok_or(guest_memory::Error::OutOfRange)?;
+            self.memory.write(gpaddr, value)?;
+
+            self.current = Some((desc, offset + write_len));
+
+            if offset + write_len == desc_len {
+                self.current = None;
+            }
+
+            return Ok(());
+        }
     }
 
     pub fn write_bytes(&mut self, bytes: &[u8]) -> Result<(), guest_memory::Error> {
-        // TODO: This assumes the guest provides a descriptor per one write in VMM.
-        let desc = match self.descs.pop_front() {
-            Some(desc) => desc,
-            None => {
-                debug_warn!("virtqueue: desc chain writer: no more descriptors");
-                return Err(guest_memory::Error::OutOfRange);
-            }
-        };
+        let mut remaining = bytes;
+        
+        while !remaining.is_empty() {
+            let (desc, offset) = match self.current {
+                Some((desc, offset)) => (desc, offset),
+                None => {
+                    match self.descs.pop_front() {
+                        Some(desc) => (desc, 0),
+                        None => {
+                            debug_warn!("virtqueue: desc chain writer: no more descriptors");
+                            return Err(guest_memory::Error::OutOfRange);
+                        }
+                    }
+                }
+            };
 
-        self.memory.write_bytes(desc.gpaddr(), bytes)?;
+            let desc_len = desc.len.to_host() as usize;
+            if offset >= desc_len {
+                self.current = None;
+                continue;
+            }
+
+            let gpaddr = desc
+                .gpaddr()
+                .checked_add(offset)
+                .ok_or(guest_memory::Error::OutOfRange)?;
+
+            let available_len = desc_len - offset;
+            let write_len = remaining.len().min(available_len);
+            let write_bytes = &remaining[..write_len];
+
+            self.memory.write_bytes(gpaddr, write_bytes)?;
+
+            self.current = Some((desc, offset + write_len));
+            if offset + write_len == desc_len {
+                self.current = None;
+            }
+
+            remaining = &remaining[write_len..];
+        }
+
         Ok(())
     }
 }
