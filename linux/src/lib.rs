@@ -13,6 +13,7 @@ mod virtio;
 pub use command::BufferedStdin;
 pub use command::BufferedStdout;
 pub use command::Command;
+pub use command::Port;
 pub use fs::FileLike;
 pub use virtio::virtio_fs::ReadCompleter;
 pub use virtio::virtio_fs::ReadDirCompleter;

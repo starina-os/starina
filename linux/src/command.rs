@@ -71,9 +71,16 @@ impl FileLike for BufferedStdout {
     }
 
     fn write_at(&self, _offset: usize, data: &[u8]) -> Result<usize, Errno> {
+        info!("stdout: {}", core::str::from_utf8(data).unwrap());
         self.0.lock().extend_from_slice(data);
         Ok(data.len())
     }
+}
+
+#[derive(Debug)]
+pub struct Port {
+    pub host: u16,
+    pub port: u16,
 }
 
 #[derive(Debug)]
@@ -84,6 +91,7 @@ pub struct Command {
     args: Vec<String>,
     stdin: Option<Arc<dyn FileLike>>,
     stdout: Option<Arc<dyn FileLike>>,
+    ports: Vec<Port>,
 }
 
 impl Command {
@@ -93,6 +101,7 @@ impl Command {
             args: Vec::new(),
             stdin: None,
             stdout: None,
+            ports: Vec::new(),
         }
     }
 
@@ -108,6 +117,11 @@ impl Command {
 
     pub fn stdout(&mut self, file: Arc<dyn FileLike>) -> &mut Command {
         self.stdout = Some(file);
+        self
+    }
+
+    pub fn port(&mut self, port: Port) -> &mut Command {
+        self.ports.push(port);
         self
     }
 
@@ -131,7 +145,7 @@ impl Command {
         }
 
         let fs = builder.build();
-        boot_linux(fs);
+        boot_linux(fs, &self.ports);
         Ok(())
     }
 }

@@ -4,6 +4,7 @@ use starina_types::address::GPAddr;
 use starina_types::vcpu::VCpuExit;
 use starina_utils::static_assert;
 
+use crate::Port;
 use crate::fs::FileSystem;
 use crate::guest_memory::GuestMemory;
 use crate::interrupt::IrqTrigger;
@@ -30,7 +31,7 @@ const VIRTIO_FS_IRQ: u8 = 1;
 const VIRTIO_NET_IRQ: u8 = 2;
 const GUEST_RAM_ADDR: GPAddr = GPAddr::new(0x8000_0000);
 
-pub fn boot_linux(fs: FileSystem) {
+pub fn boot_linux(fs: FileSystem, ports: &[Port]) {
     let mut memory = GuestMemory::new(GUEST_RAM_ADDR, GUEST_RAM_SIZE).unwrap();
 
     let fdt = build_fdt(
