@@ -195,7 +195,11 @@ impl Poll {
         Ok(())
     }
 
-    pub fn try_wait(self: &SharedRef<Poll>, current: &SharedRef<Thread>) -> SyscallResult {
+    pub fn try_wait(
+        self: &SharedRef<Poll>,
+        current: &SharedRef<Thread>,
+        non_blocking: bool,
+    ) -> SyscallResult {
         let mut mutable = self.mutable.lock();
 
         // Check if there are any ready events.
@@ -219,11 +223,13 @@ impl Poll {
             }
         }
 
-        // No events are ready. Block the current thread.
-        //
-        // WARNING: Thread::switch will never return. Clean up all resources
-        //          before calling it!
+        // No events are ready.
+        if non_blocking {
+            // Return WouldBlock error instead of blocking.
+            return SyscallResult::Err(ErrorCode::WouldBlock);
+        }
 
+        // Block the current thread.
         if mutable.waiters.try_reserve(1).is_err() {
             return SyscallResult::Err(ErrorCode::OutOfMemory);
         }

@@ -14,6 +14,7 @@ pub const SYS_POLL_CREATE: u8 = 5;
 pub const SYS_POLL_ADD: u8 = 6;
 pub const SYS_POLL_REMOVE: u8 = 7;
 pub const SYS_POLL_WAIT: u8 = 8;
+pub const SYS_POLL_TRY_WAIT: u8 = 24;
 pub const SYS_FOLIO_ALLOC: u8 = 9;
 pub const SYS_FOLIO_PIN: u8 = 10;
 pub const SYS_FOLIO_PADDR: u8 = 11;

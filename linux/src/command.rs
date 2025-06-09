@@ -78,9 +78,8 @@ impl FileLike for BufferedStdout {
 }
 
 #[derive(Debug)]
-pub struct Port {
-    pub host: u16,
-    pub port: u16,
+pub enum Port {
+    Tcp { host: u16, port: u16 },
 }
 
 #[derive(Debug)]

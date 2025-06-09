@@ -63,6 +63,11 @@ pub fn boot_linux(fs: FileSystem, ports: &[Port]) {
     bus.add_device(VIRTIO_FS_ADDR, VIRTIO_MMIO_SIZE, virtio_mmio_fs);
     bus.add_device(VIRTIO_NET_ADDR, VIRTIO_MMIO_SIZE, virtio_mmio_net);
 
+    for port in ports {
+        let Port::Tcp { host, port } = port;
+        //
+    }
+
     // Fill registers that Linux expects:
     //
     // > $a0 to contain the hartid of the current core.

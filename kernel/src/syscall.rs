@@ -151,7 +151,23 @@ fn poll_wait(current: &SharedRef<Thread>, poll: HandleId) -> SyscallResult {
         return SyscallResult::Err(ErrorCode::NotAllowed);
     }
 
-    poll.try_wait(current)
+    poll.try_wait(current, false)
+}
+
+fn poll_try_wait(current: &SharedRef<Thread>, poll: HandleId) -> SyscallResult {
+    let handles = current.process().handles().lock();
+    let poll = match handles.get::<Poll>(poll) {
+        Ok(poll) => poll,
+        Err(e) => {
+            return SyscallResult::Err(e);
+        }
+    };
+
+    if !poll.is_capable(HandleRights::POLL) {
+        return SyscallResult::Err(ErrorCode::NotAllowed);
+    }
+
+    poll.try_wait(current, true)
 }
 
 fn channel_create(current: &SharedRef<Thread>) -> Result<HandleId, ErrorCode> {
@@ -430,6 +446,11 @@ fn do_syscall(
         SYS_POLL_WAIT => {
             let poll = HandleId::from_raw_isize(a0)?;
             let ret = poll_wait(current, poll);
+            Ok(ret)
+        }
+        SYS_POLL_TRY_WAIT => {
+            let poll = HandleId::from_raw_isize(a0)?;
+            let ret = poll_try_wait(current, poll);
             Ok(ret)
         }
         SYS_CHANNEL_CREATE => {

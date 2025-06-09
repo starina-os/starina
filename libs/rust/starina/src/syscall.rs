@@ -117,6 +117,12 @@ pub fn poll_wait(poll: HandleId) -> Result<(HandleId, Readiness), ErrorCode> {
     Ok((id, readiness))
 }
 
+pub fn poll_try_wait(poll: HandleId) -> Result<(HandleId, Readiness), ErrorCode> {
+    let ret = syscall(SYS_POLL_TRY_WAIT, poll.as_raw() as isize, 0, 0, 0, 0, 0)?;
+    let (id, readiness) = ret.into();
+    Ok((id, readiness))
+}
+
 pub fn channel_create() -> Result<(HandleId, HandleId), ErrorCode> {
     let ret = syscall(SYS_CHANNEL_CREATE, 0, 0, 0, 0, 0, 0)?;
     let first: HandleId = ret.into();

@@ -204,7 +204,7 @@ pub fn switch_thread() -> ! {
             let mut mutable = current_thread.mutable.lock();
             let retval = match &mutable.state {
                 ThreadState::BlockedByPoll(poll) => {
-                    match poll.try_wait(&current_thread) {
+                    match poll.try_wait(&current_thread, false) {
                         SyscallResult::Done(result) => {
                             // We've got an event. Resume the thread with a return
                             // value.

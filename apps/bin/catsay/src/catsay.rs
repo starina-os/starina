@@ -12,7 +12,7 @@ pub fn catsay(text: &str) {
     starina_linux::Command::new("/bin/catsay")
         .stdin(stdin)
         .stdout(stdout.clone())
-        .port(Port {
+        .port(Port::Tcp {
             host: 8080,
             port: 8080,
         })
