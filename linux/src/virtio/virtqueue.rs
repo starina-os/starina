@@ -9,6 +9,7 @@ use starina_utils::static_assert;
 use super::device::VirtioDevice;
 use crate::guest_memory;
 use crate::guest_memory::GuestMemory;
+use crate::guest_net;
 
 pub const VIRTQUEUE_NUM_DESCS_MAX: u32 = 256;
 
@@ -132,6 +133,12 @@ impl<'a> DescChainWriter<'a> {
 
         self.memory.write_bytes(desc.gpaddr(), bytes)?;
         Ok(())
+    }
+}
+
+impl<'a> guest_net::PacketWriter for DescChainWriter<'a> {
+    fn write_bytes(&mut self, data: &[u8]) -> Result<(), guest_memory::Error> {
+        self.write_bytes(data)
     }
 }
 
