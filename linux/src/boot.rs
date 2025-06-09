@@ -6,6 +6,7 @@ use starina_utils::static_assert;
 
 use crate::fs::FileSystem;
 use crate::guest_memory::GuestMemory;
+use crate::guest_net::GuestNet;
 use crate::interrupt::IrqTrigger;
 use crate::mmio::Bus;
 use crate::riscv::device_tree::build_fdt;
@@ -33,6 +34,28 @@ const GUEST_RAM_ADDR: GPAddr = GPAddr::new(0x8000_0000);
 pub fn boot_linux(fs: FileSystem) {
     let mut memory = GuestMemory::new(GUEST_RAM_ADDR, GUEST_RAM_SIZE).unwrap();
 
+    // Network configuration (moved from device_tree.rs)
+    let guest_ip = crate::guest_net::Ipv4Addr::new(10, 255, 0, 100);
+    let host_ip = crate::guest_net::Ipv4Addr::new(10, 255, 0, 1); // gateway IP
+    let gw_ip = crate::guest_net::Ipv4Addr::new(10, 255, 0, 1);
+    let netmask = crate::guest_net::Ipv4Addr::new(255, 255, 255, 0);
+    let dns_servers = [
+        crate::guest_net::Ipv4Addr::new(8, 8, 8, 8),
+        crate::guest_net::Ipv4Addr::new(8, 8, 4, 4),
+    ];
+    let guest_mac = crate::guest_net::MacAddr::new([0x00, 0x00, 0x00, 0x00, 0x00, 0x01]);
+    let host_mac = crate::guest_net::MacAddr::new([0x00, 0x00, 0x00, 0x00, 0x00, 0x02]);
+
+    let guest_net = GuestNet::new(
+        host_ip,
+        guest_ip,
+        guest_mac,
+        host_mac,
+        gw_ip,
+        netmask,
+        dns_servers,
+    );
+
     let fdt = build_fdt(
         NUM_CPUS,
         GUEST_RAM_ADDR,
@@ -43,6 +66,7 @@ pub fn boot_linux(fs: FileSystem) {
             (VIRTIO_FS_ADDR, VIRTIO_FS_IRQ),
             (VIRTIO_NET_ADDR, VIRTIO_NET_IRQ),
         ],
+        &guest_net,
     )
     .expect("failed to build device tree");
 

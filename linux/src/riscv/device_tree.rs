@@ -2,6 +2,7 @@ use starina::address::GPAddr;
 use starina::prelude::*;
 use vm_fdt::FdtWriter;
 
+use crate::guest_net::GuestNet;
 use crate::virtio::device::VIRTIO_MMIO_SIZE;
 
 const TIMEBASE_FREQ: u32 = 10000000;
@@ -13,6 +14,7 @@ pub fn build_fdt(
     plic_base: GPAddr,
     plic_mmio_size: usize,
     virtio_mmios: &[(GPAddr, u8 /* irq */)],
+    guest_net: &GuestNet,
 ) -> Result<Vec<u8>, vm_fdt::Error> {
     let mut fdt = FdtWriter::new()?;
 
@@ -22,11 +24,9 @@ pub fn build_fdt(
     fdt.property_u32("#size-cells", 0x2)?;
 
     let chosen_node = fdt.begin_node("chosen")?;
-    fdt.property_string(
-        "bootargs",
-        // guest_ip=10.255.0.100, gateway_ip=10.255.0.1, dns0_ip=8.8.8.8
-        "console=hvc earlycon=sbi panic=-1 quiet ip=10.255.0.100::10.255.0.1:255.255.255.0::eth0:off:8.8.8.8:8.8.4.4",
-    )?;
+    let ip_param = guest_net.build_linux_ip_param();
+    let bootargs = format!("console=hvc earlycon=sbi panic=-1 quiet {}", ip_param);
+    fdt.property_string("bootargs", &bootargs)?;
     fdt.end_node(chosen_node)?;
 
     let memory_node = fdt.begin_node(&format!("memory@{:x}", guest_ram_start.as_usize()))?;

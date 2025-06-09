@@ -2,6 +2,8 @@ use starina::prelude::*;
 use starina_utils::endianness::LittleEndian;
 
 use crate::guest_memory::GuestMemory;
+use crate::guest_net::ConnKey;
+use crate::guest_net::GuestNet;
 use crate::virtio::device::VirtioDevice;
 use crate::virtio::virtqueue::DescChain;
 use crate::virtio::virtqueue::Virtqueue;
@@ -18,16 +20,13 @@ struct VirtioNetHdr {
     num_buffers: LittleEndian<u16>,
 }
 
-pub struct VirtioNet {}
+pub struct VirtioNet {
+    guest_net: GuestNet,
+}
 
 impl VirtioNet {
-    pub fn new() -> Self {
-        Self {}
-    }
-
-    /// Processes a host-to-guest packet.
-    fn process_rx(&self, _memory: &mut GuestMemory, _vq: &mut Virtqueue, _chain: DescChain) {
-        todo!()
+    pub fn new(guest_net: GuestNet) -> Self {
+        Self { guest_net }
     }
 
     /// Processes a guest-to-host packet.
