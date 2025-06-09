@@ -81,7 +81,9 @@ impl VirtioDevice for VirtioNet {
 
     fn process(&self, memory: &mut GuestMemory, vq: &mut Virtqueue, chain: DescChain) {
         match vq.index() {
-            0 => self.process_rx(memory, vq, chain),
+            0 => {
+                // receiveq: Do nothing.
+            }
             1 => self.process_tx(memory, vq, chain),
             i => panic!("unexpected virtio-net queue index: {}", i),
         }
