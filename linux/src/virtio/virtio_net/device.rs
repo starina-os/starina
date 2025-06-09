@@ -45,16 +45,34 @@ impl VirtioNet {
         // We don't support any flags yet.
         assert_eq!(header.flags, 0);
 
-        let _hdr_len: u16 = header.hdr_len.to_host();
-        let packet = match reader.read_zerocopy2() {
-            Ok(packet) => packet,
-            Err(e) => {
-                debug_warn!("failed to read virtio-net packet: {:?}", e);
-                return;
-            }
+        if let Err(err) = self.guest_net.recv_from_guest(reader) {
+            debug_warn!("virtio-net: recv_from_guest: {:?}", err);
+        }
+
+        // Regardless of the error, we push the chain back to the guest.
+        vq.push_used(memory, chain, 0);
+    }
+
+    pub fn send_to_guest(
+        &self,
+        memory: &mut GuestMemory,
+        vq: &mut Virtqueue,
+        conn: &ConnKey,
+        payload: &[u8],
+    ) {
+        let Some(desc) = vq.pop_avail(memory) else {
+            debug_warn!("virtio-net: send_to_guest: no available descriptor");
+            return;
         };
 
-        trace!("virtio-net tx packet: {:x?}", packet);
+        let (_, writer) = desc.split(vq, memory).unwrap();
+        match self.guest_net.send_to_guest(writer, conn, payload) {
+            Ok(_) => vq.push_used(memory, desc, payload.len() as u32),
+            Err(e) => {
+                panic!("virtio-net: send_to_guest: {:?}", e);
+                // TODO: push back to available queue
+            }
+        }
     }
 }
 
