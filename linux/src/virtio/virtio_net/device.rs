@@ -6,6 +6,7 @@ use crate::guest_net::ConnKey;
 use crate::guest_net::GuestNet;
 use crate::virtio::device::VirtioDevice;
 use crate::virtio::virtqueue::DescChain;
+use crate::virtio::virtqueue::DescChainReader;
 use crate::virtio::virtqueue::Virtqueue;
 
 #[derive(Debug, Copy, Clone)]
@@ -30,11 +31,7 @@ impl VirtioNet {
     }
 
     /// Processes a guest-to-host packet.
-    fn process_tx(&self, memory: &mut GuestMemory, vq: &mut Virtqueue, chain: DescChain) {
-        info!("virtio-net tx is SKIPPED");
-        return;
-
-        let (mut reader, _writer) = chain.split(vq, memory).unwrap();
+    fn process_tx(&self, mut reader: DescChainReader<'_>) {
         let header = match reader.read::<VirtioNetHdr>() {
             Ok(header) => header,
             Err(e) => {
@@ -51,9 +48,6 @@ impl VirtioNet {
         if let Err(err) = self.guest_net.recv_from_guest(reader) {
             debug_warn!("virtio-net: recv_from_guest: {:?}", err);
         }
-
-        // Regardless of the error, we push the chain back to the guest.
-        vq.push_used(memory, chain, 0);
     }
 
     pub fn send_to_guest(
@@ -101,12 +95,17 @@ impl VirtioDevice for VirtioNet {
     }
 
     fn process(&self, memory: &mut GuestMemory, vq: &mut Virtqueue, chain: DescChain) {
+        let (reader, _) = chain.split(vq, memory).unwrap();
         match vq.index() {
             0 => {
                 // receiveq: Do nothing.
             }
-            1 => self.process_tx(memory, vq, chain),
+            1 => {
+                self.process_tx(reader);
+            }
             i => panic!("unexpected virtio-net queue index: {}", i),
         }
+
+        vq.push_used(memory, chain, 0);
     }
 }
