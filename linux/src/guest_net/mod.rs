@@ -31,6 +31,7 @@ pub trait PacketReader {
 
 pub trait PacketWriter {
     fn write_bytes(&mut self, data: &[u8]) -> Result<(), guest_memory::Error>;
+    fn written_len(&self) -> usize;
 }
 
 #[derive(Debug, Error)]
@@ -166,7 +167,7 @@ impl GuestNet {
         &mut self,
         writer: impl PacketWriter,
         connkey: ConnKey,
-    ) -> Result<(), SendError> {
+    ) -> Result<Option<usize /* packet len */>, SendError> {
         trace!("Connecting to guest: {:?}", connkey);
         self.connect_to_guest_with_seq(writer, connkey, 1000)
     }
@@ -176,21 +177,13 @@ impl GuestNet {
         writer: impl PacketWriter,
         connkey: ConnKey,
         _initial_seq: u32,
-    ) -> Result<(), SendError> {
+    ) -> Result<Option<usize /* packet len */>, SendError> {
         // Generate initial sequence number (simple approach)
         use core::sync::atomic::AtomicU32;
         use core::sync::atomic::Ordering;
         static INITIAL_SEQ: AtomicU32 = AtomicU32::new(0x12345678);
         let initial_seq = INITIAL_SEQ.fetch_add(1000, Ordering::Relaxed);
-        self.connect_to_guest_internal(writer, connkey, initial_seq)
-    }
 
-    fn connect_to_guest_internal(
-        &mut self,
-        writer: impl PacketWriter,
-        connkey: ConnKey,
-        initial_seq: u32,
-    ) -> Result<(), SendError> {
         // Create and store connection in SYN_SENT state
         let conn = TcpConn::new_syn_sent(initial_seq);
         self.connections.insert(connkey, conn);
@@ -209,7 +202,7 @@ impl GuestNet {
         };
 
         let builder = PacketBuilder::new(writer, self.guest_mac, self.host_mac);
-        builder.send(&syn_packet).map_err(|_| {
+        let written_len = builder.send(&syn_packet).map_err(|_| {
             SendError::GuestMemory(guest_memory::Error::Invalipaddress(
                 starina::address::GPAddr::new(0),
             ))
@@ -219,7 +212,7 @@ impl GuestNet {
             self.guest_ip, connkey.guest_port, initial_seq
         );
 
-        Ok(())
+        Ok(Some(written_len))
     }
 
     /// Writes TCP payload to the guest using proper connection state
@@ -228,7 +221,7 @@ impl GuestNet {
         writer: impl PacketWriter,
         key: &ConnKey,
         data: &[u8],
-    ) -> Result<(), SendError> {
+    ) -> Result<Option<usize /* packet len */>, SendError> {
         let Some(conn) = self.connections.get_mut(key) else {
             debug_warn!("unknown network connection: {:?}", key);
             return Err(SendError::UnknownConn);
@@ -238,7 +231,7 @@ impl GuestNet {
         if !conn.is_established() {
             conn.queue_data(data.to_vec());
             trace!("Queued {} bytes for non-established connection", data.len());
-            return Ok(());
+            return Ok(None);
         }
 
         // Send data with proper TCP headers for established connection
@@ -255,7 +248,7 @@ impl GuestNet {
         };
 
         let builder = PacketBuilder::new(writer, self.guest_mac, self.host_mac);
-        builder.send(&tcp_packet).map_err(|_| {
+        let written_len = builder.send(&tcp_packet).map_err(|_| {
             SendError::GuestMemory(guest_memory::Error::Invalipaddress(
                 starina::address::GPAddr::new(0),
             ))
@@ -264,7 +257,7 @@ impl GuestNet {
         // Advance sequence number by data length
         conn.advance_seq(data.len() as u32);
 
-        Ok(())
+        Ok(Some(written_len))
     }
 
     /// Check if a connection exists

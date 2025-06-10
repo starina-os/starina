@@ -64,24 +64,31 @@ impl VirtioNet {
         {
             let mut guest_net = self.guest_net.lock();
             let connection_exists = guest_net.has_connection(conn);
-            
+
             if !connection_exists {
                 info!("Establishing new TCP connection for {:?}", conn);
-                
+
                 // Get a descriptor for sending SYN
                 let Some(desc) = vq.pop_avail(memory) else {
                     debug_warn!("virtio-net: no available descriptor for SYN");
                     return;
                 };
-                
+
                 let (_, writer) = desc.split(vq, memory).unwrap();
-                
+
                 // Initiate TCP connection
                 match guest_net.connect_to_guest(writer, *conn) {
-                    Ok(_) => {
-                        info!("SYN sent for connection {:?}", conn);
-                        vq.push_used(memory, desc, 0); // SYN packet sent
-                    },
+                    Ok(Some(written_len)) => {
+                        info!(
+                            "SYN sent for connection {:?}, written {} bytes",
+                            conn, written_len
+                        );
+                        vq.push_used(memory, desc, written_len as u32); // SYN packet sent
+                    }
+                    Ok(None) => {
+                        // TODO: push back to available queue
+                        return;
+                    }
                     Err(e) => {
                         debug_warn!("Failed to send SYN: {:?}", e);
                         // TODO: push back to available queue
@@ -90,7 +97,7 @@ impl VirtioNet {
                 }
             }
         }
-        
+
         // Now send the actual data
         let Some(desc) = vq.pop_avail(memory) else {
             debug_warn!("virtio-net: send_to_guest: no available descriptor");
@@ -99,10 +106,12 @@ impl VirtioNet {
 
         let (_, writer) = desc.split(vq, memory).unwrap();
         match self.guest_net.lock().send_to_guest(writer, conn, payload) {
-            Ok(_) => vq.push_used(memory, desc, payload.len() as u32),
+            Ok(Some(written_len)) => vq.push_used(memory, desc, written_len as u32),
+            Ok(None) => {
+                // TODO: push back to available queue
+            }
             Err(e) => {
                 panic!("virtio-net: send_to_guest: {:?}", e);
-                // TODO: push back to available queue
             }
         }
     }
@@ -112,7 +121,10 @@ impl VirtioDevice for VirtioNet {
     fn connect_to_guest(&self, connkey: ConnKey) {
         // Connection will be initiated when first packet is sent
         // This is because we need a writer (virtqueue) to send the SYN packet
-        info!("Connection requested for {:?}, will establish on first send", connkey);
+        info!(
+            "Connection requested for {:?}, will establish on first send",
+            connkey
+        );
     }
 
     fn send_to_guest(

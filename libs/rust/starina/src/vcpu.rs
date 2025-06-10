@@ -24,6 +24,7 @@ impl VCpu {
 
     pub fn run(&mut self) -> Result<VCpuExit<'_>, ErrorCode> {
         syscall::sys_vcpu_run(self.handle.id(), &mut self.exit)?;
+        self.exit.irqs = 0;
         Ok(self.exit.as_exit())
     }
 

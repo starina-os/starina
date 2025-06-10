@@ -32,6 +32,7 @@ use crate::arch::riscv64::riscv::SCAUSE_GUEST_INST_PAGE_FAULT;
 use crate::arch::riscv64::riscv::SCAUSE_GUEST_LOAD_PAGE_FAULT;
 use crate::arch::riscv64::riscv::SCAUSE_GUEST_STORE_PAGE_FAULT;
 use crate::arch::riscv64::riscv::SCAUSE_HOST_TIMER_INTR;
+use crate::arch::riscv64::riscv::SCAUSE_SV_EXT_INTR;
 use crate::arch::riscv64::riscv::SCAUSE_VIRTUAL_INST;
 use crate::cpuvar::CpuVar;
 use crate::cpuvar::current_thread;
@@ -782,8 +783,9 @@ impl VCpu {
             }
         };
 
-        if run_state.irqs != 0 {
-            mutable.plic.update(run_state.irqs);
+        let irqs = run_state.irqs;
+        if irqs != 0 {
+            mutable.plic.update(irqs);
         }
 
         // FIXME:

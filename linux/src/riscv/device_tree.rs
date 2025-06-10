@@ -25,7 +25,7 @@ pub fn build_fdt(
 
     let chosen_node = fdt.begin_node("chosen")?;
     let ip_param = guest_net.build_linux_ip_param();
-    let bootargs = format!("console=hvc earlycon=sbi panic=-1 quiet {}", ip_param);
+    let bootargs = format!("console=hvc earlycon=sbi panic=-1 {}", ip_param);
     fdt.property_string("bootargs", &bootargs)?;
     fdt.end_node(chosen_node)?;
 

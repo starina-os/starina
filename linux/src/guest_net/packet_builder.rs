@@ -122,7 +122,7 @@ impl<W: PacketWriter> PacketBuilder<W> {
     }
 
     /// Build an ethernet frame and write to the writer.
-    pub fn send(mut self, packet: &TxPacket) -> Result<(), BuildError> {
+    pub fn send(mut self, packet: &TxPacket) -> Result<usize, BuildError> {
         match packet {
             TxPacket::Arp {
                 operation,
@@ -172,7 +172,7 @@ impl<W: PacketWriter> PacketBuilder<W> {
                 self.writer.write_bytes(payload)?;
             }
         }
-        Ok(())
+        Ok(self.writer.written_len())
     }
 
     fn write_eth_header(&mut self, ether_type: u16) -> Result<(), BuildError> {

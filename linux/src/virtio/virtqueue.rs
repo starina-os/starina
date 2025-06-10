@@ -95,6 +95,7 @@ impl DescChain {
             memory,
             descs: writable_descs,
             current: None,
+            written_len: 0,
         };
 
         Ok((reader, writer))
@@ -106,6 +107,7 @@ pub struct DescChainWriter<'a> {
     memory: &'a GuestMemory,
     descs: VecDeque<VirtqDesc>,
     current: Option<(VirtqDesc, usize /* offset */)>,
+    written_len: usize,
 }
 
 impl<'a> DescChainWriter<'a> {
@@ -151,7 +153,7 @@ impl<'a> DescChainWriter<'a> {
 
     pub fn write_bytes(&mut self, bytes: &[u8]) -> Result<(), guest_memory::Error> {
         let mut remaining = bytes;
-        
+
         while !remaining.is_empty() {
             let (desc, offset) = match self.current {
                 Some((desc, offset)) => (desc, offset),
@@ -182,7 +184,7 @@ impl<'a> DescChainWriter<'a> {
             let write_bytes = &remaining[..write_len];
 
             self.memory.write_bytes(gpaddr, write_bytes)?;
-
+            self.written_len += write_len;
             self.current = Some((desc, offset + write_len));
             if offset + write_len == desc_len {
                 self.current = None;
@@ -196,6 +198,10 @@ impl<'a> DescChainWriter<'a> {
 }
 
 impl<'a> guest_net::PacketWriter for DescChainWriter<'a> {
+    fn written_len(&self) -> usize {
+        self.written_len
+    }
+
     fn write_bytes(&mut self, data: &[u8]) -> Result<(), guest_memory::Error> {
         self.write_bytes(data)
     }

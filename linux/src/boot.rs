@@ -274,7 +274,8 @@ pub fn boot_linux(fs: FileSystem, ports: &[Port], tcpip_ch: Channel) {
             }
         }
 
-        vcpu.inject_irqs(irq_trigger.clear_all());
+        let irqs = irq_trigger.clear_all();
+        vcpu.inject_irqs(irqs);
         let exit = vcpu.run().unwrap();
         match exit {
             VCpuExit::Reboot => {
