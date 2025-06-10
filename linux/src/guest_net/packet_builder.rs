@@ -60,6 +60,7 @@ struct ArpPacketRaw {
 }
 
 #[repr(C)]
+#[derive(Copy, Clone)]
 struct Ipv4HeaderRaw {
     version_ihl: u8,
     dscp_ecn: u8,
@@ -82,6 +83,7 @@ struct UdpHeaderRaw {
 }
 
 #[repr(C)]
+#[derive(Copy, Clone)]
 struct TcpHeaderRaw {
     src_port: u16,
     dst_port: u16,
@@ -121,6 +123,41 @@ impl<W: PacketWriter> PacketBuilder<W> {
         }
     }
 
+    /// Calculate Internet checksum (RFC 1071)
+    fn checksum(chunks: &[&[u8]]) -> u16 {
+        let mut sum = 0u32;
+
+        for chunk in chunks {
+            let mut i = 0;
+            while i + 1 < chunk.len() {
+                let word = u16::from_be_bytes([chunk[i], chunk[i + 1]]);
+                sum += word as u32;
+                i += 2;
+            }
+            if i < chunk.len() {
+                sum += (chunk[i] as u32) << 8;
+            }
+        }
+
+        while (sum >> 16) != 0 {
+            sum = (sum & 0xffff) + (sum >> 16);
+        }
+
+        !(sum as u16)
+    }
+
+    /// Calculate TCP checksum with pseudo header
+    fn tcp_checksum(src_ip: [u8; 4], dst_ip: [u8; 4], header: &[u8], payload: &[u8]) -> u16 {
+        let tcp_len = (header.len() + payload.len()) as u16;
+        let pseudo = [
+            &src_ip[..],
+            &dst_ip[..],
+            &[0, 6],
+            &tcp_len.to_be_bytes()[..],
+        ];
+        Self::checksum(&[&pseudo.concat(), header, payload])
+    }
+
     /// Build an ethernet frame and write to the writer.
     pub fn send(mut self, packet: &TxPacket) -> Result<usize, BuildError> {
         match packet {
@@ -154,7 +191,17 @@ impl<W: PacketWriter> PacketBuilder<W> {
                 let total_len = 20 + 20 + payload.len() as u16; // IP header + TCP header + payload
                 self.write_eth_header(EtherType::Ipv4 as u16)?;
                 self.write_ipv4_header(6, total_len, (*src_ip).into(), (*dst_ip).into())?; // protocol 6 = TCP
-                self.write_tcp_header(*src_port, *dst_port, *seq_num, *ack_num, *flags, *window)?;
+                self.write_tcp_header(
+                    *src_port,
+                    *dst_port,
+                    *seq_num,
+                    *ack_num,
+                    *flags,
+                    *window,
+                    (*src_ip).into(),
+                    (*dst_ip).into(),
+                    payload,
+                )?;
                 self.writer.write_bytes(payload)?;
             }
             TxPacket::Udp {
@@ -217,7 +264,7 @@ impl<W: PacketWriter> PacketBuilder<W> {
         src_ip: [u8; 4],
         dst_ip: [u8; 4],
     ) -> Result<(), BuildError> {
-        let raw = Ipv4HeaderRaw {
+        let mut raw = Ipv4HeaderRaw {
             version_ihl: (4 << 4) | 5, // version=4, header_len=20 bytes (5 * 4)
             dscp_ecn: 0,
             total_len: total_len.to_be(),
@@ -225,12 +272,19 @@ impl<W: PacketWriter> PacketBuilder<W> {
             flags_frag: 0u16.to_be(),
             ttl: 64,
             protocol,
-            checksum: 0u16.to_be(),
+            checksum: 0u16.to_be(), // Zero for checksum calculation
             src_ip,
             dst_ip,
         };
+
+        // Calculate checksum
         let bytes = unsafe { mem::transmute::<Ipv4HeaderRaw, [u8; 20]>(raw) };
-        self.writer.write_bytes(&bytes)?;
+        let checksum = Self::checksum(&[&bytes]);
+        raw.checksum = checksum.to_be();
+
+        // Write the header with correct checksum
+        let final_bytes = unsafe { mem::transmute::<Ipv4HeaderRaw, [u8; 20]>(raw) };
+        self.writer.write_bytes(&final_bytes)?;
         Ok(())
     }
 
@@ -259,20 +313,30 @@ impl<W: PacketWriter> PacketBuilder<W> {
         ack_num: u32,
         flags: u8,
         window: u16,
+        src_ip: [u8; 4],
+        dst_ip: [u8; 4],
+        payload: &[u8],
     ) -> Result<(), BuildError> {
         let data_offset_flags = (5u16 << 12) | (flags as u16); // data_offset=5 (20 bytes header)
-        let raw = TcpHeaderRaw {
+        let mut raw = TcpHeaderRaw {
             src_port: src_port.to_be(),
             dst_port: dst_port.to_be(),
             seq_num: seq_num.to_be(),
             ack_num: ack_num.to_be(),
             data_offset_flags: data_offset_flags.to_be(),
             window: window.to_be(),
-            checksum: 0u16.to_be(), // Checksum will be calculated later if needed
+            checksum: 0u16.to_be(), // Zero for checksum calculation
             urgent_ptr: 0u16.to_be(),
         };
-        let bytes = unsafe { mem::transmute::<TcpHeaderRaw, [u8; 20]>(raw) };
-        self.writer.write_bytes(&bytes)?;
+
+        // Calculate checksum
+        let header_bytes = unsafe { mem::transmute::<TcpHeaderRaw, [u8; 20]>(raw) };
+        let checksum = Self::tcp_checksum(src_ip, dst_ip, &header_bytes, payload);
+        raw.checksum = checksum.to_be();
+
+        // Write the header with correct checksum
+        let final_bytes = unsafe { mem::transmute::<TcpHeaderRaw, [u8; 20]>(raw) };
+        self.writer.write_bytes(&final_bytes)?;
         Ok(())
     }
 }
