@@ -106,7 +106,7 @@ pub fn boot_linux(fs: FileSystem, ports: &[Port], tcpip_ch: Channel) {
 
     let mut bus = Bus::new();
     let virtio_fs = VirtioFs::new(Box::new(fs));
-    let virtio_net = VirtioNet::new(guest_net);
+    let virtio_net = VirtioNet::new(guest_net, guest_mac);
     let virtio_mmio_fs = Arc::new(VirtioMmio::new(
         irq_trigger.clone(),
         VIRTIO_FS_IRQ,

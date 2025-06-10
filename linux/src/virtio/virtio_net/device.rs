@@ -5,10 +5,13 @@ use starina_utils::endianness::LittleEndian;
 use crate::guest_memory::GuestMemory;
 use crate::guest_net::ConnKey;
 use crate::guest_net::GuestNet;
+use crate::guest_net::MacAddr;
 use crate::virtio::device::VirtioDevice;
 use crate::virtio::virtqueue::DescChain;
 use crate::virtio::virtqueue::DescChainReader;
 use crate::virtio::virtqueue::Virtqueue;
+
+const VIRTIO_NET_F_MAC: u64 = 1 << 5;
 
 #[derive(Debug, Copy, Clone)]
 #[repr(C)]
@@ -24,12 +27,14 @@ struct VirtioNetHdr {
 
 pub struct VirtioNet {
     guest_net: Mutex<GuestNet>,
+    guest_mac: MacAddr,
 }
 
 impl VirtioNet {
-    pub fn new(guest_net: GuestNet) -> Self {
+    pub fn new(guest_net: GuestNet, guest_mac: MacAddr) -> Self {
         Self {
             guest_net: Mutex::new(guest_net),
+            guest_mac,
         }
     }
 
@@ -79,7 +84,7 @@ impl VirtioNet {
                     .write(VirtioNetHdr {
                         flags: 0,
                         gso_type: 0,
-                        hdr_len: (size_of::<VirtioNetHdr>() as u16).into(),
+                        hdr_len: 0.into(),
                         gso_size: 0.into(),
                         csum_start: 0.into(),
                         csum_offset: 0.into(),
@@ -120,7 +125,7 @@ impl VirtioNet {
             .write(VirtioNetHdr {
                 flags: 0,
                 gso_type: 0,
-                hdr_len: (size_of::<VirtioNetHdr>() as u16).into(),
+                hdr_len: 0.into(),
                 gso_size: 0.into(),
                 csum_start: 0.into(),
                 csum_offset: 0.into(),
@@ -165,7 +170,7 @@ impl VirtioDevice for VirtioNet {
     }
 
     fn device_features(&self) -> u64 {
-        0
+        VIRTIO_NET_F_MAC
     }
 
     fn device_id(&self) -> u32 {
@@ -176,8 +181,22 @@ impl VirtioDevice for VirtioNet {
         0
     }
 
-    fn config_read(&self, _offset: u64, _buf: &mut [u8]) {
-        todo!()
+    fn config_read(&self, offset: u64, buf: &mut [u8]) {
+        match offset {
+            0..=5 => {
+                // MAC address at offset 0-5
+                let mac_bytes: [u8; 6] = self.guest_mac.into();
+                let start = offset as usize;
+                let end = core::cmp::min(start + buf.len(), 6);
+                if start < 6 {
+                    let copy_len = end - start;
+                    buf[..copy_len].copy_from_slice(&mac_bytes[start..end]);
+                }
+            }
+            _ => {
+                todo!("virtio-net: config_read: unknown offset: {}", offset);
+            }
+        }
     }
 
     fn process(&self, memory: &mut GuestMemory, vq: &mut Virtqueue, chain: DescChain) {
