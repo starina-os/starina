@@ -20,7 +20,8 @@ use packet_parser::RxPacket;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ConnKey {
     pub proto: IpProto,
-    pub host_port: u16,
+    pub remote_ip: Ipv4Addr,
+    pub remote_port: u16,
     pub guest_port: u16,
 }
 
@@ -91,18 +92,19 @@ impl GuestNet {
     pub fn build_linux_ip_param(&self) -> String {
         format!(
             "ip={}::{}:{}::eth0:off:{}:{}",
-            self.guest_ip,
-            self.gw_ip,
-            self.netmask,
-            self.dns_servers[0],
-            self.dns_servers[1]
+            self.guest_ip, self.gw_ip, self.netmask, self.dns_servers[0], self.dns_servers[1]
         )
+    }
+
+    pub fn connect_to_guest(&mut self, connkey: ConnKey) {
+        let conn = Conn {};
+        self.connections.insert(connkey, conn);
     }
 
     /// Writes TCP/UDP payload to the guest.
     pub fn send_to_guest(
         &self,
-        mut writer: impl PacketWriter,
+        writer: impl PacketWriter,
         key: &ConnKey,
         data: &[u8],
     ) -> Result<(), SendError> {
@@ -113,9 +115,9 @@ impl GuestNet {
 
         // Example: Create a dummy TCP packet for port forwarding
         let dummy_tcp_packet = TxPacket::Tcp {
-            src_ip: Ipv4Addr::new(192, 168, 1, 1),   // Host IP
-            dst_ip: Ipv4Addr::new(192, 168, 1, 100), // Guest IP
-            src_port: key.host_port,
+            src_ip: key.remote_ip,
+            dst_ip: self.guest_ip,
+            src_port: key.remote_port,
             dst_port: key.guest_port,
             seq_num: 0x12345678, // Dummy sequence number
             ack_num: 0x87654321, // Dummy ack number
@@ -124,9 +126,7 @@ impl GuestNet {
             payload: data,
         };
 
-        let dst_mac = MacAddr::new([0x00, 0x00, 0x00, 0x00, 0x00, 0x01]); // Guest MAC
-        let src_mac = MacAddr::new([0x00, 0x00, 0x00, 0x00, 0x00, 0x02]); // Host MAC
-        let builder = PacketBuilder::new(writer, dst_mac, src_mac);
+        let builder = PacketBuilder::new(writer, self.guest_mac, self.host_mac);
         builder.send(&dummy_tcp_packet).map_err(|_| {
             SendError::GuestMemory(guest_memory::Error::Invalipaddress(
                 starina::address::GPAddr::new(0),

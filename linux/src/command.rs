@@ -72,13 +72,12 @@ impl FileLike for BufferedStdout {
     }
 
     fn write_at(&self, _offset: usize, data: &[u8]) -> Result<usize, Errno> {
-        info!("stdout: {}", core::str::from_utf8(data).unwrap());
         self.0.lock().extend_from_slice(data);
         Ok(data.len())
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum Port {
     Tcp { host: u16, guest: u16 },
 }

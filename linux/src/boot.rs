@@ -20,7 +20,9 @@ use starina_utils::static_assert;
 use crate::Port;
 use crate::fs::FileSystem;
 use crate::guest_memory::GuestMemory;
+use crate::guest_net::ConnKey;
 use crate::guest_net::GuestNet;
+use crate::guest_net::IpProto;
 use crate::interrupt::IrqTrigger;
 use crate::mmio::Bus;
 use crate::riscv::device_tree::build_fdt;
@@ -46,8 +48,8 @@ const VIRTIO_NET_IRQ: u8 = 2;
 const GUEST_RAM_ADDR: GPAddr = GPAddr::new(0x8000_0000);
 
 enum PortForward {
-    TcpListen { listen_ch: Channel },
-    TcpEstablished { data_ch: Channel },
+    Tcp { listen_ch: Channel, guest_port: u16 },
+    TcpEstablished { data_ch: Channel, conn_key: ConnKey },
 }
 
 enum State {
@@ -151,14 +153,20 @@ pub fn boot_linux(fs: FileSystem, ports: &[Port], tcpip_ch: Channel) {
                 let mut m = ch.recv().unwrap();
                 match m.parse() {
                     Some(Message::OpenReply { call_id, handle }) => {
+                        let port = remaining_ports.remove(&call_id).unwrap();
+                        let Port::Tcp {
+                            guest: guest_port, ..
+                        } = *port;
                         poll2
                             .add(
                                 handle.handle_id(),
-                                State::PortForward(PortForward::TcpListen { listen_ch: handle }),
+                                State::PortForward(PortForward::Tcp {
+                                    listen_ch: handle,
+                                    guest_port,
+                                }),
                                 Readiness::READABLE,
                             )
                             .unwrap();
-                        remaining_ports.remove(&call_id);
                     }
                     _ => {
                         panic!("unexpected message from tcpip: {:?}", m);
@@ -189,51 +197,80 @@ pub fn boot_linux(fs: FileSystem, ports: &[Port], tcpip_ch: Channel) {
 
     let mut vcpu = VCpu::new(memory.hvspace(), entry.as_usize(), a0, a1).unwrap();
     loop {
-        match poll2.try_wait() {
-            Ok((state, readiness)) => {
-                match &*state {
-                    State::PortForward(PortForward::TcpListen { listen_ch })
-                        if readiness.contains(Readiness::READABLE) =>
-                    {
-                        let mut m = listen_ch.recv().unwrap();
-                        match m.parse() {
-                            Some(Message::Connect { handle }) => {
-                                poll2
-                                    .add(
-                                        handle.handle_id(),
-                                        State::PortForward(PortForward::TcpEstablished {
-                                            data_ch: handle,
-                                        }),
-                                        Readiness::READABLE,
-                                    )
-                                    .unwrap();
-                            }
-                            _ => {
-                                panic!("listen-ch: unexpected message from tcpip: {:?}", m);
+        'poll_loop: loop {
+            match poll2.try_wait() {
+                Ok((state, readiness)) => {
+                    match &*state {
+                        State::PortForward(PortForward::Tcp {
+                            listen_ch,
+                            guest_port,
+                        }) if readiness.contains(Readiness::READABLE) => {
+                            let mut m = listen_ch.recv().unwrap();
+                            match m.parse() {
+                                Some(Message::Connect { handle }) => {
+                                    info!("connect: {:?}", handle);
+                                    static INITED: core::sync::atomic::AtomicBool =
+                                        core::sync::atomic::AtomicBool::new(false);
+                                    if INITED.load(core::sync::atomic::Ordering::Relaxed) {
+                                        panic!(
+                                            "cannot connect to guest_net after it is initialized"
+                                        );
+                                    }
+                                    INITED.store(true, core::sync::atomic::Ordering::Relaxed);
+
+                                    let remote_ip =
+                                        crate::guest_net::Ipv4Addr::new(10, 123, 123, 123);
+                                    let remote_port = 40000;
+
+                                    let conn_key = ConnKey {
+                                        proto: IpProto::Tcp,
+                                        remote_ip: remote_ip,
+                                        remote_port: remote_port,
+                                        guest_port: *guest_port,
+                                    };
+
+                                    poll2
+                                        .add(
+                                            handle.handle_id(),
+                                            State::PortForward(PortForward::TcpEstablished {
+                                                data_ch: handle,
+                                                conn_key,
+                                            }),
+                                            Readiness::READABLE,
+                                        )
+                                        .unwrap();
+                                }
+                                _ => {
+                                    panic!("listen-ch: unexpected message from tcpip: {:?}", m);
+                                }
                             }
                         }
-                    }
-                    State::PortForward(PortForward::TcpEstablished { data_ch })
-                        if readiness.contains(Readiness::READABLE) =>
-                    {
-                        let mut m = data_ch.recv().unwrap();
-                        match m.parse() {
-                            Some(Message::StreamData { data }) => {
-                                // port_forwarder.send()
-                            }
-                            _ => {
-                                panic!("data-ch: unexpected message from tcpip: {:?}", m);
+                        State::PortForward(PortForward::TcpEstablished { data_ch, conn_key })
+                            if readiness.contains(Readiness::READABLE) =>
+                        {
+                            let mut m = data_ch.recv().unwrap();
+                            match m.parse() {
+                                Some(Message::StreamData { data }) => {
+                                    virtio_mmio_net.use_vq(0, |device, vq| {
+                                        device.send_to_guest(&mut memory, vq, conn_key, data);
+                                    });
+                                }
+                                _ => {
+                                    panic!("data-ch: unexpected message from tcpip: {:?}", m);
+                                }
                             }
                         }
-                    }
-                    _ => {
-                        panic!("poll2: unexpected state");
+                        _ => {
+                            panic!("poll2: unexpected state");
+                        }
                     }
                 }
-            }
-            Err(ErrorCode::WouldBlock) => {}
-            Err(e) => {
-                panic!("poll2: {:?}", e);
+                Err(ErrorCode::WouldBlock) => {
+                    break 'poll_loop;
+                }
+                Err(e) => {
+                    panic!("poll2: {:?}", e);
+                }
             }
         }
 

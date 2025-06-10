@@ -1,4 +1,5 @@
 use starina::prelude::*;
+use starina::sync::Mutex;
 use starina_utils::endianness::LittleEndian;
 
 use crate::guest_memory::GuestMemory;
@@ -22,12 +23,14 @@ struct VirtioNetHdr {
 }
 
 pub struct VirtioNet {
-    guest_net: GuestNet,
+    guest_net: Mutex<GuestNet>,
 }
 
 impl VirtioNet {
     pub fn new(guest_net: GuestNet) -> Self {
-        Self { guest_net }
+        Self {
+            guest_net: Mutex::new(guest_net),
+        }
     }
 
     /// Processes a guest-to-host packet.
@@ -45,12 +48,12 @@ impl VirtioNet {
         // We don't support any flags yet.
         assert_eq!(header.flags, 0);
 
-        if let Err(err) = self.guest_net.recv_from_guest(reader) {
+        if let Err(err) = self.guest_net.lock().recv_from_guest(reader) {
             debug_warn!("virtio-net: recv_from_guest: {:?}", err);
         }
     }
 
-    pub fn send_to_guest(
+    pub fn do_send_to_guest(
         &self,
         memory: &mut GuestMemory,
         vq: &mut Virtqueue,
@@ -63,7 +66,7 @@ impl VirtioNet {
         };
 
         let (_, writer) = desc.split(vq, memory).unwrap();
-        match self.guest_net.send_to_guest(writer, conn, payload) {
+        match self.guest_net.lock().send_to_guest(writer, conn, payload) {
             Ok(_) => vq.push_used(memory, desc, payload.len() as u32),
             Err(e) => {
                 panic!("virtio-net: send_to_guest: {:?}", e);
@@ -74,6 +77,20 @@ impl VirtioNet {
 }
 
 impl VirtioDevice for VirtioNet {
+    fn connect_to_guest(&self, connkey: ConnKey) {
+        self.guest_net.lock().connect_to_guest(connkey);
+    }
+
+    fn send_to_guest(
+        &self,
+        memory: &mut GuestMemory,
+        vq: &mut Virtqueue,
+        connkey: &ConnKey,
+        payload: &[u8],
+    ) {
+        self.do_send_to_guest(memory, vq, connkey, payload);
+    }
+
     fn num_queues(&self) -> u32 {
         2 /* RX and TX queues */
     }
