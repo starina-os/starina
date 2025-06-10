@@ -1159,6 +1159,16 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
                         ExitPageFaultKind::Store,
                     );
                 }
+                SCAUSE_SV_EXT_INTR => {
+                    use super::plic::use_plic;
+                    drop(mutable);
+
+                    // FIXME: dup
+                    use_plic(|plic| {
+                        plic.handle_interrupt();
+                    });
+                    switch_thread();
+                }
                 _ => {
                     panic!(
                         "VM exit: {} (sepc={:x}, htval={:x}, stval={:x})",

@@ -167,15 +167,34 @@ impl GuestNet {
         writer: impl PacketWriter,
         connkey: ConnKey,
     ) -> Result<(), SendError> {
+        trace!("Connecting to guest: {:?}", connkey);
+        self.connect_to_guest_with_seq(writer, connkey, 1000)
+    }
+
+    fn connect_to_guest_with_seq(
+        &mut self,
+        writer: impl PacketWriter,
+        connkey: ConnKey,
+        _initial_seq: u32,
+    ) -> Result<(), SendError> {
         // Generate initial sequence number (simple approach)
-        use core::sync::atomic::{AtomicU32, Ordering};
+        use core::sync::atomic::AtomicU32;
+        use core::sync::atomic::Ordering;
         static INITIAL_SEQ: AtomicU32 = AtomicU32::new(0x12345678);
         let initial_seq = INITIAL_SEQ.fetch_add(1000, Ordering::Relaxed);
+        self.connect_to_guest_internal(writer, connkey, initial_seq)
+    }
 
+    fn connect_to_guest_internal(
+        &mut self,
+        writer: impl PacketWriter,
+        connkey: ConnKey,
+        initial_seq: u32,
+    ) -> Result<(), SendError> {
         // Create and store connection in SYN_SENT state
         let conn = TcpConn::new_syn_sent(initial_seq);
         self.connections.insert(connkey, conn);
-        
+
         // Send SYN packet
         let syn_packet = TxPacket::Tcp {
             src_ip: connkey.remote_ip,
@@ -195,8 +214,11 @@ impl GuestNet {
                 starina::address::GPAddr::new(0),
             ))
         })?;
-        info!("TCP SYN sent to {}:{}, initial_seq={}", self.guest_ip, connkey.guest_port, initial_seq);
-        
+        trace!(
+            "TCP SYN sent to {}:{}, initial_seq={}",
+            self.guest_ip, connkey.guest_port, initial_seq
+        );
+
         Ok(())
     }
 
@@ -215,7 +237,7 @@ impl GuestNet {
         // If connection not established, queue the data
         if !conn.is_established() {
             conn.queue_data(data.to_vec());
-            info!("Queued {} bytes for non-established connection", data.len());
+            trace!("Queued {} bytes for non-established connection", data.len());
             return Ok(());
         }
 
@@ -241,7 +263,7 @@ impl GuestNet {
 
         // Advance sequence number by data length
         conn.advance_seq(data.len() as u32);
-        
+
         Ok(())
     }
 
@@ -249,8 +271,6 @@ impl GuestNet {
     pub fn has_connection(&self, key: &ConnKey) -> bool {
         self.connections.contains_key(key)
     }
-
-
 
     pub fn recv_from_guest(&mut self, reader: impl PacketReader) -> Result<(), RecvError> {
         let packet = match PacketParser::parse(reader) {
@@ -269,7 +289,7 @@ impl GuestNet {
                 target_ip,
                 ..
             } => {
-                info!(
+                trace!(
                     "ARP {}: {} -> {}",
                     if operation == ArpOp::Request {
                         "Request"
@@ -291,7 +311,7 @@ impl GuestNet {
                 payload,
                 ..
             } => {
-                info!(
+                trace!(
                     "TCP {:08b}: [{}:{} -> {}:{}] seq={} ack={} {} bytes",
                     flags,
                     src_ip,
@@ -302,11 +322,10 @@ impl GuestNet {
                     ack_num,
                     payload.len()
                 );
-                
+
                 // Handle TCP packet and update connection state
                 self.handle_tcp_packet(
-                    src_ip, dst_ip, src_port, dst_port,
-                    seq_num, ack_num, flags, &payload
+                    src_ip, dst_ip, src_port, dst_port, seq_num, ack_num, flags, &payload,
                 );
             }
             RxPacket::Udp {
@@ -317,7 +336,7 @@ impl GuestNet {
                 payload,
                 ..
             } => {
-                info!(
+                trace!(
                     "UDP packet: [{}:{} -> {}:{}] {} bytes payload",
                     src_ip,
                     src_port,
@@ -333,7 +352,7 @@ impl GuestNet {
                 payload,
                 ..
             } => {
-                info!(
+                trace!(
                     "Unknown IPv4 packet (protocol {}): {} -> {}, {} bytes payload",
                     ip_proto,
                     src_ip,
@@ -346,7 +365,7 @@ impl GuestNet {
                 payload_len,
                 ..
             } => {
-                info!(
+                trace!(
                     "Unknown ethernet packet (type 0x{:04x}): {} bytes",
                     ether_type, payload_len
                 );
@@ -367,7 +386,7 @@ impl GuestNet {
         flags: u8,
         payload: &[u8],
     ) {
-        // Find the connection by reversing the address mapping 
+        // Find the connection by reversing the address mapping
         // (guest->host in packet becomes host->guest in our ConnKey)
         let conn_key = ConnKey {
             proto: IpProto::Tcp,
@@ -377,7 +396,11 @@ impl GuestNet {
         };
 
         let Some(conn) = self.connections.get_mut(&conn_key) else {
-            debug_warn!("TCP packet for unknown connection: {:?}", conn_key);
+            debug_warn!(
+                "TCP packet for unknown connection: {:?}, available: {:?}",
+                conn_key,
+                self.connections.keys().collect::<Vec<_>>()
+            );
             return;
         };
 
@@ -390,60 +413,60 @@ impl GuestNet {
         match conn.state {
             TcpConnState::SynSent => {
                 if rst {
-                    info!("Connection reset by guest");
+                    trace!("Connection reset by guest");
                     conn.close();
                     return;
                 }
-                
+
                 if syn && ack {
-                    info!("SYN-ACK received, connection established");
+                    trace!("SYN-ACK received, connection established");
                     conn.set_established(seq_num.wrapping_add(1)); // ACK the SYN
                     // TODO: Send ACK to complete handshake
                     // TODO: Flush any queued data
                 }
-            },
-            
+            }
+
             TcpConnState::Established => {
                 if rst {
-                    info!("Connection reset by guest");
+                    trace!("Connection reset by guest");
                     conn.close();
                     return;
                 }
-                
+
                 if fin {
-                    info!("FIN received, guest closing connection");
+                    trace!("FIN received, guest closing connection");
                     conn.state = TcpConnState::FinWait1;
                     conn.update_ack(seq_num.wrapping_add(1)); // ACK the FIN
                     // TODO: Send ACK and FIN
                     return;
                 }
-                
+
                 // Update ACK for any data received
                 if !payload.is_empty() {
                     conn.update_ack(seq_num.wrapping_add(payload.len() as u32));
-                    info!("Received {} bytes of data", payload.len());
+                    trace!("Received {} bytes of data", payload.len());
                     // TODO: Send ACK for received data
                 }
-            },
-            
+            }
+
             TcpConnState::FinWait1 => {
                 if ack {
-                    info!("ACK for FIN received, moving to FinWait2");
+                    trace!("ACK for FIN received, moving to FinWait2");
                     conn.state = TcpConnState::FinWait2;
                 }
-            },
-            
+            }
+
             TcpConnState::FinWait2 => {
                 if fin {
-                    info!("Final FIN received, connection closed");
+                    trace!("Final FIN received, connection closed");
                     conn.close();
                     // TODO: Send final ACK
                 }
-            },
-            
+            }
+
             TcpConnState::Closed => {
                 debug_warn!("Received packet for closed connection");
-            },
+            }
         }
     }
 }
