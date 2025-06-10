@@ -74,7 +74,18 @@ impl VirtioNet {
                     return;
                 };
 
-                let (_, writer) = desc.split(vq, memory).unwrap();
+                let (_, mut writer) = desc.split(vq, memory).unwrap();
+                writer
+                    .write(VirtioNetHdr {
+                        flags: 0,
+                        gso_type: 0,
+                        hdr_len: (size_of::<VirtioNetHdr>() as u16).into(),
+                        gso_size: 0.into(),
+                        csum_start: 0.into(),
+                        csum_offset: 0.into(),
+                        num_buffers: 1.into(),
+                    })
+                    .unwrap();
 
                 // Initiate TCP connection
                 match guest_net.connect_to_guest(writer, *conn) {
@@ -104,7 +115,19 @@ impl VirtioNet {
             return;
         };
 
-        let (_, writer) = desc.split(vq, memory).unwrap();
+        let (_, mut writer) = desc.split(vq, memory).unwrap();
+        writer
+            .write(VirtioNetHdr {
+                flags: 0,
+                gso_type: 0,
+                hdr_len: (size_of::<VirtioNetHdr>() as u16).into(),
+                gso_size: 0.into(),
+                csum_start: 0.into(),
+                csum_offset: 0.into(),
+                num_buffers: 1.into(),
+            })
+            .unwrap();
+
         match self.guest_net.lock().send_to_guest(writer, conn, payload) {
             Ok(Some(written_len)) => vq.push_used(memory, desc, written_len as u32),
             Ok(None) => {
