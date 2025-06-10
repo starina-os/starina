@@ -207,8 +207,7 @@ impl VirtioDevice for VirtioNet {
             1 => {
                 let (reader, _) = chain.split(vq, memory).unwrap();
                 self.process_tx(reader);
-                // FIXME: VIRQ_IRQSTATUS_QUEUE causes a hang.
-                // vq.push_used(memory, chain, 0);
+                vq.push_used(memory, chain, 0);
             }
             i => panic!("unexpected virtio-net queue index: {}", i),
         }

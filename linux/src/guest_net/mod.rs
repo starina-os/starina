@@ -283,14 +283,14 @@ impl GuestNet {
                 ..
             } => {
                 trace!(
-                    "ARP {}: {} -> {}",
+                    "ARP {}: Who has {}? Tell {}",
                     if operation == ArpOp::Request {
                         "Request"
                     } else {
                         "Reply"
                     },
-                    sender_ip,
                     target_ip,
+                    sender_ip,
                 );
             }
             RxPacket::Tcp {
