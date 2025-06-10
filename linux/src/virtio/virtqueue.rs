@@ -145,6 +145,7 @@ impl<'a> DescChainWriter<'a> {
             self.memory.write(gpaddr, value)?;
 
             self.current = Some((desc, offset + write_len));
+            self.written_len += write_len;
 
             if offset + write_len == desc_len {
                 self.current = None;
