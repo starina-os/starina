@@ -274,6 +274,10 @@ pub fn boot_linux(fs: FileSystem, ports: &[Port], tcpip_ch: Channel) {
             }
         }
 
+        virtio_mmio_net.use_vq(0 /* tx */, |device, vq| {
+            device.flush_arp_reply(&mut memory, vq);
+        });
+
         let irqs = irq_trigger.clear_all();
         vcpu.inject_irqs(irqs);
         let exit = vcpu.run().unwrap();

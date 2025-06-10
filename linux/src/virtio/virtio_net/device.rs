@@ -53,8 +53,12 @@ impl VirtioNet {
         // We don't support any flags yet.
         assert_eq!(header.flags, 0);
 
-        if let Err(err) = self.guest_net.lock().recv_from_guest(reader) {
-            debug_warn!("virtio-net: recv_from_guest: {:?}", err);
+        let mut guest_net = self.guest_net.lock();
+        match guest_net.recv_from_guest(reader) {
+            Ok(_) => {}
+            Err(err) => {
+                debug_warn!("virtio-net: recv_from_guest: {:?}", err);
+            }
         }
     }
 
@@ -153,6 +157,29 @@ impl VirtioDevice for VirtioNet {
             "Connection requested for {:?}, will establish on first send",
             connkey
         );
+    }
+
+    fn flush_arp_reply(&self, memory: &mut GuestMemory, vq: &mut Virtqueue) {
+        // TODO: refactor
+        let mut guest_net = self.guest_net.lock();
+        if guest_net.needs_reply_host_arp_request() {
+            let chain = vq.pop_avail(memory).unwrap();
+            let (_, mut writer) = chain.split(vq, memory).unwrap();
+            writer
+                .write(VirtioNetHdr {
+                    flags: 0,
+                    gso_type: 0,
+                    hdr_len: 0.into(),
+                    gso_size: 0.into(),
+                    csum_start: 0.into(),
+                    csum_offset: 0.into(),
+                    num_buffers: 1.into(),
+                })
+                .unwrap();
+
+            let written_len = guest_net.reply_host_arp_request(writer).unwrap();
+            vq.push_used(memory, chain, written_len as u32);
+        }
     }
 
     fn send_to_guest(

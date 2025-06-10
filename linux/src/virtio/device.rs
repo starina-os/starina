@@ -22,6 +22,10 @@ pub trait VirtioDevice {
         // FIXME: This is virtio-net specific.
         unimplemented!()
     }
+    #[allow(unused_variables)]
+    fn flush_arp_reply(&self, memory: &mut GuestMemory, vq: &mut Virtqueue) {
+        // FIXME: This is virtio-net specific.
+    }
 
     #[allow(unused_variables)]
     fn send_to_guest(

@@ -131,6 +131,7 @@ pub struct GuestNet {
     netmask: Ipv4Addr,
     dns_servers: [Ipv4Addr; 2],
     connections: HashMap<ConnKey, TcpConn>,
+    needs_reply_host_arp_request: bool,
 }
 
 impl GuestNet {
@@ -152,6 +153,7 @@ impl GuestNet {
             netmask,
             dns_servers,
             connections: HashMap::new(),
+            needs_reply_host_arp_request: false,
         }
     }
 
@@ -292,6 +294,11 @@ impl GuestNet {
                     target_ip,
                     sender_ip,
                 );
+
+                match operation {
+                    ArpOp::Request => self.handle_arp_request(target_ip, sender_ip)?,
+                    ArpOp::Reply => panic!("ARP reply received - not expected"),
+                }
             }
             RxPacket::Tcp {
                 src_ip,
@@ -365,6 +372,62 @@ impl GuestNet {
             }
         }
         Ok(())
+    }
+
+    /// Handle ARP request - only allow resolving host IP's MAC address
+    fn handle_arp_request(
+        &mut self,
+        target_ip: Ipv4Addr,
+        sender_ip: Ipv4Addr,
+    ) -> Result<(), RecvError> {
+        if target_ip != self.host_ip {
+            panic!(
+                "ARP request for non-host IP: {} (host IP: {})",
+                target_ip, self.host_ip
+            );
+        }
+
+        if sender_ip != self.guest_ip {
+            panic!(
+                "ARP request for non-guest IP: {} (guest IP: {})",
+                sender_ip, self.guest_ip
+            );
+        }
+
+        trace!(
+            "ARP request for host IP {} from {} - sending ARP reply with MAC {}",
+            target_ip, sender_ip, self.host_mac
+        );
+
+        self.needs_reply_host_arp_request = true;
+        Ok(())
+    }
+
+    pub fn needs_reply_host_arp_request(&self) -> bool {
+        self.needs_reply_host_arp_request
+    }
+
+    pub fn reply_host_arp_request(
+        &mut self,
+        writer: impl PacketWriter,
+    ) -> Result<usize /* packet len */, RecvError> {
+        let arp_reply = TxPacket::Arp {
+            operation: ArpOp::Reply,
+            sender_hw_addr: self.host_mac,
+            sender_ip: self.host_ip,
+            target_hw_addr: self.guest_mac,
+            target_ip: self.guest_ip,
+        };
+
+        let builder = PacketBuilder::new(writer, self.guest_mac, self.host_mac);
+        let written_len = builder.send(&arp_reply).map_err(|_| {
+            RecvError::GuestMemory(guest_memory::Error::Invalipaddress(
+                starina::address::GPAddr::new(0),
+            ))
+        })?;
+
+        self.needs_reply_host_arp_request = false;
+        Ok(written_len)
     }
 
     /// Handle incoming TCP packet and manage connection state
