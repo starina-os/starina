@@ -1,8 +1,11 @@
 use core::mem::offset_of;
+use core::sync::atomic::AtomicU32;
+use core::sync::atomic::Ordering;
 
 use starina::address::GPAddr;
 use starina::collections::VecDeque;
 use starina::prelude::*;
+use starina::sync::Arc;
 use starina_utils::endianness::LittleEndian;
 use starina_utils::static_assert;
 
@@ -346,11 +349,11 @@ pub struct Virtqueue {
     avail_index: u16,
     used_index: u32,
     num_descs: u32,
-    irq_status: u32,
+    irq_status: Arc<AtomicU32>,
 }
 
 impl Virtqueue {
-    pub fn new(index: u32) -> Self {
+    pub fn new(irq_status: Arc<AtomicU32>, index: u32) -> Self {
         Self {
             index,
             desc_gpaddr: GPAddr::new(0),
@@ -359,7 +362,7 @@ impl Virtqueue {
             avail_index: 0,
             used_index: 0,
             num_descs: VIRTQUEUE_NUM_DESCS_MAX,
-            irq_status: 0,
+            irq_status,
         }
     }
 
@@ -389,18 +392,6 @@ impl Virtqueue {
         while let Some(chain) = self.pop_avail(memory) {
             device.process(memory, self, chain);
         }
-    }
-
-    pub fn should_interrupt(&self) -> bool {
-        self.irq_status() != 0
-    }
-
-    pub fn irq_status(&self) -> u32 {
-        self.irq_status
-    }
-
-    pub fn acknowledge_irq(&mut self, value: u32) {
-        self.irq_status &= !value;
     }
 
     pub fn pop_avail(&mut self, memory: &mut GuestMemory) -> Option<DescChain> {
@@ -469,7 +460,8 @@ impl Virtqueue {
 
         // This increment must be done before writing the used index.
         self.used_index = (self.used_index + 1) % (self.num_descs as u32);
-        self.irq_status |= VIRQ_IRQSTATUS_QUEUE;
+        self.irq_status
+            .fetch_or(VIRQ_IRQSTATUS_QUEUE, Ordering::Relaxed);
 
         // TODO: fence here
 
