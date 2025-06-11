@@ -2,6 +2,7 @@ use core::cmp::min;
 
 use serde::Deserialize;
 use serde::Serialize;
+use starina::channel::Channel;
 use starina::prelude::*;
 use starina::sync::Arc;
 use starina::sync::Mutex;
@@ -76,6 +77,11 @@ impl FileLike for BufferedStdout {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum Port {
+    Tcp { host: u16, guest: u16 },
+}
+
 #[derive(Debug)]
 pub enum Error {}
 
@@ -84,6 +90,7 @@ pub struct Command {
     args: Vec<String>,
     stdin: Option<Arc<dyn FileLike>>,
     stdout: Option<Arc<dyn FileLike>>,
+    ports: Vec<Port>,
 }
 
 impl Command {
@@ -93,6 +100,7 @@ impl Command {
             args: Vec::new(),
             stdin: None,
             stdout: None,
+            ports: Vec::new(),
         }
     }
 
@@ -111,7 +119,12 @@ impl Command {
         self
     }
 
-    pub fn spawn(&mut self) -> Result<(), Error> {
+    pub fn port(&mut self, port: Port) -> &mut Command {
+        self.ports.push(port);
+        self
+    }
+
+    pub fn spawn(&mut self, tcpip_ch: Channel) -> Result<(), Error> {
         let mut builder = FileSystemBuilder::new();
 
         let command_json = serde_json::to_vec(&CommandJson {
@@ -131,7 +144,7 @@ impl Command {
         }
 
         let fs = builder.build();
-        boot_linux(fs);
+        boot_linux(fs, &self.ports, tcpip_ch);
         Ok(())
     }
 }

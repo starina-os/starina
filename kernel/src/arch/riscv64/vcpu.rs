@@ -9,6 +9,7 @@ use starina::vcpu::ExitInfo;
 use starina::vcpu::ExitPageFault;
 use starina::vcpu::ExitPageFaultKind;
 use starina::vcpu::LoadInst;
+use starina::vcpu::VCPU_EXIT_IDLE;
 use starina::vcpu::VCPU_EXIT_NONE;
 use starina::vcpu::VCPU_EXIT_PAGE_FAULT;
 use starina::vcpu::VCPU_EXIT_REBOOT;
@@ -31,6 +32,7 @@ use crate::arch::riscv64::riscv::SCAUSE_GUEST_INST_PAGE_FAULT;
 use crate::arch::riscv64::riscv::SCAUSE_GUEST_LOAD_PAGE_FAULT;
 use crate::arch::riscv64::riscv::SCAUSE_GUEST_STORE_PAGE_FAULT;
 use crate::arch::riscv64::riscv::SCAUSE_HOST_TIMER_INTR;
+use crate::arch::riscv64::riscv::SCAUSE_SV_EXT_INTR;
 use crate::arch::riscv64::riscv::SCAUSE_VIRTUAL_INST;
 use crate::cpuvar::CpuVar;
 use crate::cpuvar::current_thread;
@@ -403,7 +405,7 @@ impl Mutable {
             }
             (0x02, 0x00) => {
                 // TODO: implement
-                Ok(-1)
+                Err(-1)
             }
             // Set timer
             (0x00, 0) => {
@@ -718,7 +720,7 @@ impl VCpu {
 
         let mut hstatus = 0;
         hstatus |= 1 << 7; // SPV
-        // hstatus |= 1 << 21; // VTW
+        hstatus |= 1 << 21; // VTW
         hstatus |= 3 << 13; // FP
 
         let mut sstatus = 0;
@@ -781,8 +783,9 @@ impl VCpu {
             }
         };
 
-        if run_state.irqs != 0 {
-            mutable.plic.update(run_state.irqs);
+        let irqs = run_state.irqs;
+        if irqs != 0 {
+            mutable.plic.update(irqs);
         }
 
         // FIXME:
@@ -837,7 +840,7 @@ impl VCpu {
                     }
                 }
             }
-            VCPU_EXIT_NONE => {}
+            VCPU_EXIT_IDLE | VCPU_EXIT_NONE => {}
             _ => {
                 trace!("unknown exit reason: {}", run_state.exit_reason);
                 return Err(ErrorCode::InvalidState);
@@ -1121,10 +1124,7 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
 
             context.sepc += 4; // size of virtual instruction
 
-            if context.hvip == 0 {
-                let current = current_thread();
-                current.idle_vcpu();
-            }
+            mutable.trigger_vm_exit(VCPU_EXIT_IDLE, ExitInfo::empty());
         }
         _ => {
             match scause {
@@ -1160,6 +1160,16 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
                         gpaddr,
                         ExitPageFaultKind::Store,
                     );
+                }
+                SCAUSE_SV_EXT_INTR => {
+                    use super::plic::use_plic;
+                    drop(mutable);
+
+                    // FIXME: dup
+                    use_plic(|plic| {
+                        plic.handle_interrupt();
+                    });
+                    switch_thread();
                 }
                 _ => {
                     panic!(

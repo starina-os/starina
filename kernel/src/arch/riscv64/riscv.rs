@@ -10,6 +10,7 @@ pub const SCAUSE_GUEST_INST_PAGE_FAULT: u64 = scause(false, 20);
 pub const SCAUSE_GUEST_LOAD_PAGE_FAULT: u64 = scause(false, 21);
 pub const SCAUSE_VIRTUAL_INST: u64 = scause(false, 22);
 pub const SCAUSE_GUEST_STORE_PAGE_FAULT: u64 = scause(false, 23);
+pub const SCAUSE_SV_EXT_INTR: u64 = scause(true, 9);
 
 pub const OP_LOAD_FUNCT3_LB: u8 = 0;
 pub const OP_LOAD_FUNCT3_LH: u8 = 1;

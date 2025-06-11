@@ -1,14 +1,18 @@
 use core::mem::offset_of;
+use core::sync::atomic::AtomicU32;
+use core::sync::atomic::Ordering;
 
 use starina::address::GPAddr;
 use starina::collections::VecDeque;
 use starina::prelude::*;
+use starina::sync::Arc;
 use starina_utils::endianness::LittleEndian;
 use starina_utils::static_assert;
 
 use super::device::VirtioDevice;
 use crate::guest_memory;
 use crate::guest_memory::GuestMemory;
+use crate::guest_net;
 
 pub const VIRTQUEUE_NUM_DESCS_MAX: u32 = 256;
 
@@ -93,6 +97,8 @@ impl DescChain {
             _head: &self,
             memory,
             descs: writable_descs,
+            current: None,
+            written_len: 0,
         };
 
         Ok((reader, writer))
@@ -103,35 +109,105 @@ pub struct DescChainWriter<'a> {
     _head: &'a DescChain,
     memory: &'a GuestMemory,
     descs: VecDeque<VirtqDesc>,
+    current: Option<(VirtqDesc, usize /* offset */)>,
+    written_len: usize,
 }
 
 impl<'a> DescChainWriter<'a> {
     pub fn write<T: Copy>(&mut self, value: T) -> Result<(), guest_memory::Error> {
-        // TODO: This assumes the guest provides a descriptor per one write in VMM.
-        let desc = match self.descs.pop_front() {
-            Some(desc) => desc,
-            None => {
-                debug_warn!("virtqueue: desc chain writer: no more descriptors");
+        let write_len = size_of::<T>();
+        loop {
+            let (desc, offset) = match self.current {
+                Some((desc, offset)) => (desc, offset),
+                None => {
+                    match self.descs.pop_front() {
+                        Some(desc) => (desc, 0),
+                        None => {
+                            debug_warn!("virtqueue: desc chain writer: no more descriptors");
+                            return Err(guest_memory::Error::OutOfRange);
+                        }
+                    }
+                }
+            };
+
+            let desc_len = desc.len.to_host() as usize;
+            if offset + write_len > desc_len {
+                debug_warn!(
+                    "virtqueue: desc chain writer: tried to write an object which spans across multiple descriptors"
+                );
                 return Err(guest_memory::Error::OutOfRange);
             }
-        };
 
-        self.memory.write(desc.gpaddr(), value)?;
-        Ok(())
+            let gpaddr = desc
+                .gpaddr()
+                .checked_add(offset)
+                .ok_or(guest_memory::Error::OutOfRange)?;
+            self.memory.write(gpaddr, value)?;
+
+            self.current = Some((desc, offset + write_len));
+            self.written_len += write_len;
+
+            if offset + write_len == desc_len {
+                self.current = None;
+            }
+
+            return Ok(());
+        }
     }
 
     pub fn write_bytes(&mut self, bytes: &[u8]) -> Result<(), guest_memory::Error> {
-        // TODO: This assumes the guest provides a descriptor per one write in VMM.
-        let desc = match self.descs.pop_front() {
-            Some(desc) => desc,
-            None => {
-                debug_warn!("virtqueue: desc chain writer: no more descriptors");
-                return Err(guest_memory::Error::OutOfRange);
-            }
-        };
+        let mut remaining = bytes;
 
-        self.memory.write_bytes(desc.gpaddr(), bytes)?;
+        while !remaining.is_empty() {
+            let (desc, offset) = match self.current {
+                Some((desc, offset)) => (desc, offset),
+                None => {
+                    match self.descs.pop_front() {
+                        Some(desc) => (desc, 0),
+                        None => {
+                            debug_warn!("virtqueue: desc chain writer: no more descriptors");
+                            return Err(guest_memory::Error::OutOfRange);
+                        }
+                    }
+                }
+            };
+
+            let desc_len = desc.len.to_host() as usize;
+            if offset >= desc_len {
+                self.current = None;
+                continue;
+            }
+
+            let gpaddr = desc
+                .gpaddr()
+                .checked_add(offset)
+                .ok_or(guest_memory::Error::OutOfRange)?;
+
+            let available_len = desc_len - offset;
+            let write_len = remaining.len().min(available_len);
+            let write_bytes = &remaining[..write_len];
+
+            self.memory.write_bytes(gpaddr, write_bytes)?;
+            self.written_len += write_len;
+            self.current = Some((desc, offset + write_len));
+            if offset + write_len == desc_len {
+                self.current = None;
+            }
+
+            remaining = &remaining[write_len..];
+        }
+
         Ok(())
+    }
+}
+
+impl<'a> guest_net::PacketWriter for DescChainWriter<'a> {
+    fn written_len(&self) -> usize {
+        self.written_len
+    }
+
+    fn write_bytes(&mut self, data: &[u8]) -> Result<(), guest_memory::Error> {
+        self.write_bytes(data)
     }
 }
 
@@ -184,22 +260,9 @@ impl<'a> DescChainReader<'a> {
         }
     }
 
-    pub fn read_zerocopy(&mut self, len: usize) -> Result<&[u8], guest_memory::Error> {
-        // TODO: This assumes the guest provides a descriptor per one read in VMM.
-        let desc = match self.descs.pop_front() {
-            Some(desc) => desc,
-            None => {
-                debug_warn!("virtqueue: desc chain reader: no more descriptors");
-                return Err(guest_memory::Error::OutOfRange);
-            }
-        };
+    pub fn read_bytes(&mut self, len: usize) -> Result<Option<&[u8]>, guest_memory::Error> {
+        debug_assert!(len > 0);
 
-        let slice = self.memory.bytes_slice(desc.gpaddr(), len)?;
-        Ok(slice)
-    }
-
-    // TODO: Terrible API name. Consider merging with `read_zerocopy`.
-    pub fn read_zerocopy2(&mut self) -> Result<Option<&[u8]>, guest_memory::Error> {
         loop {
             let (desc, offset) = match self.current {
                 Some((desc, offset)) => (desc, offset),
@@ -211,8 +274,9 @@ impl<'a> DescChainReader<'a> {
                 }
             };
 
-            self.current = None;
-            if offset == desc.len.to_host() as usize {
+            let desc_len = desc.len.to_host() as usize;
+            if offset >= desc_len {
+                self.current = None;
                 continue;
             }
 
@@ -221,10 +285,33 @@ impl<'a> DescChainReader<'a> {
                 .checked_add(offset)
                 .ok_or(guest_memory::Error::OutOfRange)?;
 
-            let len = desc.len.to_host() as usize - offset;
-            let slice = self.memory.bytes_slice(gpaddr, len)?;
+            let available_len = desc_len - offset;
+            let read_len = len.min(available_len);
+            let slice = self.memory.bytes_slice(gpaddr, read_len)?;
+
+            self.current = Some((desc, offset + read_len));
+            if offset + read_len == desc_len {
+                self.current = None;
+            }
+
             return Ok(Some(slice));
         }
+    }
+
+    pub fn read_zerocopy(&mut self, len: usize) -> Result<&[u8], guest_memory::Error> {
+        match self.read_bytes(len)? {
+            Some(slice) => Ok(slice),
+            None => {
+                debug_warn!("virtqueue: desc chain reader: no more descriptors");
+                Err(guest_memory::Error::OutOfRange)
+            }
+        }
+    }
+}
+
+impl<'a> guest_net::PacketReader for DescChainReader<'a> {
+    fn read_bytes(&mut self, read_len: usize) -> Result<&[u8], guest_memory::Error> {
+        self.read_zerocopy(read_len)
     }
 }
 
@@ -263,11 +350,11 @@ pub struct Virtqueue {
     avail_index: u16,
     used_index: u32,
     num_descs: u32,
-    irq_status: u32,
+    irq_status: Arc<AtomicU32>,
 }
 
 impl Virtqueue {
-    pub fn new(index: u32) -> Self {
+    pub fn new(irq_status: Arc<AtomicU32>, index: u32) -> Self {
         Self {
             index,
             desc_gpaddr: GPAddr::new(0),
@@ -276,7 +363,7 @@ impl Virtqueue {
             avail_index: 0,
             used_index: 0,
             num_descs: VIRTQUEUE_NUM_DESCS_MAX,
-            irq_status: 0,
+            irq_status,
         }
     }
 
@@ -308,19 +395,7 @@ impl Virtqueue {
         }
     }
 
-    pub fn should_interrupt(&self) -> bool {
-        self.irq_status() != 0
-    }
-
-    pub fn irq_status(&self) -> u32 {
-        self.irq_status
-    }
-
-    pub fn acknowledge_irq(&mut self, value: u32) {
-        self.irq_status &= !value;
-    }
-
-    fn pop_avail(&mut self, memory: &mut GuestMemory) -> Option<DescChain> {
+    pub fn pop_avail(&mut self, memory: &mut GuestMemory) -> Option<DescChain> {
         // TODO: fence here
 
         let avail = match memory.read::<VirtqAvail>(self.avail_gpaddr) {
@@ -386,7 +461,8 @@ impl Virtqueue {
 
         // This increment must be done before writing the used index.
         self.used_index = (self.used_index + 1) % (self.num_descs as u32);
-        self.irq_status |= VIRQ_IRQSTATUS_QUEUE;
+        self.irq_status
+            .fetch_or(VIRQ_IRQSTATUS_QUEUE, Ordering::Relaxed);
 
         // TODO: fence here
 
