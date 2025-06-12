@@ -22,9 +22,10 @@ pub trait VirtioDevice {
         &self,
         memory: &mut GuestMemory,
         vq: &mut Virtqueue,
-        connkey: crate::guest_net::ConnKey,
+        guest_port: u16,
+        proto: crate::guest_net::IpProto,
         forwarder: Box<dyn FnMut(&crate::guest_net::ConnKey, &[u8])>,
-    ) {
+    ) -> crate::guest_net::ConnKey {
         // FIXME: This is virtio-net specific.
         unimplemented!()
     }

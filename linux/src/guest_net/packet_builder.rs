@@ -30,13 +30,6 @@ pub enum TxPacket<'a> {
         window: u16,
         payload: &'a [u8],
     },
-    Udp {
-        src_ip: Ipv4Addr,
-        dst_ip: Ipv4Addr,
-        src_port: u16,
-        dst_port: u16,
-        payload: &'a [u8],
-    },
 }
 
 #[repr(C)]
@@ -75,14 +68,6 @@ struct Ipv4HeaderRaw {
 }
 
 #[repr(C)]
-struct UdpHeaderRaw {
-    src_port: u16,
-    dst_port: u16,
-    length: u16,
-    checksum: u16,
-}
-
-#[repr(C)]
 #[derive(Copy, Clone)]
 struct TcpHeaderRaw {
     src_port: u16,
@@ -99,12 +84,6 @@ struct TcpHeaderRaw {
 pub enum BuildError {
     #[error("Guest memory error: {0}")]
     GuestMemory(#[from] guest_memory::Error),
-
-    #[error("Invalid packet type for building")]
-    InvalidPacket,
-
-    #[error("Invalid header: {0}")]
-    InvalidHeader(&'static str),
 }
 
 /// Simple packet builder for ethernet frames
@@ -204,20 +183,6 @@ impl<W: PacketWriter> PacketBuilder<W> {
                 )?;
                 self.writer.write_bytes(payload)?;
             }
-            TxPacket::Udp {
-                src_ip,
-                dst_ip,
-                src_port,
-                dst_port,
-                payload,
-            } => {
-                let udp_len = 8 + payload.len() as u16; // UDP header + payload
-                let total_len = 20 + udp_len; // IP header + UDP packet
-                self.write_eth_header(EtherType::Ipv4 as u16)?;
-                self.write_ipv4_header(17, total_len, (*src_ip).into(), (*dst_ip).into())?; // protocol 17 = UDP
-                self.write_udp_header(*src_port, *dst_port, udp_len)?;
-                self.writer.write_bytes(payload)?;
-            }
         }
         Ok(self.writer.written_len())
     }
@@ -285,23 +250,6 @@ impl<W: PacketWriter> PacketBuilder<W> {
         // Write the header with correct checksum
         let final_bytes = unsafe { mem::transmute::<Ipv4HeaderRaw, [u8; 20]>(raw) };
         self.writer.write_bytes(&final_bytes)?;
-        Ok(())
-    }
-
-    fn write_udp_header(
-        &mut self,
-        src_port: u16,
-        dst_port: u16,
-        length: u16,
-    ) -> Result<(), BuildError> {
-        let raw = UdpHeaderRaw {
-            src_port: src_port.to_be(),
-            dst_port: dst_port.to_be(),
-            length: length.to_be(),
-            checksum: 0u16.to_be(), // Checksum can be 0 for UDP
-        };
-        let bytes = unsafe { mem::transmute::<UdpHeaderRaw, [u8; 8]>(raw) };
-        self.writer.write_bytes(&bytes)?;
         Ok(())
     }
 

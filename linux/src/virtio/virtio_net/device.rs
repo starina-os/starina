@@ -105,19 +105,21 @@ impl VirtioDevice for VirtioNet {
         &self,
         memory: &mut GuestMemory,
         vq: &mut Virtqueue,
-        connkey: ConnKey,
+        guest_port: u16,
+        proto: crate::guest_net::IpProto,
         forwarder: Box<dyn FnMut(&ConnKey, &[u8])>,
-    ) {
+    ) -> ConnKey {
         let mut guest_net = self.guest_net.lock();
-        let connection_exists = guest_net.has_connection(&connkey);
-        assert!(!connection_exists, "connection already exists");
 
-        info!("Establishing new TCP connection for {:?}", connkey);
+        info!(
+            "Establishing new TCP connection for guest_port: {}, proto: {:?}",
+            guest_port, proto
+        );
 
         // Get a descriptor for sending SYN
         let Some(desc) = vq.pop_avail(memory) else {
             debug_warn!("virtio-net: no available descriptor for SYN");
-            return;
+            panic!("No available descriptor for SYN");
         };
 
         let (_, mut writer) = desc.split(vq, memory).unwrap();
@@ -133,31 +135,35 @@ impl VirtioDevice for VirtioNet {
             })
             .unwrap();
 
-        // Initiate TCP connection
-        match guest_net.connect_to_guest(writer, connkey, forwarder) {
+        // Queue SYN flag and then immediately send it
+        let connkey = guest_net.connect_to_guest(guest_port, proto, forwarder);
+
+        // Immediately send the queued SYN packet using the same descriptor
+        match guest_net.send_pending_packet(writer) {
             Ok(Some(written_len)) => {
                 info!(
                     "SYN sent for connection {:?}, written {} bytes",
                     connkey, written_len
                 );
-                vq.push_used(memory, desc, written_len as u32); // SYN packet sent
+                vq.push_used(memory, desc, written_len as u32);
             }
             Ok(None) => {
                 // TODO: push back to available queue
-                return;
+                panic!("No queued SYN packet to send");
             }
             Err(e) => {
-                debug_warn!("Failed to send SYN: {:?}", e);
                 // TODO: push back to available queue
-                return;
+                panic!("Failed to send SYN: {:?}", e);
             }
         }
+
+        connkey
     }
 
     fn flush_to_guest(&self, memory: &mut GuestMemory, vq: &mut Virtqueue) {
-        // TODO: refactor
         let mut guest_net = self.guest_net.lock();
-        if guest_net.needs_reply_host_arp_request() {
+
+        while guest_net.has_pending_packets() {
             let chain = vq.pop_avail(memory).unwrap();
             let (_, mut writer) = chain.split(vq, memory).unwrap();
             writer
@@ -172,27 +178,19 @@ impl VirtioDevice for VirtioNet {
                 })
                 .unwrap();
 
-            let written_len = guest_net.reply_host_arp_request(writer).unwrap();
-            vq.push_used(memory, chain, written_len as u32);
-        }
-
-        if guest_net.has_pending_queued_tcp_packets() {
-            let chain = vq.pop_avail(memory).unwrap();
-            let (_, mut writer) = chain.split(vq, memory).unwrap();
-            writer
-                .write(VirtioNetHdr {
-                    flags: 0,
-                    gso_type: 0,
-                    hdr_len: 0.into(),
-                    gso_size: 0.into(),
-                    csum_start: 0.into(),
-                    csum_offset: 0.into(),
-                    num_buffers: 1.into(),
-                })
-                .unwrap();
-
-            let written_len = guest_net.send_queued_tcp_packets(writer).unwrap().unwrap();
-            vq.push_used(memory, chain, written_len as u32);
+            match guest_net.send_pending_packet(writer) {
+                Ok(Some(written_len)) => {
+                    vq.push_used(memory, chain, written_len as u32);
+                }
+                Ok(None) => {
+                    // No packet was sent, break the loop
+                    break;
+                }
+                Err(e) => {
+                    debug_warn!("Failed to send pending packet: {:?}", e);
+                    break;
+                }
+            }
         }
     }
 

@@ -2,7 +2,6 @@ use core::time::Duration;
 
 use starina::channel::Channel;
 use starina::channel::ChannelReceiver;
-use starina::channel::ChannelSender;
 use starina::collections::HashMap;
 use starina::error::ErrorCode;
 use starina::handle::Handleable;
@@ -138,7 +137,7 @@ pub fn boot_linux(fs: FileSystem, ports: &[Port], tcpip_ch: Channel) {
 
     let mut remaining_ports = HashMap::with_capacity(ports.len());
     for (index, port) in ports.iter().enumerate() {
-        let Port::Tcp { host, guest } = port;
+        let Port::Tcp { host, .. } = port;
         let open_call_id = CallId::from(index as u32);
         let uri = format!("tcp-listen:0.0.0.0:{}", host);
         tcpip_tx
@@ -152,7 +151,7 @@ pub fn boot_linux(fs: FileSystem, ports: &[Port], tcpip_ch: Channel) {
 
     info!("waiting for tcpip to open ports...");
 
-    let mut poll2 = Poll::new().unwrap();
+    let poll2 = Poll::new().unwrap();
     while !remaining_ports.is_empty() {
         let (state, readiness) = poll.wait().unwrap();
         match &*state {
@@ -216,25 +215,6 @@ pub fn boot_linux(fs: FileSystem, ports: &[Port], tcpip_ch: Channel) {
                             match m.parse() {
                                 Some(Message::Connect { handle }) => {
                                     info!("connect: {:?}", handle);
-                                    static INITED: core::sync::atomic::AtomicBool =
-                                        core::sync::atomic::AtomicBool::new(false);
-                                    if INITED.load(core::sync::atomic::Ordering::Relaxed) {
-                                        panic!(
-                                            "cannot connect to guest_net after it is initialized"
-                                        );
-                                    }
-                                    INITED.store(true, core::sync::atomic::Ordering::Relaxed);
-
-                                    let remote_ip =
-                                        crate::guest_net::Ipv4Addr::new(10, 123, 123, 123);
-                                    let remote_port = 40000;
-
-                                    let conn_key = ConnKey {
-                                        proto: IpProto::Tcp,
-                                        remote_ip: remote_ip,
-                                        remote_port: remote_port,
-                                        guest_port: *guest_port,
-                                    };
 
                                     // Split the data channel into sender and receiver
                                     let (sender, receiver) = handle.split();
@@ -245,14 +225,15 @@ pub fn boot_linux(fs: FileSystem, ports: &[Port], tcpip_ch: Channel) {
                                             sender.send(Message::StreamData { data }).unwrap();
                                         });
 
-                                    // Connect to guest with the forwarder
-                                    virtio_mmio_net.use_vq(0, |device, vq| {
+                                    // Connect to guest with the new API that automatically assigns remote port
+                                    let conn_key = virtio_mmio_net.use_vq(0, |device, vq| {
                                         device.connect_to_guest(
                                             &mut memory,
                                             vq,
-                                            conn_key,
+                                            *guest_port,
+                                            IpProto::Tcp,
                                             forwarder,
-                                        );
+                                        )
                                     });
 
                                     poll2
