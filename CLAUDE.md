@@ -8,6 +8,10 @@
 - Do not write code comments if it's obvious what the code does.
 - Prefer short identifiers.
 
+## Tools
+
+- You can use ripgrep (`rg`) to search for code.
+
 ## Build
 
 Prefer this over `cargo check`:

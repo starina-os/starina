@@ -17,35 +17,6 @@ use crate::virtio::virtqueue::VIRTQUEUE_NUM_DESCS_MAX;
 /// Guest OS interacts with this device through their virtio
 /// device drivers.
 pub trait VirtioDevice {
-    #[allow(unused_variables)]
-    fn connect_to_guest(
-        &self,
-        memory: &mut GuestMemory,
-        vq: &mut Virtqueue,
-        guest_port: u16,
-        proto: crate::guest_net::IpProto,
-        forwarder: Box<dyn FnMut(&crate::guest_net::ConnKey, &[u8])>,
-    ) -> crate::guest_net::ConnKey {
-        // FIXME: This is virtio-net specific.
-        unimplemented!()
-    }
-    #[allow(unused_variables)]
-    fn flush_to_guest(&self, memory: &mut GuestMemory, vq: &mut Virtqueue) {
-        // FIXME: This is virtio-net specific.
-    }
-
-    #[allow(unused_variables)]
-    fn send_to_guest(
-        &self,
-        memory: &mut GuestMemory,
-        vq: &mut Virtqueue,
-        connkey: &crate::guest_net::ConnKey,
-        payload: &[u8],
-    ) {
-        // FIXME: This is virtio-net specific.
-        unimplemented!()
-    }
-
     fn num_queues(&self) -> u32;
     fn device_features(&self) -> u64;
     fn device_id(&self) -> u32;

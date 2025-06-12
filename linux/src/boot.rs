@@ -11,6 +11,7 @@ use starina::poll::Poll;
 use starina::poll::Readiness;
 use starina::prelude::*;
 use starina::sync::Arc;
+use starina::sync::Mutex;
 use starina::timer::Timer;
 use starina::vcpu::VCpu;
 use starina_types::address::GPAddr;
@@ -30,6 +31,7 @@ use crate::virtio::device::VIRTIO_MMIO_SIZE;
 use crate::virtio::device::VirtioMmio;
 use crate::virtio::virtio_fs::VirtioFs;
 use crate::virtio::virtio_net::VirtioNet;
+use crate::virtio::virtqueue::DescChainReader;
 
 const fn plic_mmio_size(num_cpus: u32) -> usize {
     0x200000 + (num_cpus as usize * 0x1000)
@@ -102,6 +104,14 @@ pub fn boot_linux(fs: FileSystem, ports: &[Port], tcpip_ch: Channel) {
     )
     .expect("failed to build device tree");
 
+    let guest_net = Arc::new(Mutex::new(guest_net));
+    let packet_receiver: Box<dyn for<'a> Fn(DescChainReader<'a>)> = {
+        let guest_net = guest_net.clone();
+        Box::new(move |pkt| {
+            guest_net.lock().recv_from_guest(pkt).unwrap();
+        })
+    };
+
     let (fdt_slice, fdt_gpaddr) = memory.allocate(fdt.len(), 4096).unwrap();
     fdt_slice[..fdt.len()].copy_from_slice(&fdt);
 
@@ -112,7 +122,7 @@ pub fn boot_linux(fs: FileSystem, ports: &[Port], tcpip_ch: Channel) {
 
     let mut bus = Bus::new();
     let virtio_fs = VirtioFs::new(Box::new(fs));
-    let virtio_net = VirtioNet::new(guest_net, guest_mac);
+    let virtio_net = VirtioNet::new(guest_mac, packet_receiver);
     let virtio_mmio_fs = Arc::new(VirtioMmio::new(
         irq_trigger.clone(),
         VIRTIO_FS_IRQ,
@@ -226,14 +236,20 @@ pub fn boot_linux(fs: FileSystem, ports: &[Port], tcpip_ch: Channel) {
                                         });
 
                                     // Connect to guest with the new API that automatically assigns remote port
-                                    let conn_key = virtio_mmio_net.use_vq(0, |device, vq| {
-                                        device.connect_to_guest(
-                                            &mut memory,
-                                            vq,
+                                    let conn_key = virtio_mmio_net.use_vq(0, |_device, vq| {
+                                        let connkey = guest_net.lock().connect_to_guest(
                                             *guest_port,
                                             IpProto::Tcp,
                                             forwarder,
+                                        );
+
+                                        crate::virtio::virtio_net::prepare_tx_packet_writer(
+                                            &mut memory,
+                                            vq,
+                                            |writer| guest_net.lock().send_pending_packet(writer),
                                         )
+                                        .unwrap();
+                                        connkey
                                     });
 
                                     poll2
@@ -258,8 +274,16 @@ pub fn boot_linux(fs: FileSystem, ports: &[Port], tcpip_ch: Channel) {
                             let mut m = receiver.recv().unwrap();
                             match m.parse() {
                                 Some(Message::StreamData { data }) => {
-                                    virtio_mmio_net.use_vq(0, |device, vq| {
-                                        device.send_to_guest(&mut memory, vq, conn_key, data);
+                                    virtio_mmio_net.use_vq(0, |_device, vq| {
+                                        let _ = crate::virtio::virtio_net::prepare_tx_packet_writer(
+                                            &mut memory,
+                                            vq,
+                                            |writer| {
+                                                guest_net
+                                                    .lock()
+                                                    .send_to_guest(writer, conn_key, data)
+                                            },
+                                        );
                                     });
                                 }
                                 _ => {
@@ -281,8 +305,14 @@ pub fn boot_linux(fs: FileSystem, ports: &[Port], tcpip_ch: Channel) {
             }
         }
 
-        virtio_mmio_net.use_vq(0 /* tx */, |device, vq| {
-            device.flush_to_guest(&mut memory, vq);
+        virtio_mmio_net.use_vq(0 /* tx */, |_device, vq| {
+            let mut guest_net = guest_net.lock();
+            while guest_net.has_pending_packets() {
+                crate::virtio::virtio_net::prepare_tx_packet_writer(&mut memory, vq, |writer| {
+                    guest_net.send_pending_packet(writer)
+                })
+                .unwrap();
+            }
         });
 
         let irqs = irq_trigger.clear_all();

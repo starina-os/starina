@@ -230,6 +230,7 @@ impl GuestNet {
             return Ok(Some(written_len));
         }
 
+        // Send TCP packets if needed.
         if self.tcp_manager.has_pending_packets() {
             return self.tcp_manager.send_pending_packet(writer);
         }
