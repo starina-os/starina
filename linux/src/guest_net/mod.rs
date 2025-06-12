@@ -108,11 +108,12 @@ impl GuestNet {
         proto: IpProto,
         forwarder: Box<dyn FnMut(&ConnKey, &[u8])>,
     ) -> ConnKey {
-        // Use a standard remote IP for virtual connections
-        let remote_ip = Ipv4Addr::new(10, 123, 123, 123);
-
         // Assign a unique remote port by checking if the connection already exists
         let connkey = loop {
+            // FIXME: Use the real remote IP/port reported by tcpip server. The
+            //        guest should observe packets as if it's running on the real
+            //        network.
+            let remote_ip = Ipv4Addr::new(10, 123, 123, 123);
             let remote_port = self.next_host_port;
             self.next_host_port = self.next_host_port.wrapping_add(1);
 
