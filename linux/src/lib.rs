@@ -8,6 +8,7 @@ mod guest_net;
 mod interrupt;
 mod linux_loader;
 mod mmio;
+mod port_forward;
 mod riscv;
 mod virtio;
 

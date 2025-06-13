@@ -2,12 +2,7 @@ use core::ops::ControlFlow;
 use core::time::Duration;
 
 use starina::channel::Channel;
-use starina::channel::ChannelReceiver;
-use starina::collections::HashMap;
-use starina::error::ErrorCode;
 use starina::handle::Handleable;
-use starina::message::CallId;
-use starina::message::Message;
 use starina::poll::Poll;
 use starina::poll::Readiness;
 use starina::prelude::*;
@@ -22,17 +17,16 @@ use starina_utils::static_assert;
 use crate::Port;
 use crate::fs::FileSystem;
 use crate::guest_memory::GuestMemory;
-use crate::guest_net::ConnKey;
 use crate::guest_net::GuestNet;
-use crate::guest_net::IpProto;
 use crate::interrupt::IrqTrigger;
 use crate::mmio::Bus;
+use crate::port_forward::PortForwarder;
+use crate::port_forward::PortForwarderBuilder;
 use crate::riscv::device_tree::build_fdt;
 use crate::virtio::device::VIRTIO_MMIO_SIZE;
 use crate::virtio::device::VirtioMmio;
 use crate::virtio::virtio_fs::VirtioFs;
 use crate::virtio::virtio_net::VirtioNet;
-use crate::virtio::virtio_net::VirtioPacketWriter;
 use crate::virtio::virtqueue::DescChainReader;
 
 const fn plic_mmio_size(num_cpus: u32) -> usize {
@@ -51,27 +45,9 @@ const VIRTIO_FS_IRQ: u8 = 1;
 const VIRTIO_NET_IRQ: u8 = 2;
 const GUEST_RAM_ADDR: GPAddr = GPAddr::new(0x8000_0000);
 
-enum PortForward {
-    Tcp {
-        listen_ch: Channel,
-        guest_port: u16,
-    },
-    TcpEstablished {
-        receiver: ChannelReceiver,
-        conn_key: ConnKey,
-    },
-}
-
-enum State {
-    Tcpip(ChannelReceiver),
-    PortForward(PortForward),
-}
-
 struct Mainloop {
     memory: GuestMemory,
-    guest_net: Arc<Mutex<GuestNet>>,
-    virtio_mmio_net: Arc<VirtioMmio>,
-    poll: Poll<State>,
+    port_forwarder: PortForwarder,
     vcpu: VCpu,
     timer: Timer,
     timer_poll: Poll<()>,
@@ -80,103 +56,8 @@ struct Mainloop {
 }
 
 impl Mainloop {
-    pub fn flush_pending_packets(&mut self) {
-        self.virtio_mmio_net.use_vq(0, |_device, vq| {
-            let mut guest_net = self.guest_net.lock();
-            while guest_net.has_pending_packets() {
-                vq.push_desc(&mut self.memory, |writer| {
-                    let virtio_writer = VirtioPacketWriter::new(writer).unwrap();
-                    guest_net.send_pending_packet(virtio_writer)
-                })
-                .unwrap();
-            }
-        });
-    }
-
-    fn new_tcp_connection(&mut self, ch: Channel, guest_port: u16) {
-        let (sender, receiver) = ch.split();
-
-        let forwarder = Box::new(move |_conn_key: &ConnKey, data: &[u8]| {
-            sender.send(Message::StreamData { data }).unwrap();
-        });
-
-        let conn_key = self
-            .guest_net
-            .lock()
-            .connect_to_guest(guest_port, IpProto::Tcp, forwarder);
-
-        self.poll
-            .add(
-                receiver.handle().id(),
-                State::PortForward(PortForward::TcpEstablished { receiver, conn_key }),
-                Readiness::READABLE,
-            )
-            .unwrap();
-    }
-
-    fn new_tcp_data(&mut self, conn_key: &ConnKey, data: &[u8]) {
-        self.virtio_mmio_net.use_vq(0, |_device, vq| {
-            vq.push_desc(&mut self.memory, |writer| {
-                let virtio_writer = VirtioPacketWriter::new(writer).unwrap();
-                self.guest_net
-                    .lock()
-                    .send_to_guest(virtio_writer, conn_key, data)
-            })
-            .unwrap();
-        });
-    }
-
-    pub fn process_pending_messages(&mut self) {
-        loop {
-            match self.poll.try_wait() {
-                Ok((state, readiness)) => {
-                    match &*state {
-                        State::PortForward(PortForward::Tcp {
-                            listen_ch,
-                            guest_port,
-                        }) if readiness.contains(Readiness::READABLE) => {
-                            let mut m = listen_ch.recv().unwrap();
-                            match m.parse() {
-                                Some(Message::Connect { handle }) => {
-                                    info!("connect: {:?}", handle);
-                                    self.new_tcp_connection(handle, *guest_port);
-                                }
-                                _ => {
-                                    panic!("listen-ch: unexpected message from tcpip: {:?}", m);
-                                }
-                            }
-                        }
-                        State::PortForward(PortForward::TcpEstablished { receiver, conn_key })
-                            if readiness.contains(Readiness::READABLE) =>
-                        {
-                            let mut m = receiver.recv().unwrap();
-                            match m.parse() {
-                                Some(Message::StreamData { data }) => {
-                                    self.new_tcp_data(conn_key, data);
-                                }
-                                _ => {
-                                    panic!("data-ch: unexpected message from tcpip: {:?}", m);
-                                }
-                            }
-                        }
-                        _ => {
-                            panic!("poll2: unexpected state");
-                        }
-                    }
-                }
-                Err(ErrorCode::WouldBlock) => {
-                    break;
-                }
-                Err(e) => {
-                    panic!("poll2: {:?}", e);
-                }
-            }
-        }
-    }
-
     pub fn run(&mut self) -> ControlFlow<()> {
-        self.process_pending_messages();
-        self.flush_pending_packets();
+        self.port_forwarder.poll(&mut self.memory);
 
         let irqs = self.irq_trigger.clear_all();
         self.vcpu.inject_irqs(irqs);
@@ -273,65 +154,12 @@ pub fn boot_linux(fs: FileSystem, ports: &[Port], tcpip_ch: Channel) {
     bus.add_device(VIRTIO_FS_ADDR, VIRTIO_MMIO_SIZE, virtio_mmio_fs);
     bus.add_device(VIRTIO_NET_ADDR, VIRTIO_MMIO_SIZE, virtio_mmio_net.clone());
 
-    let open_poll = Poll::new().unwrap();
-    let (tcpip_tx, tcpip_rx) = tcpip_ch.split();
-    open_poll
-        .add(
-            tcpip_rx.handle().id(),
-            State::Tcpip(tcpip_rx),
-            Readiness::READABLE | Readiness::CLOSED,
-        )
-        .unwrap();
-
-    let mut remaining_ports = HashMap::with_capacity(ports.len());
-    for (index, port) in ports.iter().enumerate() {
-        let Port::Tcp { host, .. } = port;
-        let open_call_id = CallId::from(index as u32);
-        let uri = format!("tcp-listen:0.0.0.0:{}", host);
-        tcpip_tx
-            .send(Message::Open {
-                call_id: open_call_id,
-                uri: uri.as_bytes(),
-            })
-            .unwrap();
-        remaining_ports.insert(open_call_id, port);
-    }
-
     info!("waiting for tcpip to open ports...");
-
-    let poll = Poll::new().unwrap();
-    while !remaining_ports.is_empty() {
-        let (state, readiness) = open_poll.wait().unwrap();
-        match &*state {
-            State::Tcpip(ch) if readiness.contains(Readiness::READABLE) => {
-                let mut m = ch.recv().unwrap();
-                match m.parse() {
-                    Some(Message::OpenReply { call_id, handle }) => {
-                        let port = remaining_ports.remove(&call_id).unwrap();
-                        let Port::Tcp {
-                            guest: guest_port, ..
-                        } = *port;
-                        poll.add(
-                            handle.handle_id(),
-                            State::PortForward(PortForward::Tcp {
-                                listen_ch: handle,
-                                guest_port,
-                            }),
-                            Readiness::READABLE,
-                        )
-                        .unwrap();
-                    }
-                    _ => {
-                        panic!("unexpected message from tcpip: {:?}", m);
-                    }
-                }
-            }
-            _ => {
-                panic!("unexpected state");
-            }
-        }
-    }
-
+    let port_forwarder = PortForwarderBuilder::new(tcpip_ch)
+        .with_ports(ports)
+        .with_guest_net(guest_net.clone())
+        .with_virtio_net(virtio_mmio_net.clone())
+        .build();
     info!("all ports are open");
 
     let timer = Timer::new().unwrap();
@@ -351,9 +179,7 @@ pub fn boot_linux(fs: FileSystem, ports: &[Port], tcpip_ch: Channel) {
     let vcpu = VCpu::new(memory.hvspace(), entry.as_usize(), a0, a1).unwrap();
     let mut mainloop = Mainloop {
         memory,
-        guest_net,
-        virtio_mmio_net,
-        poll,
+        port_forwarder,
         vcpu,
         timer,
         timer_poll,
