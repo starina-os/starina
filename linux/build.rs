@@ -25,8 +25,6 @@ fn main() {
     let build_status = Command::new("docker")
         .arg("build")
         .arg("--progress=plain")
-        .arg("--build-arg")
-        .arg("BUILDKIT_INLINE_CACHE=1")
         .arg("-t")
         .arg("starina-linux")
         .arg(".")

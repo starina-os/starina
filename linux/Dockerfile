@@ -75,10 +75,9 @@ RUN apt-get update && apt-get install -y \
     lz4 \
     libelf-dev \
     gcc-riscv64-linux-gnu \
-    binutils-riscv64-linux-gnu
-
-RUN apt-get install -y llvm
-RUN apt-get install -y less
+    binutils-riscv64-linux-gnu \
+    llvm \
+    less
 
 COPY --from=initramfs-builder /initramfs.cpio /initramfs.cpio
 COPY --from=linuxinit-builder /linuxinit.debug /linuxinit.debug
