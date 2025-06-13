@@ -1,3 +1,4 @@
+use core::ops::ControlFlow;
 use core::time::Duration;
 
 use starina::channel::Channel;
@@ -63,6 +64,136 @@ enum PortForward {
 enum State {
     Tcpip(ChannelReceiver),
     PortForward(PortForward),
+}
+
+struct Mainloop {
+    memory: GuestMemory,
+    guest_net: Arc<Mutex<GuestNet>>,
+    virtio_mmio_net: Arc<VirtioMmio>,
+    poll2: Poll<State>,
+    vcpu: VCpu,
+    timer: Timer,
+    poll3: Poll<()>,
+    bus: Bus,
+    irq_trigger: IrqTrigger,
+}
+
+impl Mainloop {
+    pub fn flush_pending_packets(&mut self) {
+        self.virtio_mmio_net.use_vq(0, |_device, vq| {
+            let mut guest_net = self.guest_net.lock();
+            while guest_net.has_pending_packets() {
+                crate::virtio::virtio_net::prepare_tx_packet_writer(
+                    &mut self.memory,
+                    vq,
+                    |writer| guest_net.send_pending_packet(writer),
+                )
+                .unwrap();
+            }
+        });
+    }
+
+    fn new_tcp_connection(&mut self, ch: Channel, guest_port: u16) {
+        let (sender, receiver) = ch.split();
+
+        let forwarder = Box::new(move |_conn_key: &ConnKey, data: &[u8]| {
+            sender.send(Message::StreamData { data }).unwrap();
+        });
+
+        let conn_key = self
+            .guest_net
+            .lock()
+            .connect_to_guest(guest_port, IpProto::Tcp, forwarder);
+        self.flush_pending_packets();
+
+        self.poll2
+            .add(
+                receiver.handle().id(),
+                State::PortForward(PortForward::TcpEstablished { receiver, conn_key }),
+                Readiness::READABLE,
+            )
+            .unwrap();
+    }
+
+    fn new_tcp_data(&mut self, conn_key: &ConnKey, data: &[u8]) {
+        self.virtio_mmio_net.use_vq(0, |_device, vq| {
+            crate::virtio::virtio_net::prepare_tx_packet_writer(&mut self.memory, vq, |writer| {
+                self.guest_net.lock().send_to_guest(writer, conn_key, data)
+            })
+            .unwrap();
+        });
+    }
+
+    pub fn run(&mut self) -> ControlFlow<()> {
+        'poll_loop: loop {
+            match self.poll2.try_wait() {
+                Ok((state, readiness)) => {
+                    match &*state {
+                        State::PortForward(PortForward::Tcp {
+                            listen_ch,
+                            guest_port,
+                        }) if readiness.contains(Readiness::READABLE) => {
+                            let mut m = listen_ch.recv().unwrap();
+                            match m.parse() {
+                                Some(Message::Connect { handle }) => {
+                                    info!("connect: {:?}", handle);
+                                    self.new_tcp_connection(handle, *guest_port);
+                                }
+                                _ => {
+                                    panic!("listen-ch: unexpected message from tcpip: {:?}", m);
+                                }
+                            }
+                        }
+                        State::PortForward(PortForward::TcpEstablished { receiver, conn_key })
+                            if readiness.contains(Readiness::READABLE) =>
+                        {
+                            let mut m = receiver.recv().unwrap();
+                            match m.parse() {
+                                Some(Message::StreamData { data }) => {
+                                    self.new_tcp_data(conn_key, data);
+                                }
+                                _ => {
+                                    panic!("data-ch: unexpected message from tcpip: {:?}", m);
+                                }
+                            }
+                        }
+                        _ => {
+                            panic!("poll2: unexpected state");
+                        }
+                    }
+                }
+                Err(ErrorCode::WouldBlock) => {
+                    break 'poll_loop;
+                }
+                Err(e) => {
+                    panic!("poll2: {:?}", e);
+                }
+            }
+        }
+
+        self.flush_pending_packets();
+
+        let irqs = self.irq_trigger.clear_all();
+        self.vcpu.inject_irqs(irqs);
+        let exit = self.vcpu.run().unwrap();
+        match exit {
+            VCpuExit::Reboot => ControlFlow::Break(()),
+            VCpuExit::Idle => {
+                // FIXME:
+                self.timer.set_timeout(Duration::from_millis(1)).unwrap();
+                self.poll3.wait().unwrap();
+                ControlFlow::Continue(())
+            }
+            VCpuExit::LoadPageFault { gpaddr, data } => {
+                self.bus.read(&mut self.memory, gpaddr, data).unwrap();
+                ControlFlow::Continue(())
+            }
+            VCpuExit::StorePageFault { gpaddr, data } => {
+                self.bus.write(&mut self.memory, gpaddr, data).unwrap();
+                ControlFlow::Continue(())
+            }
+        }
+    }
 }
 
 pub fn boot_linux(fs: FileSystem, ports: &[Port], tcpip_ch: Channel) {
@@ -211,128 +342,22 @@ pub fn boot_linux(fs: FileSystem, ports: &[Port], tcpip_ch: Channel) {
     let a0 = 0; // hartid
     let a1 = fdt_gpaddr.as_usize(); // fdt address
 
-    let mut vcpu = VCpu::new(memory.hvspace(), entry.as_usize(), a0, a1).unwrap();
+    let vcpu = VCpu::new(memory.hvspace(), entry.as_usize(), a0, a1).unwrap();
+    let mut mainloop = Mainloop {
+        memory,
+        guest_net,
+        virtio_mmio_net,
+        poll2,
+        vcpu,
+        timer,
+        poll3,
+        bus,
+        irq_trigger,
+    };
+
     loop {
-        'poll_loop: loop {
-            match poll2.try_wait() {
-                Ok((state, readiness)) => {
-                    match &*state {
-                        State::PortForward(PortForward::Tcp {
-                            listen_ch,
-                            guest_port,
-                        }) if readiness.contains(Readiness::READABLE) => {
-                            let mut m = listen_ch.recv().unwrap();
-                            match m.parse() {
-                                Some(Message::Connect { handle }) => {
-                                    info!("connect: {:?}", handle);
-
-                                    // Split the data channel into sender and receiver
-                                    let (sender, receiver) = handle.split();
-
-                                    // Create forwarder closure that sends StreamData when receiving TCP data from guest
-                                    let forwarder =
-                                        Box::new(move |_conn_key: &ConnKey, data: &[u8]| {
-                                            sender.send(Message::StreamData { data }).unwrap();
-                                        });
-
-                                    // Connect to guest with the new API that automatically assigns remote port
-                                    let conn_key = virtio_mmio_net.use_vq(0, |_device, vq| {
-                                        let connkey = guest_net.lock().connect_to_guest(
-                                            *guest_port,
-                                            IpProto::Tcp,
-                                            forwarder,
-                                        );
-
-                                        crate::virtio::virtio_net::prepare_tx_packet_writer(
-                                            &mut memory,
-                                            vq,
-                                            |writer| guest_net.lock().send_pending_packet(writer),
-                                        )
-                                        .unwrap();
-                                        connkey
-                                    });
-
-                                    poll2
-                                        .add(
-                                            receiver.handle().id(),
-                                            State::PortForward(PortForward::TcpEstablished {
-                                                receiver,
-                                                conn_key,
-                                            }),
-                                            Readiness::READABLE,
-                                        )
-                                        .unwrap();
-                                }
-                                _ => {
-                                    panic!("listen-ch: unexpected message from tcpip: {:?}", m);
-                                }
-                            }
-                        }
-                        State::PortForward(PortForward::TcpEstablished { receiver, conn_key })
-                            if readiness.contains(Readiness::READABLE) =>
-                        {
-                            let mut m = receiver.recv().unwrap();
-                            match m.parse() {
-                                Some(Message::StreamData { data }) => {
-                                    virtio_mmio_net.use_vq(0, |_device, vq| {
-                                        let _ = crate::virtio::virtio_net::prepare_tx_packet_writer(
-                                            &mut memory,
-                                            vq,
-                                            |writer| {
-                                                guest_net
-                                                    .lock()
-                                                    .send_to_guest(writer, conn_key, data)
-                                            },
-                                        );
-                                    });
-                                }
-                                _ => {
-                                    panic!("data-ch: unexpected message from tcpip: {:?}", m);
-                                }
-                            }
-                        }
-                        _ => {
-                            panic!("poll2: unexpected state");
-                        }
-                    }
-                }
-                Err(ErrorCode::WouldBlock) => {
-                    break 'poll_loop;
-                }
-                Err(e) => {
-                    panic!("poll2: {:?}", e);
-                }
-            }
-        }
-
-        virtio_mmio_net.use_vq(0 /* tx */, |_device, vq| {
-            let mut guest_net = guest_net.lock();
-            while guest_net.has_pending_packets() {
-                crate::virtio::virtio_net::prepare_tx_packet_writer(&mut memory, vq, |writer| {
-                    guest_net.send_pending_packet(writer)
-                })
-                .unwrap();
-            }
-        });
-
-        let irqs = irq_trigger.clear_all();
-        vcpu.inject_irqs(irqs);
-        let exit = vcpu.run().unwrap();
-        match exit {
-            VCpuExit::Reboot => {
-                break;
-            }
-            VCpuExit::Idle => {
-                // FIXME:
-                timer.set_timeout(Duration::from_millis(1)).unwrap();
-                poll3.wait().unwrap();
-            }
-            VCpuExit::LoadPageFault { gpaddr, data } => {
-                bus.read(&mut memory, gpaddr, data).unwrap();
-            }
-            VCpuExit::StorePageFault { gpaddr, data } => {
-                bus.write(&mut memory, gpaddr, data).unwrap();
-            }
+        if matches!(mainloop.run(), ControlFlow::Break(_)) {
+            break;
         }
     }
 }
