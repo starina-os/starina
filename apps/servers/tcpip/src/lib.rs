@@ -179,8 +179,7 @@ fn main(env_json: &[u8]) {
                 }
             }
             State::Control(_) if readiness == Readiness::CLOSED => {
-                debug_warn!("control channel closed");
-                break 'mainloop;
+                todo!("control channel closed");
             }
             State::Control(_) => {
                 panic!("unexpected readiness for control channel: {:?}", readiness);
