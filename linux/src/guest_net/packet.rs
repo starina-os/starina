@@ -15,26 +15,6 @@ impl MacAddr {
     pub const fn new(bytes: [u8; 6]) -> Self {
         MacAddr(bytes)
     }
-
-    /// Get the raw bytes
-    pub const fn as_bytes(&self) -> &[u8; 6] {
-        &self.0
-    }
-
-    /// Check if this is a broadcast address
-    pub fn is_broadcast(&self) -> bool {
-        *self == Self::BROADCAST
-    }
-
-    /// Check if this is a multicast address (first bit of first byte is 1)
-    pub fn is_multicast(&self) -> bool {
-        self.0[0] & 0x01 != 0
-    }
-
-    /// Check if this is a unicast address
-    pub fn is_unicast(&self) -> bool {
-        !self.is_multicast()
-    }
 }
 
 impl Display for MacAddr {
@@ -77,51 +57,6 @@ impl Ipv4Addr {
     pub const fn new(a: u8, b: u8, c: u8, d: u8) -> Self {
         Ipv4Addr([a, b, c, d])
     }
-
-    /// Create a new IPv4 address from a byte array
-    pub const fn from_bytes(bytes: [u8; 4]) -> Self {
-        Ipv4Addr(bytes)
-    }
-
-    /// Get the raw bytes
-    pub const fn as_bytes(&self) -> &[u8; 4] {
-        &self.0
-    }
-
-    /// Get individual octets
-    pub const fn octets(&self) -> (u8, u8, u8, u8) {
-        (self.0[0], self.0[1], self.0[2], self.0[3])
-    }
-
-    /// Check if this is a broadcast address
-    pub fn is_broadcast(&self) -> bool {
-        *self == Self::BROADCAST
-    }
-
-    /// Check if this is a loopback address (127.x.x.x)
-    pub fn is_loopback(&self) -> bool {
-        self.0[0] == 127
-    }
-
-    /// Check if this is a private address (RFC 1918)
-    pub fn is_private(&self) -> bool {
-        match self.0[0] {
-            10 => true,                                // 10.0.0.0/8
-            172 => self.0[1] >= 16 && self.0[1] <= 31, // 172.16.0.0/12
-            192 => self.0[1] == 168,                   // 192.168.0.0/16
-            _ => false,
-        }
-    }
-
-    /// Check if this is a multicast address (224.0.0.0 - 239.255.255.255)
-    pub fn is_multicast(&self) -> bool {
-        self.0[0] >= 224 && self.0[0] <= 239
-    }
-
-    /// Check if this is an unspecified address (0.0.0.0)
-    pub fn is_unspecified(&self) -> bool {
-        *self == Self::UNSPECIFIED
-    }
 }
 
 impl Display for Ipv4Addr {
@@ -139,12 +74,6 @@ impl From<[u8; 4]> for Ipv4Addr {
 impl From<Ipv4Addr> for [u8; 4] {
     fn from(ip: Ipv4Addr) -> Self {
         ip.0
-    }
-}
-
-impl From<(u8, u8, u8, u8)> for Ipv4Addr {
-    fn from((a, b, c, d): (u8, u8, u8, u8)) -> Self {
-        Ipv4Addr([a, b, c, d])
     }
 }
 
