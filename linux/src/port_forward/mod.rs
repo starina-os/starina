@@ -35,13 +35,13 @@ enum State {
 pub struct PortForwarder {
     poll: Poll<State>,
     guest_net: Arc<Mutex<GuestNet>>,
-    virtio_mmio_net: Arc<VirtioMmio>,
+    virtio_net: Arc<VirtioMmio>,
 }
 
 impl PortForwarder {
     pub fn new(
         guest_net: Arc<Mutex<GuestNet>>,
-        virtio_mmio_net: Arc<VirtioMmio>,
+        virtio_net: Arc<VirtioMmio>,
         tcpip_rx: ChannelReceiver,
         listen_channels: Vec<(Port, Channel)>,
     ) -> Self {
@@ -73,7 +73,7 @@ impl PortForwarder {
         Self {
             poll,
             guest_net,
-            virtio_mmio_net,
+            virtio_net,
         }
     }
 
@@ -111,6 +111,9 @@ impl PortForwarder {
             match self.poll.try_wait() {
                 Ok((state, readiness)) => {
                     match &*state {
+                        State::Tcpip(_ch) => {
+                            todo!("unexpected tcpip channel readiness: {:?}", readiness);
+                        }
                         State::Listen { ch, guest_port }
                             if readiness.contains(Readiness::READABLE) =>
                         {
@@ -136,7 +139,7 @@ impl PortForwarder {
     }
 
     pub fn flush_pending_packets(&mut self, memory: &mut GuestMemory) {
-        self.virtio_mmio_net.use_vq(0, |_device, vq| {
+        self.virtio_net.use_vq(0, |_device, vq| {
             let mut guest_net = self.guest_net.lock();
             while guest_net.has_pending_packets() {
                 vq.push_desc(memory, |writer| {
@@ -149,7 +152,7 @@ impl PortForwarder {
     }
 
     fn send_tcp_data(&mut self, memory: &mut GuestMemory, conn_key: &ConnKey, data: &[u8]) {
-        self.virtio_mmio_net.use_vq(0, |_device, vq| {
+        self.virtio_net.use_vq(0, |_device, vq| {
             vq.push_desc(memory, |writer| {
                 let virtio_writer = VirtioPacketWriter::new(writer).unwrap();
                 self.guest_net
