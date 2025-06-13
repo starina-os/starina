@@ -104,7 +104,6 @@ impl Mainloop {
             .guest_net
             .lock()
             .connect_to_guest(guest_port, IpProto::Tcp, forwarder);
-        self.flush_pending_packets();
 
         self.poll2
             .add(

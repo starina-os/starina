@@ -139,10 +139,16 @@ impl TcpManager {
             return Err(SendError::UnknownConn);
         };
 
-        // If connection not established, queue the data.
+        // If connection not established, queue the data and try to send pending packets first.
         if !conn.is_established() {
             conn.queue_data(data.to_vec());
             trace!("Queued {} bytes for non-established connection", data.len());
+            
+            // If there are pending flags (like SYN), send them first
+            if conn.has_pending_replies() {
+                return self.send_pending_packet(writer);
+            }
+            
             return Ok(None);
         }
 
