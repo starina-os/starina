@@ -1,3 +1,5 @@
+pub use builder::BuilderState;
+pub use builder::PortForwarderBuilder;
 use starina::channel::Channel;
 use starina::message::Message;
 use starina::poll::Poll;
@@ -13,8 +15,6 @@ use crate::guest_net::IpProto;
 use crate::virtio::device::VirtioMmio;
 use crate::virtio::virtio_net::VirtioPacketWriter;
 
-pub use builder::{BuilderState, PortForwarderBuilder};
-
 mod builder;
 
 pub struct PortForwarder {
@@ -24,8 +24,16 @@ pub struct PortForwarder {
 }
 
 impl PortForwarder {
-    pub fn new(poll: Poll<BuilderState>, guest_net: Arc<Mutex<GuestNet>>, virtio_mmio_net: Arc<VirtioMmio>) -> Self {
-        Self { poll, guest_net, virtio_mmio_net }
+    pub fn new(
+        poll: Poll<BuilderState>,
+        guest_net: Arc<Mutex<GuestNet>>,
+        virtio_mmio_net: Arc<VirtioMmio>,
+    ) -> Self {
+        Self {
+            poll,
+            guest_net,
+            virtio_mmio_net,
+        }
     }
 
     pub fn new_connection(&mut self, ch: Channel, guest_port: u16) {
@@ -43,7 +51,10 @@ impl PortForwarder {
         self.poll
             .add(
                 receiver.handle().id(),
-                BuilderState::Connected { rx: receiver, conn_key },
+                BuilderState::Connected {
+                    rx: receiver,
+                    conn_key,
+                },
                 Readiness::READABLE,
             )
             .unwrap();
@@ -59,21 +70,17 @@ impl PortForwarder {
             match self.poll.try_wait() {
                 Ok((state, readiness)) => {
                     match &*state {
-                        BuilderState::Tcpip(ch) if readiness.contains(Readiness::READABLE | Readiness::CLOSED) => {
-                            if readiness.contains(Readiness::READABLE) {
-                                let _m = ch.recv().unwrap();
-                                // Handle ongoing TCPIP messages if needed
-                                // For now, just consume them to prevent blocking
-                            }
-                            // Handle TCPIP channel closure if needed
-                        }
-                        BuilderState::Listen { ch, guest_port } if readiness.contains(Readiness::READABLE) => {
+                        BuilderState::Listen { ch, guest_port }
+                            if readiness.contains(Readiness::READABLE) =>
+                        {
                             let mut m = ch.recv().unwrap();
                             if let Some(Message::Connect { handle }) = m.parse() {
                                 self.new_connection(handle, *guest_port);
                             }
                         }
-                        BuilderState::Connected { rx, conn_key } if readiness.contains(Readiness::READABLE) => {
+                        BuilderState::Connected { rx, conn_key }
+                            if readiness.contains(Readiness::READABLE) =>
+                        {
                             let mut m = rx.recv().unwrap();
                             if let Some(Message::StreamData { data }) = m.parse() {
                                 self.send_tcp_data(memory, conn_key, data);
