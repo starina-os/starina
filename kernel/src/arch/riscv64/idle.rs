@@ -81,7 +81,6 @@ pub fn idle() -> ! {
         asm!("csrsi sstatus, 1 << 1");
     }
 
-    info!("idle");
     loop {
         unsafe {
             asm!("wfi");
