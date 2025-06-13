@@ -124,8 +124,8 @@ impl Mainloop {
         });
     }
 
-    pub fn run(&mut self) -> ControlFlow<()> {
-        'poll_loop: loop {
+    pub fn process_pending_messages(&mut self) {
+        loop {
             match self.poll2.try_wait() {
                 Ok((state, readiness)) => {
                     match &*state {
@@ -163,18 +163,22 @@ impl Mainloop {
                     }
                 }
                 Err(ErrorCode::WouldBlock) => {
-                    break 'poll_loop;
+                    break;
                 }
                 Err(e) => {
                     panic!("poll2: {:?}", e);
                 }
             }
         }
+    }
 
+    pub fn run(&mut self) -> ControlFlow<()> {
+        self.process_pending_messages();
         self.flush_pending_packets();
 
         let irqs = self.irq_trigger.clear_all();
         self.vcpu.inject_irqs(irqs);
+
         let exit = self.vcpu.run().unwrap();
         match exit {
             VCpuExit::Reboot => ControlFlow::Break(()),
