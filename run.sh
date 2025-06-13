@@ -22,7 +22,7 @@ elif [[ -n ${CLIPPY:-} ]]; then
 fi
 
 cargo $cargo_cmd \
-    ${V:+-v} \
+    ${V:+-vvv} \
     ${RELEASE:+--release} \
     ${EXIT_ON_IDLE:+--features exit-on-idle} \
     -Z build-std=core,alloc \
