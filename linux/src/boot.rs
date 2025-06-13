@@ -20,8 +20,8 @@ use crate::guest_memory::GuestMemory;
 use crate::guest_net::GuestNet;
 use crate::interrupt::IrqTrigger;
 use crate::mmio::Bus;
+use crate::port_forward::Builder;
 use crate::port_forward::PortForwarder;
-use crate::port_forward::PortForwarderBuilder;
 use crate::riscv::device_tree::build_fdt;
 use crate::virtio::device::VIRTIO_MMIO_SIZE;
 use crate::virtio::device::VirtioMmio;
@@ -155,11 +155,8 @@ pub fn boot_linux(fs: FileSystem, ports: &[Port], tcpip_ch: Channel) {
     bus.add_device(VIRTIO_NET_ADDR, VIRTIO_MMIO_SIZE, virtio_mmio_net.clone());
 
     info!("waiting for tcpip to open ports...");
-    let port_forwarder = PortForwarderBuilder::new(tcpip_ch)
-        .with_ports(ports)
-        .with_guest_net(guest_net.clone())
-        .with_virtio_net(virtio_mmio_net.clone())
-        .build();
+    let port_forwarder =
+        Builder::new(tcpip_ch, guest_net.clone(), virtio_mmio_net.clone(), ports).build();
     info!("all ports are open");
 
     let timer = Timer::new().unwrap();

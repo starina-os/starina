@@ -1,13 +1,16 @@
-pub use builder::BuilderState;
-pub use builder::PortForwarderBuilder;
+pub use builder::Builder;
 use starina::channel::Channel;
+use starina::channel::ChannelReceiver;
+use starina::handle::Handleable;
 use starina::message::Message;
 use starina::poll::Poll;
 use starina::poll::Readiness;
 use starina::prelude::Box;
+use starina::prelude::vec::Vec;
 use starina::sync::Arc;
 use starina::sync::Mutex;
 
+use crate::Port;
 use crate::guest_memory::GuestMemory;
 use crate::guest_net::ConnKey;
 use crate::guest_net::GuestNet;
@@ -17,18 +20,56 @@ use crate::virtio::virtio_net::VirtioPacketWriter;
 
 mod builder;
 
+enum State {
+    Tcpip(ChannelReceiver),
+    Listen {
+        ch: Channel,
+        guest_port: u16,
+    },
+    Connected {
+        rx: ChannelReceiver,
+        conn_key: crate::guest_net::ConnKey,
+    },
+}
+
 pub struct PortForwarder {
-    poll: Poll<BuilderState>,
+    poll: Poll<State>,
     guest_net: Arc<Mutex<GuestNet>>,
     virtio_mmio_net: Arc<VirtioMmio>,
 }
 
 impl PortForwarder {
     pub fn new(
-        poll: Poll<BuilderState>,
         guest_net: Arc<Mutex<GuestNet>>,
         virtio_mmio_net: Arc<VirtioMmio>,
+        tcpip_rx: ChannelReceiver,
+        listen_channels: Vec<(Port, Channel)>,
     ) -> Self {
+        let poll = Poll::new().unwrap();
+
+        poll.add(
+            tcpip_rx.handle().id(),
+            State::Tcpip(tcpip_rx),
+            Readiness::READABLE | Readiness::CLOSED,
+        )
+        .unwrap();
+
+        for (port, handle) in listen_channels {
+            let Port::Tcp {
+                guest: guest_port, ..
+            } = port;
+
+            poll.add(
+                handle.handle_id(),
+                State::Listen {
+                    ch: handle,
+                    guest_port,
+                },
+                Readiness::READABLE,
+            )
+            .unwrap();
+        }
+
         Self {
             poll,
             guest_net,
@@ -51,7 +92,7 @@ impl PortForwarder {
         self.poll
             .add(
                 receiver.handle().id(),
-                BuilderState::Connected {
+                State::Connected {
                     rx: receiver,
                     conn_key,
                 },
@@ -70,7 +111,7 @@ impl PortForwarder {
             match self.poll.try_wait() {
                 Ok((state, readiness)) => {
                     match &*state {
-                        BuilderState::Listen { ch, guest_port }
+                        State::Listen { ch, guest_port }
                             if readiness.contains(Readiness::READABLE) =>
                         {
                             let mut m = ch.recv().unwrap();
@@ -78,7 +119,7 @@ impl PortForwarder {
                                 self.new_connection(handle, *guest_port);
                             }
                         }
-                        BuilderState::Connected { rx, conn_key }
+                        State::Connected { rx, conn_key }
                             if readiness.contains(Readiness::READABLE) =>
                         {
                             let mut m = rx.recv().unwrap();
