@@ -114,6 +114,10 @@ pub struct DescChainWriter<'a> {
 }
 
 impl<'a> DescChainWriter<'a> {
+    pub fn written_len(&self) -> usize {
+        self.written_len
+    }
+
     pub fn write<T: Copy>(&mut self, value: T) -> Result<(), guest_memory::Error> {
         let write_len = size_of::<T>();
         loop {
@@ -198,16 +202,6 @@ impl<'a> DescChainWriter<'a> {
         }
 
         Ok(())
-    }
-}
-
-impl<'a> guest_net::PacketWriter for DescChainWriter<'a> {
-    fn written_len(&self) -> usize {
-        self.written_len
-    }
-
-    fn write_bytes(&mut self, data: &[u8]) -> Result<(), guest_memory::Error> {
-        self.write_bytes(data)
     }
 }
 
@@ -426,6 +420,28 @@ impl Virtqueue {
         self.avail_index = (self.avail_index + 1) % (self.num_descs as u16);
 
         Some(DescChain { head: desc_index })
+    }
+
+    pub fn push_desc<F>(&mut self, memory: &mut GuestMemory, f: F) -> Result<(), ()>
+    where
+        F: FnOnce(DescChainWriter<'_>) -> Option<usize>,
+    {
+        let Some(desc) = self.pop_avail(memory) else {
+            debug_warn!("virtqueue: push_desc: no available descriptor");
+            return Err(());
+        };
+
+        let (_, writer) = desc.split(self, memory).unwrap();
+        let result = f(writer);
+
+        match result {
+            Some(written_len) => self.push_used(memory, desc, written_len as u32),
+            None => {
+                // TODO: push back to available queue
+            }
+        }
+
+        Ok(())
     }
 
     pub fn push_used(&mut self, memory: &mut GuestMemory, chain: DescChain, written_len: u32) {

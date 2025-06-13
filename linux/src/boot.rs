@@ -83,12 +83,10 @@ impl Mainloop {
         self.virtio_mmio_net.use_vq(0, |_device, vq| {
             let mut guest_net = self.guest_net.lock();
             while guest_net.has_pending_packets() {
-                crate::virtio::virtio_net::prepare_tx_packet_writer(
-                    &mut self.memory,
-                    vq,
-                    |writer| guest_net.send_pending_packet(writer),
-                )
-                .unwrap();
+                vq.push_desc(&mut self.memory, |writer| {
+                    let virtio_writer = crate::virtio::virtio_net::VirtioPacketWriter::new(writer).ok()?;
+                    guest_net.send_pending_packet(virtio_writer)
+                }).unwrap();
             }
         });
     }
@@ -116,10 +114,10 @@ impl Mainloop {
 
     fn new_tcp_data(&mut self, conn_key: &ConnKey, data: &[u8]) {
         self.virtio_mmio_net.use_vq(0, |_device, vq| {
-            crate::virtio::virtio_net::prepare_tx_packet_writer(&mut self.memory, vq, |writer| {
-                self.guest_net.lock().send_to_guest(writer, conn_key, data)
-            })
-            .unwrap();
+            vq.push_desc(&mut self.memory, |writer| {
+                let virtio_writer = crate::virtio::virtio_net::VirtioPacketWriter::new(writer).ok()?;
+                self.guest_net.lock().send_to_guest(virtio_writer, conn_key, data)
+            }).unwrap();
         });
     }
 

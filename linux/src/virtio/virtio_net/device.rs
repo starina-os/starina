@@ -2,6 +2,7 @@ use starina::prelude::*;
 use starina_utils::endianness::LittleEndian;
 
 use crate::guest_memory::GuestMemory;
+use crate::guest_net;
 use crate::guest_net::MacAddr;
 use crate::virtio::device::VirtioDevice;
 use crate::virtio::virtqueue::DescChain;
@@ -23,23 +24,13 @@ pub struct VirtioNetHdr {
     num_buffers: LittleEndian<u16>,
 }
 
-pub fn prepare_tx_packet_writer<F, E>(
-    memory: &mut GuestMemory,
-    vq: &mut Virtqueue,
-    f: F,
-) -> Result<(), ()>
-where
-    F: FnOnce(DescChainWriter<'_>) -> Result<Option<usize>, E>,
-{
-    // Now send the actual data
-    let Some(desc) = vq.pop_avail(memory) else {
-        debug_warn!("virtio-net: send_to_guest: no available descriptor");
-        return Err(());
-    };
+pub struct VirtioPacketWriter<'a> {
+    writer: DescChainWriter<'a>,
+}
 
-    let (_, mut writer) = desc.split(vq, memory).unwrap();
-    writer
-        .write(VirtioNetHdr {
+impl<'a> VirtioPacketWriter<'a> {
+    pub fn new(mut writer: DescChainWriter<'a>) -> Result<Self, crate::guest_memory::Error> {
+        writer.write(VirtioNetHdr {
             flags: 0,
             gso_type: 0,
             hdr_len: 0.into(),
@@ -47,22 +38,20 @@ where
             csum_start: 0.into(),
             csum_offset: 0.into(),
             num_buffers: 1.into(),
-        })
-        .unwrap();
+        })?;
 
-    let result = f(writer);
+        Ok(Self { writer })
+    }
+}
 
-    match result {
-        Ok(Some(written_len)) => vq.push_used(memory, desc, written_len as u32),
-        Ok(None) => {
-            // TODO: push back to available queue
-        }
-        Err(_) => {
-            panic!("virtio-net: send_to_guest");
-        }
+impl<'a> guest_net::PacketWriter for VirtioPacketWriter<'a> {
+    fn write_bytes(&mut self, data: &[u8]) -> Result<(), crate::guest_memory::Error> {
+        self.writer.write_bytes(data)
     }
 
-    Ok(())
+    fn written_len(&self) -> usize {
+        self.writer.written_len()
+    }
 }
 
 pub struct VirtioNet {
