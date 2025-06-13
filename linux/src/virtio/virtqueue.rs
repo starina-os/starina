@@ -429,7 +429,9 @@ impl Virtqueue {
         // FIXME: What if no available descriptor?
         let desc = self.pop_avail(memory).unwrap();
         let (_, writer) = desc.split(self, memory).unwrap();
+        // FIXME: Push back to available queue if f returns Err
         let written_len = f(writer)?;
+
         self.push_used(memory, desc, written_len as u32);
         Ok(())
     }
