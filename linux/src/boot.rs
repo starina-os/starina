@@ -32,6 +32,7 @@ use crate::virtio::device::VIRTIO_MMIO_SIZE;
 use crate::virtio::device::VirtioMmio;
 use crate::virtio::virtio_fs::VirtioFs;
 use crate::virtio::virtio_net::VirtioNet;
+use crate::virtio::virtio_net::VirtioPacketWriter;
 use crate::virtio::virtqueue::DescChainReader;
 
 const fn plic_mmio_size(num_cpus: u32) -> usize {
@@ -84,9 +85,10 @@ impl Mainloop {
             let mut guest_net = self.guest_net.lock();
             while guest_net.has_pending_packets() {
                 vq.push_desc(&mut self.memory, |writer| {
-                    let virtio_writer = crate::virtio::virtio_net::VirtioPacketWriter::new(writer).ok()?;
+                    let virtio_writer = VirtioPacketWriter::new(writer).unwrap();
                     guest_net.send_pending_packet(virtio_writer)
-                }).unwrap();
+                })
+                .unwrap();
             }
         });
     }
@@ -115,9 +117,12 @@ impl Mainloop {
     fn new_tcp_data(&mut self, conn_key: &ConnKey, data: &[u8]) {
         self.virtio_mmio_net.use_vq(0, |_device, vq| {
             vq.push_desc(&mut self.memory, |writer| {
-                let virtio_writer = crate::virtio::virtio_net::VirtioPacketWriter::new(writer).ok()?;
-                self.guest_net.lock().send_to_guest(virtio_writer, conn_key, data)
-            }).unwrap();
+                let virtio_writer = VirtioPacketWriter::new(writer).unwrap();
+                self.guest_net
+                    .lock()
+                    .send_to_guest(virtio_writer, conn_key, data)
+            })
+            .unwrap();
         });
     }
 

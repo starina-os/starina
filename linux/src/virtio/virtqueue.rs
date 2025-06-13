@@ -422,25 +422,15 @@ impl Virtqueue {
         Some(DescChain { head: desc_index })
     }
 
-    pub fn push_desc<F>(&mut self, memory: &mut GuestMemory, f: F) -> Result<(), ()>
+    pub fn push_desc<F, E>(&mut self, memory: &mut GuestMemory, f: F) -> Result<(), E>
     where
-        F: FnOnce(DescChainWriter<'_>) -> Option<usize>,
+        F: FnOnce(DescChainWriter<'_>) -> Result<usize, E>,
     {
-        let Some(desc) = self.pop_avail(memory) else {
-            debug_warn!("virtqueue: push_desc: no available descriptor");
-            return Err(());
-        };
-
+        // FIXME: What if no available descriptor?
+        let desc = self.pop_avail(memory).unwrap();
         let (_, writer) = desc.split(self, memory).unwrap();
-        let result = f(writer);
-
-        match result {
-            Some(written_len) => self.push_used(memory, desc, written_len as u32),
-            None => {
-                // TODO: push back to available queue
-            }
-        }
-
+        let written_len = f(writer)?;
+        self.push_used(memory, desc, written_len as u32);
         Ok(())
     }
 

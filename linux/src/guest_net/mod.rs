@@ -44,6 +44,8 @@ pub enum SendError {
     PacketBuild(#[from] packet_builder::BuildError),
     #[error("Unknown connection")]
     UnknownConn,
+    #[error("No sending packets")]
+    NoSendingPackets,
 }
 
 #[derive(Debug, Error)]
@@ -139,14 +141,8 @@ impl GuestNet {
         writer: impl PacketWriter,
         key: &ConnKey,
         data: &[u8],
-    ) -> Option<usize /* packet len */> {
-        match self.tcp_manager.send_to_guest(writer, key, data) {
-            Ok(result) => result,
-            Err(e) => {
-                debug_warn!("failed to send TCP data to guest: {:?}", e);
-                None
-            }
-        }
+    ) -> Result<usize /* packet len */, SendError> {
+        self.tcp_manager.send_to_guest(writer, key, data)
     }
 
     pub fn recv_from_guest(&mut self, reader: impl PacketReader) -> Result<(), RecvError> {
@@ -220,7 +216,7 @@ impl GuestNet {
     pub fn send_pending_packet(
         &mut self,
         writer: impl PacketWriter,
-    ) -> Option<usize /* packet len */> {
+    ) -> Result<usize /* packet len */, SendError> {
         if self.pending_arp_reply {
             let arp_reply = TxPacket::Arp {
                 operation: ArpOp::Reply,
@@ -235,20 +231,20 @@ impl GuestNet {
                 Ok(len) => len,
                 Err(e) => {
                     debug_warn!("failed to send ARP reply: {:?}", e);
-                    return None;
+                    return Err(SendError::PacketBuild(e));
                 }
             };
 
             self.pending_arp_reply = false;
-            return Some(written_len);
+            return Ok(written_len);
         }
 
         // Send TCP packets if needed.
         if self.tcp_manager.has_pending_packets() {
-            return self.tcp_manager.send_pending_packet(writer).ok().flatten();
+            return self.tcp_manager.send_pending_packet(writer);
         }
 
-        None
+        Err(SendError::NoSendingPackets)
     }
 
     /// Centralized MAC address verification for all packet types.

@@ -133,7 +133,7 @@ impl TcpManager {
         writer: impl PacketWriter,
         key: &ConnKey,
         data: &[u8],
-    ) -> Result<Option<usize /* packet len */>, SendError> {
+    ) -> Result<usize /* packet len */, SendError> {
         let Some(conn) = self.connections.get_mut(key) else {
             debug_warn!("unknown network connection: {:?}", key);
             return Err(SendError::UnknownConn);
@@ -143,13 +143,13 @@ impl TcpManager {
         if !conn.is_established() {
             conn.queue_data(data.to_vec());
             trace!("Queued {} bytes for non-established connection", data.len());
-            
+
             // If there are pending flags (like SYN), send them first
             if conn.has_pending_replies() {
                 return self.send_pending_packet(writer);
             }
-            
-            return Ok(None);
+
+            return Err(SendError::NoSendingPackets);
         }
 
         // Send data with proper TCP headers for established connection.
@@ -175,7 +175,7 @@ impl TcpManager {
         // Advance sequence number by data length.
         conn.advance_seq(data.len() as u32);
 
-        Ok(Some(written_len))
+        Ok(written_len)
     }
 
     /// Check if a connection exists.
@@ -192,7 +192,7 @@ impl TcpManager {
     pub fn send_pending_packet(
         &mut self,
         writer: impl PacketWriter,
-    ) -> Result<Option<usize /* packet len */>, SendError> {
+    ) -> Result<usize /* packet len */, SendError> {
         // First, send any pending replies.
         for (key, conn) in self.connections.iter_mut() {
             if conn.pending_flags != 0 {
@@ -214,7 +214,7 @@ impl TcpManager {
             }
         }
 
-        Ok(None)
+        Err(SendError::NoSendingPackets)
     }
 
     fn send_tcp_reply(
@@ -224,7 +224,7 @@ impl TcpManager {
         flags: u8,
         seq: u32,
         ack: u32,
-    ) -> Result<Option<usize /* packet len */>, SendError> {
+    ) -> Result<usize /* packet len */, SendError> {
         let tcp_packet = TxPacket::Tcp {
             src_ip: key.remote_ip,
             dst_ip: self.guest_ip,
@@ -240,7 +240,7 @@ impl TcpManager {
         let builder = PacketBuilder::new(writer, self.guest_mac, self.host_mac);
         let written_len = builder.send(&tcp_packet)?;
 
-        Ok(Some(written_len))
+        Ok(written_len)
     }
 
     /// Handle incoming TCP packet and manage connection state.
