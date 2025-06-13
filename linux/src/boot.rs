@@ -70,10 +70,10 @@ struct Mainloop {
     memory: GuestMemory,
     guest_net: Arc<Mutex<GuestNet>>,
     virtio_mmio_net: Arc<VirtioMmio>,
-    poll2: Poll<State>,
+    poll: Poll<State>,
     vcpu: VCpu,
     timer: Timer,
-    poll3: Poll<()>,
+    timer_poll: Poll<()>,
     bus: Bus,
     irq_trigger: IrqTrigger,
 }
@@ -105,7 +105,7 @@ impl Mainloop {
             .lock()
             .connect_to_guest(guest_port, IpProto::Tcp, forwarder);
 
-        self.poll2
+        self.poll
             .add(
                 receiver.handle().id(),
                 State::PortForward(PortForward::TcpEstablished { receiver, conn_key }),
@@ -125,7 +125,7 @@ impl Mainloop {
 
     pub fn process_pending_messages(&mut self) {
         loop {
-            match self.poll2.try_wait() {
+            match self.poll.try_wait() {
                 Ok((state, readiness)) => {
                     match &*state {
                         State::PortForward(PortForward::Tcp {
@@ -184,7 +184,7 @@ impl Mainloop {
             VCpuExit::Idle => {
                 // FIXME:
                 self.timer.set_timeout(Duration::from_millis(1)).unwrap();
-                self.poll3.wait().unwrap();
+                self.timer_poll.wait().unwrap();
                 ControlFlow::Continue(())
             }
             VCpuExit::LoadPageFault { gpaddr, data } => {
@@ -270,14 +270,15 @@ pub fn boot_linux(fs: FileSystem, ports: &[Port], tcpip_ch: Channel) {
     bus.add_device(VIRTIO_FS_ADDR, VIRTIO_MMIO_SIZE, virtio_mmio_fs);
     bus.add_device(VIRTIO_NET_ADDR, VIRTIO_MMIO_SIZE, virtio_mmio_net.clone());
 
-    let poll = Poll::new().unwrap();
+    let open_poll = Poll::new().unwrap();
     let (tcpip_tx, tcpip_rx) = tcpip_ch.split();
-    poll.add(
-        tcpip_rx.handle().id(),
-        State::Tcpip(tcpip_rx),
-        Readiness::READABLE | Readiness::CLOSED,
-    )
-    .unwrap();
+    open_poll
+        .add(
+            tcpip_rx.handle().id(),
+            State::Tcpip(tcpip_rx),
+            Readiness::READABLE | Readiness::CLOSED,
+        )
+        .unwrap();
 
     let mut remaining_ports = HashMap::with_capacity(ports.len());
     for (index, port) in ports.iter().enumerate() {
@@ -295,9 +296,9 @@ pub fn boot_linux(fs: FileSystem, ports: &[Port], tcpip_ch: Channel) {
 
     info!("waiting for tcpip to open ports...");
 
-    let poll2 = Poll::new().unwrap();
+    let poll = Poll::new().unwrap();
     while !remaining_ports.is_empty() {
-        let (state, readiness) = poll.wait().unwrap();
+        let (state, readiness) = open_poll.wait().unwrap();
         match &*state {
             State::Tcpip(ch) if readiness.contains(Readiness::READABLE) => {
                 let mut m = ch.recv().unwrap();
@@ -307,16 +308,15 @@ pub fn boot_linux(fs: FileSystem, ports: &[Port], tcpip_ch: Channel) {
                         let Port::Tcp {
                             guest: guest_port, ..
                         } = *port;
-                        poll2
-                            .add(
-                                handle.handle_id(),
-                                State::PortForward(PortForward::Tcp {
-                                    listen_ch: handle,
-                                    guest_port,
-                                }),
-                                Readiness::READABLE,
-                            )
-                            .unwrap();
+                        poll.add(
+                            handle.handle_id(),
+                            State::PortForward(PortForward::Tcp {
+                                listen_ch: handle,
+                                guest_port,
+                            }),
+                            Readiness::READABLE,
+                        )
+                        .unwrap();
                     }
                     _ => {
                         panic!("unexpected message from tcpip: {:?}", m);
@@ -332,8 +332,8 @@ pub fn boot_linux(fs: FileSystem, ports: &[Port], tcpip_ch: Channel) {
     info!("all ports are open");
 
     let timer = Timer::new().unwrap();
-    let poll3 = Poll::new().unwrap();
-    poll3
+    let timer_poll = Poll::new().unwrap();
+    timer_poll
         .add(timer.handle_id(), (), Readiness::READABLE)
         .unwrap();
 
@@ -350,10 +350,10 @@ pub fn boot_linux(fs: FileSystem, ports: &[Port], tcpip_ch: Channel) {
         memory,
         guest_net,
         virtio_mmio_net,
-        poll2,
+        poll,
         vcpu,
         timer,
-        poll3,
+        timer_poll,
         bus,
         irq_trigger,
     };
