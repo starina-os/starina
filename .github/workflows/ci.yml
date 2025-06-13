@@ -30,9 +30,12 @@ jobs:
           ~/.cargo/git
           target
           build
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        key: ${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-
 
     - name: Build World
       run: ./run.sh
       env:
+        V: 1
         BUILD_ONLY: 1
