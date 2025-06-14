@@ -13,13 +13,13 @@ use starina_types::address::GPAddr;
 use starina_types::vcpu::VCpuExit;
 use starina_utils::static_assert;
 
-use crate::port_forward::Port;
 use crate::fs::FileSystem;
 use crate::guest_memory::GuestMemory;
 use crate::guest_net::GuestNet;
 use crate::interrupt::IrqTrigger;
 use crate::mmio::Bus;
 use crate::port_forward;
+use crate::port_forward::Port;
 use crate::riscv::device_tree::build_fdt;
 use crate::virtio::device::VIRTIO_MMIO_SIZE;
 use crate::virtio::device::VirtioMmio;

@@ -1066,17 +1066,23 @@ fn save_virtual_csrs(context: &mut Context) {
     context.sepc = read_csr!("sepc");
 }
 
-fn handle_guest_page_faults(mutable: &mut Mutable, context: &mut Context, scause: u64, htval: u64, stval: u64) {
+fn handle_guest_page_faults(
+    mutable: &mut Mutable,
+    context: &mut Context,
+    scause: u64,
+    htval: u64,
+    stval: u64,
+) {
     let gpaddr = htval_to_gpaddr(htval, stval);
     let htinst = read_csr!("htinst");
-    
+
     let fault_kind = match scause {
         SCAUSE_GUEST_INST_PAGE_FAULT => ExitPageFaultKind::Execute,
         SCAUSE_GUEST_LOAD_PAGE_FAULT => ExitPageFaultKind::Load,
         SCAUSE_GUEST_STORE_PAGE_FAULT => ExitPageFaultKind::Store,
         _ => unreachable!("Invalid guest page fault scause: {}", scause),
     };
-    
+
     handle_guest_page_fault(mutable, context, htinst, gpaddr, fault_kind);
 }
 
@@ -1150,7 +1156,9 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
         }
         _ => {
             match scause {
-                SCAUSE_GUEST_INST_PAGE_FAULT | SCAUSE_GUEST_LOAD_PAGE_FAULT | SCAUSE_GUEST_STORE_PAGE_FAULT => {
+                SCAUSE_GUEST_INST_PAGE_FAULT
+                | SCAUSE_GUEST_LOAD_PAGE_FAULT
+                | SCAUSE_GUEST_STORE_PAGE_FAULT => {
                     handle_guest_page_faults(&mut mutable, context, scause, htval, stval);
                 }
                 SCAUSE_SV_EXT_INTR => {

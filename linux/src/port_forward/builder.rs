@@ -9,8 +9,8 @@ use starina::prelude::vec::Vec;
 use starina::sync::Arc;
 use starina::sync::Mutex;
 
-use super::PortForwarder;
 use super::Port;
+use super::PortForwarder;
 use crate::guest_net::GuestNet;
 use crate::virtio::device::VirtioMmio;
 
