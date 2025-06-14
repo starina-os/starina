@@ -1011,46 +1011,8 @@ fn htval_to_gpaddr(htval: u64, stval: u64) -> GPAddr {
     GPAddr::new((upper | lower) as usize)
 }
 
-extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
-    let context = unsafe { &mut (*vcpu).context };
-    debug_assert_eq!(context.magic, CONTEXT_MAGIC);
-
-    context.vsstatus = read_csr!("vsstatus");
-    context.vsepc = read_csr!("vsepc");
-    context.vscause = read_csr!("vscause");
-    context.vstval = read_csr!("vstval");
-    context.vsie = read_csr!("vsie");
-    context.vsip = read_csr!("vsip");
-    context.vstvec = read_csr!("vstvec");
-    context.vsscratch = read_csr!("vsscratch");
-    context.vsatp = read_csr!("vsatp");
-    context.vstimecmp = read_csr!("vstimecmp");
-    context.hstatus = read_csr!("hstatus");
-    context.hie = read_csr!("hie");
-    context.hip = read_csr!("hip");
-    context.sstatus = read_csr!("sstatus");
-    context.sepc = read_csr!("sepc");
-
-    if context.vstimecmp < u64::MAX {
-        unsafe {
-            // info!("vcpu_trap_handler: vstimecmp={:x}", context.vstimecmp);
-            let mut now: u64;
-            asm!("csrr {}, time", out(reg) now);
-            let htime = now.wrapping_sub(context.htimedelta);
-            asm!("csrw stimecmp, {}", in(reg) htime);
-        }
-    }
-
-    let scause: u64;
-    let stval: u64;
-    unsafe {
-        asm!("csrr {}, scause", out(reg) scause);
-        asm!("csrr {}, stval", out(reg) stval);
-    }
-
-    let is_intr = scause & (1 << 63) != 0;
-    let code = scause & !(1 << 63);
-    let scause_str = match (is_intr, code) {
+fn scause_to_string(is_intr: bool, code: u64) -> &'static str {
+    match (is_intr, code) {
         (true, 0) => "user software interrupt",
         (true, 1) => "supervisor software interrupt",
         (true, 2) => "hypervisor software interrupt",
@@ -1073,7 +1035,7 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
         (false, 7) => "store/AMO access fault",
         (false, 8) => "environment call from U-mode",
         (false, 9) => "environment call from S-mode",
-        (false, 10) => "Environment call from VS-mode",
+        (false, 10) => "environment call from VS-mode",
         (false, 11) => "environment call from M-mode",
         (false, 12) => "instruction page fault",
         (false, 13) => "load page fault",
@@ -1083,7 +1045,67 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
         (false, 22) => "virtual instruction",
         (false, 23) => "store/AMO guest-page fault",
         _ => "unknown",
+    }
+}
+
+fn save_virtual_csrs(context: &mut Context) {
+    context.vsstatus = read_csr!("vsstatus");
+    context.vsepc = read_csr!("vsepc");
+    context.vscause = read_csr!("vscause");
+    context.vstval = read_csr!("vstval");
+    context.vsie = read_csr!("vsie");
+    context.vsip = read_csr!("vsip");
+    context.vstvec = read_csr!("vstvec");
+    context.vsscratch = read_csr!("vsscratch");
+    context.vsatp = read_csr!("vsatp");
+    context.vstimecmp = read_csr!("vstimecmp");
+    context.hstatus = read_csr!("hstatus");
+    context.hie = read_csr!("hie");
+    context.hip = read_csr!("hip");
+    context.sstatus = read_csr!("sstatus");
+    context.sepc = read_csr!("sepc");
+}
+
+fn handle_guest_page_faults(mutable: &mut Mutable, context: &mut Context, scause: u64, htval: u64, stval: u64) {
+    let gpaddr = htval_to_gpaddr(htval, stval);
+    let htinst = read_csr!("htinst");
+    
+    let fault_kind = match scause {
+        SCAUSE_GUEST_INST_PAGE_FAULT => ExitPageFaultKind::Execute,
+        SCAUSE_GUEST_LOAD_PAGE_FAULT => ExitPageFaultKind::Load,
+        SCAUSE_GUEST_STORE_PAGE_FAULT => ExitPageFaultKind::Store,
+        _ => unreachable!("Invalid guest page fault scause: {}", scause),
     };
+    
+    handle_guest_page_fault(mutable, context, htinst, gpaddr, fault_kind);
+}
+
+extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
+    let context = unsafe { &mut (*vcpu).context };
+    debug_assert_eq!(context.magic, CONTEXT_MAGIC);
+
+    save_virtual_csrs(context);
+
+    if context.vstimecmp < u64::MAX {
+        unsafe {
+            // info!("vcpu_trap_handler: vstimecmp={:x}", context.vstimecmp);
+            let mut now: u64;
+            asm!("csrr {}, time", out(reg) now);
+            let htime = now.wrapping_sub(context.htimedelta);
+            asm!("csrw stimecmp, {}", in(reg) htime);
+        }
+    }
+
+    let scause: u64;
+    let stval: u64;
+    unsafe {
+        asm!("csrr {}, scause", out(reg) scause);
+        asm!("csrr {}, stval", out(reg) stval);
+    }
+
+    let is_intr = scause & (1 << 63) != 0;
+    let code = scause & !(1 << 63);
+    let scause_str = scause_to_string(is_intr, code);
 
     let mut htval: u64;
     unsafe {
@@ -1128,38 +1150,8 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
         }
         _ => {
             match scause {
-                SCAUSE_GUEST_INST_PAGE_FAULT => {
-                    let gpaddr = htval_to_gpaddr(htval, stval);
-                    let htinst = read_csr!("htinst");
-                    handle_guest_page_fault(
-                        &mut mutable,
-                        context,
-                        htinst,
-                        gpaddr,
-                        ExitPageFaultKind::Execute,
-                    );
-                }
-                SCAUSE_GUEST_LOAD_PAGE_FAULT => {
-                    let gpaddr = htval_to_gpaddr(htval, stval);
-                    let htinst = read_csr!("htinst");
-                    handle_guest_page_fault(
-                        &mut mutable,
-                        context,
-                        htinst,
-                        gpaddr,
-                        ExitPageFaultKind::Load,
-                    );
-                }
-                SCAUSE_GUEST_STORE_PAGE_FAULT => {
-                    let gpaddr = htval_to_gpaddr(htval, stval);
-                    let htinst = read_csr!("htinst");
-                    handle_guest_page_fault(
-                        &mut mutable,
-                        context,
-                        htinst,
-                        gpaddr,
-                        ExitPageFaultKind::Store,
-                    );
+                SCAUSE_GUEST_INST_PAGE_FAULT | SCAUSE_GUEST_LOAD_PAGE_FAULT | SCAUSE_GUEST_STORE_PAGE_FAULT => {
+                    handle_guest_page_faults(&mut mutable, context, scause, htval, stval);
                 }
                 SCAUSE_SV_EXT_INTR => {
                     use super::plic::use_plic;
