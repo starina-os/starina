@@ -781,8 +781,9 @@ impl VCpu {
             }
         };
 
-        if run_state.irqs != 0 {
-            mutable.plic.update(run_state.irqs);
+        let irqs = run_state.irqs;
+        if irqs != 0 {
+            mutable.plic.update(irqs);
         }
 
         // FIXME:
