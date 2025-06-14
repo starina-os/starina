@@ -4,7 +4,10 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"log"
+	"net/http"
 	"os"
+	"runtime"
 	"strings"
 )
 
@@ -22,4 +25,22 @@ func main() {
 	fmt.Println("  /\\_/\\  /")
 	fmt.Println(" ( o.o )")
 	fmt.Println(" \\(___)")
+
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		w.Header().Set("Server", runtime.Version())
+		catArt := `
+      ____________
+     < Hello Web! >
+      ------------
+          /
+  /\_/\  /
+ ( o.o )
+ \(___)
+`
+		fmt.Fprint(w, catArt)
+	})
+
+	fmt.Fprintln(os.Stderr, "Starting cat server on :8080")
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }
