@@ -32,6 +32,7 @@ use crate::arch::riscv64::riscv::SCAUSE_GUEST_INST_PAGE_FAULT;
 use crate::arch::riscv64::riscv::SCAUSE_GUEST_LOAD_PAGE_FAULT;
 use crate::arch::riscv64::riscv::SCAUSE_GUEST_STORE_PAGE_FAULT;
 use crate::arch::riscv64::riscv::SCAUSE_HOST_TIMER_INTR;
+use crate::arch::riscv64::riscv::SCAUSE_SV_EXT_INTR;
 use crate::arch::riscv64::riscv::SCAUSE_VIRTUAL_INST;
 use crate::cpuvar::CpuVar;
 use crate::cpuvar::current_thread;
@@ -1159,6 +1160,16 @@ extern "C" fn vcpu_trap_handler(vcpu: *mut VCpu) -> ! {
                         gpaddr,
                         ExitPageFaultKind::Store,
                     );
+                }
+                SCAUSE_SV_EXT_INTR => {
+                    use super::plic::use_plic;
+                    drop(mutable);
+
+                    // FIXME: dup
+                    use_plic(|plic| {
+                        plic.handle_interrupt();
+                    });
+                    switch_thread();
                 }
                 _ => {
                     panic!(
