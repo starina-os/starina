@@ -81,11 +81,6 @@ pub extern "C" fn interrupt_handler() -> ! {
         // let ret = syscall_handler(a0, a1, a2, a3, a4, a5);
         todo!()
     } else if (is_intr, code) == (true, 5) {
-        use crate::thread::TIMER_QUEUE;
-        while let Some(thread) = TIMER_QUEUE.lock().pop() {
-            thread.resume_from_idle_vcpu();
-        }
-
         crate::timer::handle_timer_interrupt();
 
         switch_thread();
