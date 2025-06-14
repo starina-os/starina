@@ -19,14 +19,17 @@ fn main() {
     println!("cargo:rerun-if-changed=build-linux.sh");
     println!("cargo:rerun-if-changed=linux.riscv64.config");
     println!("cargo:rerun-if-changed=linuxinit");
+    println!("cargo:rerun-if-changed=catsay.go");
 
     let manifest_dir = env::var("CARGO_MANIFEST_DIR").expect("failed to get manifest directory");
     let build_status = Command::new("docker")
         .arg("build")
+        .arg("--progress=plain")
         .arg("-t")
         .arg("starina-linux")
         .arg(".")
         .current_dir(&manifest_dir)
+        .env("DOCKER_BUILDKIT", "1")
         .status()
         .expect("failed to execute docker build");
 
