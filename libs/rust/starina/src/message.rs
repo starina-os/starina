@@ -1,4 +1,5 @@
 use alloc::boxed::Box;
+use core::fmt;
 use core::mem;
 use core::mem::MaybeUninit;
 use core::mem::size_of;
@@ -385,5 +386,11 @@ impl OwnedMessage {
 
     pub fn parse(&mut self) -> Option<Message<'_>> {
         Message::deserialize(self.msginfo, &mut self.buffer)
+    }
+}
+
+impl fmt::Debug for OwnedMessage {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "OwnedMessage {{ msginfo: {:?} }}", self.msginfo)
     }
 }
