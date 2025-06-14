@@ -2,49 +2,52 @@
 
 Starina (named after [stellina](https://en.wiktionary.org/wiki/stellina)), is a general-purpose, microkernel-based, modern operating system designed for developers. It aims to be a production-ready OS, and more importantly, a fun and easy-to-understand OS where you can enjoy the development as if you are writing a Web application.
 
-## Goals
+## Philosophy
 
 The ultimate goal of this project is to create a production-ready OS to be a good alternative to real-world OSes. To make this happen, Starina values the following principles:
 
-- **Userspace-first approach:** Make OS development approachable and fun for everyone. Prioritize developer experience in the userspace, where the most OS components reside. The microkernel is just a runtime for applications.
-- **Simplicity over perfection:** Emphasize a straightforward design which covers the most common use cases. Make it work first. Make it better later.
-- **Incrementally adoptable:** Facilitate easy adoption of Starina by providing a seamless integration with existing systems.
+- **Userspace-first:** Most OS components live in userspace for better developer experience. The microkernel simply provides a runtime for applications.
+- **Simplicity over perfection:** Straightforward design that covers common use cases. Make it work first, optimize later.
+- **Incrementally adoptable:** Easy integration with existing systems to facilitate gradual adoption.
 
-## Roadmap for 2025
+## 2025 Roadmap
 
-This year, we focus on cloud computing domain, and serve [https://starina.dev](https://starina.dev) with a modern Web framework running on Starina's Linux compatibility layer:
+This year we're focusing on cloud computing, with [starina.dev](https://starina.dev) running on Starina's Linux compatibility layer:
 
 ![Architecture](./docs/architecture.svg)
 
-- [x] Prototyping an microkernel-based OS in Rust: [https://starina.dev](https://starina.dev) is served by Starina on Linux/QEMU hypervisor!
-- [x] Redesign the OS based on lessons learned
-- [x] Rewrite from scratch
-- [x] Rust-based almost-zero-cost isolation ([Unikernel](https://en.wikipedia.org/wiki/Unikernel) style)
-- [x] TCP/IP server
-- [x] Wrap up APIs
+- [x] Microkernel prototype in Rust ([starina.dev](https://starina.dev) running on Linux/QEMU!)
+- [x] Complete redesign and rewrite
+- [x] Rust-based zero-cost isolation ([unikernel](https://en.wikipedia.org/wiki/Unikernel) style)
+- [x] Device tree support
+- [x] Asynchronous message passing + epoll-like event driven API
+- [x] Declarative OS service discovery
+- [x] TCP/IP networking
+- [x] Virtio-net device dirver
 - [x] WSL2-like Linux compatibility layer
-- [ ] File system server **(work in progress)**
-- [ ] TypeScript API (maybe based on WebAssembly isolation)
-- [ ] Usermode isolation (traditional microkernel style)
-- [ ] Shell
-- [ ] Streamlined observability and debugging experience
+- [ ] **WIP:** Linux container image support (`docker run`-like experience)
+- [ ] Shell (in an unopinionated headless Web-based approach)
+- [ ] File system server
+- [ ] TypeScript (WebAssembly-based) or Swift (Embedded Swift) API
+- [ ] Traditional usermode-based isolation
 
-## How to run
+## Getting Started
 
 ```bash
 # Install dependencies
-brew install qemu riscv64-elf-gdb # Ubuntu: apt install qemu gdb-multiarch
+brew install qemu riscv64-elf-gdb  # macOS
+apt install qemu gdb-multiarch     # Ubuntu
 
-# Build and run (with GDB server enabled)
+# Build and run
 ./run.sh
 
-# Attach GDB to QEMU and start debugging
+# Debug with GDB
 riscv64-elf-gdb -ex bt
 ```
 
 ## Is it Linux or POSIX compatible?
 
-Starina API is a completely new design and is not POSIX compatible. For those who wants to run existing applications, you can also run Linux containers (lightweight VMs under the hood) with an ergonomic `std::process::Command`-like API. See [the blog post](https://seiya.me/blog/hypervisor-as-a-library) for more details.
+Starina uses a completely new API design and is not POSIX-compatible. However, you can run existing Linux applications using its lightweight VM based Linux compatibility library with an ergonomic `std::process::Command`-like API. Learn more in [this blog post](https://seiya.me/blog/hypervisor-as-a-library).
 
 ## Why Rust?
 
