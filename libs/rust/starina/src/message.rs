@@ -29,7 +29,7 @@ pub enum MessageKind {
     Error = 8,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 #[repr(transparent)]
 pub struct CallId(u32);
 
