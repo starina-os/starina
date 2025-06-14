@@ -25,8 +25,8 @@ pub enum Error {
     MapRam(ErrorCode),
     #[error("out of RAM")]
     OutOfRam,
-    #[error("invalid address: {0}")]
-    Invalipaddress(GPAddr),
+    #[error("invalid guest-physical address: {0}")]
+    InvalidGPAddr(GPAddr),
     #[error("out of range")]
     OutOfRange,
 }
@@ -115,7 +115,7 @@ impl GuestMemory {
 
     fn check_range(&self, gpaddr: GPAddr, size: usize) -> Result<Range<usize>, Error> {
         if gpaddr < self.start || gpaddr >= self.end {
-            return Err(Error::Invalipaddress(gpaddr));
+            return Err(Error::InvalidGPAddr(gpaddr));
         }
 
         let Some(end) = gpaddr.checked_add(size) else {

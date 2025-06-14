@@ -1,4 +1,8 @@
+use core::sync::atomic::AtomicU32;
+use core::sync::atomic::Ordering;
+
 use starina::prelude::*;
+use starina::sync::Arc;
 use starina::sync::Mutex;
 
 use super::virtqueue::DescChain;
@@ -64,6 +68,7 @@ struct Mutable {
 /// Virtio device over memory-mapped I/O.
 pub struct VirtioMmio {
     irq: u8,
+    irq_status: Arc<AtomicU32>,
     irq_trigger: IrqTrigger,
     device: Box<dyn VirtioDevice>,
     mutable: Mutex<Mutable>,
@@ -71,14 +76,16 @@ pub struct VirtioMmio {
 
 impl VirtioMmio {
     pub fn new<D: VirtioDevice + 'static>(irq_trigger: IrqTrigger, irq: u8, device: D) -> Self {
+        let irq_status = Arc::new(AtomicU32::new(0));
         let num_queues = device.num_queues();
         let mut queues = Vec::with_capacity(num_queues as usize);
         for i in 0..num_queues {
-            queues.push(Virtqueue::new(i));
+            queues.push(Virtqueue::new(irq_status.clone(), i));
         }
 
         Self {
             irq,
+            irq_status,
             irq_trigger,
             device: Box::new(device),
             mutable: Mutex::new(Mutable {
@@ -90,6 +97,23 @@ impl VirtioMmio {
                 queues,
             }),
         }
+    }
+
+    pub fn use_vq<T>(
+        &self,
+        index: u32,
+        f: impl FnOnce(&dyn VirtioDevice, &mut Virtqueue) -> T,
+    ) -> T {
+        let mut mutable = self.mutable.lock();
+        let vq = mutable.queues.get_mut(index as usize).unwrap();
+
+        let ret = f(&*self.device, vq);
+
+        if self.irq_status.load(Ordering::Relaxed) != 0 {
+            self.irq_trigger.trigger(self.irq);
+        }
+
+        ret
     }
 }
 
@@ -113,7 +137,7 @@ impl mmio::Device for VirtioMmio {
         }
 
         let width = dst.len();
-        let mut mutable = self.mutable.lock();
+        let mutable = self.mutable.lock();
         match width {
             4 => {
                 let value = match offset {
@@ -134,15 +158,7 @@ impl mmio::Device for VirtioMmio {
                     REG_QUEUE_READY => 0,
                     REG_QUEUE_SIZE_MAX => VIRTQUEUE_NUM_DESCS_MAX,
                     REG_QUEUE_CONFIG_GEN => 0,
-                    REG_INTERRUPT_STATUS => {
-                        let queue_index = mutable.queue_select as usize;
-                        let vq = mutable
-                            .queues
-                            .get_mut(queue_index)
-                            .expect("queue index out of range");
-
-                        vq.irq_status().into()
-                    }
+                    REG_INTERRUPT_STATUS => self.irq_status.load(Ordering::Relaxed),
                     _ => {
                         panic!(
                             "unexpected virtio-mmio read: offset={:x}, width={}",
@@ -158,7 +174,7 @@ impl mmio::Device for VirtioMmio {
             }
         }
 
-        if mutable.queues.iter().any(|vq| vq.should_interrupt()) {
+        if self.irq_status.load(Ordering::Relaxed) != 0 {
             self.irq_trigger.trigger(self.irq);
         }
 
@@ -226,13 +242,7 @@ impl mmio::Device for VirtioMmio {
                     .queue_notify(memory, &*self.device);
             }
             REG_INTERRUPT_ACK => {
-                let queue_index = mutable.queue_select as usize;
-                let vq = mutable
-                    .queues
-                    .get_mut(queue_index)
-                    .expect("queue index out of range");
-
-                vq.acknowledge_irq(value);
+                self.irq_status.fetch_and(0, Ordering::Relaxed);
             }
             REG_QUEUE_DESC_LOW | REG_QUEUE_DESC_HIGH => {
                 let queue_index = mutable.queue_select as usize;
@@ -266,7 +276,7 @@ impl mmio::Device for VirtioMmio {
             }
         }
 
-        if mutable.queues.iter().any(|vq| vq.should_interrupt()) {
+        if self.irq_status.load(Ordering::Relaxed) != 0 {
             self.irq_trigger.trigger(self.irq);
         }
 
