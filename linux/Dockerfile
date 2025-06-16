@@ -48,6 +48,8 @@ RUN mkdir -p /rootfs/tmp
 RUN mkdir -p /rootfs/var
 RUN mkdir -p /rootfs/virtfs
 
+RUN ln -sf /proc/net/pnp /rootfs/etc/resolv.conf
+
 RUN apt-get install -y golang
 ADD catsay.go /catsay.go
 RUN CGO_ENABLED=0 GOARCH=riscv64 GOOS=linux go build -o /rootfs/bin/catsay /catsay.go
