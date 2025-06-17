@@ -104,169 +104,81 @@ struct Context {
 }
 
 impl Context {
+    pub fn get_reg(&self, rs: u8) -> u64 {
+        match rs {
+            0 => 0,
+            1 => self.ra,
+            2 => self.sp,
+            3 => self.gp,
+            4 => self.tp,
+            5 => self.t0,
+            6 => self.t1,
+            7 => self.t2,
+            8 => self.s0,
+            9 => self.s1,
+            10 => self.a0,
+            11 => self.a1,
+            12 => self.a2,
+            13 => self.a3,
+            14 => self.a4,
+            15 => self.a5,
+            16 => self.a6,
+            17 => self.a7,
+            18 => self.s2,
+            19 => self.s3,
+            20 => self.s4,
+            21 => self.s5,
+            22 => self.s6,
+            23 => self.s7,
+            24 => self.s8,
+            25 => self.s9,
+            26 => self.s10,
+            27 => self.s11,
+            28 => self.t3,
+            29 => self.t4,
+            30 => self.t5,
+            31 => self.t6,
+            _ => {
+                panic!("unknown rs: {}", rs);
+            }
+        }
+    }
+
     pub fn set_reg(&mut self, rd: u8, value: u64) {
         match rd {
-            // x0: zero
-            0 => {
-                // Do nothing.
-            }
-            // x1: ra
-            1 => {
-                // trace!("load: RD=x1: ra");
-                self.ra = value;
-            }
-            // x2: sp
-            2 => {
-                // trace!("load: RD=x2: sp");
-                self.sp = value;
-            }
-            // x3: gp
-            3 => {
-                // trace!("load: RD=x3: gp");
-                self.gp = value;
-            }
-            // x4: tp
-            4 => {
-                // trace!("load: RD=x4: tp");
-                self.tp = value;
-            }
-            // x5: t0
-            5 => {
-                // trace!("load: RD=x5: t0");
-                self.t0 = value;
-            }
-            // x6: t1
-            6 => {
-                // trace!("load: RD=x6: t1");
-                self.t1 = value;
-            }
-            // x7: t2
-            7 => {
-                // trace!("load: RD=x7: t2");
-                self.t2 = value;
-            }
-            // x8: s0
-            8 => {
-                // trace!("load: RD=x8: s0");
-                self.s0 = value;
-            }
-            // x9: s1
-            9 => {
-                // trace!("load: RD=x9: s1");
-                self.s1 = value;
-            }
-            // x10: a0
-            10 => {
-                // trace!("load: RD=x10: a0");
-                self.a0 = value;
-            }
-            // x11: a1
-            11 => {
-                // trace!("load: RD=x11: a1");
-                self.a1 = value;
-            }
-            // x12: a2
-            12 => {
-                // trace!("load: RD=x12: a2");
-                self.a2 = value;
-            }
-            // x13: a3
-            13 => {
-                // trace!("load: RD=x13: a3");
-                self.a3 = value;
-            }
-            // x14: a4
-            14 => {
-                // trace!("load: RD=x14: a4");
-                self.a4 = value;
-            }
-            // x15: a5
-            15 => {
-                // trace!("load: RD=x15: a5");
-                self.a5 = value;
-            }
-            // x16: a6
-            16 => {
-                // trace!("load: RD=x16: a6");
-                self.a6 = value;
-            }
-            // x17: a7
-            17 => {
-                // trace!("load: RD=x17: a7");
-                self.a7 = value;
-            }
-            // x18: s2
-            18 => {
-                // trace!("load: RD=x18: s2");
-                self.s2 = value;
-            }
-            // x19: s3
-            19 => {
-                // trace!("load: RD=x19: s3");
-                self.s3 = value;
-            }
-            // x20: s4
-            20 => {
-                // trace!("load: RD=x20: s4");
-                self.s4 = value;
-            }
-            // x21: s5
-            21 => {
-                // trace!("load: RD=x21: s5");
-                self.s5 = value;
-            }
-            // x22: s6
-            22 => {
-                // trace!("load: RD=x22: s6");
-                self.s6 = value;
-            }
-            // x23: s7
-            23 => {
-                // trace!("load: RD=x23: s7");
-                self.s7 = value;
-            }
-            // x24: s8
-            24 => {
-                // trace!("load: RD=x24: s8");
-                self.s8 = value;
-            }
-            // x25: s9
-            25 => {
-                // trace!("load: RD=x25: s9");
-                self.s9 = value;
-            }
-            // x26: s10
-            26 => {
-                // trace!("load: RD=x26: s10");
-                self.s10 = value;
-            }
-            // x27: s11
-            27 => {
-                // trace!("load: RD=x27: s11");
-                self.s11 = value;
-            }
-            // x28: t3
-            28 => {
-                // trace!("load: RD=x28: t3");
-                self.t3 = value;
-            }
-            // x29: t4
-            29 => {
-                // trace!("load: RD=x29: t4");
-                self.t4 = value;
-            }
-            // x30: t5
-            30 => {
-                // trace!("load: RD=x30: t5");
-                self.t5 = value;
-            }
-            // x31: t6
-            31 => {
-                self.t6 = value;
-            }
-            _ => {
-                panic!("unknown rd: {}", rd);
-            }
+            0 => {} // Do nothing.
+            1 => self.ra = value,
+            2 => self.sp = value,
+            3 => self.gp = value,
+            4 => self.tp = value,
+            5 => self.t0 = value,
+            6 => self.t1 = value,
+            7 => self.t2 = value,
+            8 => self.s0 = value,
+            9 => self.s1 = value,
+            10 => self.a0 = value,
+            11 => self.a1 = value,
+            12 => self.a2 = value,
+            13 => self.a3 = value,
+            14 => self.a4 = value,
+            15 => self.a5 = value,
+            16 => self.a6 = value,
+            17 => self.a7 = value,
+            18 => self.s2 = value,
+            19 => self.s3 = value,
+            20 => self.s4 = value,
+            21 => self.s5 = value,
+            22 => self.s6 = value,
+            23 => self.s7 = value,
+            24 => self.s8 = value,
+            25 => self.s9 = value,
+            26 => self.s10 = value,
+            27 => self.s11 = value,
+            28 => self.t3 = value,
+            29 => self.t4 = value,
+            30 => self.t5 = value,
+            31 => self.t6 = value,
+            _ => panic!("unknown rd: {}", rd),
         }
     }
 }
@@ -539,77 +451,7 @@ fn htinst_store_inst(context: &Context, htinst: u64) -> (u8, [u8; 8], u8) {
         _ => panic!("unsupported funct3 for store: {:x}", funct3),
     };
 
-    // FIXME:
-    let value = match rs2 {
-        // x0: zero
-        0 => 0,
-        // x1: ra
-        1 => context.ra,
-        // x2: sp
-        2 => context.sp,
-        // x3: gp
-        3 => context.gp,
-        // x4: tp
-        4 => context.tp,
-        // x5: t0
-        5 => context.t0,
-        // x6: t1
-        6 => context.t1,
-        // x7: t2
-        7 => context.t2,
-        // x8: s0
-        8 => context.s0,
-        // x9: s1
-        9 => context.s1,
-        // x10: a0
-        10 => context.a0,
-        // x11: a1
-        11 => context.a1,
-        // x12: a2
-        12 => context.a2,
-        // x13: a3
-        13 => context.a3,
-        // x14: a4
-        14 => context.a4,
-        // x15: a5
-        15 => context.a5,
-        // x16: a6
-        16 => context.a6,
-        // x17: a7
-        17 => context.a7,
-        // x18: s2
-        18 => context.s2,
-        // x19: s3
-        19 => context.s3,
-        // x20: s4
-        20 => context.s4,
-        // x21: s5
-        21 => context.s5,
-        // x22: s6
-        22 => context.s6,
-        // x23: s7
-        23 => context.s7,
-        // x24: s8
-        24 => context.s8,
-        // x25: s9
-        25 => context.s9,
-        // x26: s10
-        26 => context.s10,
-        // x27: s11
-        27 => context.s11,
-        // x28: t3
-        28 => context.t3,
-        // x29: t4
-        29 => context.t4,
-        // x30: t5
-        30 => context.t5,
-        // x31: t6
-        31 => context.t6,
-        _ => {
-            panic!("unknown rs: {}", rs2);
-        }
-    };
-
+    let value = context.get_reg(rs2);
     let mut data = [0; 8];
     match width {
         1 => {
