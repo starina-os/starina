@@ -87,7 +87,7 @@ fn main(env_json: &[u8]) {
                         let (sender, receiver) = handle.split();
                         upstream_sender = Some(sender);
                         poll.add(
-                            receiver.handle().id(),
+                            receiver.handle_id(),
                             State::Upstream(receiver),
                             Readiness::READABLE | Readiness::CLOSED, /* FIXME: This should guarantee level-triggered */
                         )
@@ -115,7 +115,7 @@ fn main(env_json: &[u8]) {
             }
             State::Upstream(ch) if readiness == Readiness::CLOSED => {
                 warn!("upstream channel closed, stopping transmission");
-                poll.remove(ch.handle().id()).unwrap();
+                poll.remove(ch.handle_id()).unwrap();
                 upstream_sender = None;
             }
             &State::Upstream(_) => {

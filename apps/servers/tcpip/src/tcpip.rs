@@ -87,6 +87,12 @@ impl<'a> TcpIp<'a> {
         }
     }
 
+    pub fn close_socket(&mut self, handle: SocketHandle) -> Result<(), ErrorCode> {
+        let socket = self.sockets.get_mut(&handle).ok_or(ErrorCode::NotFound)?;
+        socket.state = SocketState::Closed;
+        Ok(())
+    }
+
     /// Makes progress in smoltcp - receive RX packets, update socket states,
     /// and transmit TX packets.
     ///

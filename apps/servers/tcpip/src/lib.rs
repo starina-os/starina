@@ -58,7 +58,7 @@ enum State {
     Startup(Channel),
     Driver(ChannelReceiver),
     Control(Channel),
-    Listen,
+    Listen(ChannelReceiver),
     Data {
         smol_handle: SocketHandle,
         ch: ChannelReceiver,
@@ -78,7 +78,7 @@ fn main(env_json: &[u8]) {
 
     let (driver_tx, driver_rx) = env.driver.split();
     poll.add(
-        driver_rx.handle().id(),
+        driver_rx.handle_id(),
         State::Driver(driver_rx),
         Readiness::READABLE | Readiness::CLOSED,
     )
@@ -154,8 +154,8 @@ fn main(env_json: &[u8]) {
                         let (our_ch, their_ch) = Channel::new().unwrap();
                         let (our_tx, our_rx) = our_ch.split();
                         poll.add(
-                            our_rx.handle().id(),
-                            State::Listen,
+                            our_rx.handle_id(),
+                            State::Listen(our_rx),
                             Readiness::READABLE | Readiness::CLOSED,
                         )
                         .unwrap();
@@ -178,14 +178,24 @@ fn main(env_json: &[u8]) {
                     }
                 }
             }
-            State::Control(_) if readiness == Readiness::CLOSED => {
-                todo!("control channel closed");
+            State::Control(ch) if readiness == Readiness::CLOSED => {
+                debug_warn!("control channel closed");
+                poll.remove(ch.handle_id()).unwrap();
             }
             State::Control(_) => {
                 panic!("unexpected readiness for control channel: {:?}", readiness);
             }
-            State::Listen => {
+            State::Listen(ch) if readiness.contains(Readiness::READABLE) => {
                 debug_warn!("got a message from a listen channel");
+                // Discard the message to free memory.
+                let _ = ch.recv();
+            }
+            State::Listen(ch) if readiness == Readiness::CLOSED => {
+                debug_warn!("listen channel closed");
+                poll.remove(ch.handle_id()).unwrap();
+            }
+            State::Listen(_) => {
+                panic!("unexpected readiness for listen channel: {:?}", readiness);
             }
             State::Data { ch, smol_handle } if readiness.contains(Readiness::READABLE) => {
                 let mut m = ch.recv().unwrap();
@@ -202,7 +212,11 @@ fn main(env_json: &[u8]) {
             }
             State::Data { ch, smol_handle } if readiness == Readiness::CLOSED => {
                 debug_warn!("data channel closed for socket {:?}", smol_handle);
-                poll.remove(ch.handle().id()).unwrap();
+                if let Err(err) = tcpip.close_socket(*smol_handle) {
+                    debug_warn!("failed to close socket: {:?}", err);
+                }
+
+                poll.remove(ch.handle_id()).unwrap();
             }
             State::Data { .. } => {
                 panic!("unexpected readiness for data channel: {:?}", readiness);
@@ -237,13 +251,13 @@ fn tcpip_poll<'a>(poll: &Poll<State>, tcpip: &mut TcpIp<'a>) {
             }
             SocketEvent::Close { ch } => {
                 debug_warn!("closing a socket");
-                poll.remove(ch.handle().id()).unwrap();
+                poll.remove(ch.handle_id()).unwrap();
             }
             SocketEvent::NewConnection { ch, smol_handle } => {
                 let (our_ch, their_ch) = Channel::new().unwrap();
                 let (our_tx, our_rx) = our_ch.split();
                 poll.add(
-                    our_rx.handle().id(),
+                    our_rx.handle_id(),
                     State::Data {
                         smol_handle,
                         ch: our_rx,

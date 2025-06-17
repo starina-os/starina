@@ -52,7 +52,7 @@ impl PortForwarder {
         let poll = Poll::new().unwrap();
 
         poll.add(
-            tcpip_rx.handle().id(),
+            tcpip_rx.handle_id(),
             State::Tcpip(tcpip_rx),
             Readiness::READABLE | Readiness::CLOSED,
         )
@@ -95,7 +95,7 @@ impl PortForwarder {
 
         self.poll
             .add(
-                receiver.handle().id(),
+                receiver.handle_id(),
                 State::Connected {
                     rx: receiver,
                     conn_key,

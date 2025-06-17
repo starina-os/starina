@@ -45,7 +45,7 @@ impl Interrupt {
     /// This tells the CPU (or the interrupt controller) that the interrupt has
     /// been handled and we are ready to receive the next one.
     pub fn acknowledge(&self) -> Result<(), ErrorCode> {
-        syscall::interrupt_ack(self.handle().id())
+        syscall::interrupt_ack(self.handle_id())
     }
 }
 

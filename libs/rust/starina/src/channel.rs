@@ -89,9 +89,11 @@ impl ChannelSender {
     pub fn send(&self, msg: Message<'_>) -> Result<(), ErrorCode> {
         self.0.send(msg)
     }
+}
 
-    pub fn handle(&self) -> &OwnedHandle {
-        &self.0.0
+impl Handleable for ChannelSender {
+    fn handle_id(&self) -> HandleId {
+        self.0.handle_id()
     }
 }
 
@@ -99,8 +101,10 @@ impl ChannelReceiver {
     pub fn recv(&self) -> Result<OwnedMessage, ErrorCode> {
         self.0.recv()
     }
+}
 
-    pub fn handle(&self) -> &OwnedHandle {
-        &self.0.0
+impl Handleable for ChannelReceiver {
+    fn handle_id(&self) -> HandleId {
+        self.0.handle_id()
     }
 }

@@ -57,7 +57,7 @@ fn main(env_json: &[u8]) {
     )
     .unwrap();
     poll.add(
-        tcpip_rx.handle().id(),
+        tcpip_rx.handle_id(),
         State::Tcpip(tcpip_rx),
         Readiness::READABLE | Readiness::CLOSED,
     )

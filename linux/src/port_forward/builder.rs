@@ -1,5 +1,6 @@
 use starina::channel::Channel;
 use starina::collections::HashMap;
+use starina::handle::Handleable;
 use starina::message::CallId;
 use starina::message::Message;
 use starina::poll::Poll;
@@ -44,7 +45,7 @@ impl<'a> Builder<'a> {
         let poll = Poll::new().unwrap();
 
         poll.add(
-            tcpip_rx.handle().id(),
+            tcpip_rx.handle_id(),
             (),
             Readiness::READABLE | Readiness::CLOSED,
         )
