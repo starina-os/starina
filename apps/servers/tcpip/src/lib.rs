@@ -171,7 +171,7 @@ impl<'a> Mainloop<'a> {
         self.tcpip.poll(|ev| {
             match ev {
                 SocketEvent::Data { ch, data } => {
-                    ch.send(Message::StreamData { data }).unwrap();
+                    ch.send(Message::Data { data }).unwrap();
                 }
                 SocketEvent::Closed { ch } => {
                     debug_warn!("socket fully closed, cleaning up channel");
@@ -224,7 +224,7 @@ fn main(env_json: &[u8]) {
 
     let transmit = move |data: &[u8]| {
         trace!("transmit {} bytes", data.len());
-        if let Err(err) = driver_tx.send(Message::FramedData { data }) {
+        if let Err(err) = driver_tx.send(Message::Data { data }) {
             debug_warn!("failed to send: {:?}", err);
         }
     };
@@ -306,7 +306,7 @@ fn main(env_json: &[u8]) {
             }
             State::Data { ch, smol_handle } if readiness.contains(Readiness::READABLE) => {
                 match ch.recv(&mut msgbuffer) {
-                    Ok(Message::StreamData { data }) => {
+                    Ok(Message::Data { data }) => {
                         mainloop.handle_data_stream(&poll, *smol_handle, data);
                     }
                     Ok(msg) => {
@@ -329,7 +329,7 @@ fn main(env_json: &[u8]) {
             }
             State::Driver(ch) if readiness.contains(Readiness::READABLE) => {
                 match ch.recv(&mut msgbuffer) {
-                    Ok(Message::FramedData { data }) => {
+                    Ok(Message::Data { data }) => {
                         mainloop.receive_rx_packet(&poll, data);
                     }
                     Ok(msg) => {

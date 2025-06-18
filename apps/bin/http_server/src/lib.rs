@@ -160,7 +160,7 @@ fn main(env_json: &[u8]) {
             }
             State::Data { conn, ch } if readiness.contains(Readiness::READABLE) => {
                 match ch.recv(&mut msgbuffer) {
-                    Ok(Message::StreamData { data }) => {
+                    Ok(Message::Data { data }) => {
                         let writer = ChannelWriter::new(&ch);
                         conn.lock().on_tcp_data(writer, data);
                     }

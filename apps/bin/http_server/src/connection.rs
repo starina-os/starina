@@ -22,7 +22,7 @@ impl<'a> Writer for ChannelWriter<'a> {
     type Error = ErrorCode;
 
     fn write(&mut self, buf: &[u8]) -> Result<(), Self::Error> {
-        self.0.send(Message::StreamData { data: buf })
+        self.0.send(Message::Data { data: buf })
     }
 }
 

@@ -117,7 +117,7 @@ fn main(env_json: &[u8]) {
             State::Upstream(ch) if readiness.contains(Readiness::READABLE) => {
                 match ch.recv(&mut msgbuffer) {
                     // Transmit the packet.
-                    Ok(Message::FramedData { data }) => {
+                    Ok(Message::Data { data }) => {
                         trace!("transmitting {} bytes", data.len());
                         virtio_net.transmit(data);
                     }
@@ -153,7 +153,7 @@ fn main(env_json: &[u8]) {
                         return;
                     };
 
-                    if let Err(err) = sender.send(Message::FramedData { data }) {
+                    if let Err(err) = sender.send(Message::Data { data }) {
                         if err == ErrorCode::Full {
                             // We don't backpressure the virtqueue because both the upstream
                             // and the peer over the network should retry later.

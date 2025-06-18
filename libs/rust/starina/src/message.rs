@@ -19,8 +19,7 @@ pub enum MessageKind {
     Connect = 1,
     Open = 3,
     OpenReply = 4,
-    StreamData = 5,
-    FramedData = 6,
+    Data = 5,
     Abort = 7,
     Error = 8,
 }
@@ -220,8 +219,7 @@ pub enum Message<'a> {
     Connect { handle: Channel },
     Open { call_id: CallId, uri: &'a [u8] },
     OpenReply { call_id: CallId, handle: Channel },
-    FramedData { data: &'a [u8] },
-    StreamData { data: &'a [u8] },
+    Data { data: &'a [u8] },
     Abort { call_id: CallId, reason: ErrorCode },
     Error { reason: ErrorCode },
 }
@@ -245,13 +243,9 @@ impl<'a> Message<'a> {
                 handles.write(0, handle);
                 Ok(MessageInfo::new(MessageKind::OpenReply as i32, len, 1))
             }
-            Message::FramedData { data: msg_data } => {
+            Message::Data { data: msg_data } => {
                 let len = data.bytes_only(msg_data);
-                Ok(MessageInfo::new(MessageKind::FramedData as i32, len, 0))
-            }
-            Message::StreamData { data: msg_data } => {
-                let len = data.bytes_only(msg_data);
-                Ok(MessageInfo::new(MessageKind::StreamData as i32, len, 0))
+                Ok(MessageInfo::new(MessageKind::Data as i32, len, 0))
             }
             Message::Abort { call_id, reason } => {
                 let len = data.header_only(RawAbortMsg { call_id, reason });
@@ -304,13 +298,9 @@ impl<'a> Message<'a> {
                     handle,
                 })
             }
-            kind if kind == MessageKind::FramedData as usize => {
+            kind if kind == MessageKind::Data as usize => {
                 let data = data.bytes_only(msginfo)?;
-                Some(Message::FramedData { data })
-            }
-            kind if kind == MessageKind::StreamData as usize => {
-                let data = data.bytes_only(msginfo)?;
-                Some(Message::StreamData { data })
+                Some(Message::Data { data })
             }
             kind if kind == MessageKind::Abort as usize => {
                 let raw: &RawAbortMsg = data.header_only(msginfo);

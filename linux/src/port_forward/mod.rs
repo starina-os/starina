@@ -89,7 +89,7 @@ impl PortForwarder {
         let (sender, receiver) = ch.split();
 
         let forwarder = Box::new(move |_conn_key: &ConnKey, data: &[u8]| {
-            sender.send(Message::StreamData { data }).unwrap();
+            sender.send(Message::Data { data }).unwrap();
         });
 
         let conn_key = self
@@ -146,7 +146,7 @@ impl PortForwarder {
                             if readiness.contains(Readiness::READABLE) =>
                         {
                             match rx.recv(&mut msgbuffer) {
-                                Ok(Message::StreamData { data }) => {
+                                Ok(Message::Data { data }) => {
                                     self.send_tcp_data(memory, conn_key, data);
                                 }
                                 Ok(msg) => {
