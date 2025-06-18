@@ -156,6 +156,9 @@ impl<'a> Mainloop<'a> {
         if let Err(err) = self.tcpip.close_socket(smol_handle) {
             debug_warn!("failed to close socket: {:?}", err);
         }
+
+        // Remove channel from polling since it's closed, but socket will remain
+        // in tcpip to complete graceful shutdown.
         poll.remove(ch.handle_id()).unwrap();
     }
 
@@ -170,9 +173,14 @@ impl<'a> Mainloop<'a> {
                 SocketEvent::Data { ch, data } => {
                     ch.send(Message::StreamData { data }).unwrap();
                 }
-                SocketEvent::Close { ch } => {
-                    debug_warn!("closing a socket");
-                    poll.remove(ch.handle_id()).unwrap();
+                SocketEvent::Closed { ch } => {
+                    debug_warn!("socket fully closed, cleaning up channel");
+                    if let Err(err) = poll.remove(ch.handle_id()) {
+                        debug_warn!(
+                            "failed to remove channel from poll (already removed?): {:?}",
+                            err
+                        );
+                    }
                 }
                 SocketEvent::NewConnection { ch, smol_handle } => {
                     let (our_ch, their_ch) = Channel::new().unwrap();

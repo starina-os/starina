@@ -27,6 +27,7 @@ fn now() -> Instant {
 enum SocketState {
     Listening { listen_endpoint: IpListenEndpoint },
     Established,
+    Closing, // Graceful shutdown in progress
     Closed,
 }
 
@@ -46,7 +47,7 @@ pub enum SocketEvent<'a> {
         ch: &'a ChannelSender,
         data: &'a [u8],
     },
-    Close {
+    Closed {
         ch: &'a ChannelSender,
     },
 }
@@ -89,7 +90,16 @@ impl<'a> TcpIp<'a> {
 
     pub fn close_socket(&mut self, handle: SocketHandle) -> Result<(), ErrorCode> {
         let socket = self.sockets.get_mut(&handle).ok_or(ErrorCode::NotFound)?;
-        socket.state = SocketState::Closed;
+
+        // Only initiate graceful shutdown if socket is established
+        if socket.state == SocketState::Established {
+            let smol_sock = self.smol_sockets.get_mut::<tcp::Socket>(socket.smol_handle);
+            smol_sock.close();
+            socket.state = SocketState::Closing;
+        } else {
+            socket.state = SocketState::Closed;
+        }
+
         Ok(())
     }
 
@@ -146,7 +156,7 @@ impl<'a> TcpIp<'a> {
                     }
                     (SocketState::Listening { .. }, _) => {
                         // Inactive, closed, or unknown state. Close the socket.
-                        callback(SocketEvent::Close { ch: &sock.ch });
+                        callback(SocketEvent::Closed { ch: &sock.ch });
                         sock.state = SocketState::Closed;
                     }
                     (SocketState::Established, _) if smol_sock.can_recv() => {
@@ -168,8 +178,17 @@ impl<'a> TcpIp<'a> {
                     }
                     (SocketState::Established, _) => {
                         // Unknown state. Close the connection.
-                        callback(SocketEvent::Close { ch: &sock.ch });
+                        callback(SocketEvent::Closed { ch: &sock.ch });
                         sock.state = SocketState::Closed;
+                    }
+                    (SocketState::Closing, tcp::State::Closed) => {
+                        // Graceful shutdown complete, remove the socket
+                        callback(SocketEvent::Closed { ch: &sock.ch });
+                        sock.state = SocketState::Closed;
+                    }
+                    (SocketState::Closing, _) => {
+                        // Still in graceful shutdown, keep socket alive
+                        // Continue sending any remaining data
                     }
                     (SocketState::Closed, _) => {
                         unreachable!();
