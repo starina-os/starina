@@ -8,9 +8,12 @@ use connection::Conn;
 use serde::Deserialize;
 use starina::channel::Channel;
 use starina::channel::ChannelReceiver;
+use starina::channel::RecvError;
+use starina::error::ErrorCode;
 use starina::handle::Handleable;
 use starina::message::CallId;
 use starina::message::Message;
+use starina::message::MessageBuffer;
 use starina::poll::Poll;
 use starina::poll::Readiness;
 use starina::prelude::*;
@@ -48,6 +51,7 @@ enum State {
 fn main(env_json: &[u8]) {
     let env: Env = serde_json::from_slice(env_json).expect("Failed to parse environment");
 
+    let mut msgbuffer = MessageBuffer::new();
     let poll = Poll::new().unwrap();
     let (tcpip_tx, tcpip_rx) = env.tcpip.split();
     poll.add(
@@ -76,17 +80,23 @@ fn main(env_json: &[u8]) {
         let (state, readiness) = poll.wait().unwrap();
         match &*state {
             State::Tcpip(ch) if readiness.contains(Readiness::READABLE) => {
-                let mut m = ch.recv().unwrap();
-                match m.parse() {
-                    Some(Message::OpenReply { call_id, handle }) => {
+                match ch.recv(&mut msgbuffer) {
+                    Ok(Message::OpenReply { call_id, handle }) => {
                         assert_eq!(call_id, open_call_id);
                         break 'initloop handle;
                     }
-                    _ => {
+                    Ok(msg) => {
+                        debug_warn!("unexpected message on tcpip channel: {:?}", msg);
+                    }
+                    Err(RecvError::Parse(msginfo)) => {
                         debug_warn!(
-                            "unexpected message in tcpip channel while initializing: {:?}",
-                            m.msginfo
+                            "unhandled message type on tcpip channel: {}",
+                            msginfo.kind()
                         );
+                    }
+                    Err(RecvError::Syscall(ErrorCode::WouldBlock)) => {}
+                    Err(RecvError::Syscall(err)) => {
+                        debug_warn!("recv error on tcpip channel: {:?}", err);
                     }
                 }
             }
@@ -111,9 +121,8 @@ fn main(env_json: &[u8]) {
         let (state, readiness) = poll.wait().unwrap();
         match &*state {
             State::Listen(ch) if readiness.contains(Readiness::READABLE) => {
-                let mut m = ch.recv().unwrap();
-                match m.parse() {
-                    Some(Message::Connect { handle }) => {
+                match ch.recv(&mut msgbuffer) {
+                    Ok(Message::Connect { handle }) => {
                         info!("new client connection");
                         let conn = Conn::new();
                         poll.add(
@@ -126,8 +135,18 @@ fn main(env_json: &[u8]) {
                         )
                         .unwrap();
                     }
-                    _ => {
-                        debug_warn!("unexpected message in listen channel: {:?}", m.msginfo);
+                    Ok(msg) => {
+                        debug_warn!("unexpected message on listen channel: {:?}", msg);
+                    }
+                    Err(RecvError::Parse(msginfo)) => {
+                        debug_warn!(
+                            "unhandled message type on listen channel: {}",
+                            msginfo.kind()
+                        );
+                    }
+                    Err(RecvError::Syscall(ErrorCode::WouldBlock)) => {}
+                    Err(RecvError::Syscall(err)) => {
+                        debug_warn!("recv error on listen channel: {:?}", err);
                     }
                 }
             }
@@ -140,14 +159,20 @@ fn main(env_json: &[u8]) {
                 panic!("unexpected readiness for listen channel: {:?}", readiness);
             }
             State::Data { conn, ch } if readiness.contains(Readiness::READABLE) => {
-                let mut m = ch.recv().unwrap();
-                match m.parse() {
-                    Some(Message::StreamData { data }) => {
+                match ch.recv(&mut msgbuffer) {
+                    Ok(Message::StreamData { data }) => {
                         let writer = ChannelWriter::new(&ch);
                         conn.lock().on_tcp_data(writer, data);
                     }
-                    _ => {
-                        debug_warn!("unexpected message: {:?} in data channel", m.msginfo);
+                    Ok(msg) => {
+                        debug_warn!("unexpected message on data channel: {:?}", msg);
+                    }
+                    Err(RecvError::Parse(msginfo)) => {
+                        debug_warn!("unhandled message type on data channel: {}", msginfo.kind());
+                    }
+                    Err(RecvError::Syscall(ErrorCode::WouldBlock)) => {}
+                    Err(RecvError::Syscall(err)) => {
+                        debug_warn!("recv error on data channel: {:?}", err);
                     }
                 }
             }

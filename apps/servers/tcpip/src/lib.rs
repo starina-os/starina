@@ -15,9 +15,12 @@ use smoltcp::wire::IpCidr;
 use smoltcp::wire::IpListenEndpoint;
 use starina::channel::Channel;
 use starina::channel::ChannelReceiver;
+use starina::channel::RecvError;
 use starina::error::ErrorCode;
 use starina::handle::Handleable;
+use starina::message::CallId;
 use starina::message::Message;
+use starina::message::MessageBuffer;
 use starina::poll::Poll;
 use starina::poll::Readiness;
 use starina::prelude::*;
@@ -65,6 +68,133 @@ enum State {
     },
 }
 
+struct Mainloop<'a> {
+    tcpip: TcpIp<'a>,
+}
+
+impl<'a> Mainloop<'a> {
+    fn new(tcpip: TcpIp<'a>) -> Self {
+        Self { tcpip }
+    }
+
+    fn handle_startup_connect(&mut self, poll: &Poll<State>, handle: Channel) {
+        poll.add(
+            handle.handle_id(),
+            State::Control(handle),
+            Readiness::READABLE | Readiness::CLOSED,
+        )
+        .unwrap();
+    }
+
+    fn handle_control_open(
+        &mut self,
+        poll: &Poll<State>,
+        ch: &Channel,
+        call_id: CallId,
+        uri: &[u8],
+    ) {
+        let uri = core::str::from_utf8(uri).unwrap();
+        info!("got open message: {}", uri);
+        let Some(("tcp-listen", rest)) = uri.split_once(':') else {
+            ch.send(Message::Abort {
+                call_id,
+                reason: ErrorCode::InvalidUri,
+            })
+            .unwrap();
+            return;
+        };
+
+        let Some((ip, port)) = parse_addr(rest) else {
+            debug_warn!("invalid tcp-listen message: {}", uri);
+            ch.send(Message::Abort {
+                call_id,
+                reason: ErrorCode::InvalidUri,
+            })
+            .unwrap();
+            return;
+        };
+
+        let listen_addr = match ip {
+            Ipv4Addr::UNSPECIFIED => IpListenEndpoint { addr: None, port },
+            _ => (ip, port).into(),
+        };
+
+        let (our_ch, their_ch) = Channel::new().unwrap();
+        let (our_tx, our_rx) = our_ch.split();
+        poll.add(
+            our_rx.handle_id(),
+            State::Listen(our_rx),
+            Readiness::READABLE | Readiness::CLOSED,
+        )
+        .unwrap();
+
+        {
+            trace!("tcp-listen: {:?}", listen_addr);
+            self.tcpip.tcp_listen(listen_addr, our_tx).unwrap();
+        }
+
+        if let Err(err) = ch.send(Message::OpenReply {
+            call_id,
+            handle: their_ch,
+        }) {
+            debug_warn!("failed to send open reply message: {:?}", err);
+        }
+    }
+
+    fn handle_data_stream(&mut self, poll: &Poll<State>, smol_handle: SocketHandle, data: &[u8]) {
+        self.tcpip.tcp_send(smol_handle, data).unwrap();
+        self.tcpip_poll(poll);
+    }
+
+    fn handle_data_close(
+        &mut self,
+        poll: &Poll<State>,
+        ch: &ChannelReceiver,
+        smol_handle: SocketHandle,
+    ) {
+        debug_warn!("data channel closed for socket {:?}", smol_handle);
+        if let Err(err) = self.tcpip.close_socket(smol_handle) {
+            debug_warn!("failed to close socket: {:?}", err);
+        }
+        poll.remove(ch.handle_id()).unwrap();
+    }
+
+    fn receive_rx_packet(&mut self, poll: &Poll<State>, data: &[u8]) {
+        self.tcpip.receive_packet(data);
+        self.tcpip_poll(poll);
+    }
+
+    fn tcpip_poll(&mut self, poll: &Poll<State>) {
+        self.tcpip.poll(|ev| {
+            match ev {
+                SocketEvent::Data { ch, data } => {
+                    ch.send(Message::StreamData { data }).unwrap();
+                }
+                SocketEvent::Close { ch } => {
+                    debug_warn!("closing a socket");
+                    poll.remove(ch.handle_id()).unwrap();
+                }
+                SocketEvent::NewConnection { ch, smol_handle } => {
+                    let (our_ch, their_ch) = Channel::new().unwrap();
+                    let (our_tx, our_rx) = our_ch.split();
+                    poll.add(
+                        our_rx.handle_id(),
+                        State::Data {
+                            smol_handle,
+                            ch: our_rx,
+                        },
+                        Readiness::READABLE | Readiness::CLOSED,
+                    )
+                    .expect("failed to get channel sender");
+
+                    ch.send(Message::Connect { handle: their_ch }).unwrap();
+                    *ch = our_tx;
+                }
+            }
+        });
+    }
+}
+
 fn main(env_json: &[u8]) {
     let env: Env = serde_json::from_slice(env_json).expect("failed to deserialize env");
 
@@ -91,30 +221,36 @@ fn main(env_json: &[u8]) {
         }
     };
 
-    // FIXME:
     let device = NetDevice::new(Box::new(transmit));
     let ip = IpCidr::new(IpAddress::v4(10, 0, 2, 15), 24);
     let gw_ip = Ipv4Addr::new(10, 0, 2, 2);
     let mac: [u8; 6] = [0x52, 0x54, 0x00, 0x12, 0x34, 0x56];
 
     let hwaddr = HardwareAddress::Ethernet(EthernetAddress(mac));
-    let mut tcpip = TcpIp::new(device, ip, gw_ip, hwaddr);
-    'mainloop: loop {
+    let tcpip = TcpIp::new(device, ip, gw_ip, hwaddr);
+
+    let mut mainloop = Mainloop::new(tcpip);
+    let mut msgbuffer = MessageBuffer::new();
+    loop {
         let (state, readiness) = poll.wait().unwrap();
         match &*state {
             State::Startup(ch) if readiness.contains(Readiness::READABLE) => {
-                let mut m = ch.recv().unwrap();
-                match m.parse() {
-                    Some(Message::Connect { handle }) => {
-                        poll.add(
-                            handle.handle_id(),
-                            State::Control(handle),
-                            Readiness::READABLE | Readiness::CLOSED,
-                        )
-                        .unwrap();
+                match ch.recv(&mut msgbuffer) {
+                    Ok(Message::Connect { handle }) => {
+                        mainloop.handle_startup_connect(&poll, handle);
                     }
-                    _ => {
-                        debug_warn!("unhandled message: {:?}", m.msginfo);
+                    Ok(msg) => {
+                        debug_warn!("unexpected message on startup channel: {:?}", msg);
+                    }
+                    Err(RecvError::Parse(msginfo)) => {
+                        debug_warn!(
+                            "unhandled message type on startup channel: {}",
+                            msginfo.kind()
+                        );
+                    }
+                    Err(RecvError::Syscall(ErrorCode::WouldBlock)) => {}
+                    Err(RecvError::Syscall(err)) => {
+                        debug_warn!("recv error on startup channel: {:?}", err);
                     }
                 }
             }
@@ -122,59 +258,22 @@ fn main(env_json: &[u8]) {
                 panic!("unexpected readiness for startup channel: {:?}", readiness);
             }
             State::Control(ch) if readiness.contains(Readiness::READABLE) => {
-                let mut m = ch.recv().unwrap();
-                match m.parse() {
-                    Some(Message::Open { call_id, uri }) => {
-                        let uri = core::str::from_utf8(uri).unwrap();
-                        info!("got open message: {}", uri);
-                        let Some(("tcp-listen", rest)) = uri.split_once(':') else {
-                            ch.send(Message::Abort {
-                                call_id,
-                                reason: ErrorCode::InvalidUri,
-                            })
-                            .unwrap();
-                            continue 'mainloop;
-                        };
-
-                        let Some((ip, port)) = parse_addr(rest) else {
-                            debug_warn!("invalid tcp-listen message: {}", uri);
-                            ch.send(Message::Abort {
-                                call_id,
-                                reason: ErrorCode::InvalidUri,
-                            })
-                            .unwrap();
-                            continue 'mainloop;
-                        };
-
-                        let listen_addr = match ip {
-                            Ipv4Addr::UNSPECIFIED => IpListenEndpoint { addr: None, port },
-                            _ => (ip, port).into(),
-                        };
-
-                        let (our_ch, their_ch) = Channel::new().unwrap();
-                        let (our_tx, our_rx) = our_ch.split();
-                        poll.add(
-                            our_rx.handle_id(),
-                            State::Listen(our_rx),
-                            Readiness::READABLE | Readiness::CLOSED,
-                        )
-                        .unwrap();
-
-                        // Have a separate scope to drop the tcpip lock as soon as possible.
-                        {
-                            trace!("tcp-listen: {:?}", listen_addr);
-                            tcpip.tcp_listen(listen_addr, our_tx).unwrap();
-                        }
-
-                        if let Err(err) = ch.send(Message::OpenReply {
-                            call_id,
-                            handle: their_ch,
-                        }) {
-                            debug_warn!("failed to send open reply message: {:?}", err);
-                        }
+                match ch.recv(&mut msgbuffer) {
+                    Ok(Message::Open { call_id, uri }) => {
+                        mainloop.handle_control_open(&poll, ch, call_id, uri);
                     }
-                    _ => {
-                        debug_warn!("unhandled message: {:?}", m.msginfo);
+                    Ok(msg) => {
+                        debug_warn!("unexpected message on control channel: {:?}", msg);
+                    }
+                    Err(RecvError::Parse(msginfo)) => {
+                        debug_warn!(
+                            "unhandled message type on control channel: {}",
+                            msginfo.kind()
+                        );
+                    }
+                    Err(RecvError::Syscall(ErrorCode::WouldBlock)) => {}
+                    Err(RecvError::Syscall(err)) => {
+                        debug_warn!("recv error on control channel: {:?}", err);
                     }
                 }
             }
@@ -187,8 +286,8 @@ fn main(env_json: &[u8]) {
             }
             State::Listen(ch) if readiness.contains(Readiness::READABLE) => {
                 debug_warn!("got a message from a listen channel");
-                // Discard the message to free memory.
-                let _ = ch.recv();
+                // Ignore any message.
+                let _ = ch.recv(&mut msgbuffer);
             }
             State::Listen(ch) if readiness == Readiness::CLOSED => {
                 debug_warn!("listen channel closed");
@@ -198,38 +297,45 @@ fn main(env_json: &[u8]) {
                 panic!("unexpected readiness for listen channel: {:?}", readiness);
             }
             State::Data { ch, smol_handle } if readiness.contains(Readiness::READABLE) => {
-                let mut m = ch.recv().unwrap();
-                match m.parse() {
-                    Some(Message::StreamData { data }) => {
-                        // FIXME: backpressure
-                        tcpip.tcp_send(*smol_handle, data).unwrap();
-                        tcpip_poll(&poll, &mut tcpip);
+                match ch.recv(&mut msgbuffer) {
+                    Ok(Message::StreamData { data }) => {
+                        mainloop.handle_data_stream(&poll, *smol_handle, data);
                     }
-                    _ => {
-                        debug_warn!("unhandled message: {:?}", m.msginfo);
+                    Ok(msg) => {
+                        debug_warn!("unexpected message on data channel: {:?}", msg);
+                    }
+                    Err(RecvError::Parse(msginfo)) => {
+                        debug_warn!("unhandled message type on data channel: {}", msginfo.kind());
+                    }
+                    Err(RecvError::Syscall(ErrorCode::WouldBlock)) => {}
+                    Err(RecvError::Syscall(err)) => {
+                        debug_warn!("recv error on data channel: {:?}", err);
                     }
                 }
             }
             State::Data { ch, smol_handle } if readiness == Readiness::CLOSED => {
-                debug_warn!("data channel closed for socket {:?}", smol_handle);
-                if let Err(err) = tcpip.close_socket(*smol_handle) {
-                    debug_warn!("failed to close socket: {:?}", err);
-                }
-
-                poll.remove(ch.handle_id()).unwrap();
+                mainloop.handle_data_close(&poll, ch, *smol_handle);
             }
             State::Data { .. } => {
                 panic!("unexpected readiness for data channel: {:?}", readiness);
             }
             State::Driver(ch) if readiness.contains(Readiness::READABLE) => {
-                let mut m = ch.recv().unwrap();
-                match m.parse() {
-                    Some(Message::FramedData { data }) => {
-                        tcpip.receive_packet(data);
-                        tcpip_poll(&poll, &mut tcpip);
+                match ch.recv(&mut msgbuffer) {
+                    Ok(Message::FramedData { data }) => {
+                        mainloop.receive_rx_packet(&poll, data);
                     }
-                    _ => {
-                        debug_warn!("unhandled message: {:?}", m.msginfo);
+                    Ok(msg) => {
+                        debug_warn!("unexpected message on driver channel: {:?}", msg);
+                    }
+                    Err(RecvError::Parse(msginfo)) => {
+                        debug_warn!(
+                            "unhandled message type on driver channel: {}",
+                            msginfo.kind()
+                        );
+                    }
+                    Err(RecvError::Syscall(ErrorCode::WouldBlock)) => {}
+                    Err(RecvError::Syscall(err)) => {
+                        debug_warn!("recv error on driver channel: {:?}", err);
                     }
                 }
             }
@@ -241,37 +347,4 @@ fn main(env_json: &[u8]) {
             }
         }
     }
-}
-
-fn tcpip_poll<'a>(poll: &Poll<State>, tcpip: &mut TcpIp<'a>) {
-    tcpip.poll(|ev| {
-        match ev {
-            SocketEvent::Data { ch, data } => {
-                ch.send(Message::StreamData { data }).unwrap(); // FIXME: what if backpressure happens?
-            }
-            SocketEvent::Close { ch } => {
-                debug_warn!("closing a socket");
-                poll.remove(ch.handle_id()).unwrap();
-            }
-            SocketEvent::NewConnection { ch, smol_handle } => {
-                let (our_ch, their_ch) = Channel::new().unwrap();
-                let (our_tx, our_rx) = our_ch.split();
-                poll.add(
-                    our_rx.handle_id(),
-                    State::Data {
-                        smol_handle,
-                        ch: our_rx,
-                    },
-                    Readiness::READABLE | Readiness::CLOSED,
-                )
-                .expect("failed to get channel sender");
-
-                ch.send(Message::Connect { handle: their_ch }).unwrap(); // FIXME: what if backpressure happens?
-
-                // The socket has become an esblished socket, so replace the old
-                // sender handle with a new data channel.
-                *ch = our_tx;
-            }
-        }
-    });
 }

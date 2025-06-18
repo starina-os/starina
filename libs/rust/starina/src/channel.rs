@@ -7,9 +7,14 @@ use crate::handle::HandleId;
 use crate::handle::Handleable;
 use crate::handle::OwnedHandle;
 use crate::message::Message;
-use crate::message::OwnedMessage;
-use crate::message::OwnedMessageBuffer;
+use crate::message::MessageBuffer;
 use crate::syscall;
+
+#[derive(Debug)]
+pub enum RecvError {
+    Parse(MessageInfo),
+    Syscall(ErrorCode),
+}
 
 #[derive(Debug)]
 pub struct Channel(OwnedHandle);
@@ -27,31 +32,21 @@ impl Channel {
     }
 
     pub fn send(&self, msg: Message<'_>) -> Result<(), ErrorCode> {
-        let mut buffer = OwnedMessageBuffer::alloc();
-        let msginfo = msg.serialize(&mut buffer)?;
-        self.do_send(msginfo, buffer)
+        let mut msgbuffer = MessageBuffer::new();
+        let msginfo = msg.serialize(&mut msgbuffer)?;
+        self.do_send(msginfo, msgbuffer)
     }
 
-    fn do_send(&self, msginfo: MessageInfo, buffer: OwnedMessageBuffer) -> Result<(), ErrorCode> {
-        syscall::channel_send(
-            self.0.id(),
-            msginfo,
-            buffer.data_ptr(),
-            buffer.handles_ptr(),
-        )?;
-
-        buffer.forget_handles();
-
+    fn do_send(&self, msginfo: MessageInfo, msg: MessageBuffer) -> Result<(), ErrorCode> {
+        syscall::channel_send(self.0.id(), msginfo, msg.data_ptr(), msg.handles_ptr())?;
         Ok(())
     }
 
-    pub fn recv(&self) -> Result<OwnedMessage, ErrorCode> {
-        let mut buffer = OwnedMessageBuffer::alloc();
+    pub fn recv<'a>(&self, buffer: &'a mut MessageBuffer) -> Result<Message<'a>, RecvError> {
         let msginfo =
-            syscall::channel_recv(self.0.id(), buffer.data_mut_ptr(), buffer.handles_mut_ptr())?;
-
-        let msg = OwnedMessage::new(buffer, msginfo);
-        Ok(msg)
+            syscall::channel_recv(self.0.id(), buffer.data_mut_ptr(), buffer.handles_mut_ptr())
+                .map_err(RecvError::Syscall)?;
+        Message::deserialize(msginfo, buffer).ok_or(RecvError::Parse(msginfo))
     }
 
     pub fn split(self) -> (ChannelSender, ChannelReceiver) {
@@ -98,8 +93,8 @@ impl Handleable for ChannelSender {
 }
 
 impl ChannelReceiver {
-    pub fn recv(&self) -> Result<OwnedMessage, ErrorCode> {
-        self.0.recv()
+    pub fn recv<'a>(&self, buffer: &'a mut MessageBuffer) -> Result<Message<'a>, RecvError> {
+        self.0.recv(buffer)
     }
 }
 

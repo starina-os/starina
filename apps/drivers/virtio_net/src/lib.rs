@@ -3,11 +3,13 @@
 use serde::Deserialize;
 use starina::channel::Channel;
 use starina::channel::ChannelReceiver;
+use starina::channel::RecvError;
 use starina::device_tree::DeviceTree;
 use starina::error::ErrorCode;
 use starina::handle::Handleable;
 use starina::interrupt::Interrupt;
 use starina::message::Message;
+use starina::message::MessageBuffer;
 use starina::poll::Poll;
 use starina::poll::Readiness;
 use starina::prelude::*;
@@ -49,6 +51,7 @@ enum State {
 fn main(env_json: &[u8]) {
     let env: Env = serde_json::from_slice(env_json).expect("failed to deserialize env");
 
+    let mut msgbuffer = MessageBuffer::new();
     // Look for and initialize the virtio-net device.
     let mut virtio_net = VirtioNet::init_or_panic(&env.device_tree);
 
@@ -63,7 +66,7 @@ fn main(env_json: &[u8]) {
     poll.add(
         env.startup_ch.handle_id(),
         State::Startup(env.startup_ch),
-        Readiness::READABLE | Readiness::CLOSED, /* FIXME: This should guarantee level-triggered */
+        Readiness::READABLE | Readiness::CLOSED,
     )
     .unwrap();
 
@@ -72,7 +75,7 @@ fn main(env_json: &[u8]) {
     poll.add(
         interrupt.handle_id(),
         State::Interrupt(interrupt),
-        Readiness::READABLE | Readiness::CLOSED, /* FIXME: This should guarantee level-triggered */
+        Readiness::READABLE | Readiness::CLOSED,
     )
     .unwrap();
 
@@ -81,20 +84,30 @@ fn main(env_json: &[u8]) {
         let (state, readiness) = poll.wait().unwrap();
         match &*state {
             State::Startup(ch) if readiness.contains(Readiness::READABLE) => {
-                let mut m = ch.recv().unwrap();
-                match m.parse() {
-                    Some(Message::Connect { handle }) => {
+                match ch.recv(&mut msgbuffer) {
+                    Ok(Message::Connect { handle }) => {
+                        // New connection. Register them as the upstream (typically TCP/IP server).
                         let (sender, receiver) = handle.split();
                         upstream_sender = Some(sender);
                         poll.add(
                             receiver.handle_id(),
                             State::Upstream(receiver),
-                            Readiness::READABLE | Readiness::CLOSED, /* FIXME: This should guarantee level-triggered */
+                            Readiness::READABLE | Readiness::CLOSED,
                         )
                         .unwrap();
                     }
-                    _ => {
-                        debug_warn!("unhandled message: {:?}", m.msginfo);
+                    Ok(msg) => {
+                        debug_warn!("unexpected message on startup channel: {:?}", msg);
+                    }
+                    Err(RecvError::Parse(msginfo)) => {
+                        debug_warn!(
+                            "unhandled message type on startup channel: {}",
+                            msginfo.kind()
+                        );
+                    }
+                    Err(RecvError::Syscall(ErrorCode::WouldBlock)) => {}
+                    Err(RecvError::Syscall(err)) => {
+                        debug_warn!("recv error on startup channel: {:?}", err);
                     }
                 }
             }
@@ -102,14 +115,24 @@ fn main(env_json: &[u8]) {
                 panic!("unexpected readiness for startup channel: {:?}", readiness);
             }
             State::Upstream(ch) if readiness.contains(Readiness::READABLE) => {
-                let mut m = ch.recv().unwrap();
-                match m.parse() {
-                    Some(Message::FramedData { data }) => {
+                match ch.recv(&mut msgbuffer) {
+                    // Transmit the packet.
+                    Ok(Message::FramedData { data }) => {
                         trace!("transmitting {} bytes", data.len());
                         virtio_net.transmit(data);
                     }
-                    _ => {
-                        debug_warn!("unhandled message {:?}", m.msginfo);
+                    Ok(msg) => {
+                        debug_warn!("unexpected message on upstream channel: {:?}", msg);
+                    }
+                    Err(RecvError::Parse(msginfo)) => {
+                        debug_warn!(
+                            "unhandled message type on upstream channel: {}",
+                            msginfo.kind()
+                        );
+                    }
+                    Err(RecvError::Syscall(ErrorCode::WouldBlock)) => {}
+                    Err(RecvError::Syscall(err)) => {
+                        debug_warn!("recv error on upstream channel: {:?}", err);
                     }
                 }
             }

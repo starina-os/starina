@@ -1,11 +1,15 @@
 use starina::channel::Channel;
+use starina::channel::RecvError;
 use starina::collections::HashMap;
+use starina::error::ErrorCode;
 use starina::handle::Handleable;
 use starina::message::CallId;
 use starina::message::Message;
+use starina::message::MessageBuffer;
 use starina::poll::Poll;
 use starina::poll::Readiness;
-use starina::prelude::format;
+use starina::prelude::*;
+use starina::debug_warn;
 use starina::prelude::vec::Vec;
 use starina::sync::Arc;
 use starina::sync::Mutex;
@@ -70,13 +74,25 @@ impl<'a> Builder<'a> {
 
         // Wait for all the listen channels to be opened.
         let mut listen_channels = Vec::new();
+        let mut msgbuffer = MessageBuffer::new();
         while !remaining.is_empty() {
             let (_, readiness) = poll.wait().unwrap();
             if readiness.contains(Readiness::READABLE) {
-                let mut m = tcpip_rx.recv().unwrap();
-                if let Some(Message::OpenReply { call_id, handle }) = m.parse() {
-                    let port = remaining.remove(&call_id).unwrap();
-                    listen_channels.push((*port, handle));
+                match tcpip_rx.recv(&mut msgbuffer) {
+                    Ok(Message::OpenReply { call_id, handle }) => {
+                        let port = remaining.remove(&call_id).unwrap();
+                        listen_channels.push((*port, handle));
+                    }
+                    Ok(msg) => {
+                        debug_warn!("unexpected message on tcpip channel: {:?}", msg);
+                    }
+                    Err(RecvError::Parse(msginfo)) => {
+                        debug_warn!("unhandled message type on tcpip channel: {}", msginfo.kind());
+                    }
+                    Err(RecvError::Syscall(ErrorCode::WouldBlock)) => {}
+                    Err(RecvError::Syscall(err)) => {
+                        debug_warn!("recv error on tcpip channel: {:?}", err);
+                    }
                 }
             }
         }

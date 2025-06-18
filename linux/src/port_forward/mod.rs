@@ -1,11 +1,15 @@
 pub use builder::Builder;
 use starina::channel::Channel;
+use starina::channel::RecvError;
+use starina::error::ErrorCode;
 use starina::channel::ChannelReceiver;
 use starina::handle::Handleable;
 use starina::message::Message;
+use starina::message::MessageBuffer;
 use starina::poll::Poll;
 use starina::poll::Readiness;
 use starina::prelude::Box;
+use starina::debug_warn;
 use starina::prelude::vec::Vec;
 use starina::sync::Arc;
 use starina::sync::Mutex;
@@ -111,6 +115,7 @@ impl PortForwarder {
     }
 
     pub fn process_messages(&mut self, memory: &mut GuestMemory) {
+        let mut msgbuffer = MessageBuffer::new();
         loop {
             match self.poll.try_wait() {
                 Ok((state, readiness)) => {
@@ -121,17 +126,39 @@ impl PortForwarder {
                         State::Listen { ch, guest_port }
                             if readiness.contains(Readiness::READABLE) =>
                         {
-                            let mut m = ch.recv().unwrap();
-                            if let Some(Message::Connect { handle }) = m.parse() {
-                                self.new_connection(handle, *guest_port);
+                            match ch.recv(&mut msgbuffer) {
+                                Ok(Message::Connect { handle }) => {
+                                    self.new_connection(handle, *guest_port);
+                                }
+                                Ok(msg) => {
+                                    debug_warn!("unexpected message on listen channel: {:?}", msg);
+                                }
+                                Err(RecvError::Parse(msginfo)) => {
+                                    debug_warn!("unhandled message type on listen channel: {}", msginfo.kind());
+                                }
+                                Err(RecvError::Syscall(ErrorCode::WouldBlock)) => {}
+                                Err(RecvError::Syscall(err)) => {
+                                    debug_warn!("recv error on listen channel: {:?}", err);
+                                }
                             }
                         }
                         State::Connected { rx, conn_key }
                             if readiness.contains(Readiness::READABLE) =>
                         {
-                            let mut m = rx.recv().unwrap();
-                            if let Some(Message::StreamData { data }) = m.parse() {
-                                self.send_tcp_data(memory, conn_key, data);
+                            match rx.recv(&mut msgbuffer) {
+                                Ok(Message::StreamData { data }) => {
+                                    self.send_tcp_data(memory, conn_key, data);
+                                }
+                                Ok(msg) => {
+                                    debug_warn!("unexpected message on connected channel: {:?}", msg);
+                                }
+                                Err(RecvError::Parse(msginfo)) => {
+                                    debug_warn!("unhandled message type on connected channel: {}", msginfo.kind());
+                                }
+                                Err(RecvError::Syscall(ErrorCode::WouldBlock)) => {}
+                                Err(RecvError::Syscall(err)) => {
+                                    debug_warn!("recv error on connected channel: {:?}", err);
+                                }
                             }
                         }
                         _ => {}

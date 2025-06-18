@@ -1,10 +1,7 @@
-use alloc::boxed::Box;
 use core::fmt;
 use core::mem;
 use core::mem::MaybeUninit;
 use core::mem::size_of;
-use core::ops::Deref;
-use core::ops::DerefMut;
 use core::ptr;
 use core::slice;
 
@@ -15,7 +12,6 @@ pub use starina_types::message::*;
 use crate::channel::Channel;
 use crate::handle::Handleable;
 use crate::handle::OwnedHandle;
-use crate::syscall;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 #[repr(u8)]
@@ -45,7 +41,7 @@ pub struct MessageBuffer {
 }
 
 impl MessageBuffer {
-    const fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             data: [const { MaybeUninit::uninit() }; MESSAGE_DATA_LEN_MAX],
             handles: [HandleId::from_raw(0); MESSAGE_NUM_HANDLES_MAX],
@@ -220,48 +216,6 @@ struct RawErrorMsg {
     reason: ErrorCode,
 }
 
-pub struct OwnedMessageBuffer(Box<MessageBuffer>);
-
-impl OwnedMessageBuffer {
-    pub fn alloc() -> Self {
-        // TODO: Have a thread-local buffer pool.
-        // TODO: Use `MaybeUninit` to unnecesarily zero-fill the buffer.
-        let buffer = Box::new(MessageBuffer::new());
-        OwnedMessageBuffer(buffer)
-    }
-
-    pub fn forget_handles(mut self) {
-        self.0.handles.fill(HandleId::from_raw(0));
-    }
-}
-
-impl Deref for OwnedMessageBuffer {
-    type Target = MessageBuffer;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for OwnedMessageBuffer {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-impl Drop for OwnedMessageBuffer {
-    fn drop(&mut self) {
-        // Drop handles.
-        for handle_id in self.0.handles {
-            if handle_id.as_raw() != 0 {
-                if let Err(e) = syscall::handle_close(handle_id) {
-                    debug_warn!("failed to close handle: {:?}", e);
-                }
-            }
-        }
-    }
-}
-
 pub enum Message<'a> {
     Connect { handle: Channel },
     Open { call_id: CallId, uri: &'a [u8] },
@@ -374,23 +328,9 @@ impl<'a> Message<'a> {
     }
 }
 
-pub struct OwnedMessage {
-    pub msginfo: MessageInfo,
-    pub buffer: OwnedMessageBuffer,
-}
-
-impl OwnedMessage {
-    pub fn new(buffer: OwnedMessageBuffer, msginfo: MessageInfo) -> Self {
-        Self { buffer, msginfo }
-    }
-
-    pub fn parse(&mut self) -> Option<Message<'_>> {
-        Message::deserialize(self.msginfo, &mut self.buffer)
-    }
-}
-
-impl fmt::Debug for OwnedMessage {
+impl<'a> fmt::Debug for Message<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "OwnedMessage {{ msginfo: {:?} }}", self.msginfo)
+        // TODO:
+        f.debug_struct("Message").finish()
     }
 }
