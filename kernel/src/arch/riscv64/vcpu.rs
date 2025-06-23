@@ -561,6 +561,7 @@ impl VCpu {
         let sepc = entry as u64;
 
         let mut hstatus = 0;
+        hstatus |= 2u64 << 32; // VSXL (64-bit)
         hstatus |= 1 << 7; // SPV
         hstatus |= 1 << 21; // VTW
         hstatus |= 3 << 13; // FP
@@ -569,11 +570,6 @@ impl VCpu {
         sstatus |= 1 << 8; // SPP
         sstatus &= !(0b11 << 13); // Clear FP
         sstatus |= 3 << 13; // FP
-
-        let mut vsstatus = 0;
-        vsstatus |= 1 << 8; // SPP
-        vsstatus &= !(0b11 << 13); // Clear FP
-        vsstatus |= 3 << 13; // FP
 
         let hgatp = hvspace.arch().hgatp();
 
@@ -587,7 +583,6 @@ impl VCpu {
             hgatp,
             hstatus,
             htimedelta,
-            vsstatus,
             vstimecmp: u64::MAX,
             a0: arg0 as u64,
             a1: arg1 as u64,
