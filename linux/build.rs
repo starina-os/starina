@@ -26,6 +26,10 @@ fn main() {
     let status = Command::new(program)
         .current_dir(&manifest_dir)
         .env_clear()
+        // Apparently Cargo propagates some environment variables and confuses
+        // another Cargo to be invoked in make.
+        .env("PATH", std::env::var_os("PATH").unwrap())
+        .env("HOME", std::env::var_os("HOME").unwrap())
         .status()
         .expect("failed to build Linux");
 
