@@ -38,7 +38,6 @@ endif
 export ARCH=riscv
 export LLVM=1
 export LD=$(llvm_prefix)ld.lld
-export HOSTCC=$(llvm_prefix)clang
 export CC=$(llvm_prefix)clang
 export NM=$(llvm_prefix)nm
 export OBJCOPY=$(llvm_prefix)llvm-objcopy
