@@ -18,13 +18,14 @@ fn main() {
     let manifest_dir = env::var("CARGO_MANIFEST_DIR").expect("failed to get manifest directory");
 
     let program = if cfg!(target_os = "macos") {
-        "gmake"
+        "/opt/homebrew/bin/gmake"
     } else {
         "make"
     };
 
     let status = Command::new(program)
         .current_dir(&manifest_dir)
+        .env_clear()
         .status()
         .expect("failed to build Linux");
 
