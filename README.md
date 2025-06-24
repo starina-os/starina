@@ -6,9 +6,9 @@ Starina (named after [stellina](https://en.wiktionary.org/wiki/stellina)), is a 
 
 The ultimate goal of this project is to create a production-ready OS to be a good alternative to real-world OSes. To make this happen, Starina values the following principles:
 
-- **Userspace-first:** Most OS components live in userspace for better developer experience. The microkernel simply provides a runtime for applications.
-- **Simplicity over perfection:** Straightforward design that covers common use cases. Make it work first, optimize later.
-- **Incrementally adoptable:** Easy integration with existing systems to facilitate gradual adoption.
+- **Userspace-first approach:** Make OS development approachable and fun for everyone. Prioritize developer experience in the userspace, where the most OS components reside. The microkernel is just a runtime for applications.
+- **Simplicity over perfection:** Emphasize a straightforward design which covers the most common use cases. Make it work first. Make it better later.
+- **Incrementally adoptable:** Facilitate easy adoption of Starina by providing a seamless integration with existing systems.
 
 ## 2025 Roadmap
 
