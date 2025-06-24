@@ -22,6 +22,8 @@ common_setup() {
     fi
 
     set -x
+
+    # Install Rust target for linuxinit
     rustup target add riscv64gc-unknown-linux-musl
 }
 
