@@ -9,6 +9,8 @@ members = [
     "apps/bin/http_server",
 ]
 
+exclude = ["linux/linuxinit"]
+
 [workspace.package]
 version = "0.0.0"
 authors = ["Seiya Nuta <nuta@seiya.me>"]

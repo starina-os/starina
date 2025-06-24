@@ -1,6 +1,5 @@
 use std::fs::File;
 use std::fs::OpenOptions;
-use std::net::SocketAddr;
 
 use nix::mount::MsFlags;
 use nix::mount::mount;
@@ -19,6 +18,15 @@ struct CommandJson {
 #[tokio::main]
 async fn main() {
     eprintln!("[linuxinit] starting");
+
+    mount(
+        Some("devtmpfs"),
+        "/dev",
+        Some("devtmpfs"),
+        MsFlags::empty(),
+        None as Option<&str>,
+    )
+    .expect("failed to mount devtmpfs");
 
     eprintln!("[linuxinit] mounting sysfs");
     mount(
