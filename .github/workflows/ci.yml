@@ -29,6 +29,9 @@ jobs:
           ~/.cargo/git
           target
           build
+          linux/build
+          linux/kernel
+          linux/linuxinit/target
         key: ${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
         restore-keys: |
           ${{ runner.os }}-

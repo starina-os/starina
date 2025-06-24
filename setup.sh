@@ -13,6 +13,8 @@ setup_linux() {
         build-essential clang llvm \
         curl flex bison bc cpio lz4 libelf-dev \
         golang-go lld
+
+    snap install zig --classic --beta
 }
 
 case "$(uname)" in
