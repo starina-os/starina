@@ -44,7 +44,7 @@ all: linux.elf
 linux.elf: $(image_path)
 	cp kernel/$(image_path) linux.elf
 
-kernel/README:
+kernel/README: linux.tar.xz
 	$(PROGRESS) "Extracting Linux kernel..."
 	mkdir -p kernel.tmp
 	tar xf linux.tar.xz -C kernel.tmp --strip-components=1
