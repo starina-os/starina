@@ -16,10 +16,10 @@ PROGRESS := printf "\\033[1;96m==>\\033[0m \\033[1m%s\\033[0m\\n"
 image_path := arch/riscv/boot/Image
 
 ifeq ($(shell uname),Darwin)
-    gnumake_dir := $(shell brew --prefix make)
+    gnumake_dir   := $(shell brew --prefix make)
     findutils_dir := $(shell brew --prefix findutils)
-    llvm_dir := $(shell brew --prefix llvm)
-    libelf_dir := $(shell brew --prefix libelf)
+    llvm_dir      := $(shell brew --prefix llvm)
+    libelf_dir    := $(shell brew --prefix libelf)
 
     linux_make := $(gnumake_dir)/bin/gmake
     export PATH := $(findutils_dir)/libexec/gnubin:$(llvm_dir)/bin:$(PATH)
