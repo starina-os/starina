@@ -8,6 +8,7 @@ setup_macos() {
 
 setup_linux() {
     set -x
+    sudo apt-get update
     sudo apt-get install -y \
         build-essential clang llvm \
         curl flex bison bc cpio lz4 libelf-dev \
