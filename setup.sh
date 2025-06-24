@@ -15,26 +15,12 @@ setup_linux() {
         golang-go lld
 }
 
-common_setup() {
-    if ! command -v rustup &> /dev/null; then
-        echo "rustup is not installed - visit https://rustup.rs" >&2
-        exit 1
-    fi
-
-    set -x
-
-    # Install Rust target for linuxinit
-    rustup target add riscv64gc-unknown-linux-musl
-}
-
 case "$(uname)" in
     Darwin)
         setup_macos
-        common_setup
         ;;
     Linux)
         setup_linux
-        common_setup
         ;;
     *)
         echo "Unsupported platform: $(uname)"
