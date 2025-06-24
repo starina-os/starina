@@ -28,9 +28,11 @@ common_setup() {
 case "$(uname)" in
     Darwin)
         setup_macos
+        common_setup
         ;;
     Linux)
         setup_linux
+        common_setup
         ;;
     *)
         echo "Unsupported platform: $(uname)"
