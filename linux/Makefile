@@ -33,6 +33,8 @@ ifeq ($(shell uname),Darwin)
     export COPYFILE_DISABLE=1
 else ifeq ($(shell uname),Linux)
     linux_make := make
+    # Add snap binaries to PATH for zig
+    export PATH := /snap/bin:$(PATH)
 else
     $(error "Unsupported platform: $(shell uname)")
 endif
