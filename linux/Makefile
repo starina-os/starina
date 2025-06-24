@@ -13,14 +13,7 @@ endif
 
 PROGRESS := printf "\\033[1;96m==>\\033[0m \\033[1m%s\\033[0m\\n"
 
-export ARCH=riscv
-export LLVM=1
-export LD=$(llvm_prefix)ld.lld
-export HOSTCC=$(llvm_prefix)clang
-export CC=$(llvm_prefix)clang
-export NM=$(llvm_prefix)nm
-export OBJCOPY=$(llvm_prefix)llvm-objcopy
-export OBJDUMP=$(llvm_prefix)llvm-objdump
+image_path := arch/riscv/boot/Image
 
 ifeq ($(shell uname),Darwin)
     gnumake_dir := $(shell brew --prefix make)
@@ -42,7 +35,14 @@ else
     $(error "Unsupported platform: $(shell uname)")
 endif
 
-image_path := arch/riscv/boot/Image
+export ARCH=riscv
+export LLVM=1
+export LD=$(llvm_prefix)ld.lld
+export HOSTCC=$(llvm_prefix)clang
+export CC=$(llvm_prefix)clang
+export NM=$(llvm_prefix)nm
+export OBJCOPY=$(llvm_prefix)llvm-objcopy
+export OBJDUMP=$(llvm_prefix)llvm-objdump
 
 .PHONY: all
 all: linux.elf
