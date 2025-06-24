@@ -17,8 +17,35 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  ubuntu_build:
     runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+          build
+          linux/build
+          linux/kernel
+          linux/linuxinit/target
+        key: ${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-
+
+    - name: Install dependencies
+      run: ./setup.sh
+
+    - name: Build World
+      run: ./run.sh
+      env:
+        BUILD_ONLY: 1
+
+  macos_build:
+    runs-on: macos-latest
     steps:
     - uses: actions/checkout@v4
 
