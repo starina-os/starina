@@ -17,13 +17,12 @@ image_path := arch/riscv/boot/Image
 
 ifeq ($(shell uname),Darwin)
     gnumake_dir := $(shell brew --prefix make)
-    linux_make := $(gnumake_dir)/bin/gmake
-
     findutils_dir := $(shell brew --prefix findutils)
-    export PATH := $(findutils_dir)/libexec/gnubin:$(PATH)
-
-    llvm_prefix := $(shell brew --prefix llvm)/bin
+    llvm_dir := $(shell brew --prefix llvm)
     libelf_dir := $(shell brew --prefix libelf)
+
+    linux_make := $(gnumake_dir)/bin/gmake
+    export PATH := $(findutils_dir)/libexec/gnubin:$(llvm_dir)/bin:$(PATH)
     export HOSTCFLAGS=-Iscripts/macos-include -I $(libelf_dir)/include
     # Suppress "cpio: Couldn't list extended attributes" warning.
     export COPYFILE_DISABLE=1
@@ -37,19 +36,12 @@ endif
 
 export ARCH=riscv
 export LLVM=1
-export LD=$(llvm_prefix)ld.lld
-export HOSTCC=$(llvm_prefix)clang
-export CC=$(llvm_prefix)clang
-export NM=$(llvm_prefix)nm
-export OBJCOPY=$(llvm_prefix)llvm-objcopy
-export OBJDUMP=$(llvm_prefix)llvm-objdump
-
-$(info "llvm_prefix: $(llvm_prefix)")
-$(info "HOSTCC: $(HOSTCC)")
-$(info "CC: $(CC)")
-$(info "NM: $(NM)")
-$(info "OBJCOPY: $(OBJCOPY)")
-$(info "OBJDUMP: $(OBJDUMP)")
+export LD=ld.lld
+export HOSTCC=clang
+export CC=clang
+export NM=nm
+export OBJCOPY=llvm-objcopy
+export OBJDUMP=llvm-objdump
 
 .PHONY: all
 all: linux.elf
