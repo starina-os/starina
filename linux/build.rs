@@ -18,18 +18,18 @@ fn main() {
     let manifest_dir = env::var("CARGO_MANIFEST_DIR").expect("failed to get manifest directory");
 
     let program = if cfg!(target_os = "macos") {
-        "make"
+        "gmake"
     } else {
-        "docker"
+        "make"
     };
 
     let status = Command::new(program)
         .arg("linux.elf")
         .current_dir(&manifest_dir)
         .status()
-        .expect("failed to execute docker build");
+        .expect("failed to build Linux");
 
     if !status.success() {
-        panic!("Docker build failed");
+        panic!("Linux build failed");
     }
 }
