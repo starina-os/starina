@@ -22,7 +22,9 @@ export OBJCOPY=$(llvm_prefix)llvm-objcopy
 export OBJDUMP=$(llvm_prefix)llvm-objdump
 
 ifeq ($(shell uname),Darwin)
-    linux_make := gmake
+    gnumake_dir := $(shell brew --prefix make)
+    linux_make := $(gnumake_dir)/bin/gmake
+
     findutils_dir := $(shell brew --prefix findutils)
     export PATH := $(findutils_dir)/libexec/gnubin:$(PATH)
 

@@ -24,7 +24,6 @@ fn main() {
     };
 
     let status = Command::new(program)
-        .arg("linux.elf")
         .current_dir(&manifest_dir)
         .status()
         .expect("failed to build Linux");
