@@ -30,6 +30,8 @@ ifeq ($(shell uname),Darwin)
     export HOSTCFLAGS=-Iscripts/macos-include -I $(LIBELF_DIR)/include
     # Suppress "cpio: Couldn't list extended attributes" warning.
     export COPYFILE_DISABLE=1
+else ifeq ($(shell uname),Linux)
+    # No need to do anything - Linux can easily build itself.
 else
     $(error "Unsupported platform: $(shell uname)")
 endif
