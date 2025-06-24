@@ -1,10 +1,13 @@
 #!/bin/sh
+set -ue
 
 setup_macos() {
+    set -x
     brew install make llvm zig findutils libelf
 }
 
 setup_linux() {
+    set -x
     sudo apt-get install \
         build-essential clang llvm \
         curl flex bison bc cpio lz4 libelf-dev
