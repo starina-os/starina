@@ -3,7 +3,7 @@ set -ue
 
 setup_macos() {
     set -x
-    brew install make llvm zig findutils libelf
+    brew install make llvm lld zig findutils libelf
 }
 
 setup_linux() {
@@ -12,7 +12,7 @@ setup_linux() {
     sudo apt-get install -y \
         build-essential clang llvm \
         curl flex bison bc cpio lz4 libelf-dev \
-        golang-go
+        golang-go lld
 }
 
 case "$(uname)" in
