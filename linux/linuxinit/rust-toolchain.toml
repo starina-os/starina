@@ -1,3 +1,0 @@
-[toolchain]
-channel = "stable"
-targets = ["riscv64gc-unknown-linux-musl"]

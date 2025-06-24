@@ -1,4 +1,4 @@
 [toolchain]
 channel = "nightly-2025-05-23"
 components = ["rust-src", "llvm-tools"]
-targets = ["riscv64gc-unknown-none-elf"]
+targets = ["riscv64gc-unknown-none-elf", "riscv64gc-unknown-linux-musl"]
