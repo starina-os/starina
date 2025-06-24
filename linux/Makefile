@@ -15,23 +15,24 @@ PROGRESS := printf "\\033[1;96m==>\\033[0m \\033[1m%s\\033[0m\\n"
 
 export ARCH=riscv
 export LLVM=1
-export LD=$(LLVM_PREFIX)ld.lld
-export CC=$(LLVM_PREFIX)clang
-export NM=$(LLVM_PREFIX)nm
-export OBJCOPY=$(LLVM_PREFIX)llvm-objcopy
-export OBJDUMP=$(LLVM_PREFIX)llvm-objdump
+export LD=$(llvm_prefix)ld.lld
+export CC=$(llvm_prefix)clang
+export NM=$(llvm_prefix)nm
+export OBJCOPY=$(llvm_prefix)llvm-objcopy
+export OBJDUMP=$(llvm_prefix)llvm-objdump
 
 ifeq ($(shell uname),Darwin)
-    FINDUTILS_DIR := $(shell brew --prefix findutils)
-    export PATH := $(FINDUTILS_DIR)/libexec/gnubin:$(PATH)
+    linux_make := gmake
+    findutils_dir := $(shell brew --prefix findutils)
+    export PATH := $(findutils_dir)/libexec/gnubin:$(PATH)
 
-    LLVM_PREFIX := $(shell brew --prefix llvm)/bin
-    LIBELF_DIR := $(shell brew --prefix libelf)
-    export HOSTCFLAGS=-Iscripts/macos-include -I $(LIBELF_DIR)/include
+    llvm_prefix := $(shell brew --prefix llvm)/bin
+    libelf_dir := $(shell brew --prefix libelf)
+    export HOSTCFLAGS=-Iscripts/macos-include -I $(libelf_dir)/include
     # Suppress "cpio: Couldn't list extended attributes" warning.
     export COPYFILE_DISABLE=1
 else ifeq ($(shell uname),Linux)
-    # No need to do anything - Linux can easily build itself.
+    linux_make := make
 else
     $(error "Unsupported platform: $(shell uname)")
 endif
@@ -60,13 +61,13 @@ linux.tar.xz:
 kernel/.config: kernel/README linux.riscv64.config
 	cp linux.riscv64.config kernel/.config
 	$(PROGRESS) "make olddefconfig"
-	gmake -C kernel olddefconfig
+	$(linux_make) -C kernel olddefconfig
 
 initramfs_files := build/linuxinit build/catsay
 
 $(image_path): kernel/.config initramfs.list $(initramfs_files)
 	$(PROGRESS) "make $(image_path)"
-	gmake -C kernel Image
+	$(linux_make) -C kernel Image
 
 build/catsay: $(wildcard catsay.go)
 	mkdir -p build
