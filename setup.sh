@@ -8,9 +8,10 @@ setup_macos() {
 
 setup_linux() {
     set -x
-    sudo apt-get install \
+    sudo apt-get install -y \
         build-essential clang llvm \
-        curl flex bison bc cpio lz4 libelf-dev
+        curl flex bison bc cpio lz4 libelf-dev \
+        golang-go
 }
 
 case "$(uname)" in
