@@ -1,0 +1,81 @@
+From f0003ad62f59e88eabc5aece246373856a5bf369 Mon Sep 17 00:00:00 2001
+From: Seiya Nuta <nuta@seiya.me>
+Date: Tue, 24 Jun 2025 17:29:09 +0900
+Subject: [PATCH] Build Linux on macOS
+
+Note: This patch is GPLv2 licensed.
+---
+ arch/riscv/kernel/vdso/gen_vdso_offsets.sh |  2 +-
+ scripts/macos-include/byteswap.h           |  4 ++++
+ scripts/macos-include/elf.h                | 22 ++++++++++++++++++++++
+ scripts/mod/file2alias.c                   |  3 +++
+ 4 files changed, 30 insertions(+), 1 deletion(-)
+ create mode 100644 scripts/macos-include/byteswap.h
+ create mode 100644 scripts/macos-include/elf.h
+
+diff --git a/arch/riscv/kernel/vdso/gen_vdso_offsets.sh b/arch/riscv/kernel/vdso/gen_vdso_offsets.sh
+index c2e5613f3..e83ba4213 100755
+--- a/arch/riscv/kernel/vdso/gen_vdso_offsets.sh
++++ b/arch/riscv/kernel/vdso/gen_vdso_offsets.sh
+@@ -2,4 +2,4 @@
+ # SPDX-License-Identifier: GPL-2.0
+
+ LC_ALL=C
+-sed -n -e 's/^[0]\+\(0[0-9a-fA-F]*\) . \(__vdso_[a-zA-Z0-9_]*\)$/\#define \2_offset\t0x\1/p'
++sed -n -e 's/^[0]*\([0-9a-fA-F]*\) . \(__vdso_[a-zA-Z0-9_]*\)$/\#define \2_offset\t0x\1/p'
+diff --git a/scripts/macos-include/byteswap.h b/scripts/macos-include/byteswap.h
+new file mode 100644
+index 000000000..fd97ed5e1
+--- /dev/null
++++ b/scripts/macos-include/byteswap.h
+@@ -0,0 +1,4 @@
++#pragma once
++#define bswap_16 __builtin_bswap16
++#define bswap_32 __builtin_bswap32
++#define bswap_64 __builtin_bswap64
+diff --git a/scripts/macos-include/elf.h b/scripts/macos-include/elf.h
+new file mode 100644
+index 000000000..b76f0f9a0
+--- /dev/null
++++ b/scripts/macos-include/elf.h
+@@ -0,0 +1,22 @@
++#pragma once
++#include <libelf/gelf.h>
++
++#define STT_SPARC_REGISTER 3
++#define R_386_32 1
++#define R_386_PC32 2
++#define R_MIPS_HI16 5
++#define R_MIPS_LO16 6
++#define R_MIPS_26 4
++#define R_MIPS_32 2
++#define R_ARM_ABS32 2
++#define R_ARM_REL32 3
++#define R_ARM_PC24 1
++#define R_ARM_CALL 28
++#define R_ARM_JUMP24 29
++#define R_ARM_THM_JUMP24 30
++#define R_ARM_THM_PC22 10
++#define R_ARM_MOVW_ABS_NC 43
++#define R_ARM_MOVT_ABS 44
++#define R_ARM_THM_MOVW_ABS_NC 47
++#define R_ARM_THM_MOVT_ABS 48
++#define R_ARM_THM_JUMP19 51
+diff --git a/scripts/mod/file2alias.c b/scripts/mod/file2alias.c
+index 721e0e9f1..fd043c1e9 100644
+--- a/scripts/mod/file2alias.c
++++ b/scripts/mod/file2alias.c
+@@ -10,7 +10,10 @@
+  * of the GNU General Public License, incorporated herein by reference.
+  */
+
++#define _UUID_T
++#define uuid_t int
+ #include "modpost.h"
++#undef uuid_t
+ #include "devicetable-offsets.h"
+
+ /* We use the ELF typedefs for kernel_ulong_t but bite the bullet and
+--
+2.46.0
+
