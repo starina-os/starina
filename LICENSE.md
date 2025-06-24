@@ -1,6 +1,12 @@
 # License
 
-This software is dual-licensed: MIT license and/or Apache license version 2.0.
+Unless otherwise specified in a file (see exceptions below), this software is dual-licensed: MIT license and/or Apache license version 2.0.
+
+## Exceptions
+
+Following files are not exceptions and have their own licenses. See the files for details:
+
+- `linux/building-linux-on-macos.patch` (GPLv2)
 
 ## MIT license
 

@@ -1,0 +1,24 @@
+# initramfs file list
+
+# Root directories
+dir /bin 0755 0 0
+dir /etc 0755 0 0
+dir /dev 0755 0 0
+dir /proc 0755 0 0
+dir /sys 0755 0 0
+dir /tmp 0755 0 0
+dir /var 0755 0 0
+dir /mnt 0755 0 0
+dir /virtfs 0755 0 0
+
+# Init
+file /init ../build/linuxinit 0755 0 0
+
+# Binaries
+file /bin/catsay ../build/catsay 0755 0 0
+
+# Configuration files
+slink /etc/resolv.conf /proc/net/pnp 0777 0 0
+
+# Device nodes
+nod /dev/console 0600 0 0 c 5 1

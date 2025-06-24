@@ -31,7 +31,7 @@ const fn plic_mmio_size(num_cpus: u32) -> usize {
     0x200000 + (num_cpus as usize * 0x1000)
 }
 
-const LINUX_ELF: &[u8] = include_bytes!("../kernel/arch/riscv/boot/Image");
+const LINUX_ELF: &[u8] = include_bytes!("../linux.elf");
 const NUM_CPUS: u32 = 1;
 const GUEST_RAM_SIZE: usize = 64 * 1024 * 1024; // 64MB
 const PLIC_BASE_ADDR: GPAddr = GPAddr::new(0x0a00_0000);

@@ -10,44 +10,30 @@ fn main() {
         return;
     }
 
-    let docker_info = Command::new("docker").arg("info").output();
-    if docker_info.is_err() || !docker_info.unwrap().status.success() {
-        panic!("Docker is not available. Please start Docker to continue.");
-    }
-
-    println!("cargo:rerun-if-changed=Dockerfile");
-    println!("cargo:rerun-if-changed=build-linux.sh");
+    println!("cargo:rerun-if-changed=Makefile");
     println!("cargo:rerun-if-changed=linux.riscv64.config");
     println!("cargo:rerun-if-changed=linuxinit");
     println!("cargo:rerun-if-changed=catsay.go");
 
     let manifest_dir = env::var("CARGO_MANIFEST_DIR").expect("failed to get manifest directory");
-    let build_status = Command::new("docker")
-        .arg("build")
-        .arg("--progress=plain")
-        .arg("-t")
-        .arg("starina-linux")
-        .arg(".")
+
+    let program = if cfg!(target_os = "macos") {
+        "/opt/homebrew/bin/gmake"
+    } else {
+        "make"
+    };
+
+    let status = Command::new(program)
         .current_dir(&manifest_dir)
-        .env("DOCKER_BUILDKIT", "1")
+        .env_clear()
+        // Apparently Cargo propagates some environment variables and confuses
+        // another Cargo to be invoked in make.
+        .env("PATH", std::env::var_os("PATH").unwrap())
+        .env("HOME", std::env::var_os("HOME").unwrap())
         .status()
-        .expect("failed to execute docker build");
+        .expect("failed to build Linux");
 
-    if !build_status.success() {
-        panic!("Docker build failed");
-    }
-
-    let run_status = Command::new("docker")
-        .arg("run")
-        .arg("--rm")
-        .arg("-v")
-        .arg(format!("{manifest_dir}:/linux"))
-        .arg("starina-linux")
-        .current_dir(&manifest_dir)
-        .status()
-        .expect("failed to execute docker run");
-
-    if !run_status.success() {
-        panic!("Docker run failed");
+    if !status.success() {
+        panic!("Linux build failed");
     }
 }
