@@ -3,7 +3,7 @@ set -ue
 
 setup_macos() {
     set -x
-    brew install make llvm lld zig findutils libelf
+    brew install make llvm lld zig findutils libelf go
 }
 
 setup_linux() {
