@@ -70,7 +70,7 @@ initramfs_files := build/linuxinit build/catsay
 
 $(image_path): kernel/.config initramfs.list $(initramfs_files)
 	$(PROGRESS) "make $(image_path)"
-	$(linux_make) -C kernel Image
+	$(linux_make) -C kernel Image V=1
 
 build/catsay: $(wildcard catsay.go)
 	mkdir -p build
