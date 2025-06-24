@@ -47,18 +47,16 @@ all: linux.elf
 linux.elf: $(image_path)
 	cp kernel/$(image_path) linux.elf
 
-kernel/README: linux.tar.xz
+kernel/README:
+	$(PROGRESS) "Downloading Linux kernel..."
+	curl -fSL -o linux.tar.xz.tmp https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.12.34.tar.xz
+	mv linux.tar.xz.tmp linux.tar.xz
 	$(PROGRESS) "Extracting Linux kernel..."
 	mkdir -p kernel.tmp
 	tar xf linux.tar.xz -C kernel.tmp --strip-components=1
 	$(PROGRESS) "Applying building-linux-on-macos.patch"
 	cd kernel.tmp && patch -p1 < ../building-linux-on-macos.patch
 	mv kernel.tmp kernel
-
-linux.tar.xz:
-	$(PROGRESS) "Downloading Linux kernel..."
-	curl -fSL -o linux.tar.xz.tmp https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.12.34.tar.xz
-	mv linux.tar.xz.tmp linux.tar.xz
 
 kernel/.config: kernel/README linux.riscv64.config
 	cp linux.riscv64.config kernel/.config
@@ -77,5 +75,5 @@ build/catsay: $(wildcard catsay.go)
 
 build/linuxinit: $(wildcard linuxinit/src/*.rs linuxinit/Cargo.toml)
 	mkdir -p build
-	cd linuxinit && RUSTFLAGS="-C linker=./zig-linker.sh" cargo build --release --target riscv64gc-unknown-linux-musl
+	cd linuxinit && RUSTFLAGS="-C linker=./zig-linker.sh" cargo build --release --target riscv64gc-unknown-linux-musl -vvv
 	cp linuxinit/target/riscv64gc-unknown-linux-musl/release/linuxinit $(@)
