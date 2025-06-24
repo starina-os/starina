@@ -7,6 +7,11 @@ setup_macos() {
 }
 
 setup_linux() {
+    if [[ "$(lsb_release -is)" != "Ubuntu" ]]; then
+        echo "Unsupported Linux distribution: $(lsb_release -is)"
+        exit 1
+    fi
+
     set -x
     sudo apt-get update
     sudo apt-get install -y \
