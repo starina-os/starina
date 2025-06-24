@@ -66,7 +66,7 @@ $(image_path): kernel/.config initramfs.list $(initramfs_files)
 	$(PROGRESS) "make $(image_path)"
 	gmake -C kernel Image
 
-build/catsay:
+build/catsay: $(wildcard catsay.go)
 	mkdir -p build
 	CGO_ENABLED=0 GOARCH=riscv64 GOOS=linux go build -o build/catsay catsay.go
 

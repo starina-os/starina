@@ -30,9 +30,9 @@ func main() {
 		w.Header().Set("Content-Type", "text/plain")
 		w.Header().Set("Server", runtime.Version())
 		catArt := `
-      ____________
-     < Hello Web! >
-      ------------
+      ______________
+     < Hi from Web! >
+      --------------
           /
   /\_/\  /
  ( o.o )
