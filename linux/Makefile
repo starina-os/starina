@@ -22,9 +22,14 @@ export OBJCOPY=$(LLVM_PREFIX)llvm-objcopy
 export OBJDUMP=$(LLVM_PREFIX)llvm-objdump
 
 ifeq ($(shell uname),Darwin)
+    FINDUTILS_DIR := $(shell brew --prefix findutils)
+    export PATH := $(FINDUTILS_DIR)/libexec/gnubin:$(PATH)
+
     LLVM_PREFIX := $(shell brew --prefix llvm)/bin
     LIBELF_DIR := $(shell brew --prefix libelf)
     export HOSTCFLAGS=-Iscripts/macos-include -I $(LIBELF_DIR)/include
+    # Suppress "cpio: Couldn't list extended attributes" warning.
+    export COPYFILE_DISABLE=1
 else
     $(error "Unsupported platform: $(shell uname)")
 endif
@@ -55,35 +60,17 @@ kernel/.config: kernel/README linux.riscv64.config
 	$(PROGRESS) "make olddefconfig"
 	gmake -C kernel olddefconfig
 
-$(image_path): kernel/.config initramfs.cpio
+initramfs_files := build/linuxinit build/catsay
+
+$(image_path): kernel/.config initramfs.list $(initramfs_files)
 	$(PROGRESS) "make $(image_path)"
 	gmake -C kernel Image
 
-initramfs.cpio: initramfs/linuxinit initramfs/bin/catsay initramfs/etc/resolv.conf initramfs/dev/console
-	mkdir -p initramfs/bin
-	mkdir -p initramfs/etc
-	mkdir -p initramfs/dev
-	mkdir -p initramfs/proc
-	mkdir -p initramfs/sys
-	mkdir -p initramfs/tmp
-	mkdir -p initramfs/var
-	mkdir -p initramfs/mnt
-	mkdir -p initramfs/virtfs
-	find initramfs -print0 | cpio --null -o --format=newc > initramfs.cpio
+build/catsay:
+	mkdir -p build
+	CGO_ENABLED=0 GOARCH=riscv64 GOOS=linux go build -o build/catsay catsay.go
 
-initramfs/etc/resolv.conf:
-	mkdir -p initramfs/etc
-	ln -sf /proc/net/pnp initramfs/etc/resolv.conf
-
-initramfs/bin/catsay:
-	mkdir -p initramfs/bin
-	CGO_ENABLED=0 GOARCH=riscv64 GOOS=linux go build -o initramfs/bin/catsay catsay.go
-
-initramfs/dev/console:
-	mkdir -p initramfs/dev
-	sudo mknod initramfs/dev/console c 5 1
-
-initramfs/linuxinit: $(wildcard linuxinit/src/*.rs linuxinit/Cargo.toml)
-	mkdir -p initramfs
+build/linuxinit: $(wildcard linuxinit/src/*.rs linuxinit/Cargo.toml)
+	mkdir -p build
 	cd linuxinit && RUSTFLAGS="-C linker=./zig-linker.sh" cargo build --release --target riscv64gc-unknown-linux-musl
 	cp linuxinit/target/riscv64gc-unknown-linux-musl/release/linuxinit $(@)
