@@ -10,12 +10,11 @@ fn main() {
         return;
     }
 
+    println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=Makefile");
     println!("cargo:rerun-if-changed=linux.riscv64.config");
     println!("cargo:rerun-if-changed=linuxinit");
     println!("cargo:rerun-if-changed=catsay.go");
-
-    let manifest_dir = env::var("CARGO_MANIFEST_DIR").expect("failed to get manifest directory");
 
     let program = if cfg!(target_os = "macos") {
         "/opt/homebrew/bin/gmake"
@@ -23,13 +22,17 @@ fn main() {
         "make"
     };
 
+    let manifest_dir = env::var("CARGO_MANIFEST_DIR").expect("failed to get manifest directory");
+    let num_cpus = std::thread::available_parallelism().unwrap();
     let status = Command::new(program)
         .current_dir(&manifest_dir)
+        .arg(format!("-j{}", num_cpus))
         .env_clear()
         // Apparently Cargo propagates some environment variables and confuses
         // another Cargo to be invoked in make.
-        .env("PATH", std::env::var_os("PATH").unwrap())
-        .env("HOME", std::env::var_os("HOME").unwrap())
+        .env("PATH", env::var_os("PATH").unwrap())
+        .env("HOME", env::var_os("HOME").unwrap())
+        .env("MAKEFLAGS", env::var_os("MAKEFLAGS").unwrap_or("".into()))
         .status()
         .expect("failed to build Linux");
 

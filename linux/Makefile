@@ -63,13 +63,13 @@ kernel/README:
 kernel/.config: kernel/README linux.riscv64.config
 	cp linux.riscv64.config kernel/.config
 	$(PROGRESS) "make olddefconfig"
-	$(linux_make) -C kernel olddefconfig -j$(shell nproc)
+	$(linux_make) -C kernel olddefconfig
 
 initramfs_files := build/linuxinit build/catsay
 
 $(image_path): kernel/.config initramfs.list $(initramfs_files)
 	$(PROGRESS) "make $(image_path)"
-	$(linux_make) -C kernel Image -j$(shell nproc)
+	$(linux_make) -C kernel Image
 
 build/catsay: $(wildcard catsay.go)
 	mkdir -p build

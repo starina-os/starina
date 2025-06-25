@@ -43,7 +43,6 @@ jobs:
       run: ./run.sh
       env:
         BUILD_ONLY: "1"
-        V: "1"
 
   macos_build:
     runs-on: macos-latest
@@ -71,4 +70,3 @@ jobs:
       run: ./run.sh
       env:
         BUILD_ONLY: "1"
-        V: "1"
