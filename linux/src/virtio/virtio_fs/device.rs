@@ -31,6 +31,10 @@ use super::fuse::FuseReleaseIn;
 use super::fuse::FuseWriteIn;
 use crate::guest_memory::GuestMemory;
 use crate::virtio::device::VirtioDevice;
+use crate::virtio::virtio_fs::fs::IoctlCompleter;
+use crate::virtio::virtio_fs::fuse::FUSE_IOCTL;
+use crate::virtio::virtio_fs::fuse::FUSE_STATFS;
+use crate::virtio::virtio_fs::fuse::FuseIoctlIn;
 use crate::virtio::virtqueue::DescChain;
 use crate::virtio::virtqueue::DescChainReader;
 use crate::virtio::virtqueue::DescChainWriter;
@@ -215,6 +219,18 @@ impl VirtioFs {
         }
     }
 
+    fn do_statfs(
+        &self,
+        _in_header: FuseInHeader,
+        _reader: DescChainReader<'_>,
+        reply: Reply<'_>,
+    ) -> Result<usize, Error> {
+        match self.fs.statfs() {
+            Ok(out) => reply.reply(out),
+            Err(e) => reply.reply_error(e),
+        }
+    }
+
     fn do_release(
         &self,
         in_header: FuseInHeader,
@@ -269,6 +285,20 @@ impl VirtioFs {
         let result = self.fs.readdir(node_id, readdir_in, readdir_reply);
         result.0
     }
+
+    fn do_ioctl(
+        &self,
+        in_header: FuseInHeader,
+        mut reader: DescChainReader<'_>,
+        reply: Reply<'_>,
+    ) -> Result<usize, Error> {
+        let ioctl_in = reader.read::<FuseIoctlIn>()?;
+        let arg = reader.read_zerocopy(ioctl_in.out_size as usize)?;
+        let node_id = INodeNo::new(in_header.nodeid);
+        let ioctl_reply = IoctlCompleter(reply);
+        let result = self.fs.ioctl(node_id, ioctl_in, arg, ioctl_reply);
+        result.0
+    }
 }
 
 impl VirtioDevice for VirtioFs {
@@ -317,10 +347,12 @@ impl VirtioDevice for VirtioFs {
             FUSE_OPEN => self.do_open(in_header, reader, reply),
             FUSE_GETATTR => self.do_getattr(in_header, reader, reply),
             FUSE_FLUSH => self.do_flush(in_header, reader, reply),
+            FUSE_STATFS => self.do_statfs(in_header, reader, reply),
             FUSE_RELEASE => self.do_release(in_header, reader, reply),
             FUSE_READ => self.do_read(in_header, reader, reply),
             FUSE_WRITE => self.do_write(in_header, reader, reply),
             FUSE_READDIR => self.do_readdir(in_header, reader, reply),
+            FUSE_IOCTL => self.do_ioctl(in_header, reader, reply),
             FUSE_GETXATTR => reply.reply_error(Errno::EOPNOTSUPP),
             _ => {
                 panic!("virtio-fs: unknown opcode: {}", in_header.opcode);

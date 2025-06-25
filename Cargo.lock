@@ -53,17 +53,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b"
 
 [[package]]
-name = "catsay"
-version = "0.0.0"
-dependencies = [
- "serde",
- "serde_json",
- "starina",
- "starina_linux",
- "starina_utils",
-]
-
-[[package]]
 name = "cfg-if"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -212,10 +201,10 @@ version = "0.0.0"
 dependencies = [
  "arrayvec",
  "autotest",
- "catsay",
  "fdt-rs",
  "hashbrown 0.15.2",
  "http_server",
+ "linuxrun",
  "rustc-hash",
  "serde_json",
  "spin",
@@ -224,6 +213,17 @@ dependencies = [
  "starina_utils",
  "tcpip",
  "virtio_net",
+]
+
+[[package]]
+name = "linuxrun"
+version = "0.0.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "starina",
+ "starina_linux",
+ "starina_utils",
 ]
 
 [[package]]

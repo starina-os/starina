@@ -25,7 +25,7 @@ const INKERNEL_APPS: &[AppSpec] = &[
     virtio_net::SPEC,
     tcpip::SPEC,
     http_server::SPEC,
-    catsay::SPEC,
+    linuxrun::SPEC,
 ];
 
 pub fn load_inkernel_apps(device_tree: DeviceTree) {

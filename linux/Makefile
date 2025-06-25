@@ -65,15 +65,12 @@ kernel/.config: kernel/README linux.riscv64.config
 	$(PROGRESS) "make olddefconfig"
 	$(linux_make) -C kernel olddefconfig
 
-initramfs_files := build/linuxinit build/catsay
+initramfs_files := build/linuxinit
 
 $(image_path): kernel/.config initramfs.list $(initramfs_files)
 	$(PROGRESS) "make $(image_path)"
 	$(linux_make) -C kernel Image
 
-build/catsay: $(wildcard catsay.go)
-	mkdir -p build
-	CGO_ENABLED=0 GOARCH=riscv64 GOOS=linux go build -o build/catsay catsay.go
 
 build/linuxinit: $(wildcard linuxinit/src/*.rs linuxinit/Cargo.toml)
 	mkdir -p build

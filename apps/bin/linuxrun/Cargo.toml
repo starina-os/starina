@@ -1,5 +1,5 @@
 [package]
-name = "catsay"
+name = "linuxrun"
 publish = false
 version = { workspace = true }
 authors = { workspace = true }

@@ -78,8 +78,42 @@ impl FileLike for BufferedStdout {
     }
 }
 
+struct RootfsProvider {
+    image: &'static [u8],
+}
+
+impl RootfsProvider {
+    pub fn from_static(image: &'static [u8]) -> Self {
+        Self { image }
+    }
+}
+
+impl FileLike for RootfsProvider {
+    fn size(&self) -> usize {
+        self.image.len()
+    }
+
+    fn read_at(&self, offset: usize, size: usize, completer: ReadCompleter) -> ReadResult {
+        if offset > self.image.len() {
+            return completer.error(Errno::EINVAL);
+        }
+
+        let read_len = min(size, self.image.len() - offset);
+        completer.complete(&self.image[offset..offset + read_len])
+    }
+
+    fn write_at(&self, _offset: usize, _data: &[u8]) -> Result<usize, Errno> {
+        debug_warn!("attempt to write to rootfs");
+        Err(Errno::EROFS)
+    }
+}
+
 #[derive(Debug)]
 pub enum Error {}
+
+pub enum ContainerImage {
+    Static(&'static [u8]),
+}
 
 pub struct Command {
     program: String,
@@ -87,6 +121,7 @@ pub struct Command {
     stdin: Option<Arc<dyn FileLike>>,
     stdout: Option<Arc<dyn FileLike>>,
     ports: Vec<Port>,
+    image: Option<ContainerImage>,
 }
 
 impl Command {
@@ -97,7 +132,13 @@ impl Command {
             stdin: None,
             stdout: None,
             ports: Vec::new(),
+            image: None,
         }
+    }
+
+    pub fn image(&mut self, image: ContainerImage) -> &mut Command {
+        self.image = Some(image);
+        self
     }
 
     pub fn arg<S: AsRef<str>>(&mut self, arg: S) -> &mut Command {
@@ -138,6 +179,12 @@ impl Command {
         if let Some(stdin) = &self.stdin {
             builder.add_root_file("stdin", stdin.clone());
         }
+
+        let rootfs_file = match &self.image {
+            Some(ContainerImage::Static(data)) => Arc::new(RootfsProvider::from_static(data)),
+            None => panic!("rootfs is not set"),
+        };
+        builder.add_root_file("rootfs", rootfs_file);
 
         let fs = builder.build();
         boot_linux(fs, &self.ports, tcpip_ch);

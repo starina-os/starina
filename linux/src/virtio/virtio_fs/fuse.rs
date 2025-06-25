@@ -13,6 +13,7 @@ pub enum Errno {
     EINVAL = -22,
     EHOSTDOWN = -112,
     EOPNOTSUPP = -95,
+    EROFS = -30,
 }
 
 /// `struct fuse_in_header`.
@@ -76,6 +77,21 @@ pub struct FuseFlushIn {
     pub unused: u32,
     pub padding: u32,
     pub lock_owner: u64,
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+#[repr(C)]
+pub struct FuseStatFsOut {
+    pub blocks: u64,
+    pub bfree: u64,
+    pub bavail: u64,
+    pub files: u64,
+    pub ffree: u64,
+    pub bsize: u32,
+    pub namelen: u32,
+    pub frsize: u32,
+    pub padding: u32,
+    pub spare: [u32; 6],
 }
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -193,14 +209,36 @@ pub struct FuseDirent {
     pub file_type: u32,
 }
 
+#[derive(Debug, Clone, Copy, Default)]
+#[repr(C)]
+pub struct FuseIoctlIn {
+    pub fh: u64,
+    pub flags: u32,
+    pub cmd: u32,
+    pub arg: u64,
+    pub in_size: u32,
+    pub out_size: u32,
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+#[repr(C)]
+pub struct FuseIoctlOut {
+    pub result: i32,
+    pub flags: u32,
+    pub in_iovs: u32,
+    pub out_iovs: u32,
+}
+
 // FUSE operations.
 pub const FUSE_LOOKUP: u32 = 1;
 pub const FUSE_GETATTR: u32 = 3;
 pub const FUSE_OPEN: u32 = 14;
 pub const FUSE_READ: u32 = 15;
 pub const FUSE_WRITE: u32 = 16;
+pub const FUSE_STATFS: u32 = 17;
 pub const FUSE_RELEASE: u32 = 18;
 pub const FUSE_GETXATTR: u32 = 22;
 pub const FUSE_FLUSH: u32 = 25;
 pub const FUSE_INIT: u32 = 26;
 pub const FUSE_READDIR: u32 = 28;
+pub const FUSE_IOCTL: u32 = 39;

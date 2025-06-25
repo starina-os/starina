@@ -29,5 +29,5 @@ starina = { workspace = true, features = ["in-kernel"] }
 virtio_net = { workspace = true }
 tcpip = { workspace = true }
 http_server = { workspace = true }
-catsay = { workspace = true }
+linuxrun = { workspace = true }
 autotest = { workspace = true }

@@ -3,6 +3,8 @@ use starina::prelude::*;
 use starina::sync::Arc;
 use starina::sync::Mutex;
 
+use crate::IoctlCompleter;
+use crate::IoctlResult;
 use crate::ReadDirCompleter;
 use crate::virtio::virtio_fs;
 use crate::virtio::virtio_fs::INodeNo;
@@ -15,10 +17,12 @@ use crate::virtio::virtio_fs::fuse::FuseEntryOut;
 use crate::virtio::virtio_fs::fuse::FuseFlushIn;
 use crate::virtio::virtio_fs::fuse::FuseGetAttrIn;
 use crate::virtio::virtio_fs::fuse::FuseGetAttrOut;
+use crate::virtio::virtio_fs::fuse::FuseIoctlIn;
 use crate::virtio::virtio_fs::fuse::FuseOpenIn;
 use crate::virtio::virtio_fs::fuse::FuseOpenOut;
 use crate::virtio::virtio_fs::fuse::FuseReadIn;
 use crate::virtio::virtio_fs::fuse::FuseReleaseIn;
+use crate::virtio::virtio_fs::fuse::FuseStatFsOut;
 use crate::virtio::virtio_fs::fuse::FuseWriteIn;
 use crate::virtio::virtio_fs::fuse::FuseWriteOut;
 
@@ -240,6 +244,13 @@ impl virtio_fs::FileSystem for FileSystem {
         Ok(())
     }
 
+    fn statfs(&self) -> Result<FuseStatFsOut, Errno> {
+        // TODO:
+        Ok(FuseStatFsOut {
+            ..Default::default()
+        })
+    }
+
     fn release(&self, ino: INodeNo, _release_in: FuseReleaseIn) -> Result<(), Errno> {
         trace!("release: inode={:?}", ino);
         Ok(())
@@ -283,5 +294,16 @@ impl virtio_fs::FileSystem for FileSystem {
             .write(write_in.offset, data)?;
 
         Ok(FuseWriteOut { size, padding: 0 })
+    }
+
+    fn ioctl(
+        &self,
+        ino: INodeNo,
+        ioctl_in: FuseIoctlIn,
+        _data: &[u8],
+        completer: IoctlCompleter,
+    ) -> IoctlResult {
+        debug_warn!("ioctl unsupported: ino={:?}, cmd={:?}", ino, ioctl_in.cmd);
+        completer.error(Errno::EOPNOTSUPP)
     }
 }

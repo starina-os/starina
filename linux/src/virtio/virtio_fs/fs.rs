@@ -12,6 +12,9 @@ use super::fuse::FuseReadIn;
 use super::fuse::FuseReleaseIn;
 use super::fuse::FuseWriteIn;
 use super::fuse::FuseWriteOut;
+use crate::virtio::virtio_fs::fuse::FuseIoctlIn;
+use crate::virtio::virtio_fs::fuse::FuseIoctlOut;
+use crate::virtio::virtio_fs::fuse::FuseStatFsOut;
 
 pub struct ReadCompleter<'a>(pub(super) Reply<'a>);
 
@@ -48,6 +51,22 @@ impl<'a> ReadDirCompleter<'a> {
     }
 }
 
+pub struct IoctlCompleter<'a>(pub(super) Reply<'a>);
+
+pub struct IoctlResult(pub(super) Result<usize, Error>);
+
+impl<'a> IoctlCompleter<'a> {
+    pub fn error(self, error: Errno) -> IoctlResult {
+        let result = self.0.reply_error(error);
+        IoctlResult(result)
+    }
+
+    pub fn complete(self, out: FuseIoctlOut, data: &[u8]) -> IoctlResult {
+        let result = self.0.do_reply(Some(out), Some(data));
+        IoctlResult(result)
+    }
+}
+
 /// The inode number.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct INodeNo(pub u64);
@@ -68,6 +87,7 @@ pub trait FileSystem {
     fn open(&self, ino: INodeNo, open_in: FuseOpenIn) -> Result<FuseOpenOut, Errno>;
     fn getattr(&self, ino: INodeNo, getattr_in: FuseGetAttrIn) -> Result<FuseGetAttrOut, Errno>;
     fn flush(&self, ino: INodeNo, flush_in: FuseFlushIn) -> Result<(), Errno>;
+    fn statfs(&self) -> Result<FuseStatFsOut, Errno>;
     fn release(&self, ino: INodeNo, release_in: FuseReleaseIn) -> Result<(), Errno>;
     fn read(&self, ino: INodeNo, read_in: FuseReadIn, completer: ReadCompleter) -> ReadResult;
     fn write(
@@ -82,4 +102,11 @@ pub trait FileSystem {
         readdir_in: FuseReadIn,
         completer: ReadDirCompleter,
     ) -> ReadResult;
+    fn ioctl(
+        &self,
+        ino: INodeNo,
+        ioctl_in: FuseIoctlIn,
+        data: &[u8],
+        completer: IoctlCompleter,
+    ) -> IoctlResult;
 }

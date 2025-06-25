@@ -11,15 +11,20 @@ use starina::spec::EnvType;
 use starina::spec::ExportItem;
 use starina_linux::BufferedStdin;
 use starina_linux::BufferedStdout;
+use starina_linux::ContainerImage;
 use starina_linux::Port;
 
+const CONTAINER_SQUASHFS: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/container.squashfs"));
+
 pub const SPEC: AppSpec = AppSpec {
-    name: "catsay",
+    name: "linuxrun",
     env: &[EnvItem {
         name: "tcpip",
         ty: EnvType::Service { service: "tcpip" },
     }],
-    exports: &[ExportItem::Service { service: "catsay" }],
+    exports: &[ExportItem::Service {
+        service: "linuxrun",
+    }],
     main,
 };
 
@@ -35,7 +40,9 @@ fn main(env_json: &[u8]) {
     let stdin = BufferedStdin::new(TEXT);
     let stdout = BufferedStdout::new();
 
-    starina_linux::Command::new("/bin/catsay")
+    starina_linux::Command::new("/bin/uname")
+        .arg("-a")
+        .image(ContainerImage::Static(CONTAINER_SQUASHFS))
         .stdin(stdin)
         .stdout(stdout.clone())
         .port(Port::Tcp {
@@ -45,5 +52,8 @@ fn main(env_json: &[u8]) {
         .spawn(env.tcpip)
         .expect("failed to execute process");
 
-    info!("{}", from_utf8(&stdout.buffer()).unwrap());
+    info!(
+        "\x1b[1;32m{}\x1b[0m",
+        from_utf8(&stdout.buffer()).unwrap().trim_ascii_end()
+    );
 }

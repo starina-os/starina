@@ -156,7 +156,7 @@ impl VirtQueue {
                 }
 
                 self.num_free_descs += num_freed;
-                self.last_used_index = self.last_used_index.wrapping_add(1);
+                self.last_used_index = (self.last_used_index + 1) % self.num_descs;
             }
         }
 
@@ -213,7 +213,7 @@ impl VirtQueue {
         }
 
         let head = *self.used_elem(self.last_used_index);
-        self.last_used_index = self.last_used_index.wrapping_add(1);
+        self.last_used_index = (self.last_used_index + 1) % self.num_descs;
 
         let mut used_descs = Vec::new();
         let mut next_desc_index = head.id as u16;

@@ -9,13 +9,13 @@ dir /sys 0755 0 0
 dir /tmp 0755 0 0
 dir /var 0755 0 0
 dir /mnt 0755 0 0
+dir /containerfs 0755 0 0
 dir /virtfs 0755 0 0
 
 # Init
 file /init ../build/linuxinit 0755 0 0
 
 # Binaries
-file /bin/catsay ../build/catsay 0755 0 0
 
 # Configuration files
 slink /etc/resolv.conf /proc/net/pnp 0777 0 0
