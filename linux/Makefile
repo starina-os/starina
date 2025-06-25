@@ -79,3 +79,9 @@ build/linuxinit: $(wildcard linuxinit/src/*.rs linuxinit/Cargo.toml)
 	mkdir -p build
 	cd linuxinit && RUSTFLAGS="-C linker=./zig-linker.sh" cargo build --release --target riscv64gc-unknown-linux-musl -vvv
 	cp linuxinit/target/riscv64gc-unknown-linux-musl/release/linuxinit $(@)
+
+.PHONY: menuconfig
+menuconfig:
+	$(linux_make) -C kernel menuconfig
+	$(PROGRESS) "Copying to linux.riscv64.config"
+	cp kernel/.config linux.riscv64.config
