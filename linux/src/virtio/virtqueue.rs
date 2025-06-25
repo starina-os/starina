@@ -1,4 +1,5 @@
 use core::mem::offset_of;
+use core::sync::atomic;
 use core::sync::atomic::AtomicU32;
 use core::sync::atomic::Ordering;
 
@@ -293,6 +294,10 @@ impl<'a> DescChainReader<'a> {
     }
 
     pub fn read_zerocopy(&mut self, len: usize) -> Result<&[u8], guest_memory::Error> {
+        if len == 0 {
+            return Ok(&[]);
+        }
+
         match self.read_bytes(len)? {
             Some(slice) => Ok(slice),
             None => {
@@ -390,7 +395,7 @@ impl Virtqueue {
     }
 
     pub fn pop_avail(&mut self, memory: &mut GuestMemory) -> Option<DescChain> {
-        // TODO: fence here
+        atomic::fence(Ordering::Acquire);
 
         let avail = match memory.read::<VirtqAvail>(self.avail_gpaddr) {
             Ok(avail) => avail,
@@ -468,11 +473,11 @@ impl Virtqueue {
         }
 
         // This increment must be done before writing the used index.
-        self.used_index = (self.used_index + 1) % (self.num_descs as u32);
+        self.used_index = self.used_index.wrapping_add(1);
         self.irq_status
             .fetch_or(VIRQ_IRQSTATUS_QUEUE, Ordering::Relaxed);
 
-        // TODO: fence here
+        atomic::fence(Ordering::Release);
 
         if let Err(err) = memory.write(used_index_gpaddr, self.used_index) {
             debug_warn!(
