@@ -18,8 +18,9 @@ To use Linux compatibility layer, you also need:
 
 - Zig
 - skopeo
+- squashfs-tools (`mksquashfs`)
 - Clang, LLD, LLVM binutils
-- GNU make More so-called *build-essential* packages
+- GNU make and more so-called *build-essential* packages
 
 > [!TIP]
 >
