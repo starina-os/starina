@@ -52,13 +52,13 @@ Debug with GDB (keep `run.sh` running in another terminal):
 ```
 
 
-## Is it Linux or POSIX compatible?
+## Linux compatibility layer
 
-Yes, using the real Linux kernel: Starina provides a lightweight VM based Linux compatibility library with an ergonomic `std::process::Command`-like API. Learn more in [this blog post](https://seiya.me/blog/hypervisor-as-a-library).
+Starina provides a lightweight VM based Linux compatibility library with an ergonomic `std::process::Command`-like API. Learn more in [this blog post](https://seiya.me/blog/hypervisor-as-a-library).
 
 Also, `run.sh` starts a single Linux container automatically to demonstrate the Linux integration. Set `LINUXRUN_IMAGE` and `LINUXRUN_ENTRYPOINT` to specify the image name and entrypoint:
 
-```bash
+```
 $ export LINUXRUN_IMAGE="docker://hello-world:latest"
 $ export LINUXRUN_ENTRYPOINT="/hello"
 $ ./run.sh
