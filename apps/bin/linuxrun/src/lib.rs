@@ -14,6 +14,7 @@ use starina_linux::BufferedStdout;
 use starina_linux::ContainerImage;
 use starina_linux::Port;
 
+const ENTRYPOINT: &str = env!("LINUXRUN_ENTRYPOINT");
 const CONTAINER_SQUASHFS: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/container.squashfs"));
 
 pub const SPEC: AppSpec = AppSpec {
@@ -40,8 +41,7 @@ fn main(env_json: &[u8]) {
     let stdin = BufferedStdin::new(TEXT);
     let stdout = BufferedStdout::new();
 
-    starina_linux::Command::new("/bin/uname")
-        .arg("-a")
+    starina_linux::Command::new(ENTRYPOINT)
         .image(ContainerImage::Static(CONTAINER_SQUASHFS))
         .stdin(stdin)
         .stdout(stdout.clone())

@@ -3,7 +3,7 @@ set -ue
 
 setup_macos() {
     set -x
-    brew install make llvm lld zig findutils libelf go
+    brew install make llvm lld zig findutils libelf skopeo
 }
 
 setup_linux() {
@@ -17,7 +17,7 @@ setup_linux() {
     sudo apt-get install -y \
         build-essential clang llvm \
         curl flex bison bc cpio lz4 libelf-dev \
-        golang-go lld
+        lld skopeo
 
     sudo snap install zig --classic --beta
 }

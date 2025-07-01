@@ -30,6 +30,7 @@ toml = "0.8.20"
 fdt-rs = { version = "0", default-features = false }
 vm-fdt = { version = "0.3.0", default-features = false }
 thiserror = { version = "2.0.12", default-features = false }
+tempfile = "3.14.0"
 
 kernel = { path = "kernel" }
 starina = { path = "libs/rust/starina" }

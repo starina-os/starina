@@ -11,3 +11,8 @@ starina_utils = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 starina_linux = { workspace = true }
 serde_json = { workspace = true }
+
+[build-dependencies]
+tempfile = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true, features = ["std"] }

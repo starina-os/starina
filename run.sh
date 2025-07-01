@@ -1,6 +1,11 @@
 #!/bin/bash
 set -eu
 
+export STARINA_ARCH="${STARINA_ARCH:-riscv64}"
+export LINUXRUN_IMAGE="${LINUXRUN_IMAGE:-docker://hello-world:latest}"
+export LINUXRUN_ENTRYPOINT="${LINUXRUN_ENTRYPOINT:-/hello}"
+export LINUXRUN_ARCH="${STARINA_ARCH}"
+
 # V=1
 if [[ -n ${V:-} ]]; then
   set -x
@@ -27,7 +32,7 @@ cargo $cargo_cmd \
     ${EXIT_ON_IDLE:+--features exit-on-idle} \
     -Z build-std=core,alloc \
     -Z build-std-features=compiler-builtins-mem \
-    --target kernel/src/arch/riscv64/kernel.json \
+    --target kernel/src/arch/${STARINA_ARCH}/kernel.json \
     --manifest-path kernel/Cargo.toml
 
 if [[ -n ${CHECK_ONLY:-} || -n ${CLIPPY:-} ]]; then
