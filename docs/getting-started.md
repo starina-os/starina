@@ -2,23 +2,24 @@
 
 ## Install Packages
 
-Starina builds on Linux and macOS. Other platforms are not tested, but should work as long as you have the following packages installed:
+macOS and Ubuntu users can install the packages with:
+
+```
+./setup.sh
+```
+
+Other platforms are not tested, but should work as long as you have the following packages installed:
 
 - Rust (use [rustup](https://rustup.rs/))
 - QEMU
 - GDB (optional)
 
-### macOS
+To use Linux compatibility layer, you also need:
 
-```bash
-brew install qemu riscv64-elf-gdb
-```
-
-### Ubuntu
-
-```bash
-sudo apt install qemu gdb-multiarch
-```
+- Zig
+- skopeo
+- Clang, LLD, LLVM binutils
+- GNU make More so-called *build-essential* packages
 
 > [!TIP]
 >
@@ -48,10 +49,10 @@ sudo apt install qemu gdb-multiarch
 
 ## Debugging with GDB
 
-`run.sh` starts QEMU with GDB server enabled. You can attach GDB to Starina Kernel on QEMU and start debugging as follows:
+`run.sh` starts QEMU with GDB server enabled. You can attach GDB to Starina Kernel by:
 
 ```bash
-riscv64-elf-gdb
+./debug.sh
 ```
 
 GDB is super useful for debugging especially when you debug the kernel and in-kernel apps. For example, if the kernel hungs, you can check the backtrace with `bt` command.

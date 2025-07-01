@@ -25,7 +25,7 @@ This year we're focusing on cloud computing, with [starina.dev](https://starina.
 - [x] TCP/IP networking
 - [x] Virtio-net device dirver
 - [x] WSL2-like Linux compatibility layer
-- [ ] **WIP:** Linux container image support (`docker run`-like experience)
+- [x] Linux container image support (`docker run`-like experience)
 - [ ] Shell (in an unopinionated headless Web-based approach)
 - [ ] File system server
 - [ ] TypeScript (WebAssembly-based) or Swift (Embedded Swift) API
@@ -33,21 +33,59 @@ This year we're focusing on cloud computing, with [starina.dev](https://starina.
 
 ## Getting Started
 
+Install dependencies:
+
 ```bash
-# Install dependencies
-brew install qemu riscv64-elf-gdb  # macOS
-apt install qemu gdb-multiarch     # Ubuntu
-
-# Build and run
-./run.sh
-
-# Debug with GDB
-riscv64-elf-gdb -ex bt
+./setup.sh
 ```
+
+Build and run:
+
+```bash
+./run.sh
+```
+
+Debug with GDB (keep `run.sh` running in another terminal):
+
+```bash
+./debug.sh
+```
+
 
 ## Is it Linux or POSIX compatible?
 
-Starina uses a completely new API design and is not POSIX-compatible. However, you can run existing Linux applications using its lightweight VM based Linux compatibility library with an ergonomic `std::process::Command`-like API. Learn more in [this blog post](https://seiya.me/blog/hypervisor-as-a-library).
+Yes, using the real Linux kernel: Starina provides a lightweight VM based Linux compatibility library with an ergonomic `std::process::Command`-like API. Learn more in [this blog post](https://seiya.me/blog/hypervisor-as-a-library).
+
+Also, `run.sh` starts a single Linux container automatically to demonstrate the Linux integration. Set `LINUXRUN_IMAGE` and `LINUXRUN_ENTRYPOINT` to specify the image name and entrypoint:
+
+```bash
+$ export LINUXRUN_IMAGE="docker://hello-world:latest"
+$ export LINUXRUN_ENTRYPOINT="/hello"
+$ ./run.sh
+[kernel      ] INFO   Booting Starina...
+...
+[linuxrun    ] INFO
+Hello from Docker!
+This message shows that your installation appears to be working correctly.
+
+To generate this message, Docker took the following steps:
+ 1. The Docker client contacted the Docker daemon.
+ 2. The Docker daemon pulled the "hello-world" image from the Docker Hub.
+    (riscv64)
+ 3. The Docker daemon created a new container from that image which runs the
+    executable that produces the output you are currently reading.
+ 4. The Docker daemon streamed that output to the Docker client, which sent it
+    to your terminal.
+
+To try something more ambitious, you can run an Ubuntu container with:
+ $ docker run -it ubuntu bash
+
+Share images, automate workflows, and more with a free Docker ID:
+ https://hub.docker.com/
+
+For more examples and ideas, visit:
+ https://docs.docker.com/get-started/
+```
 
 ## Why Rust?
 
