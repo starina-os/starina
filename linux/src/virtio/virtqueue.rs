@@ -15,7 +15,7 @@ use crate::guest_memory;
 use crate::guest_memory::GuestMemory;
 use crate::guest_net;
 
-pub const VIRTQUEUE_NUM_DESCS_MAX: u32 = 256;
+pub const VIRTQUEUE_NUM_DESCS_MAX: u32 = 32;
 
 const VIRTQ_DESC_F_NEXT: u16 = 1;
 const VIRTQ_DESC_F_WRITE: u16 = 2;
@@ -347,7 +347,7 @@ pub struct Virtqueue {
     /// Known as *Used Ring*.
     used_gpaddr: GPAddr,
     avail_index: u16,
-    used_index: u32,
+    used_index: u16,
     num_descs: u32,
     irq_status: Arc<AtomicU32>,
 }
@@ -405,24 +405,40 @@ impl Virtqueue {
             }
         };
 
-        if avail.index.to_host() == self.avail_index {
+        let avail_index_host = avail.index.to_host();
+        if avail_index_host == self.avail_index {
             return None;
         }
 
+        // Ensure memory ordering before accessing the ring
+        atomic::fence(Ordering::Acquire);
+
+        let index = self.avail_index as usize % self.num_descs as usize;
         let index_gpaddr = self
             .avail_gpaddr
-            .checked_add(size_of::<VirtqAvail>() + self.avail_index as usize * size_of::<u16>())
+            .checked_add(size_of::<VirtqAvail>() + index * size_of::<u16>())
             .unwrap();
 
         let desc_index = match memory.read::<u16>(index_gpaddr) {
             Ok(desc_index) => desc_index,
             Err(err) => {
-                debug_warn!("virtqueue: pop: failed to read used ring: {:x?}", err);
+                debug_warn!("virtqueue: pop: failed to read avail ring: {:x?}", err);
                 return None;
             }
         };
 
-        self.avail_index = (self.avail_index + 1) % (self.num_descs as u16);
+        // Validate descriptor index is within bounds
+        if desc_index >= self.num_descs as u16 {
+            debug_warn!(
+                "virtqueue[{}]: pop_avail: desc_index {} >= num_descs {}",
+                self.index,
+                desc_index,
+                self.num_descs
+            );
+            return None;
+        }
+
+        self.avail_index = self.avail_index.wrapping_add(1);
 
         Some(DescChain { head: desc_index })
     }
@@ -443,7 +459,11 @@ impl Virtqueue {
 
     pub fn push_used(&mut self, memory: &mut GuestMemory, chain: DescChain, written_len: u32) {
         if chain.head >= self.num_descs as u16 {
-            debug_warn!("virtqueue: push_used: chain head is greater than num_descs");
+            debug_warn!(
+                "virtqueue: push_used: chain head {} >= num_descs {}",
+                chain.head,
+                self.num_descs
+            );
             return;
         }
 
@@ -451,20 +471,19 @@ impl Virtqueue {
             .used_gpaddr
             .checked_add(offset_of!(VirtqUsed, index))
             .unwrap();
+
+        let index = self.used_index as usize % self.num_descs as usize;
         let used_elem_gpaddr = self
             .used_gpaddr
-            .checked_add(
-                size_of::<VirtqUsed>() + self.used_index as usize * size_of::<VirtqUsedElem>(),
-            )
+            .checked_add(size_of::<VirtqUsed>() + index * size_of::<VirtqUsedElem>())
             .unwrap();
 
-        if let Err(err) = memory.write(
-            used_elem_gpaddr,
-            VirtqUsedElem {
-                id: (chain.head as u32).into(),
-                len: written_len.into(),
-            },
-        ) {
+        let used_elem = VirtqUsedElem {
+            id: (chain.head as u32).into(),
+            len: written_len.into(),
+        };
+
+        if let Err(err) = memory.write(used_elem_gpaddr, used_elem) {
             debug_warn!(
                 "virtqueue: push_used: failed to write used ring: {:x?}",
                 err
@@ -472,19 +491,19 @@ impl Virtqueue {
             return;
         }
 
-        // This increment must be done before writing the used index.
         self.used_index = self.used_index.wrapping_add(1);
-        self.irq_status
-            .fetch_or(VIRQ_IRQSTATUS_QUEUE, Ordering::Relaxed);
-
         atomic::fence(Ordering::Release);
 
         if let Err(err) = memory.write(used_index_gpaddr, self.used_index) {
             debug_warn!(
-                "virtqueue: push_used: failed to write used ring: {:x?}",
+                "virtqueue: push_used: failed to write used index: {:x?}",
                 err
             );
+            return;
         }
+
+        self.irq_status
+            .fetch_or(VIRQ_IRQSTATUS_QUEUE, Ordering::Relaxed);
     }
 }
 
