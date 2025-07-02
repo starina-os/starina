@@ -3,7 +3,7 @@ set -ue
 
 setup_macos() {
     set -x
-    brew install make llvm lld zig findutils libelf skopeo squashfs
+    brew install make llvm lld zig findutils gnu-sed libelf skopeo squashfs
 }
 
 setup_linux() {

@@ -36,12 +36,6 @@ endif
 
 export ARCH=riscv
 export LLVM=1
-export LD=ld.lld
-export HOSTCC=clang
-export CC=clang
-export NM=nm
-export OBJCOPY=llvm-objcopy
-export OBJDUMP=llvm-objdump
 
 .PHONY: all
 all: linux.elf

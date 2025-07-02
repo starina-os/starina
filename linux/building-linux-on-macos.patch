@@ -1,57 +1,35 @@
-From f0003ad62f59e88eabc5aece246373856a5bf369 Mon Sep 17 00:00:00 2001
+From 774c044b810b044e444f2ce854eddff8608bf017 Mon Sep 17 00:00:00 2001
 From: Seiya Nuta <nuta@seiya.me>
-Date: Tue, 24 Jun 2025 17:29:09 +0900
+Date: Wed, 2 Jul 2025 12:55:09 +0900
 Subject: [PATCH] Build Linux on macOS
 
 Note: This patch is GPLv2 licensed.
 
 This patch enables building Linux on macOS 15.5 (Sequoia) natively using Homebrew packages:
 
-    brew install make llvm lld findutils libelf
+    brew install make llvm lld findutils gnu-sed libelf
 
-    export PATH="$(brew --prefix findutils)/libexec/gnubin:$(brew --prefix llvm)/bin:$(PATH)"
-    export ARCH=riscv
-    export LD=ld.lld
-    export CC=clang
-    export NM=nm
-    export OBJCOPY=llvm-objcopy
-    export OBJDUMP=llvm-objdump
-    export LLVM=1
-    export HOSTCFLAGS="-Iscripts/macos-include -I $(brew --prefix libelf)/include"
+    export PATH="$(brew --prefix findutils)/libexec/gnubin:$(brew --prefix gnu-sed)/libexec/gnubin:$(brew --prefix llvm)/bin:$PATH"
+    export ARCH=riscv LLVM=1 HOSTCFLAGS="-Iscripts/macos-include -I $(brew --prefix libelf)/include"
 
     gmake Image -j$(nproc)
 
 Interestingly, changes are only applied to build scripts, not kernel source code:
 
-- Fix gen_vdso_offsets.sh to work with llvm-nm output.
 - Add missing byteswap.h.
 - Add missing elf.h - libelf is installed via Homebrew, however, it's too old
   and needs some definitions from newer elf.h headers.
 - Work around uuid_t definition issue in file2alias.c [1].
 
 Tested with v6.12.34 and v6.1.141, riscv and arm64 allnoconfig builds.
-
-[1] "WIP: build Linux on MacOS" by Nick Desaulniers: https://github.com/ClangBuiltLinux/linux/commit/f06333e29addbc3d714adb340355f471c1dfe95a
-
 ---
- arch/riscv/kernel/vdso/gen_vdso_offsets.sh |  2 +-
- scripts/macos-include/byteswap.h           |  4 ++++
- scripts/macos-include/elf.h                | 22 ++++++++++++++++++++++
- scripts/mod/file2alias.c                   |  3 +++
- 4 files changed, 30 insertions(+), 1 deletion(-)
+ scripts/macos-include/byteswap.h |  4 ++++
+ scripts/macos-include/elf.h      | 24 ++++++++++++++++++++++++
+ scripts/mod/file2alias.c         |  3 +++
+ 3 files changed, 31 insertions(+)
  create mode 100644 scripts/macos-include/byteswap.h
  create mode 100644 scripts/macos-include/elf.h
 
-diff --git a/arch/riscv/kernel/vdso/gen_vdso_offsets.sh b/arch/riscv/kernel/vdso/gen_vdso_offsets.sh
-index c2e5613f3..e83ba4213 100755
---- a/arch/riscv/kernel/vdso/gen_vdso_offsets.sh
-+++ b/arch/riscv/kernel/vdso/gen_vdso_offsets.sh
-@@ -2,4 +2,4 @@
- # SPDX-License-Identifier: GPL-2.0
-
- LC_ALL=C
--sed -n -e 's/^[0]\+\(0[0-9a-fA-F]*\) . \(__vdso_[a-zA-Z0-9_]*\)$/\#define \2_offset\t0x\1/p'
-+sed -n -e 's/^[0]*\([0-9a-fA-F]*\) . \(__vdso_[a-zA-Z0-9_]*\)$/\#define \2_offset\t0x\1/p'
 diff --git a/scripts/macos-include/byteswap.h b/scripts/macos-include/byteswap.h
 new file mode 100644
 index 000000000..fd97ed5e1
@@ -64,10 +42,10 @@ index 000000000..fd97ed5e1
 +#define bswap_64 __builtin_bswap64
 diff --git a/scripts/macos-include/elf.h b/scripts/macos-include/elf.h
 new file mode 100644
-index 000000000..b76f0f9a0
+index 000000000..5d42ed858
 --- /dev/null
 +++ b/scripts/macos-include/elf.h
-@@ -0,0 +1,22 @@
+@@ -0,0 +1,24 @@
 +#pragma once
 +#include <libelf/gelf.h>
 +
@@ -90,6 +68,8 @@ index 000000000..b76f0f9a0
 +#define R_ARM_THM_MOVW_ABS_NC 47
 +#define R_ARM_THM_MOVT_ABS 48
 +#define R_ARM_THM_JUMP19 51
++#define R_AARCH64_ABS64 257
++#define R_AARCH64_PREL64 260
 diff --git a/scripts/mod/file2alias.c b/scripts/mod/file2alias.c
 index 721e0e9f1..fd043c1e9 100644
 --- a/scripts/mod/file2alias.c
