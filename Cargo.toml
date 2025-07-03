@@ -10,7 +10,7 @@ members = [
     "apps/bin/autotest",
 ]
 
-exclude = ["linux/linuxinit"]
+exclude = ["linux/bootd"]
 
 [workspace.package]
 version = "0.0.0"

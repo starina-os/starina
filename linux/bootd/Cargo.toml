@@ -1,5 +1,5 @@
 [package]
-name = "linuxinit"
+name = "bootd"
 publish = false
 version = "0.0.0"
 authors = ["Seiya Nuta <nuta@seiya.me>"]

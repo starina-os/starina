@@ -22,9 +22,9 @@ struct CommandJson {
 
 #[tokio::main]
 async fn main() {
-    eprintln!("[linuxinit] starting");
+    eprintln!("[bootd] starting");
 
-    eprintln!("[linuxinit] mounting devtmpfs");
+    eprintln!("[bootd] mounting devtmpfs");
     mount(
         Some("devtmpfs"),
         "/dev",
@@ -34,7 +34,7 @@ async fn main() {
     )
     .expect("failed to mount devtmpfs");
 
-    eprintln!("[linuxinit] mounting sysfs");
+    eprintln!("[bootd] mounting sysfs");
     mount(
         Some("sysfs"),
         "/sys",
@@ -44,7 +44,7 @@ async fn main() {
     )
     .expect("failed to mount sysfs");
 
-    eprintln!("[linuxinit] mounting procfs");
+    eprintln!("[bootd] mounting procfs");
     mount(
         Some("proc"),
         "/proc",
@@ -54,7 +54,7 @@ async fn main() {
     )
     .expect("failed to mount procfs");
 
-    eprintln!("[linuxinit] mounting tmpfs");
+    eprintln!("[bootd] mounting tmpfs");
     mount(
         Some("tmpfs"),
         "/tmp",
@@ -64,7 +64,7 @@ async fn main() {
     )
     .expect("failed to mount tmpfs");
 
-    eprintln!("[linuxinit] mounting virtio-fs");
+    eprintln!("[bootd] mounting virtio-fs");
     mount(
         Some("virtfs"),
         "/virtfs",
@@ -74,16 +74,16 @@ async fn main() {
     )
     .expect("failed to mount virtio-fs");
 
-    eprintln!("[linuxinit] creating /containerfs directory");
+    eprintln!("[bootd] creating /containerfs directory");
     std::fs::create_dir_all("/containerfs").expect("failed to create /containerfs directory");
 
-    eprintln!("[linuxinit] creating loop device");
+    eprintln!("[bootd] creating loop device");
     let mut loopback = LoopDevice::new(0);
     loopback
         .attach("/virtfs/rootfs")
         .expect("failed to attach squashfs to loop device");
 
-    eprintln!("[linuxinit] mounting /containerfs");
+    eprintln!("[bootd] mounting /containerfs");
     mount(
         Some(loopback.device_path().to_str().unwrap()),
         "/containerfs",
@@ -93,7 +93,7 @@ async fn main() {
     )
     .expect("failed to mount /containerfs");
 
-    eprintln!("[linuxinit] opening /virtfs files");
+    eprintln!("[bootd] opening /virtfs files");
     let command_json_file = File::open("/virtfs/command").expect("failed to open /virtfs/command");
 
     let stdin_file = OpenOptions::new()
@@ -109,9 +109,9 @@ async fn main() {
     let command_json: CommandJson =
         serde_json::from_reader(command_json_file).expect("failed to parse /virtfs/command");
 
-    eprintln!("[linuxinit] preparing containerized environment");
+    eprintln!("[bootd] preparing containerized environment");
 
-    eprintln!("[linuxinit] mounting essential filesystems in container");
+    eprintln!("[bootd] mounting essential filesystems in container");
 
     if std::path::Path::new("/containerfs/proc").exists() {
         mount(
@@ -157,13 +157,13 @@ async fn main() {
         .expect("failed to mount dev in container");
     }
 
-    eprintln!("[linuxinit] changing root to containerfs");
+    eprintln!("[bootd] changing root to containerfs");
     chdir("/containerfs").expect("failed to chdir to /containerfs");
     chroot("/containerfs").expect("failed to chroot to /containerfs");
     chdir("/").expect("failed to chdir to / after chroot");
 
     eprintln!(
-        "[linuxinit] starting command in container: {}",
+        "[bootd] starting command in container: {}",
         command_json.program
     );
     let mut cmd = Command::new(&command_json.program)
@@ -176,6 +176,6 @@ async fn main() {
     let exit_status = cmd.wait().await.expect("failed to wait on command");
     eprintln!("command exited with status: {:?}", exit_status);
 
-    eprintln!("[linuxinit] shuting down ...");
+    eprintln!("[bootd] shuting down ...");
     reboot(RebootMode::RB_HALT_SYSTEM).unwrap();
 }

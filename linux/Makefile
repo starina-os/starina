@@ -59,17 +59,17 @@ kernel/.config: kernel/README linux.riscv64.config
 	$(PROGRESS) "make olddefconfig"
 	$(linux_make) -C kernel olddefconfig
 
-initramfs_files := build/linuxinit
+initramfs_files := build/bootd
 
 $(image_path): kernel/.config initramfs.list $(initramfs_files)
 	$(PROGRESS) "make $(image_path)"
 	$(linux_make) -C kernel Image
 
 
-build/linuxinit: $(wildcard linuxinit/src/*.rs linuxinit/Cargo.toml)
+build/bootd: $(wildcard bootd/src/*.rs bootd/Cargo.toml)
 	mkdir -p build
-	cd linuxinit && RUSTFLAGS="-C linker=./zig-linker.sh" cargo build --release --target riscv64gc-unknown-linux-musl -vvv
-	cp linuxinit/target/riscv64gc-unknown-linux-musl/release/linuxinit $(@)
+	cd bootd && RUSTFLAGS="-C linker=./zig-linker.sh" cargo build --release --target riscv64gc-unknown-linux-musl -vvv
+	cp bootd/target/riscv64gc-unknown-linux-musl/release/bootd $(@)
 
 .PHONY: menuconfig
 menuconfig:

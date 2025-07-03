@@ -13,7 +13,7 @@ fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=Makefile");
     println!("cargo:rerun-if-changed=linux.riscv64.config");
-    println!("cargo:rerun-if-changed=linuxinit");
+    println!("cargo:rerun-if-changed=bootd");
 
     let program = if cfg!(target_os = "macos") {
         "/opt/homebrew/bin/gmake"

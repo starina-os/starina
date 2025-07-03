@@ -13,7 +13,7 @@ dir /containerfs 0755 0 0
 dir /virtfs 0755 0 0
 
 # Init
-file /init ../build/linuxinit 0755 0 0
+file /init ../build/bootd 0755 0 0
 
 # Binaries
 
