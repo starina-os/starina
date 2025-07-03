@@ -1,6 +1,6 @@
 # Comparison with Others
 
-*"How's Starina different from X?"* is the question you'll probably ask first. In this article, we will explore the unique features, Design choices, advantages, and most importantly, the disadvantages of Starina compared to other microkernels.
+*"How's Starina different from X?"* is the question you'll probably ask first. In this article, we will explore the unique features, design choices, advantages, and most importantly, the disadvantages of Starina compared to other microkernels.
 
 This kind of article is uncomfortable to write because some use this kind of comparison for a marketing battle, or FUD. Thus, I'd make it clear that ***"it depends"***. Differences are why there are many microkernels, text editors, programming languages, and Ramen restaurants in this world.
 
@@ -18,7 +18,7 @@ The opposite of this is what I call "kernel-first" design. seL4 is a good exampl
 
 ### A Little Bit of Background (for Microkernel Newbies)
 
-Microkernel is a Design pattern where the kernel is as small as possible, and everything else is implemented as user-space processes. In so-called multi-server microkernels, the userland OS components are implemented as separate processes. For example, TCP/IP process, file system, and each device driver have their own process.
+Microkernel is a design pattern where the kernel is as small as possible, and everything else is implemented as user-space processes. In so-called multi-server microkernels, the userland OS components are implemented as separate processes. For example, TCP/IP process, file system, and each device driver have their own process.
 
 Separate processes here means that they are isolated from each other, as in they cannot access each other's memory nor other kernel resources (e.g. file descriptors). This makes the system more secure and stable, as a bug in one process cannot crash the whole system. This is called "process isolation", and is a key feature of microkernels.
 
@@ -50,7 +50,7 @@ Starina uses message passing for IPC, without IDL. Instead, it has a predefined 
 - **Speed:** We can optimize the message passing for the predefined message types.
 - **Composability:** You'll be able to compose apps like piping UNIX commands (`cat | grep | wc`) thanks to the uniform interface.
 
-To summarize, Starina has *"everything is a file"*-like philosophy in message passing. That is, we prefer a simple interface which covers 90% of the use cases, instead of having specialized interfaces for each use case. A key my finding here is that interactions between OS components are way simpler than gRPC-powered applications.
+To summarize, Starina has *"everything is a file"*-like philosophy in message passing. That is, we prefer a simple interface which covers 90% of the use cases, instead of having specialized interfaces for each use case. A key finding here is that interactions between OS components are way simpler than gRPC-powered applications.
 
 ## Declarative Initialization
 
@@ -59,12 +59,6 @@ Starina prefers declarative ways to initialize components. This is similar to Ku
 In Starina, apps describe required resources in a spec file such as channels to servers, device tree, and config parameters, and so on. The startup process (currently implemented in kernel) reads the spec files, prepares requested resources, and starts the app with environment variables.
 
 Apps start with environment variables that are set by the startup process. No command-line parsing nor service discovery is needed. This makes the app initialization much simpler, less boilerplate, and more consistent.
-
-## Embrace LLMs in OS Development
-
-TODO: Stay tuned ;)
-
-<!-- Apps should look similar, like React apps, Rails, ... -->
 
 ## Lightweight VM for Linux Compatibility
 

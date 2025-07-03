@@ -58,10 +58,6 @@ To use Linux compatibility layer, you also need:
 
 GDB is super useful for debugging especially when you debug the kernel and in-kernel apps. For example, if the kernel hungs, you can check the backtrace with `bt` command.
 
-> [!IMPORTANT]
->
-> Run `riscv64-elf-gdb` in the same directory as `run.sh`. There is a hidden file (`.gdbinit`) that initializes GDB for Starina automatically.
-
 ## What's Next?
 
 TODO: How to write apps such as device drivers.

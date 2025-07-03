@@ -23,7 +23,7 @@ This year we're focusing on cloud computing, with [starina.dev](https://starina.
 - [x] Asynchronous message passing + epoll-like event driven API
 - [x] Declarative OS service discovery
 - [x] TCP/IP networking
-- [x] Virtio-net device dirver
+- [x] Virtio-net device driver
 - [x] WSL2-like Linux compatibility layer
 - [x] Linux container image support (`docker run`-like experience)
 - [ ] Shell (in an unopinionated headless Web-based approach)
