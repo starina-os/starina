@@ -22,6 +22,9 @@ Interestingly, changes are only applied to build scripts, not kernel source code
 - Work around uuid_t definition issue in file2alias.c [1].
 
 Tested with v6.12.34 and v6.1.141, riscv and arm64 allnoconfig builds.
+
+[1]: https://github.com/ClangBuiltLinux/linux/commit/f06333e29addbc3d714adb340355f471c1dfe95a#diff-e4f7da449d53f5aaf75dbfc4afb863c8d5380b6bc53463656c3ae9e5ac304c65
+
 ---
  scripts/macos-include/byteswap.h |  4 ++++
  scripts/macos-include/elf.h      | 24 ++++++++++++++++++++++++
