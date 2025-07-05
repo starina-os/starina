@@ -22,6 +22,15 @@ impl RawPoll {
         syscall::poll_add(self.0.id(), object, interests)
     }
 
+    pub fn update(
+        &self,
+        object: HandleId,
+        or_mask: Readiness,
+        and_mask: Readiness,
+    ) -> Result<(), ErrorCode> {
+        syscall::poll_update(self.0.id(), object, or_mask, and_mask)
+    }
+
     pub fn remove(&self, object: HandleId) -> Result<(), ErrorCode> {
         syscall::poll_remove(self.0.id(), object)
     }
@@ -71,6 +80,17 @@ impl<S> Poll<S> {
     pub fn remove(&self, object: HandleId) -> Result<(), ErrorCode> {
         self.raw_poll.remove(object)?;
         self.states.lock().remove(&object);
+        Ok(())
+    }
+
+    pub fn listen(&self, object: HandleId, interests: Readiness) -> Result<(), ErrorCode> {
+        self.raw_poll.update(object, interests, Readiness::ALL)?;
+        Ok(())
+    }
+
+    pub fn unlisten(&self, object: HandleId, interests: Readiness) -> Result<(), ErrorCode> {
+        self.raw_poll
+            .update(object, Readiness::NONE, interests.invert())?;
         Ok(())
     }
 

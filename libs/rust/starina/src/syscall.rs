@@ -98,6 +98,24 @@ pub fn poll_add(poll: HandleId, object: HandleId, interests: Readiness) -> Resul
     Ok(())
 }
 
+pub fn poll_update(
+    poll: HandleId,
+    object: HandleId,
+    or_mask: Readiness,
+    and_mask: Readiness,
+) -> Result<(), ErrorCode> {
+    syscall(
+        SYS_POLL_UPDATE,
+        poll.as_raw() as isize,
+        object.as_raw() as isize,
+        or_mask.as_isize(),
+        and_mask.as_isize(),
+        0,
+        0,
+    )?;
+    Ok(())
+}
+
 pub fn poll_remove(poll: HandleId, object: HandleId) -> Result<(), ErrorCode> {
     syscall(
         SYS_POLL_REMOVE,

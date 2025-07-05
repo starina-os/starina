@@ -122,6 +122,24 @@ fn poll_add(
     Ok(())
 }
 
+fn poll_update(
+    current: &SharedRef<Thread>,
+    poll: HandleId,
+    object: HandleId,
+    or_mask: Readiness,
+    and_mask: Readiness,
+) -> Result<(), ErrorCode> {
+    let handles = current.process().handles().lock();
+    let poll = handles.get::<Poll>(poll)?;
+
+    if !poll.is_capable(HandleRights::WRITE) {
+        return Err(ErrorCode::NotAllowed);
+    }
+
+    poll.update(object, or_mask, and_mask)?;
+    Ok(())
+}
+
 fn poll_remove(
     current: &SharedRef<Thread>,
     poll: HandleId,
@@ -435,6 +453,14 @@ fn do_syscall(
             let object = HandleId::from_raw_isize(a1)?;
             let interests = Readiness::from_raw_isize(a2)?;
             poll_add(current, poll, object, interests)?;
+            Ok(SyscallResult::Done(RetVal::new(0)))
+        }
+        SYS_POLL_UPDATE => {
+            let poll = HandleId::from_raw_isize(a0)?;
+            let object = HandleId::from_raw_isize(a1)?;
+            let or_mask = Readiness::from_raw_isize(a2)?;
+            let and_mask = Readiness::from_raw_isize(a3)?;
+            poll_update(current, poll, object, or_mask, and_mask)?;
             Ok(SyscallResult::Done(RetVal::new(0)))
         }
         SYS_POLL_REMOVE => {

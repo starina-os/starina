@@ -187,6 +187,46 @@ impl Poll {
         Ok(())
     }
 
+    pub fn update(
+        self: &SharedRef<Poll>,
+        id: HandleId,
+        or_mask: Readiness,
+        and_mask: Readiness,
+    ) -> Result<(), ErrorCode> {
+        let mut mutable = self.mutable.lock();
+        let listenee = mutable.listenee.get_mut(&id).ok_or(ErrorCode::NotFound)?;
+
+        let new_interests = (listenee.interests | or_mask) & and_mask;
+        if new_interests.is_empty() {
+            debug_warn!("invalid argument: new_interests is empty");
+            return Err(ErrorCode::InvalidArg);
+        }
+
+        listenee.interests = new_interests;
+
+        listenee.handle.remove_listener(self)?;
+        listenee.handle.add_listener(Listener {
+            poll: self.clone(),
+            interests: new_interests,
+            id,
+        })?;
+
+        // Check if the updated interests match current readiness
+        let readiness = listenee.handle.readiness()?;
+        if readiness.contains(new_interests) {
+            if mutable.ready_handles.enqueue(id).is_err() {
+                debug_warn!("failed to enqueue a ready handle due to out-of-memory");
+            }
+
+            // Wake up a thread waiting for the event
+            if let Some(waiter) = mutable.waiters.pop_front() {
+                waiter.wake();
+            }
+        }
+
+        Ok(())
+    }
+
     pub fn remove(self: &SharedRef<Poll>, id: HandleId) -> Result<(), ErrorCode> {
         let mut mutable = self.mutable.lock();
         let listenee = mutable.listenee.remove(&id).ok_or(ErrorCode::NotFound)?;

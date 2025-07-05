@@ -9,7 +9,7 @@ use crate::error::ErrorCode;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(transparent)]
-pub struct Readiness(i8);
+pub struct Readiness(u8);
 
 impl Default for Readiness {
     fn default() -> Self {
@@ -21,18 +21,20 @@ impl Readiness {
     pub const CLOSED: Readiness = Readiness(1 << 0);
     pub const READABLE: Readiness = Readiness(1 << 1);
     pub const WRITABLE: Readiness = Readiness(1 << 2);
+    pub const ALL: Readiness = Readiness(0xff);
+    pub const NONE: Readiness = Readiness(0);
 
-    pub const fn new() -> Readiness {
+    pub fn new() -> Readiness {
         Readiness(0)
     }
 
-    pub const fn from_raw(raw: i8) -> Readiness {
+    pub const fn from_raw(raw: u8) -> Readiness {
         Readiness(raw)
     }
 
     pub fn from_raw_isize(raw: isize) -> Result<Readiness, ErrorCode> {
-        match i8::try_from(raw) {
-            Ok(raw) if raw >= 0 => Ok(Readiness::from_raw(raw)),
+        match u8::try_from(raw) {
+            Ok(raw) => Ok(Readiness::from_raw(raw)),
             _ => Err(ErrorCode::InvalidArg),
         }
     }
@@ -47,6 +49,10 @@ impl Readiness {
 
     pub fn contains(&self, other: Readiness) -> bool {
         self.0 & other.0 != 0
+    }
+
+    pub fn invert(&self) -> Readiness {
+        Readiness(!self.0)
     }
 }
 
