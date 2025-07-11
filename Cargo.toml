@@ -7,7 +7,7 @@ members = [
     "apps/servers/tcpip",
     "apps/bin/linuxrun",
     "apps/bin/autotest",
-    "apps/bin/apiserver",
+    "apps/servers/apiserver",
 ]
 
 exclude = ["linux/bootd"]
@@ -45,4 +45,4 @@ virtio_net = { path = "apps/drivers/virtio_net" }
 tcpip = { path = "apps/servers/tcpip" }
 linuxrun = { path = "apps/bin/linuxrun" }
 autotest = { path = "apps/bin/autotest" }
-apiserver = { path = "apps/bin/apiserver" }
+apiserver = { path = "apps/servers/apiserver" }
