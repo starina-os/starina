@@ -6,8 +6,8 @@ members = [
     "apps/drivers/virtio_net",
     "apps/servers/tcpip",
     "apps/bin/linuxrun",
-    "apps/bin/http_server",
     "apps/bin/autotest",
+    "apps/bin/apiserver",
 ]
 
 exclude = ["linux/bootd"]
@@ -30,6 +30,7 @@ toml = "0.8.20"
 fdt-rs = { version = "0", default-features = false }
 vm-fdt = { version = "0.3.0", default-features = false }
 thiserror = { version = "2.0.12", default-features = false }
+anyhow = { version = "1.0.98", default-features = false }
 tempfile = "3.14.0"
 
 kernel = { path = "kernel" }
@@ -42,6 +43,6 @@ virtio = { path = "libs/rust/virtio" }
 
 virtio_net = { path = "apps/drivers/virtio_net" }
 tcpip = { path = "apps/servers/tcpip" }
-http_server = { path = "apps/bin/http_server" }
 linuxrun = { path = "apps/bin/linuxrun" }
 autotest = { path = "apps/bin/autotest" }
+apiserver = { path = "apps/bin/apiserver" }

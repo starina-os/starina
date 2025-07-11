@@ -21,11 +21,11 @@ use crate::scheduler::GLOBAL_SCHEDULER;
 use crate::thread::Thread;
 
 const INKERNEL_APPS: &[AppSpec] = &[
-    autotest::SPEC,
+    // autotest::SPEC,
+    apiserver::SPEC,
     virtio_net::SPEC,
     tcpip::SPEC,
-    http_server::SPEC,
-    linuxrun::SPEC,
+    // linuxrun::SPEC,
 ];
 
 pub fn load_inkernel_apps(device_tree: DeviceTree) {

@@ -1,10 +1,9 @@
 #![no_std]
 
-mod connection;
+mod endpoints;
 mod http;
 
-use connection::ChannelWriter;
-use connection::Conn;
+use http::RequestParser;
 use serde::Deserialize;
 use starina::channel::Channel;
 use starina::channel::ChannelReceiver;
@@ -20,32 +19,30 @@ use starina::prelude::*;
 use starina::spec::AppSpec;
 use starina::spec::EnvItem;
 use starina::spec::EnvType;
-use starina::spec::ExportItem;
 use starina::sync::Mutex;
 
 pub const SPEC: AppSpec = AppSpec {
-    name: "http_server",
+    name: "apiserver",
     env: &[EnvItem {
         name: "tcpip",
         ty: EnvType::Service { service: "tcpip" },
     }],
-    exports: &[ExportItem::Service {
-        service: "http_server",
-    }],
+    exports: &[],
     main,
 };
 
 #[derive(Debug, Deserialize)]
 struct Env {
-    pub startup_ch: Channel,
     pub tcpip: Channel,
 }
 
 enum State {
-    Startup,
     Tcpip(ChannelReceiver),
     Listen(Channel),
-    Data { ch: Channel, conn: Mutex<Conn> },
+    Data {
+        ch: Channel,
+        parser: Mutex<RequestParser>,
+    },
 }
 
 fn main(env_json: &[u8]) {
@@ -54,12 +51,7 @@ fn main(env_json: &[u8]) {
     let mut msgbuffer = MessageBuffer::new();
     let poll = Poll::new().unwrap();
     let (tcpip_tx, tcpip_rx) = env.tcpip.split();
-    poll.add(
-        env.startup_ch.handle_id(),
-        State::Startup,
-        Readiness::READABLE | Readiness::CLOSED,
-    )
-    .unwrap();
+
     poll.add(
         tcpip_rx.handle_id(),
         State::Tcpip(tcpip_rx),
@@ -109,7 +101,7 @@ fn main(env_json: &[u8]) {
         }
     };
 
-    info!("got listen channel: {:?}", listen_ch);
+    info!("API server listening on port 8080");
     poll.add(
         listen_ch.handle_id(),
         State::Listen(listen_ch),
@@ -123,13 +115,12 @@ fn main(env_json: &[u8]) {
             State::Listen(ch) if readiness.contains(Readiness::READABLE) => {
                 match ch.recv(&mut msgbuffer) {
                     Ok(Message::Connect { handle }) => {
-                        info!("new client connection");
-                        let conn = Conn::new();
+                        info!("new client connection with handle {:?}", handle.handle_id());
                         poll.add(
                             handle.handle_id(),
                             State::Data {
                                 ch: handle,
-                                conn: Mutex::new(conn),
+                                parser: Mutex::new(RequestParser::new()),
                             },
                             Readiness::READABLE | Readiness::CLOSED,
                         )
@@ -158,11 +149,14 @@ fn main(env_json: &[u8]) {
             State::Listen(_) => {
                 panic!("unexpected readiness for listen channel: {:?}", readiness);
             }
-            State::Data { conn, ch } if readiness.contains(Readiness::READABLE) => {
+            State::Data { ch, parser } if readiness.contains(Readiness::READABLE) => {
                 match ch.recv(&mut msgbuffer) {
                     Ok(Message::Data { data }) => {
-                        let writer = ChannelWriter::new(&ch);
-                        conn.lock().on_tcp_data(writer, data);
+                        endpoints::handle_http_request(ch, &mut parser.lock(), data);
+                        // For HTTP/1.0 with Connection: close, immediately close after response
+                        debug!("API server: closing connection immediately after response");
+                        let handle_id = ch.handle_id();
+                        poll.remove(handle_id).unwrap();
                     }
                     Ok(msg) => {
                         debug_warn!("unexpected message on data channel: {:?}", msg);
@@ -186,47 +180,6 @@ fn main(env_json: &[u8]) {
             State::Tcpip(_) => {
                 debug_warn!("unexpected readiness for tcpip channel: {:?}", readiness);
             }
-            State::Startup => {
-                debug_warn!("unexpected readiness for startup channel: {:?}", readiness);
-            }
         }
     }
 }
-
-//     fn on_open_reply(&self, ctx: Context<Self::State>, call_id: CallId, msg: OpenReplyMsg) {
-//         assert_eq!(call_id, CallId::from(1));
-
-//         info!("got open-reply");
-
-//         // FIXME: Check txid
-//         let listen_ch = msg.handle;
-//         ctx.dispatcher
-//             .add_channel(State::Listen, listen_ch)
-//             .unwrap();
-
-//         let mut state = self.state.lock();
-//         assert!(matches!(*state, AppState::Opening));
-//         *state = AppState::Ready;
-//     }
-
-//     fn on_connect(&self, ctx: Context<Self::State>, msg: ConnectMsg) {
-//         if !matches!(ctx.state, State::Listen) {
-//             debug_warn!("connect message from unexpected state: {:?}", ctx.state);
-//             return;
-//         }
-
-//         trace!("new client connection");
-//         let conn = Conn::new();
-//         ctx.dispatcher
-//             .add_channel(State::Data { conn }, msg.handle)
-//             .unwrap();
-//     }
-
-//     fn on_stream_data(&self, ctx: Context<Self::State>, msg: StreamDataMsg<'_>) {
-//         let State::Data { conn } = ctx.state else {
-//             debug_warn!("stream data from unexpected state: {:?}", ctx.state);
-//             return;
-//         };
-
-//     }
-// }
