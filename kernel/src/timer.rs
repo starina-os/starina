@@ -127,7 +127,7 @@ fn ns_to_ticks(ns: u64, freq: u64) -> u64 {
 
 fn ticks_to_monotonic_time(ticks: u64, freq: u64) -> MonotonicTime {
     // Convert ticks to nanoseconds: nanos = ticks * 1_000_000_000 / freq
-    let nanos = ticks * 1_000_000_000 / freq;
+    let nanos = ticks * (1_000_000_000 / freq);
     MonotonicTime::from_nanos(nanos)
 }
 
