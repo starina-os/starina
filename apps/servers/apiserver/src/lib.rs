@@ -175,25 +175,21 @@ fn main(env_json: &[u8]) {
                         let mut client_guard = client.lock();
                         let client = &mut *client_guard;
                         endpoints::handle_http_request(&mut client.parser, &mut client.resp, data);
-                        client.needs_flush = true;
 
-                        // Try to flush immediately
                         match client.resp.flush() {
                             Ok(true) => {
-                                client.needs_flush = false;
-                                client.response_complete = true;
                                 debug!(
                                     "API server: response fully flushed, waiting for TCP to close"
                                 );
-                                // Don't remove from poll yet - let TCP finish sending and close naturally
+                                poll.remove(ch.handle_id()).unwrap();
                             }
                             Ok(false) => {
-                                // Still need to flush more, will wait for WRITABLE events
+                                // Still need to flush more, will wait for WRITABLE events.
+                                poll.listen(ch.handle_id(), Readiness::WRITABLE).unwrap();
                             }
                             Err(e) => {
                                 debug_warn!("Failed to flush response: {:?}", e);
-                                let handle_id = ch.handle_id();
-                                poll.remove(handle_id).unwrap();
+                                poll.remove(ch.handle_id()).unwrap();
                             }
                         }
                     }
@@ -211,30 +207,22 @@ fn main(env_json: &[u8]) {
             }
             State::Data { ch, client } if readiness.contains(Readiness::WRITABLE) => {
                 debug!("WRITABLE event for handle {:?}", ch.handle_id());
-                let mut client_guard = client.lock();
-                let client = &mut *client_guard;
-                if client.needs_flush {
-                    debug!("Attempting to flush response...");
-                    match client.resp.flush() {
-                        Ok(true) => {
-                            client.needs_flush = false;
-                            client.response_complete = true;
-                            debug!("API server: response fully flushed, waiting for TCP to close");
-                            // Don't remove from poll yet - let TCP finish sending and close naturally
-                        }
-                        Ok(false) => {
-                            debug!("Flush returned false, still need to flush more");
-                        }
-                        Err(e) => {
-                            debug_warn!("Failed to flush response: {:?}", e);
-                            let handle_id = ch.handle_id();
-                            poll.remove(handle_id).unwrap();
-                        }
+                let mut client = client.lock();
+                match client.resp.flush() {
+                    Ok(true) => {
+                        debug!("API server: response fully flushed, waiting for TCP to close");
+                        poll.remove(ch.handle_id()).unwrap();
                     }
-                } else if !client.response_complete {
-                    debug!("WRITABLE event but no flush needed (yet)");
-                } else {
-                    debug!("WRITABLE event but response already complete, ignoring");
+                    Ok(false) => {
+                        trace!(
+                            "WRITABLE event for handle {:?}, still need to flush more",
+                            ch.handle_id()
+                        );
+                    }
+                    Err(e) => {
+                        debug_warn!("Failed to flush response: {:?}", e);
+                        poll.remove(ch.handle_id()).unwrap();
+                    }
                 }
             }
             State::Data { ch, .. } if readiness == Readiness::CLOSED => {

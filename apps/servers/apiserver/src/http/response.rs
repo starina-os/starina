@@ -118,7 +118,6 @@ impl ResponseWriter for BufferedResponseWriter {
                         index: 0,
                         body,
                     };
-                    continue;
                 }
                 ResponseState::SendingHeaders {
                     headers: flatten_headers,
@@ -143,7 +142,6 @@ impl ResponseWriter for BufferedResponseWriter {
                         index,
                         body,
                     };
-                    return Ok(false);
                 }
                 ResponseState::SendingBody { body, mut index } => {
                     debug!("SendingBody: index={}, body.len()={}", index, body.len());
