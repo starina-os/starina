@@ -13,6 +13,8 @@ use smoltcp::wire::IpListenEndpoint;
 use starina::channel::ChannelSender;
 use starina::collections::HashMap;
 use starina::error::ErrorCode;
+use starina::handle::HandleId;
+use starina::handle::Handleable;
 use starina::prelude::*;
 use starina::timer;
 
@@ -35,6 +37,7 @@ struct Socket {
     ch: ChannelSender,
     smol_handle: SocketHandle,
     state: SocketState,
+    backpressured: bool,
 }
 
 #[derive(Debug)]
@@ -226,6 +229,7 @@ impl<'a> TcpIp<'a> {
                 ch,
                 smol_handle: handle,
                 state: SocketState::Listening { listen_endpoint },
+                backpressured: false,
             },
         );
     }
@@ -239,27 +243,87 @@ impl<'a> TcpIp<'a> {
         Ok(())
     }
 
-    pub fn tcp_send(&mut self, handle: SocketHandle, data: &[u8]) -> Result<(), ErrorCode> {
+    pub fn tcp_sendable_len(&self, handle: SocketHandle) -> Result<usize, ErrorCode> {
+        let socket = self.sockets.get(&handle).ok_or(ErrorCode::NotFound)?;
+        let smol_sock = self.smol_sockets.get::<tcp::Socket>(socket.smol_handle);
+        Ok(smol_sock.send_capacity() - smol_sock.send_queue())
+    }
+
+    pub fn tcp_send(&mut self, handle: SocketHandle, data: &[u8]) -> Result<usize, ErrorCode> {
         let socket = self.sockets.get_mut(&handle).ok_or(ErrorCode::NotFound)?;
 
         if !matches!(socket.state, SocketState::Established) {
             return Err(ErrorCode::InvalidState);
         }
 
-        // Write the data to the TCP buffer.
-        if self
-            .smol_sockets
-            .get_mut::<tcp::Socket>(socket.smol_handle)
+        let smol_sock = self.smol_sockets.get_mut::<tcp::Socket>(socket.smol_handle);
+        let written_len = smol_sock
             .send_slice(data)
-            .is_err()
-        {
-            return Err(ErrorCode::InvalidState);
-        }
+            .map_err(|_| ErrorCode::InvalidState)?;
 
-        Ok(())
+        Ok(written_len)
     }
 
     pub fn receive_packet(&mut self, pkt: &[u8]) {
         self.device.receive_pkt(pkt);
+    }
+
+    pub fn mark_as_backpressured(&mut self, handle: SocketHandle) {
+        if let Some(socket) = self.sockets.get_mut(&handle) {
+            socket.backpressured = true;
+        }
+    }
+
+    pub fn check_backpressure_relief(&mut self) -> Vec<(HandleId, SocketHandle)> {
+        let mut relieved_sockets = Vec::new();
+        for (handle, socket) in self.sockets.iter_mut() {
+            if socket.backpressured {
+                if !matches!(socket.state, SocketState::Established) {
+                    debug_warn!(
+                        "check_backpressure_relief: socket {:?} backpressured, but established {:?}",
+                        handle,
+                        socket.state
+                    );
+                    continue;
+                }
+
+                let smol_sock = self.smol_sockets.get::<tcp::Socket>(socket.smol_handle);
+                debug_warn!(
+                    "check_backpressure_relief: socket {:?} backpressured, can_send={}, send_capacity={}",
+                    handle,
+                    smol_sock.can_send(),
+                    smol_sock.send_capacity()
+                );
+                let send_queue = smol_sock.send_queue();
+                let send_capacity = smol_sock.send_capacity();
+                let buffer_available = send_capacity - send_queue;
+                debug_warn!(
+                    "check_backpressure_relief: socket {:?} send_queue={}, send_capacity={}, available={}",
+                    handle,
+                    send_queue,
+                    send_capacity,
+                    buffer_available
+                );
+
+                if buffer_available > 0 {
+                    socket.backpressured = false;
+                    relieved_sockets.push((socket.ch.handle_id(), *handle));
+                    debug_warn!(
+                        "check_backpressure_relief: socket {:?} backpressure relieved, {} bytes available",
+                        handle,
+                        buffer_available
+                    );
+                }
+            }
+        }
+        if !relieved_sockets.is_empty() {
+            debug_warn!(
+                "check_backpressure_relief: {} sockets relieved",
+                relieved_sockets.len()
+            );
+        }
+
+        trace!("check_backpressure_relief: {:?}", relieved_sockets);
+        relieved_sockets
     }
 }

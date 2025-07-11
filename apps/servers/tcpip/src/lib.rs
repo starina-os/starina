@@ -16,9 +16,11 @@ use smoltcp::wire::IpListenEndpoint;
 use starina::channel::Channel;
 use starina::channel::ChannelReceiver;
 use starina::channel::RecvError;
+use starina::collections::HashMap;
 use starina::error::ErrorCode;
 use starina::handle::Handleable;
 use starina::message::CallId;
+use starina::message::MESSAGE_DATA_LEN_MAX;
 use starina::message::Message;
 use starina::message::MessageBuffer;
 use starina::poll::Poll;
@@ -141,8 +143,21 @@ impl<'a> Mainloop<'a> {
         }
     }
 
-    fn handle_data_stream(&mut self, poll: &Poll<State>, smol_handle: SocketHandle, data: &[u8]) {
-        self.tcpip.tcp_send(smol_handle, data).unwrap();
+    fn tcp_write(&mut self, poll: &Poll<State>, smol_handle: SocketHandle, data: &[u8]) {
+        debug_warn!(
+            "tcp_write: received {} bytes for socket {:?}",
+            data.len(),
+            smol_handle
+        );
+        match self.tcpip.tcp_send(smol_handle, data) {
+            Ok(written_len) => {
+                debug_assert_eq!(written_len, data.len());
+            }
+            Err(err) => {
+                debug_warn!("tcp_send failed: {:?}", err);
+            }
+        }
+
         self.tcpip_poll(poll);
     }
 
@@ -200,6 +215,16 @@ impl<'a> Mainloop<'a> {
                 }
             }
         });
+
+        for (ch_handle_id, smol_handle) in self.tcpip.check_backpressure_relief() {
+            debug_warn!(
+                "check_backpressure_relief: re-listening on channel {:?} for socket {:?}",
+                ch_handle_id,
+                smol_handle
+            );
+            poll.listen(ch_handle_id, Readiness::READABLE | Readiness::CLOSED)
+                .unwrap();
+        }
     }
 }
 
@@ -305,9 +330,23 @@ fn main(env_json: &[u8]) {
                 panic!("unexpected readiness for listen channel: {:?}", readiness);
             }
             State::Data { ch, smol_handle } if readiness.contains(Readiness::READABLE) => {
+                let sendable_len = mainloop.tcpip.tcp_sendable_len(*smol_handle).unwrap();
+                if sendable_len < MESSAGE_DATA_LEN_MAX {
+                    debug_warn!(
+                        "TCP write buffer is almost full, throttling data channel {:?}",
+                        ch.handle_id()
+                    );
+
+                    // CLOSED is also ignored not to close the TCP socket.
+                    poll.unlisten(ch.handle_id(), Readiness::READABLE | Readiness::CLOSED)
+                        .unwrap();
+                    mainloop.tcpip.mark_as_backpressured(*smol_handle);
+                    continue;
+                }
+
                 match ch.recv(&mut msgbuffer) {
                     Ok(Message::Data { data }) => {
-                        mainloop.handle_data_stream(&poll, *smol_handle, data);
+                        mainloop.tcp_write(&poll, *smol_handle, data);
                     }
                     Ok(msg) => {
                         debug_warn!("unexpected message on data channel: {:?}", msg);
