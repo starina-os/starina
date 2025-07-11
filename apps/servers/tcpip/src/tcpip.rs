@@ -131,21 +131,14 @@ impl<'a> TcpIp<'a> {
             for (handle, sock) in self.sockets.iter_mut() {
                 let smol_sock = self.smol_sockets.get_mut::<tcp::Socket>(sock.smol_handle);
                 match (&mut sock.state, smol_sock.state()) {
-                    (
-                        SocketState::Listening { .. },
-                        tcp::State::Listen | tcp::State::SynReceived,
-                    ) => {
+                    (SocketState::Listening { .. }, tcp::State::Listen) => {
                         // Do nothing.
                     }
-                    (SocketState::Listening { listen_endpoint }, tcp::State::Established) => {
-                        // Create a new listening socket as this one is now
-                        // established.
-                        //
-                        // Note: This should be done before calling the callback
-                        //       becaseu it may overwrite `ch` and drop the
-                        //       previous one.
+                    (SocketState::Listening { listen_endpoint }, tcp::State::SynReceived) => {
+                        // SYN received - immediately create replacement listener to handle concurrent connections.
                         needs_listen.push((*listen_endpoint, sock.ch.clone()));
-
+                    }
+                    (SocketState::Listening { .. }, tcp::State::Established) => {
                         // The listening socket has transitioned to established.
                         callback(SocketEvent::NewConnection {
                             ch: &mut sock.ch,
@@ -154,10 +147,13 @@ impl<'a> TcpIp<'a> {
 
                         sock.state = SocketState::Established;
                     }
-                    (SocketState::Listening { .. }, _) => {
-                        // Inactive, closed, or unknown state. Close the socket.
+                    (SocketState::Listening { .. }, tcp::State::Closed) => {
+                        // Socket transitioned to closed state. Close the socket.
                         callback(SocketEvent::Closed { ch: &sock.ch });
                         sock.state = SocketState::Closed;
+                    }
+                    (SocketState::Listening { .. }, smol_state) => {
+                        unreachable!("unexpected state in Listening: {:?}", smol_state);
                     }
                     (SocketState::Established, _) if smol_sock.can_recv() => {
                         // The establish connection with some received data.
@@ -176,19 +172,23 @@ impl<'a> TcpIp<'a> {
                     (SocketState::Established, tcp::State::Established) => {
                         // Do nothing.
                     }
-                    (SocketState::Established, _) => {
-                        // Unknown state. Close the connection.
-                        callback(SocketEvent::Closed { ch: &sock.ch });
-                        sock.state = SocketState::Closed;
+                    (SocketState::Established, smol_state) => {
+                        unreachable!("unexpected state in Established: {:?}", smol_state);
                     }
                     (SocketState::Closing, tcp::State::Closed) => {
                         // Graceful shutdown complete, remove the socket
                         callback(SocketEvent::Closed { ch: &sock.ch });
                         sock.state = SocketState::Closed;
                     }
-                    (SocketState::Closing, _) => {
+                    (
+                        SocketState::Closing,
+                        tcp::State::FinWait1 | tcp::State::FinWait2 | tcp::State::TimeWait,
+                    ) => {
                         // Still in graceful shutdown, keep socket alive
                         // Continue sending any remaining data
+                    }
+                    (SocketState::Closing, smol_state) => {
+                        unreachable!("unexpected state in Closing: {:?}", smol_state);
                     }
                     (SocketState::Closed, _) => {
                         unreachable!();

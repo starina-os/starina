@@ -152,7 +152,7 @@ impl<'a> Mainloop<'a> {
         ch: &ChannelReceiver,
         smol_handle: SocketHandle,
     ) {
-        debug_warn!("data channel closed for socket {:?}", smol_handle);
+        trace!("data channel closed for socket {:?}", smol_handle);
         if let Err(err) = self.tcpip.close_socket(smol_handle) {
             debug_warn!("failed to close socket: {:?}", err);
         }
