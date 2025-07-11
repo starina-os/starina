@@ -92,8 +92,7 @@ impl LoopDevice {
         };
 
         unsafe {
-            loop_configure(device_file.as_raw_fd(), &config)
-                .map_err(Error::ConfigureFailed)?;
+            loop_configure(device_file.as_raw_fd(), &config).map_err(Error::ConfigureFailed)?;
         }
 
         Ok(())

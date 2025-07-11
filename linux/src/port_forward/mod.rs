@@ -1,15 +1,15 @@
 pub use builder::Builder;
 use starina::channel::Channel;
-use starina::channel::RecvError;
-use starina::error::ErrorCode;
 use starina::channel::ChannelReceiver;
+use starina::channel::RecvError;
+use starina::debug_warn;
+use starina::error::ErrorCode;
 use starina::handle::Handleable;
 use starina::message::Message;
 use starina::message::MessageBuffer;
 use starina::poll::Poll;
 use starina::poll::Readiness;
 use starina::prelude::Box;
-use starina::debug_warn;
 use starina::prelude::vec::Vec;
 use starina::sync::Arc;
 use starina::sync::Mutex;
@@ -134,7 +134,10 @@ impl PortForwarder {
                                     debug_warn!("unexpected message on listen channel: {:?}", msg);
                                 }
                                 Err(RecvError::Parse(msginfo)) => {
-                                    debug_warn!("unhandled message type on listen channel: {}", msginfo.kind());
+                                    debug_warn!(
+                                        "unhandled message type on listen channel: {}",
+                                        msginfo.kind()
+                                    );
                                 }
                                 Err(RecvError::Syscall(ErrorCode::WouldBlock)) => {}
                                 Err(RecvError::Syscall(err)) => {
@@ -150,10 +153,16 @@ impl PortForwarder {
                                     self.send_tcp_data(memory, conn_key, data);
                                 }
                                 Ok(msg) => {
-                                    debug_warn!("unexpected message on connected channel: {:?}", msg);
+                                    debug_warn!(
+                                        "unexpected message on connected channel: {:?}",
+                                        msg
+                                    );
                                 }
                                 Err(RecvError::Parse(msginfo)) => {
-                                    debug_warn!("unhandled message type on connected channel: {}", msginfo.kind());
+                                    debug_warn!(
+                                        "unhandled message type on connected channel: {}",
+                                        msginfo.kind()
+                                    );
                                 }
                                 Err(RecvError::Syscall(ErrorCode::WouldBlock)) => {}
                                 Err(RecvError::Syscall(err)) => {

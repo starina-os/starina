@@ -1,6 +1,7 @@
 use starina::channel::Channel;
 use starina::channel::RecvError;
 use starina::collections::HashMap;
+use starina::debug_warn;
 use starina::error::ErrorCode;
 use starina::handle::Handleable;
 use starina::message::CallId;
@@ -8,9 +9,8 @@ use starina::message::Message;
 use starina::message::MessageBuffer;
 use starina::poll::Poll;
 use starina::poll::Readiness;
-use starina::prelude::*;
-use starina::debug_warn;
 use starina::prelude::vec::Vec;
+use starina::prelude::*;
 use starina::sync::Arc;
 use starina::sync::Mutex;
 
@@ -87,7 +87,10 @@ impl<'a> Builder<'a> {
                         debug_warn!("unexpected message on tcpip channel: {:?}", msg);
                     }
                     Err(RecvError::Parse(msginfo)) => {
-                        debug_warn!("unhandled message type on tcpip channel: {}", msginfo.kind());
+                        debug_warn!(
+                            "unhandled message type on tcpip channel: {}",
+                            msginfo.kind()
+                        );
                     }
                     Err(RecvError::Syscall(ErrorCode::WouldBlock)) => {}
                     Err(RecvError::Syscall(err)) => {
