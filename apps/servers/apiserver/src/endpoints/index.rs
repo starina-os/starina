@@ -14,12 +14,5 @@ pub fn handle_index(req: &Request, resp: &mut impl ResponseWriter) -> anyhow::Re
         .as_bytes(),
     );
 
-    loop {
-        let finished = resp.flush()
-            .map_err(|e| anyhow::anyhow!("Failed to flush response: {:?}", e))?;
-        if finished {
-            break;
-        }
-    }
     Ok(())
 }

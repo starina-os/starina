@@ -47,11 +47,7 @@ pub fn handle_http_request(
 
             if let Err(e) = route(&request, resp) {
                 warn!("handler error: {:?}", e);
-                error(
-                    resp,
-                    StatusCode::new(500).unwrap(),
-                    "Internal Server Error",
-                );
+                error(resp, StatusCode::new(500).unwrap(), "Internal Server Error");
             }
         }
         Ok(None) => {
@@ -78,14 +74,4 @@ fn error(resp: &mut impl ResponseWriter, status: StatusCode, message: &str) {
     resp.write_status(status);
     resp.write_body(message.as_bytes());
 
-    loop {
-        match resp.flush() {
-            Ok(true) => break,
-            Ok(false) => continue,
-            Err(e) => {
-                debug_warn!("Failed to send error response: {:?}", e);
-                break;
-            }
-        }
-    }
 }
