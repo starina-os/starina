@@ -176,13 +176,15 @@ fn main(env_json: &[u8]) {
                         let client = &mut *client_guard;
                         endpoints::handle_http_request(&mut client.parser, &mut client.resp, data);
                         client.needs_flush = true;
-                        
+
                         // Try to flush immediately
                         match client.resp.flush() {
                             Ok(true) => {
                                 client.needs_flush = false;
                                 client.response_complete = true;
-                                debug!("API server: response fully flushed, waiting for TCP to close");
+                                debug!(
+                                    "API server: response fully flushed, waiting for TCP to close"
+                                );
                                 // Don't remove from poll yet - let TCP finish sending and close naturally
                             }
                             Ok(false) => {

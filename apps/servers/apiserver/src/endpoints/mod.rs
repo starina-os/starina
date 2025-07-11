@@ -73,5 +73,4 @@ fn error(resp: &mut impl ResponseWriter, status: StatusCode, message: &str) {
 
     resp.write_status(status);
     resp.write_body(message.as_bytes());
-
 }

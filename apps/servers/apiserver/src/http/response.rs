@@ -148,7 +148,10 @@ impl ResponseWriter for BufferedResponseWriter {
                 ResponseState::SendingBody { body, mut index } => {
                     debug!("SendingBody: index={}, body.len()={}", index, body.len());
                     if !self.send_chunk(&body, &mut index)? {
-                        debug!("send_chunk returned false (backpressure), index now={}", index);
+                        debug!(
+                            "send_chunk returned false (backpressure), index now={}",
+                            index
+                        );
                         self.state = ResponseState::SendingBody { body, index };
                         return Ok(false);
                     }
