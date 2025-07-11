@@ -52,7 +52,7 @@ impl<T: Eq + Ord + Copy + Hash> UniqueQueue<T> {
     pub fn pop(&mut self) -> Option<T> {
         let value = self.queue.pop_front()?;
         let removed = self.set.remove(&value);
-        debug_assert!(removed, "Value was in queue but not in set");
+        debug_assert!(removed, "value was in queue but not in set");
         Some(value)
     }
 }

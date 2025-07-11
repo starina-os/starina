@@ -11,10 +11,6 @@ use crate::spinlock::SpinLock;
 pub static GLOBAL_ALLOCATOR: GlobalAllocator = GlobalAllocator::new();
 
 /// The default in-kernel memory allocator.
-///
-/// Allocated memory are always accessible from the kernel's address space,
-/// that is, memory pages added to this allocator must not be swapped out,
-/// or something like that.
 pub struct GlobalAllocator {
     allocators: SpinLock<ArrayVec<BumpAllocator, 4>>,
 }

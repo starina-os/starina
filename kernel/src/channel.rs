@@ -238,6 +238,7 @@ impl Handleable for Channel {
             peer_mutable.peer = None;
             peer_mutable.listeners.notify_all(Readiness::CLOSED);
         }
+
         mutable.listeners.notify_all(Readiness::CLOSED);
     }
 
