@@ -231,7 +231,16 @@ impl Poll {
         let mut mutable = self.mutable.lock();
         let listenee = mutable.listenee.remove(&id).ok_or(ErrorCode::NotFound)?;
         listenee.handle.remove_listener(self)?;
-        mutable.ready_handles.set.remove(&id);
+        
+        // Remove from queue by creating a new queue without the removed handle
+        let mut new_queue = UniqueQueue::new();
+        while let Some(handle_id) = mutable.ready_handles.pop() {
+            if handle_id != id {
+                let _ = new_queue.enqueue(handle_id);
+            }
+        }
+        mutable.ready_handles = new_queue;
+        
         Ok(())
     }
 
@@ -259,6 +268,10 @@ impl Poll {
 
             let interested = listenee.interests & readiness;
             if !interested.is_empty() {
+                // Always re-enqueue to check if handle is still ready for future polls.
+                // The handle's readiness() method will determine current state.
+                mutable.ready_handles.enqueue(id).unwrap();
+
                 return SyscallResult::Done((id, interested).into());
             }
         }
