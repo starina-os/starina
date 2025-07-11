@@ -11,6 +11,8 @@ pub use starina_types::spec;
 #[macro_use]
 pub mod log;
 
+pub use alloc::borrow;
+
 pub use log::debug;
 pub use log::error;
 pub use log::info;
