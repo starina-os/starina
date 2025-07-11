@@ -1,19 +1,19 @@
-use starina::channel::Channel;
 use starina::prelude::*;
 
 use crate::http::Body;
-use crate::http::BufferedResponseWriter;
 use crate::http::HeaderName;
 use crate::http::Request;
 use crate::http::RequestParser;
 use crate::http::ResponseWriter;
 use crate::http::StatusCode;
 
+pub mod big;
 pub mod index;
 
 fn route(req: &Request, resp: &mut impl ResponseWriter) -> anyhow::Result<()> {
     match (&req.method, req.path.as_str()) {
         (crate::http::Method::Get, "/") => index::handle_index(req, resp),
+        (crate::http::Method::Get, "/big") => big::handle_big(req, resp),
         _ => {
             error(resp, StatusCode::new(404).unwrap(), "Route not found");
             Ok(())
@@ -21,15 +21,11 @@ fn route(req: &Request, resp: &mut impl ResponseWriter) -> anyhow::Result<()> {
     }
 }
 
-pub fn handle_http_request(channel: &Channel, parser: &mut RequestParser, data: &[u8]) {
-    let build_resp_writer = || {
-        let mut resp = BufferedResponseWriter::new(channel);
-        resp.headers_mut()
-            .insert(HeaderName::SERVER, "Starina/apiserver")
-            .unwrap();
-        resp
-    };
-
+pub fn handle_http_request(
+    parser: &mut RequestParser,
+    resp: &mut impl ResponseWriter,
+    data: &[u8],
+) {
     match parser.parse_chunk(data) {
         Ok(Some(request)) => {
             info!(
@@ -49,11 +45,10 @@ pub fn handle_http_request(channel: &Channel, parser: &mut RequestParser, data: 
                 }
             }
 
-            let mut resp = build_resp_writer();
-            if let Err(e) = route(&request, &mut resp) {
+            if let Err(e) = route(&request, resp) {
                 warn!("handler error: {:?}", e);
                 error(
-                    &mut resp,
+                    resp,
                     StatusCode::new(500).unwrap(),
                     "Internal Server Error",
                 );
@@ -65,8 +60,7 @@ pub fn handle_http_request(channel: &Channel, parser: &mut RequestParser, data: 
         }
         Err(e) => {
             warn!("HTTP parsing error: {:?}", e);
-            let mut resp = build_resp_writer();
-            error(&mut resp, StatusCode::new(400).unwrap(), "Bad Request");
+            error(resp, StatusCode::new(400).unwrap(), "Bad Request");
         }
     }
 }
@@ -84,7 +78,14 @@ fn error(resp: &mut impl ResponseWriter, status: StatusCode, message: &str) {
     resp.write_status(status);
     resp.write_body(message.as_bytes());
 
-    if let Err(e) = resp.finish() {
-        debug_warn!("Failed to send error response: {:?}", e);
+    loop {
+        match resp.flush() {
+            Ok(true) => break,
+            Ok(false) => continue,
+            Err(e) => {
+                debug_warn!("Failed to send error response: {:?}", e);
+                break;
+            }
+        }
     }
 }
