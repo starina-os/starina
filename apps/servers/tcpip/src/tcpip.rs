@@ -286,7 +286,7 @@ impl<'a> TcpIp<'a> {
             }
 
             let smol_sock = self.smol_sockets.get::<tcp::Socket>(socket.smol_handle);
-            let writeable_len = smol_sock.send_queue() - smol_sock.send_capacity();
+            let writeable_len = smol_sock.send_capacity() - smol_sock.send_queue();
             if writeable_len > 0 {
                 socket.backpressured = false;
                 sockets.push((socket.ch.handle_id(), *handle));
