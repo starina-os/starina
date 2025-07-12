@@ -14,7 +14,5 @@ pub fn handle_index(req: &Request, resp: &mut impl ResponseWriter) -> anyhow::Re
         .as_bytes(),
     );
 
-    resp.finish()
-        .map_err(|e| anyhow::anyhow!("Failed to finish response: {:?}", e))?;
     Ok(())
 }

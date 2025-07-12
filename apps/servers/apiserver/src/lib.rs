@@ -21,6 +21,10 @@ use starina::spec::EnvItem;
 use starina::spec::EnvType;
 use starina::sync::Mutex;
 
+use crate::http::BufferedResponseWriter;
+use crate::http::HeaderName;
+use crate::http::ResponseWriter;
+
 pub const SPEC: AppSpec = AppSpec {
     name: "apiserver",
     env: &[EnvItem {
@@ -36,12 +40,17 @@ struct Env {
     pub tcpip: Channel,
 }
 
+struct Client {
+    parser: RequestParser,
+    resp: BufferedResponseWriter,
+}
+
 enum State {
     Tcpip(ChannelReceiver),
     Listen(Channel),
     Data {
-        ch: Channel,
-        parser: Mutex<RequestParser>,
+        client: Mutex<Client>,
+        ch: ChannelReceiver,
     },
 }
 
@@ -115,12 +124,23 @@ fn main(env_json: &[u8]) {
             State::Listen(ch) if readiness.contains(Readiness::READABLE) => {
                 match ch.recv(&mut msgbuffer) {
                     Ok(Message::Connect { handle }) => {
-                        info!("new client connection with handle {:?}", handle.handle_id());
+                        let handle_id = handle.handle_id();
+                        info!("new client connection with handle {:?}", handle_id);
+
+                        let (sender, receiver) = handle.split();
+                        let mut resp = BufferedResponseWriter::new(sender);
+                        resp.headers_mut()
+                            .insert(HeaderName::SERVER, "Starina/apiserver")
+                            .unwrap();
+
                         poll.add(
-                            handle.handle_id(),
+                            handle_id,
                             State::Data {
-                                ch: handle,
-                                parser: Mutex::new(RequestParser::new()),
+                                client: Mutex::new(Client {
+                                    parser: RequestParser::new(),
+                                    resp,
+                                }),
+                                ch: receiver,
                             },
                             Readiness::READABLE | Readiness::CLOSED,
                         )
@@ -149,14 +169,29 @@ fn main(env_json: &[u8]) {
             State::Listen(_) => {
                 panic!("unexpected readiness for listen channel: {:?}", readiness);
             }
-            State::Data { ch, parser } if readiness.contains(Readiness::READABLE) => {
+            State::Data { ch, client } if readiness.contains(Readiness::READABLE) => {
                 match ch.recv(&mut msgbuffer) {
                     Ok(Message::Data { data }) => {
-                        endpoints::handle_http_request(ch, &mut parser.lock(), data);
-                        // For HTTP/1.0 with Connection: close, immediately close after response
-                        debug!("API server: closing connection immediately after response");
-                        let handle_id = ch.handle_id();
-                        poll.remove(handle_id).unwrap();
+                        let mut client_guard = client.lock();
+                        let client = &mut *client_guard;
+                        endpoints::handle_http_request(&mut client.parser, &mut client.resp, data);
+
+                        match client.resp.flush() {
+                            Ok(true) => {
+                                debug!(
+                                    "API server: response fully flushed, waiting for TCP to close"
+                                );
+                                poll.remove(ch.handle_id()).unwrap();
+                            }
+                            Ok(false) => {
+                                // Still need to flush more, will wait for WRITABLE events.
+                                poll.listen(ch.handle_id(), Readiness::WRITABLE).unwrap();
+                            }
+                            Err(e) => {
+                                debug_warn!("Failed to flush response: {:?}", e);
+                                poll.remove(ch.handle_id()).unwrap();
+                            }
+                        }
                     }
                     Ok(msg) => {
                         debug_warn!("unexpected message on data channel: {:?}", msg);
@@ -167,6 +202,26 @@ fn main(env_json: &[u8]) {
                     Err(RecvError::Syscall(ErrorCode::WouldBlock)) => {}
                     Err(RecvError::Syscall(err)) => {
                         debug_warn!("recv error on data channel: {:?}", err);
+                    }
+                }
+            }
+            State::Data { ch, client } if readiness.contains(Readiness::WRITABLE) => {
+                debug!("WRITABLE event for handle {:?}", ch.handle_id());
+                let mut client = client.lock();
+                match client.resp.flush() {
+                    Ok(true) => {
+                        debug!("API server: response fully flushed, waiting for TCP to close");
+                        poll.remove(ch.handle_id()).unwrap();
+                    }
+                    Ok(false) => {
+                        trace!(
+                            "WRITABLE event for handle {:?}, still need to flush more",
+                            ch.handle_id()
+                        );
+                    }
+                    Err(e) => {
+                        debug_warn!("Failed to flush response: {:?}", e);
+                        poll.remove(ch.handle_id()).unwrap();
                     }
                 }
             }
