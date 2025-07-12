@@ -175,6 +175,12 @@ impl<'a> TcpIp<'a> {
                     (SocketState::Established, tcp::State::Established) => {
                         // Do nothing.
                     }
+                    (SocketState::Established, tcp::State::CloseWait) => {
+                        // Remote peer closed their side, transition to closing
+                        trace!("socket {:?} is closed by remote peer", handle);
+                        sock.state = SocketState::Closing;
+                        callback(SocketEvent::Closed { ch: &sock.ch });
+                    }
                     (SocketState::Established, smol_state) => {
                         unreachable!("unexpected state in Established: {:?}", smol_state);
                     }
@@ -189,6 +195,9 @@ impl<'a> TcpIp<'a> {
                     ) => {
                         // Still in graceful shutdown, keep socket alive
                         // Continue sending any remaining data
+                    }
+                    (SocketState::Closing, tcp::State::CloseWait) => {
+                        // Still waiting for close, keep socket alive
                     }
                     (SocketState::Closing, smol_state) => {
                         unreachable!("unexpected state in Closing: {:?}", smol_state);
