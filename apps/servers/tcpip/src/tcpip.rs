@@ -13,6 +13,8 @@ use smoltcp::wire::IpListenEndpoint;
 use starina::channel::ChannelSender;
 use starina::collections::HashMap;
 use starina::error::ErrorCode;
+use starina::handle::HandleId;
+use starina::handle::Handleable;
 use starina::prelude::*;
 use starina::timer;
 
@@ -35,6 +37,7 @@ struct Socket {
     ch: ChannelSender,
     smol_handle: SocketHandle,
     state: SocketState,
+    backpressured: bool,
 }
 
 #[derive(Debug)]
@@ -226,6 +229,7 @@ impl<'a> TcpIp<'a> {
                 ch,
                 smol_handle: handle,
                 state: SocketState::Listening { listen_endpoint },
+                backpressured: false,
             },
         );
     }
@@ -239,27 +243,56 @@ impl<'a> TcpIp<'a> {
         Ok(())
     }
 
-    pub fn tcp_send(&mut self, handle: SocketHandle, data: &[u8]) -> Result<(), ErrorCode> {
+    pub fn tcp_sendable_len(&self, handle: SocketHandle) -> Result<usize, ErrorCode> {
+        let socket = self.sockets.get(&handle).ok_or(ErrorCode::NotFound)?;
+        let smol_sock = self.smol_sockets.get::<tcp::Socket>(socket.smol_handle);
+        Ok(smol_sock.send_capacity() - smol_sock.send_queue())
+    }
+
+    pub fn tcp_send(&mut self, handle: SocketHandle, data: &[u8]) -> Result<usize, ErrorCode> {
         let socket = self.sockets.get_mut(&handle).ok_or(ErrorCode::NotFound)?;
 
         if !matches!(socket.state, SocketState::Established) {
             return Err(ErrorCode::InvalidState);
         }
 
-        // Write the data to the TCP buffer.
-        if self
-            .smol_sockets
-            .get_mut::<tcp::Socket>(socket.smol_handle)
+        let smol_sock = self.smol_sockets.get_mut::<tcp::Socket>(socket.smol_handle);
+        let written_len = smol_sock
             .send_slice(data)
-            .is_err()
-        {
-            return Err(ErrorCode::InvalidState);
-        }
+            .map_err(|_| ErrorCode::InvalidState)?;
 
-        Ok(())
+        Ok(written_len)
     }
 
     pub fn receive_packet(&mut self, pkt: &[u8]) {
         self.device.receive_pkt(pkt);
+    }
+
+    pub fn mark_as_backpressured(&mut self, handle: SocketHandle) {
+        if let Some(socket) = self.sockets.get_mut(&handle) {
+            socket.backpressured = true;
+        }
+    }
+
+    pub fn get_writeable_sockets(&mut self) -> Vec<(HandleId, SocketHandle)> {
+        let mut sockets = Vec::new();
+        for (handle, socket) in self.sockets.iter_mut() {
+            if !socket.backpressured {
+                continue;
+            }
+
+            if !matches!(socket.state, SocketState::Established) {
+                continue;
+            }
+
+            let smol_sock = self.smol_sockets.get::<tcp::Socket>(socket.smol_handle);
+            let writeable_len = smol_sock.send_queue() - smol_sock.send_capacity();
+            if writeable_len > 0 {
+                socket.backpressured = false;
+                sockets.push((socket.ch.handle_id(), *handle));
+            }
+        }
+
+        sockets
     }
 }
