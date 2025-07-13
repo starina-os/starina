@@ -5,7 +5,7 @@ use crate::http::ResponseWriter;
 use crate::http::StatusCode;
 
 pub fn handle_index(req: &Request, resp: &mut impl ResponseWriter) -> anyhow::Result<()> {
-    resp.write_status(StatusCode::OK);
+    resp.write_headers(StatusCode::OK);
     resp.write_body(
         format!(
             "Hello from Starina API! You requested: {} {}",

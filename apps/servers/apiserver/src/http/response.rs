@@ -7,12 +7,19 @@ use starina::prelude::*;
 use crate::http::Headers;
 use crate::http::StatusCode;
 
+#[derive(Debug)]
+pub enum TryFlushResult {
+    Done,
+    Partial,
+    Error(ErrorCode),
+}
+
 pub trait ResponseWriter {
-    fn write_status(&mut self, status: StatusCode);
     fn headers_mut(&mut self) -> &mut Headers;
+    fn write_headers(&mut self, status: StatusCode);
     fn write_body(&mut self, data: &[u8]);
-    fn flush(&mut self) -> Result<bool, ErrorCode>;
-    fn sent_headers(&self) -> bool;
+    fn are_headers_sent(&self) -> bool;
+    fn try_flush(&mut self) -> TryFlushResult;
 }
 
 enum ResponseState {
@@ -67,7 +74,7 @@ impl BufferedResponseWriter {
 }
 
 impl ResponseWriter for BufferedResponseWriter {
-    fn write_status(&mut self, status_code: StatusCode) {
+    fn write_headers(&mut self, status_code: StatusCode) {
         match &mut self.state {
             ResponseState::BeforeHeaders { status, .. } => {
                 *status = Some(status_code);
@@ -94,7 +101,7 @@ impl ResponseWriter for BufferedResponseWriter {
         }
     }
 
-    fn flush(&mut self) -> Result<bool, ErrorCode> {
+    fn try_flush(&mut self) -> TryFlushResult {
         loop {
             match core::mem::replace(&mut self.state, ResponseState::Finished) {
                 ResponseState::BeforeHeaders {
@@ -124,13 +131,17 @@ impl ResponseWriter for BufferedResponseWriter {
                     mut index,
                     body,
                 } => {
-                    if !self.send_chunk(flatten_headers.as_bytes(), &mut index)? {
-                        self.state = ResponseState::SendingHeaders {
-                            headers: flatten_headers,
-                            index,
-                            body,
-                        };
-                        return Ok(false);
+                    match self.send_chunk(flatten_headers.as_bytes(), &mut index) {
+                        Ok(true) => {}
+                        Ok(false) => {
+                            self.state = ResponseState::SendingHeaders {
+                                headers: flatten_headers,
+                                index,
+                                body,
+                            };
+                            return TryFlushResult::Partial;
+                        }
+                        Err(e) => return TryFlushResult::Error(e),
                     }
                     if index >= flatten_headers.len() {
                         self.state = ResponseState::SendingBody { body, index: 0 };
@@ -145,34 +156,38 @@ impl ResponseWriter for BufferedResponseWriter {
                 }
                 ResponseState::SendingBody { body, mut index } => {
                     debug!("SendingBody: index={}, body.len()={}", index, body.len());
-                    if !self.send_chunk(&body, &mut index)? {
-                        debug!(
-                            "send_chunk returned false (backpressure), index now={}",
-                            index
-                        );
-                        self.state = ResponseState::SendingBody { body, index };
-                        return Ok(false);
+                    match self.send_chunk(&body, &mut index) {
+                        Ok(true) => {}
+                        Ok(false) => {
+                            debug!(
+                                "send_chunk returned false (backpressure), index now={}",
+                                index
+                            );
+                            self.state = ResponseState::SendingBody { body, index };
+                            return TryFlushResult::Partial;
+                        }
+                        Err(e) => return TryFlushResult::Error(e),
                     }
                     debug!("send_chunk succeeded, index now={}", index);
                     if index >= body.len() {
                         debug!("Body fully sent, finishing");
                         self.state = ResponseState::Finished;
-                        return Ok(true);
+                        return TryFlushResult::Done;
                     }
 
                     debug!("More body data to send");
                     self.state = ResponseState::SendingBody { body, index };
-                    return Ok(false);
+                    return TryFlushResult::Partial;
                 }
                 ResponseState::Finished => {
                     self.state = ResponseState::Finished;
-                    return Ok(true);
+                    return TryFlushResult::Done;
                 }
             }
         }
     }
 
-    fn sent_headers(&self) -> bool {
+    fn are_headers_sent(&self) -> bool {
         !matches!(self.state, ResponseState::BeforeHeaders { .. })
     }
 }

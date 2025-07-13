@@ -4,6 +4,7 @@ mod endpoints;
 mod http;
 
 use http::RequestParser;
+use http::TryFlushResult;
 use serde::Deserialize;
 use starina::channel::Channel;
 use starina::channel::ChannelReceiver;
@@ -24,6 +25,7 @@ use starina::sync::Mutex;
 use crate::http::BufferedResponseWriter;
 use crate::http::HeaderName;
 use crate::http::ResponseWriter;
+use crate::http::StatusCode;
 
 pub const SPEC: AppSpec = AppSpec {
     name: "apiserver",
@@ -174,20 +176,51 @@ fn main(env_json: &[u8]) {
                     Ok(Message::Data { data }) => {
                         let mut client_guard = client.lock();
                         let client = &mut *client_guard;
-                        endpoints::handle_http_request(&mut client.parser, &mut client.resp, data);
 
-                        match client.resp.flush() {
-                            Ok(true) => {
+                        // Parse the request, and route it.
+                        let result = match client.parser.parse_chunk(data) {
+                            Ok(Some(request)) => endpoints::route(&request, &mut client.resp),
+                            Ok(None) => {
+                                trace!("Partial HTTP request received, waiting for more data");
+                                continue;
+                            }
+                            Err(e) => Err(anyhow::format_err!("HTTP parsing error: {:?}", e)),
+                        };
+
+                        // Write an error response.
+                        let resp = &mut client.resp;
+                        if let Err(e) = result {
+                            if resp.are_headers_sent() {
+                                // It's too late to send an error response.
+                                debug_warn!(
+                                    "HTTP error response already sent, cannot send error: {}",
+                                    e
+                                );
+                                return;
+                            }
+
+                            let headers = resp.headers_mut();
+                            headers
+                                .insert(HeaderName::CONTENT_TYPE, "text/plain")
+                                .unwrap();
+
+                            resp.write_headers(StatusCode::INTERNAL_SERVER_ERROR);
+                            resp.write_body(e.to_string().as_bytes());
+                        }
+
+                        // Flush the response.
+                        match resp.try_flush() {
+                            TryFlushResult::Done => {
                                 debug!(
                                     "API server: response fully flushed, waiting for TCP to close"
                                 );
                                 poll.remove(ch.handle_id()).unwrap();
                             }
-                            Ok(false) => {
+                            TryFlushResult::Partial => {
                                 // Still need to flush more, will wait for WRITABLE events.
                                 poll.listen(ch.handle_id(), Readiness::WRITABLE).unwrap();
                             }
-                            Err(e) => {
+                            TryFlushResult::Error(e) => {
                                 debug_warn!("Failed to flush response: {:?}", e);
                                 poll.remove(ch.handle_id()).unwrap();
                             }
@@ -208,18 +241,18 @@ fn main(env_json: &[u8]) {
             State::Data { ch, client } if readiness.contains(Readiness::WRITABLE) => {
                 debug!("WRITABLE event for handle {:?}", ch.handle_id());
                 let mut client = client.lock();
-                match client.resp.flush() {
-                    Ok(true) => {
+                match client.resp.try_flush() {
+                    TryFlushResult::Done => {
                         debug!("API server: response fully flushed, waiting for TCP to close");
                         poll.remove(ch.handle_id()).unwrap();
                     }
-                    Ok(false) => {
+                    TryFlushResult::Partial => {
                         trace!(
                             "WRITABLE event for handle {:?}, still need to flush more",
                             ch.handle_id()
                         );
                     }
-                    Err(e) => {
+                    TryFlushResult::Error(e) => {
                         debug_warn!("Failed to flush response: {:?}", e);
                         poll.remove(ch.handle_id()).unwrap();
                     }
