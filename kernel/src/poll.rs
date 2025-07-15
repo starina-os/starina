@@ -113,7 +113,7 @@ impl ListenerSet {
 
     pub fn remove_listener(&mut self, poll: &Poll) {
         self.listeners
-            .retain(|listener| SharedRef::ptr_eq_self(&listener.poll, poll));
+            .retain(|listener| !SharedRef::ptr_eq_self(&listener.poll, poll));
     }
 }
 
