@@ -119,16 +119,17 @@ pub fn load_inkernel_apps(device_tree: DeviceTree) {
             env.insert("startup_ch".into(), serde_json::json!(handle_id.as_raw()));
         };
 
-        let env_str = serde_json::to_string(&env).unwrap();
-        let vsyscall_page = Box::new(VsyscallPage {
+        // FIXME: Do not leak.
+        let env_str = Box::leak(serde_json::to_string(&env).unwrap().into_boxed_str());
+        let vsyscall_page = Box::leak(Box::new(VsyscallPage {
             environ_ptr: env_str.as_ptr(),
             environ_len: env_str.len(),
             name: spec.name.as_ptr(),
             name_len: spec.name.len(),
             main: spec.main,
-        });
+        }));
 
-        let arg = &*vsyscall_page as *const VsyscallPage as usize;
+        let arg = vsyscall_page as *const VsyscallPage as usize;
         let thread = Thread::new_inkernel(starina::start::start as usize, arg as usize).unwrap();
 
         GLOBAL_SCHEDULER.push(thread);
