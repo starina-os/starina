@@ -184,20 +184,18 @@ impl<'a> TcpIp<'a> {
                     (SocketState::Established, smol_state) => {
                         unreachable!("unexpected state in Established: {:?}", smol_state);
                     }
-                    (SocketState::Closing, tcp::State::Closed) => {
+                    (SocketState::Closing, tcp::State::TimeWait | tcp::State::Closed) => {
                         // Graceful shutdown complete, remove the socket
-                        callback(SocketEvent::Closed { ch: &sock.ch });
                         sock.state = SocketState::Closed;
+                        callback(SocketEvent::Closed { ch: &sock.ch });
                     }
-                    (
-                        SocketState::Closing,
-                        tcp::State::FinWait1 | tcp::State::FinWait2 | tcp::State::TimeWait,
-                    ) => {
+                    (SocketState::Closing, tcp::State::FinWait1 | tcp::State::FinWait2) => {
                         // Still in graceful shutdown, keep socket alive
                         // Continue sending any remaining data
+                        trace!("socket {:?} is in FinWait", handle);
                     }
                     (SocketState::Closing, tcp::State::CloseWait) => {
-                        // Still waiting for close, keep socket alive
+                        trace!("socket {:?} is in CloseWait", handle);
                     }
                     (SocketState::Closing, smol_state) => {
                         unreachable!("unexpected state in Closing: {:?}", smol_state);
