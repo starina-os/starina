@@ -6,8 +6,10 @@ authors = { workspace = true }
 edition = { workspace = true }
 
 [features]
-default = []
+default = ["talc-allocator"]
 exit-on-idle = []
+bump-allocator = []
+talc-allocator = ["dep:talc"]
 
 [dependencies]
 starina_types = { workspace = true }
@@ -31,3 +33,5 @@ tcpip = { workspace = true }
 linuxrun = { workspace = true }
 autotest = { workspace = true }
 apiserver = { workspace = true }
+
+talc = { version = "4.4", optional = true }
