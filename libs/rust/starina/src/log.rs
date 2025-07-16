@@ -24,7 +24,7 @@ impl Writer {
                 // logger could be shared between multiple apps/threads,
                 // and the kernel may switch to another app/thread.
                 drop(buf);
-                crate::syscall::console_write(&old_buf);
+                crate::syscall::log_write(&old_buf);
                 buf = self.buf.lock();
             }
         }

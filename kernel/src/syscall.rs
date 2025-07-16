@@ -41,7 +41,7 @@ pub enum SyscallResult {
     Block(ThreadState),
 }
 
-fn console_write(
+fn log_write(
     current: &SharedRef<Thread>,
     str_ptr: IsolationPtr,
     len: usize,
@@ -438,10 +438,10 @@ fn do_syscall(
             let thread = thread_spawn(current, process_handle, pc, arg)?;
             Ok(SyscallResult::Done(thread.into()))
         }
-        SYS_CONSOLE_WRITE => {
+        SYS_LOG_WRITE => {
             let str_ptr = IsolationPtr::new(a0 as usize);
             let len = a1 as usize;
-            console_write(current, str_ptr, len)?;
+            log_write(current, str_ptr, len)?;
             Ok(SyscallResult::Done(RetVal::new(0)))
         }
         SYS_POLL_CREATE => {

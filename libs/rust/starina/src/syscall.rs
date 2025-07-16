@@ -46,9 +46,9 @@ fn syscall(
     }
 }
 
-pub fn console_write(s: &[u8]) {
+pub fn log_write(s: &[u8]) {
     let _ = syscall(
-        SYS_CONSOLE_WRITE,
+        SYS_LOG_WRITE,
         s.as_ptr() as isize,
         s.len().try_into().unwrap(),
         0,

@@ -5,7 +5,7 @@ use crate::handle::HandleId;
 use crate::poll::Readiness;
 use crate::timer::MonotonicTime;
 
-pub const SYS_CONSOLE_WRITE: u8 = 0;
+pub const SYS_LOG_WRITE: u8 = 0;
 pub const SYS_HANDLE_CLOSE: u8 = 1;
 pub const SYS_CHANNEL_CREATE: u8 = 2;
 pub const SYS_CHANNEL_SEND: u8 = 3;
