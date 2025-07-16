@@ -7,11 +7,13 @@ use crate::http::StatusCode;
 
 pub mod big;
 pub mod index;
+pub mod logs;
 
 pub fn route(req: &Request, resp: &mut impl ResponseWriter) -> anyhow::Result<()> {
     match (&req.method, req.path.as_str()) {
         (crate::http::Method::Get, "/") => index::handle_index(req, resp),
         (crate::http::Method::Get, "/big") => big::handle_big(req, resp),
+        (crate::http::Method::Get, "/logs") => logs::handle_logs(req, resp),
         _ => {
             error(resp, StatusCode::new(404).unwrap(), "Route not found");
             Ok(())

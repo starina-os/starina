@@ -7,6 +7,7 @@ use super::Headers;
 use super::Method;
 use super::Request;
 use super::request::Body;
+use super::request::Query;
 
 /// Per-connection state machine.
 #[derive(Debug)]
@@ -15,11 +16,13 @@ enum State {
     ReadingHeaders {
         method: Method,
         path: String,
+        query: Query,
         headers: Headers,
     },
     ReadingBody {
         method: Method,
         path: String,
+        query: Query,
         headers: Headers,
         content_length: usize,
     },
@@ -77,6 +80,17 @@ impl RequestParser {
         }
     }
 
+    fn split_path_and_query(path_with_query: &str) -> (String, Query) {
+        if let Some(pos) = path_with_query.find('?') {
+            let path = path_with_query[..pos].to_string();
+            let query_str = &path_with_query[pos + 1..];
+            let query = Query::from_str(query_str);
+            (path, query)
+        } else {
+            (path_with_query.to_string(), Query::new())
+        }
+    }
+
     fn reset(&mut self) {
         self.state = State::ReadingStartLine;
         self.headers_buf.clear();
@@ -98,6 +112,7 @@ impl RequestParser {
                 let State::ReadingBody {
                     method,
                     path,
+                    query,
                     headers,
                     ..
                 } = mem::replace(&mut self.state, State::ReadingStartLine)
@@ -108,6 +123,7 @@ impl RequestParser {
                 let request = Request {
                     method,
                     path,
+                    query,
                     headers,
                     body: Body::Full(mem::take(&mut self.body_buf)),
                 };
@@ -143,7 +159,7 @@ impl RequestParser {
             match &mut self.state {
                 State::ReadingStartLine => {
                     let mut parts = line.trim_ascii_end().splitn(3, ' ');
-                    let (Some(method), Some(path), Some(version)) =
+                    let (Some(method), Some(path_and_query), Some(version)) =
                         (parts.next(), parts.next(), parts.next())
                     else {
                         return Err(Error::InvalidStartLine);
@@ -153,16 +169,19 @@ impl RequestParser {
                         return Err(Error::UnsupportedHttpVersion);
                     }
 
-                    if path.len() > MAX_PATH_LENGTH {
+                    if path_and_query.len() > MAX_PATH_LENGTH {
                         return Err(Error::PathTooLong);
                     }
 
                     let method_enum = Method::from_bytes(method.as_bytes())
                         .map_err(|_| Error::UnsupportedMethod)?;
 
+                    let (path, query) = Self::split_path_and_query(path_and_query);
+
                     self.state = State::ReadingHeaders {
                         method: method_enum,
-                        path: path.to_string(),
+                        path,
+                        query,
                         headers: Headers::new(),
                     };
                 }
@@ -172,6 +191,7 @@ impl RequestParser {
                     let State::ReadingHeaders {
                         method,
                         path,
+                        query,
                         headers,
                         ..
                     } = mem::replace(&mut self.state, State::ReadingStartLine)
@@ -201,6 +221,7 @@ impl RequestParser {
                         let request = Request {
                             method,
                             path,
+                            query,
                             headers,
                             body: Body::Full(Vec::new()),
                         };
@@ -218,6 +239,7 @@ impl RequestParser {
                         let request = Request {
                             method,
                             path,
+                            query,
                             headers,
                             body: Body::Full(self.body_buf[..content_length].to_vec()),
                         };
@@ -231,6 +253,7 @@ impl RequestParser {
                     self.state = State::ReadingBody {
                         method,
                         path,
+                        query,
                         headers,
                         content_length,
                     };
@@ -291,6 +314,7 @@ mod tests {
 
         assert_eq!(request.method, Method::Get);
         assert_eq!(request.path, "/");
+        assert_eq!(request.query.get("test"), None);
         assert_eq!(request.headers.get("host").unwrap().unwrap(), "example.com");
         assert!(matches!(request.body, Body::Full(ref body) if body.is_empty()));
     }
@@ -306,6 +330,7 @@ mod tests {
 
         assert_eq!(request.method, Method::Post);
         assert_eq!(request.path, "/submit");
+        assert_eq!(request.query.get("test"), None);
         assert_eq!(request.headers.get("content-length").unwrap().unwrap(), "5");
         assert!(matches!(request.body, Body::Full(ref body) if body == b"Hello"));
     }
@@ -326,6 +351,7 @@ mod tests {
 
         assert_eq!(request.method, Method::Post);
         assert_eq!(request.path, "/submit");
+        assert_eq!(request.query.get("test"), None);
         assert_eq!(request.headers.get("content-length").unwrap().unwrap(), "5");
         assert!(matches!(request.body, Body::Full(ref body) if body == b"Hello"));
     }
@@ -349,6 +375,7 @@ mod tests {
 
         assert_eq!(request.method, Method::Get);
         assert_eq!(request.path, "/path/to");
+        assert_eq!(request.query.get("test"), None);
         assert_eq!(request.headers.get("host").unwrap().unwrap(), "example.com");
         assert!(matches!(request.body, Body::Full(ref body) if body.is_empty()));
 
@@ -360,6 +387,7 @@ mod tests {
         };
         assert_eq!(request2.method, Method::Get);
         assert_eq!(request2.path, "/next");
+        assert_eq!(request2.query.get("test"), None);
     }
 
     #[test]
@@ -376,6 +404,7 @@ mod tests {
 
         assert_eq!(request1.method, Method::Post);
         assert_eq!(request1.path, "/submit");
+        assert_eq!(request1.query.get("test"), None);
         assert!(matches!(request1.body, Body::Full(ref body) if body == b"Hello"));
 
         // Parser should be reset and ready for the second request
@@ -387,6 +416,7 @@ mod tests {
 
         assert_eq!(request2.method, Method::Get);
         assert_eq!(request2.path, "/next");
+        assert_eq!(request2.query.get("test"), None);
     }
 
     #[test]
@@ -402,6 +432,7 @@ mod tests {
 
         assert_eq!(request.method, Method::Post);
         assert_eq!(request.path, "/api");
+        assert_eq!(request.query.get("test"), None);
         assert!(matches!(request.body, Body::Full(ref body) if body == b"foo"));
 
         // Parser should be reset and ready for next request
@@ -412,6 +443,25 @@ mod tests {
 
         assert_eq!(request2.method, Method::Get);
         assert_eq!(request2.path, "/status");
+        assert_eq!(request2.query.get("test"), None);
+    }
+
+    #[test]
+    fn parse_request_with_query_string() {
+        let mut parser = RequestParser::new();
+        let Ok(Some(request)) =
+            parser.parse_chunk(b"GET /logs?off=100&limit=50 HTTP/1.1\r\nHost: example.com\r\n\r\n")
+        else {
+            panic!();
+        };
+
+        assert_eq!(request.method, Method::Get);
+        assert_eq!(request.path, "/logs");
+        assert_eq!(request.query.get("off"), Some("100"));
+        assert_eq!(request.query.get("limit"), Some("50"));
+        assert_eq!(request.query.get("nonexistent"), None);
+        assert_eq!(request.headers.get("host").unwrap().unwrap(), "example.com");
+        assert!(matches!(request.body, Body::Full(ref body) if body.is_empty()));
     }
 
     #[test]

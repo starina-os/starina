@@ -59,6 +59,7 @@ fn log_write(
 
         slice.read_to_slice(isolation, offset, buf)?;
         arch::console_write(buf);
+        crate::print::LOG_BUFFER.lock().write(buf);
 
         offset += chunk_len;
         remaining -= chunk_len;
@@ -410,6 +411,34 @@ fn timer_set(
     Ok(())
 }
 
+fn log_read(
+    current: &SharedRef<Thread>,
+    offset: usize,
+    buf_ptr: IsolationPtr,
+    buf_len: usize,
+) -> Result<usize, ErrorCode> {
+    let slice = IsolationSliceMut::new(buf_ptr, buf_len);
+    let isolation = current.process().isolation();
+
+    let mut log_buffer = crate::print::LOG_BUFFER.lock();
+    let mut tmp = [0u8; 512];
+    let mut total_len = 0;
+    while let Some(remaining_len) = buf_len.checked_sub(total_len) {
+        // Read from log buffer to tmp.
+        let chunk_len = min(remaining_len, tmp.len());
+        let read_len = log_buffer.read(offset + total_len, &mut tmp[..chunk_len]);
+        if read_len == 0 {
+            break;
+        }
+
+        // Write tmp to the user buffer.
+        slice.write_bytes(isolation, total_len, &tmp[..chunk_len])?;
+        total_len += read_len;
+    }
+
+    Ok(total_len)
+}
+
 #[allow(clippy::too_many_arguments)]
 fn do_syscall(
     a0: isize,
@@ -575,6 +604,13 @@ fn do_syscall(
         SYS_TIMER_NOW => {
             let now = crate::timer::now();
             Ok(SyscallResult::Done(now.into()))
+        }
+        SYS_CONSOLE_READ => {
+            let offset = a0 as usize;
+            let buf_ptr = IsolationPtr::new(a1 as usize);
+            let buf_len = a2 as usize;
+            let bytes_read = log_read(current, offset, buf_ptr, buf_len)?;
+            Ok(SyscallResult::Done(RetVal::new(bytes_read as isize)))
         }
         _ => {
             debug_warn!("unknown syscall: {}", n);

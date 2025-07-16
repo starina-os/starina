@@ -1,3 +1,6 @@
+use crate::spinlock::SpinLock;
+use crate::utils::ring_buffer::RingBuffer;
+
 /// The console output writer.
 ///
 /// This is an internal implementation detail of the `print!` and `println!`
@@ -6,7 +9,9 @@ pub struct Printer;
 
 impl core::fmt::Write for Printer {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        crate::arch::console_write(s.as_bytes());
+        let bytes = s.as_bytes();
+        crate::arch::console_write(bytes);
+        LOG_BUFFER.lock().write(bytes);
         Ok(())
     }
 }
@@ -119,4 +124,81 @@ macro_rules! debug_warn {
             $crate::warn!($($arg)+);
         }
     };
+}
+
+const LOG_BUFFER_SIZE: usize = 16 * 1024;
+
+pub static LOG_BUFFER: SpinLock<RingBuffer<u8, LOG_BUFFER_SIZE>> = SpinLock::new(RingBuffer::new());
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_log_buffer_write_and_read() {
+        let mut buffer: RingBuffer<u8, 1024> = RingBuffer::new();
+        let data = b"hello world";
+
+        buffer.write(data);
+
+        let mut read_buf = [0u8; 20];
+        let read_len = buffer.read(0, &mut read_buf);
+
+        assert_eq!(read_len, data.len());
+        assert_eq!(&read_buf[..read_len], data);
+    }
+
+    #[test]
+    fn test_log_buffer_wrap_around() {
+        let mut buffer: RingBuffer<u8, 100> = RingBuffer::new();
+        let large_data = vec![b'x'; 150];
+
+        buffer.write(&large_data);
+
+        let mut read_buf = [0u8; 100];
+        let read_len = buffer.read(0, &mut read_buf);
+
+        assert_eq!(read_len, 0);
+    }
+
+    #[test]
+    fn test_log_buffer_partial_read() {
+        let mut buffer: RingBuffer<u8, 1024> = RingBuffer::new();
+        let data = b"0123456789";
+
+        buffer.write(data);
+
+        let mut small_buf = [0u8; 5];
+        let read_len = buffer.read(0, &mut small_buf);
+
+        assert_eq!(read_len, 5);
+        assert_eq!(&small_buf, b"01234");
+    }
+
+    #[test]
+    fn test_log_buffer_offset_read() {
+        let mut buffer: RingBuffer<u8, 1024> = RingBuffer::new();
+        let data = b"hello world";
+
+        buffer.write(data);
+
+        let mut read_buf = [0u8; 5];
+        let read_len = buffer.read(6, &mut read_buf);
+
+        assert_eq!(read_len, 5);
+        assert_eq!(&read_buf, b"world");
+    }
+
+    #[test]
+    fn test_log_buffer_out_of_bounds_offset() {
+        let mut buffer: RingBuffer<u8, 1024> = RingBuffer::new();
+        let data = b"hello";
+
+        buffer.write(data);
+
+        let mut read_buf = [0u8; 10];
+        let read_len = buffer.read(10, &mut read_buf);
+
+        assert_eq!(read_len, 0);
+    }
 }
