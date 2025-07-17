@@ -197,6 +197,9 @@ impl<'a> TcpIp<'a> {
                     (SocketState::Closing, tcp::State::CloseWait) => {
                         trace!("socket {:?} is in CloseWait", handle);
                     }
+                    (SocketState::Closing, tcp::State::Closing) => {
+                        // Waiting for the remote peer to acknowledge our FIN.
+                    }
                     (SocketState::Closing, smol_state) => {
                         unreachable!("unexpected state in Closing: {:?}", smol_state);
                     }
