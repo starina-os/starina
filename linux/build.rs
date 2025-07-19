@@ -25,7 +25,7 @@ fn main() {
     let num_cpus = std::thread::available_parallelism().unwrap();
     let status = Command::new(program)
         .current_dir(&manifest_dir)
-        .arg(format!("-j{}", num_cpus))
+        .arg(format!("-j{num_cpus}"))
         .env_clear()
         // Apparently Cargo propagates some environment variables and confuses
         // another Cargo to be invoked in make.
