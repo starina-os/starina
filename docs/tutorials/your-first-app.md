@@ -23,6 +23,9 @@ Let's fill the directory with minimal files:
 ```rust [apps/bin/my_hello/Cargo.toml]
 [package]
 name = "my_hello"
+version = "0.1.0"
+authors = ["Your Name <you@example.com>"]
+edition = { workspace = true }
 
 [dependencies]
 starina = { workspace = true }
@@ -184,7 +187,7 @@ Invoke `Channel::send` method, that's it. Key takeaways:
 
 We've sent a message to the echo server, and of course we want a reply. However, before receiving a message, we need to wait for the echo server to send a message because the receive operation is also non-blocking: if it's empty, it will return an error immediately without waiting.
 
-The solution is to use the (effectively) only one blocking operation in Starina: [`Poll::wait`]. It's similar to `epoll` in Linux, an event listener in JavaScript, and `select` in async Rust and Go.
+The solution is to use the (effectively) only one blocking operation in Starina: `Poll::wait`. It's similar to `epoll` in Linux, an event listener in JavaScript, and `select` in async Rust and Go.
 
 Let's register a channel to the `Poll` object, and wait for the channel to be ready for receiving a message:
 
