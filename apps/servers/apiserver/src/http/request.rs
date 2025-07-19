@@ -15,14 +15,12 @@ pub struct Query {
 
 impl Query {
     pub fn new() -> Self {
-        Self {
-            params: Vec::new(),
-        }
+        Self { params: Vec::new() }
     }
 
     pub fn from_str(query: &str) -> Self {
         let mut params = Vec::new();
-        
+
         if !query.is_empty() {
             for param in query.split('&') {
                 if let Some((key, value)) = param.split_once('=') {
@@ -30,7 +28,7 @@ impl Query {
                 }
             }
         }
-        
+
         Self { params }
     }
 

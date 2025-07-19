@@ -2,10 +2,10 @@
 
 use serde::Deserialize;
 use starina::channel::Channel;
-use starina::environ::Environ;
 use starina::channel::ChannelReceiver;
 use starina::channel::RecvError;
 use starina::device_tree::DeviceTree;
+use starina::environ::Environ;
 use starina::error::ErrorCode;
 use starina::handle::Handleable;
 use starina::interrupt::Interrupt;

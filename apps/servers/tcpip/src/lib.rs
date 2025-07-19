@@ -7,11 +7,11 @@ use core::net::Ipv4Addr;
 
 use device::NetDevice;
 use serde::Deserialize;
+use smoltcp::iface::SocketHandle;
 use smoltcp::wire::EthernetAddress;
 use smoltcp::wire::HardwareAddress;
 use smoltcp::wire::IpAddress;
 use smoltcp::wire::IpCidr;
-use smoltcp::iface::SocketHandle;
 use starina::channel::Channel;
 use starina::channel::ChannelReceiver;
 use starina::environ::Environ;

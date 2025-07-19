@@ -85,10 +85,7 @@ fn main(environ: Environ) {
         match &*state {
             State::Tcpip(ch) if readiness.contains(Readiness::READABLE) => {
                 match ch.recv(&mut msgbuffer) {
-                    Ok(Message::OpenReply {
-                        call_id,
-                        ch,
-                    }) => {
+                    Ok(Message::OpenReply { call_id, ch }) => {
                         assert_eq!(call_id, open_call_id);
                         break 'initloop ch;
                     }

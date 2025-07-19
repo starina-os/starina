@@ -7,9 +7,9 @@ use core::time::Duration;
 
 use serde::Deserialize;
 use starina::channel::Channel;
-use starina::environ::Environ;
 use starina::channel::ChannelReceiver;
 use starina::channel::RecvError;
+use starina::environ::Environ;
 use starina::error::ErrorCode;
 use starina::handle::Handleable;
 use starina::message::Message;
