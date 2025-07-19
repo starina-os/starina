@@ -1,6 +1,6 @@
 # Getting Started
 
-## Install Packages
+## Install packages
 
 macOS and Ubuntu users can install the packages with:
 
@@ -28,7 +28,7 @@ To use Linux compatibility layer, you also need:
 >
 > Yes, it should just work on Windows. That said, I recommend using WSL2 for good performance and ease of setup. You can use the same commands as Ubuntu above.
 
-## Build and Run OS
+## Build and run OS
 
 `run.sh` builds the OS and runs it in QEMU. Just type:
 
@@ -58,6 +58,6 @@ To use Linux compatibility layer, you also need:
 
 GDB is super useful for debugging especially when you debug the kernel and in-kernel apps. For example, if the kernel hungs, you can check the backtrace with `bt` command.
 
-## What's Next?
+## What's next?
 
 TODO: How to write apps such as device drivers.

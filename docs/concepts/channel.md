@@ -7,7 +7,7 @@ Channel is the main Inter-Process Communication (IPC) mechanism in Starina. Chan
 - Asynchronous and non-blocking. If the queue is full, it immediately returns an error.
 - Movable between processes.
 
-## Message Types
+## Message types
 
 Unlike other IPC systems like gRPC, Fuchsia's FIDL, or Mach's MIG, Starina does not use Interface Definition Language (IDL) to define message types. Instead, we use few pre-defined message types:
 
@@ -20,7 +20,7 @@ Unlike other IPC systems like gRPC, Fuchsia's FIDL, or Mach's MIG, Starina does 
 | `Data` | `data: bytes` | data channel | A frame/chunk of data, such as network packets or file contents. |
 | `Error` | `error: i32` | data channel | An error occurred in the data channel, like no space left on the disk. |
 
-### Key Points
+### Key points
 
 - IDL is not used to keep things simple, sacrificing some type safety and flexibility. This is similar to UNIX's *everything is a file* philosophy. Starina does the similar thing, but in a message-oriented way.
 - `Open` and `OpenReply` contain `call_id`, which is a unique identifier for the request so that multiple requests can be handled at the same time.
@@ -30,7 +30,7 @@ Unlike other IPC systems like gRPC, Fuchsia's FIDL, or Mach's MIG, Starina does 
 >
 > `Close` message is not defined because you can simply close the channel.
 
-### Upcoming Types (not implemented yet)
+### Upcoming types (not implemented yet)
 
 More message types are being considered. Here are some of them to stimulate your imagination:
 

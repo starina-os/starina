@@ -2,7 +2,7 @@
 
 Starina is designed to be highly portable. Arch-dependent code is clearly separated in the codebase, supports Device Tree, and leverages Cargo's build system to cross-compile OS.
 
-## Porting to a New Board
+## Porting to a new board
 
 If Starina already supports the ISA (e.g. `riscv64`), it would be easy to port. You'll need to change:
 
@@ -14,7 +14,7 @@ If Starina already supports the ISA (e.g. `riscv64`), it would be easy to port. 
 >
 > Starina is still premature, and it does not have a fancy build config system like Linux's Kconfig. Try making it work first, hard-coded things everywhere, and then open a PR to discuss how we can generalize it.
 
-## Porting to a New ISA (CPU architecture)
+## Porting to a new ISA (CPU architecture)
 
 You'll need to implement the following files:
 

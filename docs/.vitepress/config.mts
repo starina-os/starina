@@ -15,10 +15,28 @@ export default defineConfig({
             { text: 'Getting Started', link: '/getting-started' },
             { text: 'Comparison with Others', link: '/comparison-with-others' },
             {
+                text: 'Tutorials',
+                items: [
+                    { text: 'Your First App', link: '/tutorials/your-first-app' },
+                    { text: 'Your First Server', link: '/tutorials/your-first-server' },
+                    // { text: 'Your First Device Driver', link: '/tutorials/your-first-device-driver' },
+                ],
+            },
+            {
                 text: 'Concepts',
                 items: [
                     { text: 'Channel', link: '/concepts/channel' },
+                    { text: 'Poll', link: '/concepts/poll' },
+                    { text: 'Startup', link: '/concepts/startup' },
+                    { text: 'Process', link: '/concepts/process' },
+                    { text: 'Virtual Memory', link: '/concepts/virtual-memory' },
                 ],
+            },
+            {
+                text: 'Linux Compatibility',
+                items: [
+                    { text: 'Running Linux containers', link: '/linux-compatibility/running-linux-containers.md' },
+                ]
             },
             {
                 text: 'Contributors Guide',

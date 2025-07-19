@@ -1,4 +1,4 @@
-# Comparison with Others
+# Comparison with others
 
 *"How's Starina different from X?"* is the question you'll probably ask first. In this article, we will explore the unique features, design choices, advantages, and most importantly, the disadvantages of Starina compared to other microkernels.
 
@@ -6,17 +6,17 @@ This kind of article is uncomfortable to write because some use this kind of com
 
 If you found something wrong or inaccurate, please open an issue or a pull request. I will be happy to correct it :)
 
-## Userspace-First Design
+## Userspace-first design
 
 This is vague but the most important philosophy of Starina. Starina is designed to be a userspace-first microkernel, which means we prioritize how we want to develop applications and OS components in userspace, instead of achieving the most ideal kernel design. That is, **developer experience is the top priority**.
 
 This means the kernel may sometimes have some nasty hacks to make things work for now. For example, the current kernel does dynamic memory allocation in the kernel, which is less ideal compared to other strict microkernels. However, we prefer to keep it intuitive for newbies until we really have to optimize it. That is, we make it work first, and make it better incrementally.
 
-The opposite of this is what I call "kernel-first" design. seL4 is a good example of this. seL4 is an extremely strict design. I'm saying *strict* not because it's formally verified, but because [its API](https://docs.sel4.systems/projects/sel4/api-doc.html) is super minimal. You may notice that it exposes low-level hardware details directly (e.g. `seL4_X86_PageTable` and `seL4_ARM_PageTable`) and has no dynamic memory allocation API. This lack of abstractions makes the kernel minimal, and gives you the freedom to implement your own abstractions. Starina is the opposite of this. It tries to hide kernel's implementation details even if it sacrifices some performance.
+The opposite of this is what I call "kernel-first" design. seL4 is a good example of this. seL4 is an extremely strict design. I'm saying *strict* not because it's formally verified, but because [its API](https://docs.sel4.systems/projects/sel4/api-doc.html) is super minimal. You may notice that it exposes low-level hardware details directly (e.g. `seL4_X86_PageTable` and `seL4_ARM_PageTable`) and has no dynamic memory allocation API. This lack of abstractions makes the kernel minimal, and gives you the freedom to implement your own abstractions. Starina is the opposite of this. It tries to hide kernel's implementation details even if it sacrifices some flexibility.
 
-## Multiple Process Isolation Mechanisms
+## Multiple process isolation mechanisms
 
-### A Little Bit of Background (for Microkernel Newbies)
+### A little bit of background (for microkernel newbies)
 
 Microkernel is a design pattern where the kernel is as small as possible, and everything else is implemented as user-space processes. In so-called multi-server microkernels, the userland OS components are implemented as separate processes. For example, TCP/IP process, file system, and each device driver have their own process.
 
@@ -24,7 +24,7 @@ Separate processes here means that they are isolated from each other, as in they
 
 Traditionally, process isolation is achieved by virtual memory, aka. paging. Each process has its own virtual address space, and the CPU enforces this isolation. OS components communicate with each other using IPC (Inter-Process Communication) mechanisms, such as message passing and shared memory. Since monolithic kernels do function calls instead of IPC, it's intuitive to think that microkernels are slower than monolithic kernels due to IPC overheads.
 
-### Starina's Approach
+### Starina's approach
 
 In Starina, process isolation can be done in different ways, depending on your needs. Currently Starina *plans to* support:
 
@@ -41,7 +41,7 @@ Message passing is a major IPC mechanism in microkernels. It's similar to UNIX d
 
 Typical microkernels (and so does Starina) do not parse the message contents, but treat it as an opaque byte array. This means that the sender and receiver must agree on the message format, which is usually done using an Interface Definition Language (IDL). For example, Fuchsia uses its own IDL called [FIDL](https://fuchsia.dev/fuchsia-src/concepts/fidl/overview).
 
-### Starina's Approach
+### Starina's approach
 
 Starina uses message passing for IPC, without IDL. Instead, it has a predefined set of message types. This sounds like moving backwards, but it actually has some advantages:
 
@@ -52,7 +52,7 @@ Starina uses message passing for IPC, without IDL. Instead, it has a predefined 
 
 To summarize, Starina has *"everything is a file"*-like philosophy in message passing. That is, we prefer a simple interface which covers 90% of the use cases, instead of having specialized interfaces for each use case. A key finding here is that interactions between OS components are way simpler than gRPC-powered applications.
 
-## Declarative Initialization
+## Declarative initialization
 
 Starina prefers declarative ways to initialize components. This is similar to Kubernetes: you write YAML files to describe the desired state of the system, and Kubernetes takes care of the rest. Starina does the same thing, but in the operating system level.
 
@@ -60,6 +60,6 @@ In Starina, apps describe required resources in a spec file such as channels to 
 
 Apps start with environment variables that are set by the startup process. No command-line parsing nor service discovery is needed. This makes the app initialization much simpler, less boilerplate, and more consistent.
 
-## Lightweight VM for Linux Compatibility
+## Lightweight VM for Linux compatibility
 
 TODO: Planned to be done in next vacation
