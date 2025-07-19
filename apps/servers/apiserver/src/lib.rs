@@ -7,9 +7,9 @@ use http::RequestParser;
 use http::TryFlushResult;
 use serde::Deserialize;
 use starina::channel::Channel;
-use starina::environ::Environ;
 use starina::channel::ChannelReceiver;
 use starina::channel::RecvError;
+use starina::environ::Environ;
 use starina::error::ErrorCode;
 use starina::handle::Handleable;
 use starina::message::CallId;
@@ -85,9 +85,12 @@ fn main(environ: Environ) {
         match &*state {
             State::Tcpip(ch) if readiness.contains(Readiness::READABLE) => {
                 match ch.recv(&mut msgbuffer) {
-                    Ok(Message::OpenReply { call_id, handle }) => {
+                    Ok(Message::OpenReply {
+                        call_id,
+                        ch,
+                    }) => {
                         assert_eq!(call_id, open_call_id);
-                        break 'initloop handle;
+                        break 'initloop ch;
                     }
                     Ok(msg) => {
                         debug_warn!("unexpected message on tcpip channel: {:?}", msg);
@@ -126,11 +129,11 @@ fn main(environ: Environ) {
         match &*state {
             State::Listen(ch) if readiness.contains(Readiness::READABLE) => {
                 match ch.recv(&mut msgbuffer) {
-                    Ok(Message::Connect { handle }) => {
-                        let handle_id = handle.handle_id();
+                    Ok(Message::Connect { ch }) => {
+                        let handle_id = ch.handle_id();
                         info!("new client connection with handle {:?}", handle_id);
 
-                        let (sender, receiver) = handle.split();
+                        let (sender, receiver) = ch.split();
                         let mut resp = BufferedResponseWriter::new(sender);
                         resp.headers_mut()
                             .insert(HeaderName::SERVER, "Starina/apiserver")

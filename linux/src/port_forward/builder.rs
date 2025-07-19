@@ -79,9 +79,9 @@ impl<'a> Builder<'a> {
             let (_, readiness) = poll.wait().unwrap();
             if readiness.contains(Readiness::READABLE) {
                 match tcpip_rx.recv(&mut msgbuffer) {
-                    Ok(Message::OpenReply { call_id, handle }) => {
+                    Ok(Message::OpenReply { call_id, ch }) => {
                         let port = remaining.remove(&call_id).unwrap();
-                        listen_channels.push((*port, handle));
+                        listen_channels.push((*port, ch));
                     }
                     Ok(msg) => {
                         debug_warn!("unexpected message on tcpip channel: {:?}", msg);

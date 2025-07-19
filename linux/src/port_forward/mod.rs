@@ -62,17 +62,14 @@ impl PortForwarder {
         )
         .unwrap();
 
-        for (port, handle) in listen_channels {
+        for (port, ch) in listen_channels {
             let Port::Tcp {
                 guest: guest_port, ..
             } = port;
 
             poll.add(
-                handle.handle_id(),
-                State::Listen {
-                    ch: handle,
-                    guest_port,
-                },
+                ch.handle_id(),
+                State::Listen { ch, guest_port },
                 Readiness::READABLE,
             )
             .unwrap();
@@ -127,8 +124,8 @@ impl PortForwarder {
                             if readiness.contains(Readiness::READABLE) =>
                         {
                             match ch.recv(&mut msgbuffer) {
-                                Ok(Message::Connect { handle }) => {
-                                    self.new_connection(handle, *guest_port);
+                                Ok(Message::Connect { ch }) => {
+                                    self.new_connection(ch, *guest_port);
                                 }
                                 Ok(msg) => {
                                     debug_warn!("unexpected message on listen channel: {:?}", msg);

@@ -2,8 +2,8 @@
 
 use serde::Deserialize;
 use starina::channel::Channel;
-use starina::environ::Environ;
 use starina::channel::RecvError;
+use starina::environ::Environ;
 use starina::error::ErrorCode;
 use starina::handle::Handleable;
 use starina::message::Message;
@@ -51,13 +51,13 @@ fn main(environ: Environ) {
         match &*state {
             State::Startup(ch) if readiness.contains(Readiness::READABLE) => {
                 match ch.recv(&mut msgbuffer) {
-                    Ok(Message::Connect { handle }) => {
-                        let handle_id = handle.handle_id();
+                    Ok(Message::Connect { ch }) => {
+                        let handle_id = ch.handle_id();
                         info!("new client connection with handle {:?}", handle_id);
 
                         poll.add(
                             handle_id,
-                            State::Client(handle),
+                            State::Client(ch),
                             Readiness::READABLE | Readiness::CLOSED,
                         )
                         .unwrap();

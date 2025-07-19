@@ -86,9 +86,9 @@ fn main(environ: Environ) {
         match &*state {
             State::Startup(ch) if readiness.contains(Readiness::READABLE) => {
                 match ch.recv(&mut msgbuffer) {
-                    Ok(Message::Connect { handle }) => {
+                    Ok(Message::Connect { ch }) => {
                         // New connection. Register them as the upstream (typically TCP/IP server).
-                        let (sender, receiver) = handle.split();
+                        let (sender, receiver) = ch.split();
                         upstream_sender = Some(sender);
                         poll.add(
                             receiver.handle_id(),

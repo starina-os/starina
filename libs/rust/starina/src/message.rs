@@ -216,9 +216,9 @@ struct RawErrorMsg {
 }
 
 pub enum Message<'a> {
-    Connect { handle: Channel },
+    Connect { ch: Channel },
     Open { call_id: CallId, uri: &'a [u8] },
-    OpenReply { call_id: CallId, handle: Channel },
+    OpenReply { call_id: CallId, ch: Channel },
     Data { data: &'a [u8] },
     Abort { call_id: CallId, reason: ErrorCode },
     Error { reason: ErrorCode },
@@ -230,17 +230,17 @@ impl<'a> Message<'a> {
         let mut handles = HandlesWriter::new(&mut buffer.handles);
 
         match self {
-            Message::Connect { handle } => {
-                handles.write(0, handle);
+            Message::Connect { ch } => {
+                handles.write(0, ch);
                 Ok(MessageInfo::new(MessageKind::Connect as i32, 0, 1))
             }
             Message::Open { call_id, uri } => {
                 let len = data.header_then_bytes(call_id, uri);
                 Ok(MessageInfo::new(MessageKind::Open as i32, len, 0))
             }
-            Message::OpenReply { call_id, handle } => {
+            Message::OpenReply { call_id, ch } => {
                 let len = data.header_only(call_id);
-                handles.write(0, handle);
+                handles.write(0, ch);
                 Ok(MessageInfo::new(MessageKind::OpenReply as i32, len, 1))
             }
             Message::Data { data: msg_data } => {
@@ -272,8 +272,8 @@ impl<'a> Message<'a> {
                     return None;
                 }
 
-                let handle = handles.as_channel(msginfo, 0);
-                Some(Message::Connect { handle })
+                let ch = handles.as_channel(msginfo, 0);
+                Some(Message::Connect { ch })
             }
             kind if kind == MessageKind::Open as usize => {
                 let (call_id, uri) = data.header_then_bytes(msginfo)?;
@@ -292,10 +292,10 @@ impl<'a> Message<'a> {
                 }
 
                 let call_id = data.header_only(msginfo);
-                let handle = handles.as_channel(msginfo, 0);
+                let ch = handles.as_channel(msginfo, 0);
                 Some(Message::OpenReply {
                     call_id: *call_id,
-                    handle,
+                    ch,
                 })
             }
             kind if kind == MessageKind::Data as usize => {

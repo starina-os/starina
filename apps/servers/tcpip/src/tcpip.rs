@@ -27,8 +27,8 @@ use starina::poll::Readiness;
 use starina::prelude::*;
 use starina::timer;
 
-use crate::device::NetDevice;
 use crate::State;
+use crate::device::NetDevice;
 
 fn parse_addr(addr: &str) -> Option<(core::net::Ipv4Addr, u16)> {
     let mut parts = addr.split(':');
@@ -36,7 +36,6 @@ fn parse_addr(addr: &str) -> Option<(core::net::Ipv4Addr, u16)> {
     let port = parts.next()?.parse().ok()?;
     Some((ip, port))
 }
-
 
 fn now() -> Instant {
     let monotonic_time = timer::now();
@@ -98,7 +97,7 @@ fn process_tcp_state(
             )
             .expect("failed to get channel sender");
 
-            sock.ch.send(Message::Connect { handle: their_ch }).unwrap();
+            sock.ch.send(Message::Connect { ch: their_ch }).unwrap();
             sock.ch = our_tx;
             sock.state = SocketState::Established;
         }
@@ -365,8 +364,8 @@ impl TcpIp {
         msgbuffer: &mut MessageBuffer,
     ) {
         match ch.recv(msgbuffer) {
-            Ok(Message::Connect { handle }) => {
-                self.handle_startup_connect(poll, handle);
+            Ok(Message::Connect { ch }) => {
+                self.handle_startup_connect(poll, ch);
             }
             Ok(msg) => {
                 debug_warn!("unexpected message on startup channel: {:?}", msg);
@@ -473,7 +472,7 @@ impl TcpIp {
 
         if let Err(err) = ch.send(Message::OpenReply {
             call_id,
-            handle: their_ch,
+            ch: their_ch,
         }) {
             debug_warn!("failed to send open reply message: {:?}", err);
         }
