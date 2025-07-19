@@ -34,5 +34,7 @@ linuxrun = { workspace = true }
 autotest = { workspace = true }
 hello = { workspace = true }
 apiserver = { workspace = true }
+echo = { workspace = true }
+echo_client = { workspace = true }
 
 talc = { version = "4.4", optional = true }

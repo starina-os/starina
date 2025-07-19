@@ -1,0 +1,11 @@
+[package]
+name = "echo_client"
+publish = false
+version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
+
+[dependencies]
+starina = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }

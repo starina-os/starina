@@ -9,6 +9,8 @@ members = [
     "apps/bin/autotest",
     "apps/bin/hello",
     "apps/servers/apiserver",
+    "apps/servers/echo",
+    "apps/bin/echo_client",
 ]
 
 exclude = ["linux/bootd"]
@@ -48,3 +50,5 @@ linuxrun = { path = "apps/bin/linuxrun" }
 autotest = { path = "apps/bin/autotest" }
 hello = { path = "apps/bin/hello" }
 apiserver = { path = "apps/servers/apiserver" }
+echo = { path = "apps/servers/echo" }
+echo_client = { path = "apps/bin/echo_client" }

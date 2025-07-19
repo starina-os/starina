@@ -123,6 +123,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "echo"
+version = "0.0.0"
+dependencies = [
+ "hashbrown 0.15.2",
+ "serde",
+ "serde_json",
+ "starina",
+]
+
+[[package]]
+name = "echo_client"
+version = "0.0.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "starina",
+]
+
+[[package]]
 name = "endian-type-rs"
 version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -251,6 +270,8 @@ dependencies = [
  "apiserver",
  "arrayvec",
  "autotest",
+ "echo",
+ "echo_client",
  "fdt-rs",
  "hashbrown 0.15.2",
  "hello",
