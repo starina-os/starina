@@ -28,8 +28,6 @@ export default defineConfig({
                     { text: 'Channel', link: '/concepts/channel' },
                     { text: 'Poll', link: '/concepts/poll' },
                     { text: 'Startup', link: '/concepts/startup' },
-                    { text: 'Process', link: '/concepts/process' },
-                    { text: 'Virtual Memory', link: '/concepts/virtual-memory' },
                 ],
             },
             {
@@ -43,6 +41,14 @@ export default defineConfig({
                 items: [
                     { text: 'Kernel Development', link: '/contributors-guide/kernel-development.md' },
                     { text: 'Porting', link: '/contributors-guide/porting.md' },
+                ]
+            },
+            {
+                text: 'Apps',
+                items: [
+                    { text: 'TCP/IP server', link: '/apps/tcpip.md' },
+                    { text: 'API server', link: '/apps/apiserver.md' },
+                    { text: 'Virtio-net device driver', link: '/apps/virtio-net.md' },
                 ]
             },
         ],
