@@ -169,12 +169,16 @@ fn main(environ: Environ) {
 }
 ```
 
-Invoke [`Channel::send`] method, that's it. Key takeaways:
+Invoke `Channel::send` method, that's it. Key takeaways:
 
 - Channel is a bi-directional message queue. The message will be sent to the received queue of the peer channel.
 - `Message` is a type that represents a message. We have few message types, and here we use `Data` to send a byte array.
 - Message delivery is asynchronous. It returns immediately after the message is enqueued.
 - If the peer channel's queue is full, `send` will return an error immediately.
+
+> [!TIP]
+>
+> See [Channel](/concepts/channel) for more details.
 
 ## Waiting for a message
 
