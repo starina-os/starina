@@ -1,87 +1,59 @@
 # Your First App
 
-In Starina, *apps* are the fundamental building blocks of the entire system. Unlike traditional operating systems, most of work is done by apps: OS services (called *servers*), device drivers, HTTP server, Linux containers, and user applications.
+In this tutorial, we will walk through the steps to create your first Starina app.
 
-Apps communicate with each other through channels, creating the software world you are familiar with. The microkernel serves simply as a runtime environment for these apps.
+## What's an app?
 
-In this tutorial, we will walk through the steps to create a simple "Hello World" app.
+Applications (*apps*) are independent programs that run on the microkernel. Unlike monolithic operating systems, most of work is done by apps: OS services (called *servers*), device drivers, HTTP server, Linux containers, and user applications, and more.
 
-## Creating the App Structure
+Apps communicate with each other through channels, creating the software world you need. The microkernel serves simply as a runtime environment for these apps.
 
-Create a new directory for your app:
+## Directory structure
 
-```bash
-mkdir -p apps/bin/hello/src
+Apps are located in the `apps` directory. Especially, miscellaneous programs are in `/apps/bin`. In this tutorial, let's create `my_hello` app:
+
+```
+mkdir -p apps/bin/my_hello
 ```
 
-## Writing the Cargo.toml
+## Scaffold
 
-Create `apps/bin/hello/Cargo.toml`:
+Let's fill the directory with minimal files:
 
-```toml
+```rust [Cargo.toml]
 [package]
-name = "hello"
-version = "0.1.0"
-edition = "2021"
-
-[lib]
-crate-type = ["staticlib"]
+name = "my_hello"
 
 [dependencies]
-starina = { path = "../../../libs/rust/starina" }
+starina = { workspace = true }
 ```
 
-## Writing Your App
-
-Create `apps/bin/hello/src/lib.rs`:
-
-```rust
+```rust [src/lib.rs]
 #![no_std]
 
 use starina::prelude::*;
 use starina::spec::AppSpec;
 
 pub const SPEC: AppSpec = AppSpec {
-    name: "hello",
+    name: "my_hello",
     env: &[],
     exports: &[],
     main,
 };
 
-fn main(_env_json: &[u8]) {
+fn main(_env: Environ) {
     info!("Hello, World!");
 }
 ```
 
-## Understanding the Code
+That's it! It's very similar to a usual Hello World in Rust, but there are some differences:
 
-- `#![no_std]`: Starina apps run in a minimal runtime without standard library
-- `AppSpec`: Declares your app's metadata - name, dependencies (env), and exports
-- `env: &[]`: No service dependencies needed for this simple app
-- `exports: &[]`: This app doesn't provide any services to other apps
-- `main`: Entry point function that receives environment configuration as JSON
+- It uses `lib.rs`, not `main.rs`. This is because Starina may run your apps like Unikernel.
+- `#![no_std]` is required to use Starina. We don't support `std` yet.
+- `use starina::prelude::*` imports frequently used types, including what you expect in `std` such as `Vec`, `String`, and `Box`. Moreover, it imports logging macros such as `info!`.
+- `pub const SPEC` is required and defines what it depends on, what it exports to other apps, and the entrypoint (`main` function).
+- `fn main(_env_json: &[u8])` is the entrypoint, but takes an environment JSON as an argument.
 
-## Building and Running
-
-Add your app to the kernel's startup list in `kernel/src/startup.rs`:
-
-```rust
-const INKERNEL_APPS: &[AppSpec] = &[
-    hello::SPEC,
-    // ... other apps
-];
-```
-
-Build and run:
-
-```bash
-./run.sh
-```
-
-You should see "Hello, World!" in the kernel logs.
-
-## Next Steps
-
-- Add service dependencies to communicate with other apps
-- Create services that other apps can use
-- Learn about [channels](/concepts/channel) for inter-app communication
+> ![TIP]
+>
+> This means
