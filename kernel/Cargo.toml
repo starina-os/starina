@@ -32,6 +32,7 @@ virtio_net = { workspace = true }
 tcpip = { workspace = true }
 linuxrun = { workspace = true }
 autotest = { workspace = true }
+hello = { workspace = true }
 apiserver = { workspace = true }
 
 talc = { version = "4.4", optional = true }

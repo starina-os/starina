@@ -7,6 +7,7 @@ members = [
     "apps/servers/tcpip",
     "apps/bin/linuxrun",
     "apps/bin/autotest",
+    "apps/bin/hello",
     "apps/servers/apiserver",
 ]
 
@@ -45,4 +46,5 @@ virtio_net = { path = "apps/drivers/virtio_net" }
 tcpip = { path = "apps/servers/tcpip" }
 linuxrun = { path = "apps/bin/linuxrun" }
 autotest = { path = "apps/bin/autotest" }
+hello = { path = "apps/bin/hello" }
 apiserver = { path = "apps/servers/apiserver" }

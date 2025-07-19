@@ -22,6 +22,7 @@ use crate::thread::Thread;
 
 const INKERNEL_APPS: &[AppSpec] = &[
     // autotest::SPEC,
+    hello::SPEC,
     apiserver::SPEC,
     virtio_net::SPEC,
     tcpip::SPEC,
