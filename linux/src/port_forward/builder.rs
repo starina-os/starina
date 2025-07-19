@@ -92,7 +92,7 @@ impl<'a> Builder<'a> {
                             msginfo.kind()
                         );
                     }
-                    Err(RecvError::Syscall(ErrorCode::WouldBlock)) => {}
+                    Err(RecvError::Syscall(ErrorCode::Empty)) => {}
                     Err(RecvError::Syscall(err)) => {
                         debug_warn!("recv error on tcpip channel: {:?}", err);
                     }

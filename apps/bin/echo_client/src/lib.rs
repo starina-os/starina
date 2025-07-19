@@ -83,7 +83,7 @@ fn main(environ: Environ) {
                     Err(RecvError::Parse(msginfo)) => {
                         debug_warn!("unhandled message type: {}", msginfo.kind());
                     }
-                    Err(RecvError::Syscall(ErrorCode::WouldBlock)) => {}
+                    Err(RecvError::Syscall(ErrorCode::Empty)) => {}
                     Err(RecvError::Syscall(err)) => {
                         debug_warn!("recv error: {:?}", err);
                         break;

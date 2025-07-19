@@ -136,7 +136,7 @@ impl PortForwarder {
                                         msginfo.kind()
                                     );
                                 }
-                                Err(RecvError::Syscall(ErrorCode::WouldBlock)) => {}
+                                Err(RecvError::Syscall(ErrorCode::Empty)) => {}
                                 Err(RecvError::Syscall(err)) => {
                                     debug_warn!("recv error on listen channel: {:?}", err);
                                 }
@@ -161,7 +161,7 @@ impl PortForwarder {
                                         msginfo.kind()
                                     );
                                 }
-                                Err(RecvError::Syscall(ErrorCode::WouldBlock)) => {}
+                                Err(RecvError::Syscall(ErrorCode::Empty)) => {}
                                 Err(RecvError::Syscall(err)) => {
                                     debug_warn!("recv error on connected channel: {:?}", err);
                                 }

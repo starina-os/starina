@@ -376,7 +376,7 @@ impl TcpIp {
                     msginfo.kind()
                 );
             }
-            Err(RecvError::Syscall(ErrorCode::WouldBlock)) => {}
+            Err(RecvError::Syscall(ErrorCode::Empty)) => {}
             Err(RecvError::Syscall(err)) => {
                 debug_warn!("recv error on startup channel: {:?}", err);
             }
@@ -411,7 +411,7 @@ impl TcpIp {
                     msginfo.kind()
                 );
             }
-            Err(RecvError::Syscall(ErrorCode::WouldBlock)) => {}
+            Err(RecvError::Syscall(ErrorCode::Empty)) => {}
             Err(RecvError::Syscall(err)) => {
                 debug_warn!("recv error on control channel: {:?}", err);
             }
@@ -555,7 +555,7 @@ impl TcpIp {
             Err(RecvError::Parse(msginfo)) => {
                 debug_warn!("unhandled message type on data channel: {}", msginfo.kind());
             }
-            Err(RecvError::Syscall(ErrorCode::WouldBlock)) => {}
+            Err(RecvError::Syscall(ErrorCode::Empty)) => {}
             Err(RecvError::Syscall(err)) => {
                 debug_warn!("recv error on data channel: {:?}", err);
             }
@@ -586,7 +586,7 @@ impl TcpIp {
                     msginfo.kind()
                 );
             }
-            Err(RecvError::Syscall(ErrorCode::WouldBlock)) => {}
+            Err(RecvError::Syscall(ErrorCode::Empty)) => {}
             Err(RecvError::Syscall(err)) => {
                 debug_warn!("recv error on driver channel: {:?}", err);
             }

@@ -106,7 +106,7 @@ fn main(environ: Environ) {
                             msginfo.kind()
                         );
                     }
-                    Err(RecvError::Syscall(ErrorCode::WouldBlock)) => {}
+                    Err(RecvError::Syscall(ErrorCode::Empty)) => {}
                     Err(RecvError::Syscall(err)) => {
                         debug_warn!("recv error on startup channel: {:?}", err);
                     }
@@ -131,7 +131,7 @@ fn main(environ: Environ) {
                             msginfo.kind()
                         );
                     }
-                    Err(RecvError::Syscall(ErrorCode::WouldBlock)) => {}
+                    Err(RecvError::Syscall(ErrorCode::Empty)) => {}
                     Err(RecvError::Syscall(err)) => {
                         debug_warn!("recv error on upstream channel: {:?}", err);
                     }

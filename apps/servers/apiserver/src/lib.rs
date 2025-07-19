@@ -98,7 +98,7 @@ fn main(environ: Environ) {
                             msginfo.kind()
                         );
                     }
-                    Err(RecvError::Syscall(ErrorCode::WouldBlock)) => {}
+                    Err(RecvError::Syscall(ErrorCode::Empty)) => {}
                     Err(RecvError::Syscall(err)) => {
                         debug_warn!("recv error on tcpip channel: {:?}", err);
                     }
@@ -158,7 +158,7 @@ fn main(environ: Environ) {
                             msginfo.kind()
                         );
                     }
-                    Err(RecvError::Syscall(ErrorCode::WouldBlock)) => {}
+                    Err(RecvError::Syscall(ErrorCode::Empty)) => {}
                     Err(RecvError::Syscall(err)) => {
                         debug_warn!("recv error on listen channel: {:?}", err);
                     }
@@ -233,7 +233,7 @@ fn main(environ: Environ) {
                     Err(RecvError::Parse(msginfo)) => {
                         debug_warn!("unhandled message type on data channel: {}", msginfo.kind());
                     }
-                    Err(RecvError::Syscall(ErrorCode::WouldBlock)) => {}
+                    Err(RecvError::Syscall(ErrorCode::Empty)) => {}
                     Err(RecvError::Syscall(err)) => {
                         debug_warn!("recv error on data channel: {:?}", err);
                     }
