@@ -15,6 +15,12 @@ export default defineConfig({
             { text: 'Getting Started', link: '/getting-started' },
             { text: 'Comparison with Others', link: '/comparison-with-others' },
             {
+                text: 'Tutorials',
+                items: [
+                    { text: 'Your First App', link: '/tutorials/your-first-app' },
+                ],
+            },
+            {
                 text: 'Concepts',
                 items: [
                     { text: 'Channel', link: '/concepts/channel' },

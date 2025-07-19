@@ -24,6 +24,10 @@ In kernel, we use some `std` alternatives that are more suitable for kernel:
 | `Mutex` | `crate::spinlock::SpinLock` | |
 | `thread_local` | `CpuVar` | A CPU-local variable, which is similar to `thread_local` in the userspace. |
 
+## Isolation
+
+To support multiple isolation mechanisms like Unikernel-style (in-kernel), usermode, and WebAssembly in the future, the kernel abstracts the user pointer access with `Isolation` trait.
+
 ## Rules
 
 - Avoid `panic`s. If you use `unwrap`, describe why you think it never fails.
