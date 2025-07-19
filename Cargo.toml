@@ -35,6 +35,7 @@ vm-fdt = { version = "0.3.0", default-features = false }
 thiserror = { version = "2.0.12", default-features = false }
 anyhow = { version = "1.0.98", default-features = false }
 tempfile = "3.14.0"
+talc = { version = "4.4" }
 
 kernel = { path = "kernel" }
 starina = { path = "libs/rust/starina" }

@@ -21,6 +21,7 @@ hashbrown = { workspace = true }
 rustc-hash = { workspace = true }
 serde_json = { workspace = true }
 fdt-rs = { workspace = true }
+talc = { workspace = true, optional = true }
 
 # The kernel does not and should not use this API crate directly, but
 # specifying "in-kernel" here automatically enables the feature in all
@@ -36,5 +37,3 @@ hello = { workspace = true }
 apiserver = { workspace = true }
 echo = { workspace = true }
 echo_client = { workspace = true }
-
-talc = { version = "4.4", optional = true }
