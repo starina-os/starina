@@ -8,5 +8,4 @@ edition = { workspace = true }
 [dependencies]
 starina = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
-serde_json = { workspace = true }
 hashbrown = { workspace = true }

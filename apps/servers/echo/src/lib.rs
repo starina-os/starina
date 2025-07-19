@@ -2,6 +2,7 @@
 
 use serde::Deserialize;
 use starina::channel::Channel;
+use starina::environ::Environ;
 use starina::channel::RecvError;
 use starina::error::ErrorCode;
 use starina::handle::Handleable;
@@ -30,8 +31,8 @@ enum State {
     Client(Channel),
 }
 
-fn main(env_json: &[u8]) {
-    let env: Env = serde_json::from_slice(env_json).expect("Failed to parse environment");
+fn main(environ: Environ) {
+    let env: Env = environ.parse().expect("Failed to parse environment");
 
     let poll = Poll::new().unwrap();
 

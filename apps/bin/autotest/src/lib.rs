@@ -2,6 +2,7 @@
 
 mod channel;
 
+use starina::environ::Environ;
 use starina::prelude::*;
 use starina::spec::AppSpec;
 
@@ -14,7 +15,7 @@ pub const SPEC: AppSpec = AppSpec {
     main,
 };
 
-fn main(_env_json: &[u8]) {
+fn main(_environ: Environ) {
     info!("Starting tests...");
     test_channel();
     info!("Passed all tests!");

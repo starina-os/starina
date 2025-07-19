@@ -1,6 +1,7 @@
 use core::slice;
 use core::str;
 
+use crate::environ::Environ;
 use crate::syscall;
 use crate::syscall::VsyscallPage;
 use crate::tls;
@@ -15,6 +16,7 @@ pub extern "C" fn start(vsyscall: *const VsyscallPage) -> ! {
     crate::log::init();
 
     let env_json = unsafe { slice::from_raw_parts(vsyscall.environ_ptr, vsyscall.environ_len) };
-    (vsyscall.main)(env_json);
+    let environ = unsafe { Environ::from_raw(env_json) };
+    (vsyscall.main)(environ);
     syscall::thread_exit();
 }

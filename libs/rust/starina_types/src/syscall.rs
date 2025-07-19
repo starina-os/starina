@@ -1,5 +1,6 @@
 use crate::address::PAddr;
 use crate::address::VAddr;
+use crate::environ::Environ;
 use crate::error::ErrorCode;
 use crate::handle::HandleId;
 use crate::poll::Readiness;
@@ -37,7 +38,7 @@ pub const SYS_CONSOLE_READ: u8 = 26;
 pub struct VsyscallPage {
     pub environ_ptr: *const u8,
     pub environ_len: usize,
-    pub main: fn(environ: &[u8]),
+    pub main: fn(environ: Environ),
     pub name: *const u8,
     pub name_len: usize,
 }

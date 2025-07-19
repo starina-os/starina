@@ -32,7 +32,6 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "serde",
- "serde_json",
  "starina",
  "thiserror",
 ]
@@ -128,7 +127,6 @@ version = "0.0.0"
 dependencies = [
  "hashbrown 0.15.2",
  "serde",
- "serde_json",
  "starina",
 ]
 
@@ -137,7 +135,6 @@ name = "echo_client"
 version = "0.0.0"
 dependencies = [
  "serde",
- "serde_json",
  "starina",
 ]
 
@@ -587,6 +584,7 @@ dependencies = [
  "hashbrown 0.15.2",
  "serde",
  "serde_bytes",
+ "serde_json",
 ]
 
 [[package]]
@@ -635,7 +633,6 @@ name = "tcpip"
 version = "0.0.0"
 dependencies = [
  "serde",
- "serde_json",
  "smoltcp",
  "starina",
 ]
@@ -705,7 +702,6 @@ name = "virtio_net"
 version = "0.0.0"
 dependencies = [
  "serde",
- "serde_json",
  "starina",
  "starina_driver_sdk",
  "virtio",

@@ -1,9 +1,11 @@
+use crate::environ::Environ;
+
 #[derive(Debug)]
 pub struct AppSpec {
     pub name: &'static str,
     pub env: &'static [EnvItem],
     pub exports: &'static [ExportItem],
-    pub main: fn(env: &[u8]),
+    pub main: fn(env: Environ),
 }
 
 #[derive(Debug)]

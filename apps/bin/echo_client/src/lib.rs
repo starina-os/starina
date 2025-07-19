@@ -7,6 +7,7 @@ use core::time::Duration;
 
 use serde::Deserialize;
 use starina::channel::Channel;
+use starina::environ::Environ;
 use starina::channel::ChannelReceiver;
 use starina::channel::RecvError;
 use starina::error::ErrorCode;
@@ -41,8 +42,8 @@ enum State {
     Timer(Timer),
 }
 
-fn main(env_json: &[u8]) {
-    let env: Env = serde_json::from_slice(env_json).expect("Failed to parse environment");
+fn main(environ: Environ) {
+    let env: Env = environ.parse().expect("Failed to parse environment");
 
     let poll = Poll::new().unwrap();
     let (echo_tx, echo_rx) = env.echo.split();

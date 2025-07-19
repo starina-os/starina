@@ -14,6 +14,7 @@ use smoltcp::wire::IpAddress;
 use smoltcp::wire::IpCidr;
 use smoltcp::wire::IpListenEndpoint;
 use starina::channel::Channel;
+use starina::environ::Environ;
 use starina::channel::ChannelReceiver;
 use starina::channel::RecvError;
 use starina::error::ErrorCode;
@@ -226,8 +227,8 @@ impl<'a> Mainloop<'a> {
     }
 }
 
-fn main(env_json: &[u8]) {
-    let env: Env = serde_json::from_slice(env_json).expect("failed to deserialize env");
+fn main(environ: Environ) {
+    let env: Env = environ.parse().expect("failed to deserialize env");
 
     let poll = Poll::new().unwrap();
     poll.add(

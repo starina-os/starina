@@ -8,7 +8,6 @@ edition = { workspace = true }
 [dependencies]
 starina = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
-serde_json = { workspace = true }
 smoltcp = { version = "0.12.0", default-features = false, features = [
     "log",
     "alloc",

@@ -4,6 +4,7 @@ use core::str::from_utf8;
 
 use serde::Deserialize;
 use starina::channel::Channel;
+use starina::environ::Environ;
 use starina::prelude::*;
 use starina::spec::AppSpec;
 use starina::spec::EnvItem;
@@ -34,8 +35,8 @@ struct Env {
     pub tcpip: Channel,
 }
 
-fn main(env_json: &[u8]) {
-    let env: Env = serde_json::from_slice(env_json).unwrap();
+fn main(environ: Environ) {
+    let env: Env = environ.parse().unwrap();
 
     const TEXT: &str = "I'm a teapot!";
     let stdin = BufferedStdin::new(TEXT);

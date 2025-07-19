@@ -8,6 +8,7 @@ edition = { workspace = true }
 [dependencies]
 serde = { workspace = true, features = ["derive"] }
 serde_bytes = { workspace = true, features = ["alloc"] }
+serde_json = { workspace = true }
 hashbrown = { workspace = true, features = ["serde"] }
 
 [features]

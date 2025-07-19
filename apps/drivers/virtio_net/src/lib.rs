@@ -2,6 +2,7 @@
 
 use serde::Deserialize;
 use starina::channel::Channel;
+use starina::environ::Environ;
 use starina::channel::ChannelReceiver;
 use starina::channel::RecvError;
 use starina::device_tree::DeviceTree;
@@ -48,8 +49,8 @@ enum State {
     Upstream(ChannelReceiver),
 }
 
-fn main(env_json: &[u8]) {
-    let env: Env = serde_json::from_slice(env_json).expect("failed to deserialize env");
+fn main(environ: Environ) {
+    let env: Env = environ.parse().expect("failed to deserialize env");
 
     let mut msgbuffer = MessageBuffer::new();
     // Look for and initialize the virtio-net device.
