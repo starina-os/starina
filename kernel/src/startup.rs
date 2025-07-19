@@ -26,6 +26,8 @@ const INKERNEL_APPS: &[AppSpec] = &[
     apiserver::SPEC,
     virtio_net::SPEC,
     tcpip::SPEC,
+    echo::SPEC,
+    echo_client::SPEC,
     // linuxrun::SPEC,
 ];
 
