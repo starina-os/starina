@@ -94,7 +94,7 @@ fn main(environ: Environ) {
                     }
                     Err(RecvError::Parse(msginfo)) => {
                         debug_warn!(
-                            "unhandled message type on tcpip channel: {}",
+                            "malformed message on tcpip channel: {}",
                             msginfo.kind()
                         );
                     }
@@ -154,7 +154,7 @@ fn main(environ: Environ) {
                     }
                     Err(RecvError::Parse(msginfo)) => {
                         debug_warn!(
-                            "unhandled message type on listen channel: {}",
+                            "malformed message on listen channel: {}",
                             msginfo.kind()
                         );
                     }
@@ -231,7 +231,7 @@ fn main(environ: Environ) {
                         debug_warn!("unexpected message on data channel: {:?}", msg);
                     }
                     Err(RecvError::Parse(msginfo)) => {
-                        debug_warn!("unhandled message type on data channel: {}", msginfo.kind());
+                        debug_warn!("malformed message on data channel: {}", msginfo.kind());
                     }
                     Err(RecvError::Syscall(ErrorCode::Empty)) => {}
                     Err(RecvError::Syscall(err)) => {

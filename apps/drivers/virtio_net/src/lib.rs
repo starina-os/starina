@@ -102,7 +102,7 @@ fn main(environ: Environ) {
                     }
                     Err(RecvError::Parse(msginfo)) => {
                         debug_warn!(
-                            "unhandled message type on startup channel: {}",
+                            "malformed message on startup channel: {}",
                             msginfo.kind()
                         );
                     }
@@ -127,7 +127,7 @@ fn main(environ: Environ) {
                     }
                     Err(RecvError::Parse(msginfo)) => {
                         debug_warn!(
-                            "unhandled message type on upstream channel: {}",
+                            "malformed message on upstream channel: {}",
                             msginfo.kind()
                         );
                     }

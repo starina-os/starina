@@ -372,7 +372,7 @@ impl TcpIp {
             }
             Err(RecvError::Parse(msginfo)) => {
                 debug_warn!(
-                    "unhandled message type on startup channel: {}",
+                    "malformed message on startup channel: {}",
                     msginfo.kind()
                 );
             }
@@ -407,7 +407,7 @@ impl TcpIp {
             }
             Err(RecvError::Parse(msginfo)) => {
                 debug_warn!(
-                    "unhandled message type on control channel: {}",
+                    "malformed message on control channel: {}",
                     msginfo.kind()
                 );
             }
@@ -553,7 +553,7 @@ impl TcpIp {
                 debug_warn!("unexpected message on data channel: {:?}", msg);
             }
             Err(RecvError::Parse(msginfo)) => {
-                debug_warn!("unhandled message type on data channel: {}", msginfo.kind());
+                debug_warn!("malformed message on data channel: {}", msginfo.kind());
             }
             Err(RecvError::Syscall(ErrorCode::Empty)) => {}
             Err(RecvError::Syscall(err)) => {
@@ -582,7 +582,7 @@ impl TcpIp {
             }
             Err(RecvError::Parse(msginfo)) => {
                 debug_warn!(
-                    "unhandled message type on driver channel: {}",
+                    "malformed message on driver channel: {}",
                     msginfo.kind()
                 );
             }

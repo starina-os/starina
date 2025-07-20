@@ -81,7 +81,7 @@ fn main(environ: Environ) {
                         debug_warn!("unexpected message: {:?}", msg);
                     }
                     Err(RecvError::Parse(msginfo)) => {
-                        debug_warn!("unhandled message type: {}", msginfo.kind());
+                        debug_warn!("malformed message: {}", msginfo.kind());
                     }
                     Err(RecvError::Syscall(ErrorCode::Empty)) => {}
                     Err(RecvError::Syscall(err)) => {

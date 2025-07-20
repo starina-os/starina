@@ -88,7 +88,7 @@ impl<'a> Builder<'a> {
                     }
                     Err(RecvError::Parse(msginfo)) => {
                         debug_warn!(
-                            "unhandled message type on tcpip channel: {}",
+                            "malformed message on tcpip channel: {}",
                             msginfo.kind()
                         );
                     }

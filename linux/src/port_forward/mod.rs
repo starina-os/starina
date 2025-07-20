@@ -132,7 +132,7 @@ impl PortForwarder {
                                 }
                                 Err(RecvError::Parse(msginfo)) => {
                                     debug_warn!(
-                                        "unhandled message type on listen channel: {}",
+                                        "malformed message on listen channel: {}",
                                         msginfo.kind()
                                     );
                                 }
@@ -157,7 +157,7 @@ impl PortForwarder {
                                 }
                                 Err(RecvError::Parse(msginfo)) => {
                                     debug_warn!(
-                                        "unhandled message type on connected channel: {}",
+                                        "malformed message on connected channel: {}",
                                         msginfo.kind()
                                     );
                                 }

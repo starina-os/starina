@@ -66,7 +66,7 @@ fn main(environ: Environ) {
                         debug_warn!("unexpected message on startup channel: {:?}", msg);
                     }
                     Err(RecvError::Parse(msginfo)) => {
-                        debug_warn!("unhandled message type on startup: {}", msginfo.kind());
+                        debug_warn!("malformed message on startup: {}", msginfo.kind());
                     }
                     Err(RecvError::Syscall(ErrorCode::Empty)) => {}
                     Err(RecvError::Syscall(err)) => {
@@ -87,7 +87,7 @@ fn main(environ: Environ) {
                         debug_warn!("unexpected message on client channel: {:?}", msg);
                     }
                     Err(RecvError::Parse(msginfo)) => {
-                        debug_warn!("unhandled message type on client: {}", msginfo.kind());
+                        debug_warn!("malformed message on client: {}", msginfo.kind());
                     }
                     Err(RecvError::Syscall(ErrorCode::Empty)) => {}
                     Err(RecvError::Syscall(err)) => {
