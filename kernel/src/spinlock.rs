@@ -26,7 +26,7 @@ impl<T> SpinLock<T> {
     }
 
     #[track_caller]
-    pub fn lock(&self) -> SpinLockGuard<T> {
+    pub fn lock(&self) -> SpinLockGuard<'_, T> {
         #[cfg(debug_assertions)]
         if self.lock.load(Ordering::Relaxed) {
             println!(
