@@ -38,7 +38,7 @@ struct Env {
 }
 
 enum State {
-    EchoChannel(ChannelReceiver),
+    Echo(ChannelReceiver),
     Timer(Timer),
 }
 
@@ -53,7 +53,7 @@ fn main(environ: Environ) {
 
     poll.add(
         echo_rx.handle_id(),
-        State::EchoChannel(echo_rx),
+        State::Echo(echo_rx),
         Readiness::READABLE | Readiness::CLOSED,
     )
     .unwrap();
@@ -69,7 +69,7 @@ fn main(environ: Environ) {
     loop {
         let (state, readiness) = poll.wait().unwrap();
         match state.as_ref() {
-            State::EchoChannel(ch) if readiness.contains(Readiness::READABLE) => {
+            State::Echo(ch) if readiness.contains(Readiness::READABLE) => {
                 match ch.recv(&mut msgbuffer) {
                     Ok(Message::Data { data }) => {
                         info!(
@@ -90,7 +90,7 @@ fn main(environ: Environ) {
                     }
                 }
             }
-            State::EchoChannel(_) if readiness == Readiness::CLOSED => {
+            State::Echo(_) if readiness == Readiness::CLOSED => {
                 info!("connection closed");
                 break;
             }
