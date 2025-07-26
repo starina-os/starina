@@ -7,7 +7,6 @@ edition = { workspace = true }
 
 [features]
 default = ["talc-allocator"]
-exit-on-idle = []
 bump-allocator = []
 talc-allocator = ["dep:talc"]
 
