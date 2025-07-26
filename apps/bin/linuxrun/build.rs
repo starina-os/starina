@@ -39,8 +39,8 @@ fn main() {
     println!("cargo:rerun-if-env-changed=LINUXRUN_IMAGE");
     println!("cargo:rerun-if-env-changed=LINUXRUN_ARCH");
 
-    if env::var_os("STARINA_RUN_SH").is_none() {
-        // If STARINA_RUN_SH is not set, it's likely rust-analyzer triggered
+    if env::var_os("STARINA_MAKEFILE").is_none() {
+        // If STARINA_MAKEFILE is not set, it's likely rust-analyzer triggered
         // this build script. Avoid running the build script in this case
         // not to drain your battery.
         println!("cargo:warning=Skipping build in rust-analyzer");

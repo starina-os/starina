@@ -20,7 +20,7 @@ You'll need to implement the following files:
 
 - Install Rust toolchain
 - `kernel/src/arch/<arch>`: Arch-dependent code in the kernel. `kernel/src/arch/host` is a good skeleton.
-- `run.sh`: Change `--target` parameter for `cargo build`, and `$QEMU` for `qemu`.
+- `Makefile`: Change `--target` parameter for `cargo build`, and `$QEMU` for `qemu`.
 
 > [!TIP]
 >

@@ -95,10 +95,10 @@ const INKERNEL_APPS: &[AppSpec] = &[
 
 ## How to run
 
-Building and testing the OS is easy. Just run `run.sh`:
+Building and testing the OS is easy. Just run `make run`:
 
 ```
-./run.sh
+make run
 ```
 
 You should see the following output:
@@ -152,7 +152,7 @@ fn main(environ: Environ) {
 You'll see a log message like:
 
 ```
-$ ./run.sh
+$ make run
 ...
 [hello       ] INFO   got echo server channel: Channel(OwnedHandle(HandleId(1)))
 ```
@@ -228,7 +228,7 @@ fn main(environ: Environ) {
 And you'll see a log message like:
 
 ```
-$ ./run.sh
+$ make run
 ...
 [hello       ] INFO   echo server channel is now: R
 ```
@@ -289,7 +289,7 @@ fn main(environ: Environ) {
 You should see this fancy log message:
 
 ```
-$ ./run.sh
+$ make run
 ...
 [hello       ] INFO   received a reply from echo server: Hello from my_hello
 ```

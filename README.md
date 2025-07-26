@@ -42,13 +42,13 @@ Install dependencies:
 Build and run:
 
 ```bash
-./run.sh
+make run
 ```
 
-Debug with GDB (keep `run.sh` running in another terminal):
+Debug with GDB (keep `make run` running in another terminal):
 
 ```bash
-./debug.sh
+make debug
 ```
 
 
@@ -56,12 +56,12 @@ Debug with GDB (keep `run.sh` running in another terminal):
 
 Starina provides a lightweight VM based Linux compatibility library with an ergonomic `std::process::Command`-like API. Learn more in [this blog post](https://seiya.me/blog/hypervisor-as-a-library).
 
-Also, `run.sh` starts a single Linux container automatically to demonstrate the Linux integration. Set `LINUXRUN_IMAGE` and `LINUXRUN_ENTRYPOINT` to specify the image name and entrypoint:
+Also, `make run` starts a single Linux container automatically to demonstrate the Linux integration. Set `LINUXRUN_IMAGE` and `LINUXRUN_ENTRYPOINT` to specify the image name and entrypoint:
 
 ```
 $ export LINUXRUN_IMAGE="docker://hello-world:latest"
 $ export LINUXRUN_ENTRYPOINT="/hello"
-$ ./run.sh
+$ make run
 [kernel      ] INFO   Booting Starina...
 ...
 [linuxrun    ] INFO

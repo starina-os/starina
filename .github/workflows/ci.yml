@@ -40,9 +40,7 @@ jobs:
       run: ./setup.sh
 
     - name: Build World
-      run: ./run.sh
-      env:
-        BUILD_ONLY: "1"
+      run: make build
 
   macos_build:
     runs-on: macos-latest
@@ -67,6 +65,4 @@ jobs:
       run: ./setup.sh
 
     - name: Build World
-      run: ./run.sh
-      env:
-        BUILD_ONLY: "1"
+      run: make build

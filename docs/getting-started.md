@@ -30,17 +30,17 @@ To use Linux compatibility layer, you also need:
 
 ## Build and Run OS
 
-`run.sh` builds the OS and runs it in QEMU. Just type:
+`make run` builds the OS and runs it in QEMU. Just type:
 
 ```bash
-./run.sh
+make run
 ```
 
 > [!NOTE]
 >
 > To exit QEMU, type <kbd>Ctrl+A</kbd> then <kbd>X</kbd>. Or <kbd>C</kbd> to enter QEMU monitor (debug console).
 
-`run.sh` accepts the following environment variables:
+`make run` accepts the following environment variables:
 
 | Name | Value |  Description |
 |------|--------|------|
@@ -50,10 +50,10 @@ To use Linux compatibility layer, you also need:
 
 ## Debugging with GDB
 
-`run.sh` starts QEMU with GDB server enabled. You can attach GDB to Starina Kernel by:
+`make run` starts QEMU with GDB server enabled. You can attach GDB to Starina Kernel by:
 
 ```bash
-./debug.sh
+make debug
 ```
 
 GDB is super useful for debugging especially when you debug the kernel and in-kernel apps. For example, if the kernel hungs, you can check the backtrace with `bt` command.
