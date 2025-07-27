@@ -32,7 +32,7 @@ pub const SYS_THREAD_SPAWN: u8 = 22;
 pub const SYS_TIMER_CREATE: u8 = 23;
 pub const SYS_TIMER_SET: u8 = 24;
 pub const SYS_TIMER_NOW: u8 = 25;
-pub const SYS_CONSOLE_READ: u8 = 26;
+pub const SYS_LOG_READ: u8 = 26;
 
 #[repr(C)]
 pub struct VsyscallPage {

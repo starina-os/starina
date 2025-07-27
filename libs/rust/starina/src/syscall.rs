@@ -345,7 +345,7 @@ pub fn timer_now() -> Result<MonotonicTime, ErrorCode> {
 
 pub fn log_read(offset: usize, buf: &mut [u8]) -> Result<usize, ErrorCode> {
     let ret = syscall(
-        SYS_CONSOLE_READ,
+        SYS_LOG_READ,
         offset.try_into().unwrap(),
         buf.as_mut_ptr() as isize,
         buf.len().try_into().unwrap(),
