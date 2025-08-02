@@ -31,13 +31,6 @@ impl Query {
 
         Self { params }
     }
-
-    pub fn get(&self, key: &str) -> Option<&str> {
-        self.params
-            .iter()
-            .find(|(k, _)| k == key)
-            .map(|(_, v)| v.as_str())
-    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
