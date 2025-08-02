@@ -4,6 +4,7 @@ use core::mem::MaybeUninit;
 pub struct RingBuffer<T, const SIZE: usize> {
     buffer: [MaybeUninit<T>; SIZE],
     head: usize,
+    tail: usize,
 }
 
 impl<T: Copy, const SIZE: usize> RingBuffer<T, SIZE> {
@@ -11,6 +12,7 @@ impl<T: Copy, const SIZE: usize> RingBuffer<T, SIZE> {
         Self {
             buffer: [MaybeUninit::uninit(); SIZE],
             head: 0,
+            tail: 0,
         }
     }
 
@@ -21,23 +23,25 @@ impl<T: Copy, const SIZE: usize> RingBuffer<T, SIZE> {
         }
     }
 
-    pub fn read(&mut self, offset: usize, buf: &mut [T]) -> usize {
-        if offset > self.head {
+    pub fn read(&mut self, buf: &mut [T]) -> usize {
+        let available = if self.head >= self.tail {
+            self.head - self.tail
+        } else {
+            SIZE - self.tail + self.head
+        };
+
+        if available == 0 {
             return 0;
         }
 
-        let avail = self.head.wrapping_sub(offset);
-        if avail > SIZE {
-            return 0;
-        }
-
-        let len = min(buf.len(), avail);
+        let len = min(buf.len(), available);
         for i in 0..len {
             unsafe {
-                buf[i] = self.buffer[(offset + i) % SIZE].assume_init();
+                buf[i] = self.buffer[(self.tail + i) % SIZE].assume_init();
             }
         }
 
+        self.tail = (self.tail + len) % SIZE;
         len
     }
 }
@@ -54,7 +58,7 @@ mod tests {
         buffer.write(data);
 
         let mut read_buf = [0u8; 20];
-        let read_len = buffer.read(0, &mut read_buf);
+        let read_len = buffer.read(&mut read_buf);
 
         assert_eq!(read_len, data.len());
         assert_eq!(&read_buf[..read_len], data);
@@ -68,9 +72,10 @@ mod tests {
         buffer.write(&large_data);
 
         let mut read_buf = [0u8; 100];
-        let read_len = buffer.read(0, &mut read_buf);
+        let read_len = buffer.read(&mut read_buf);
 
-        assert_eq!(read_len, 0);
+        assert_eq!(read_len, 100);
+        assert_eq!(read_buf, [b'x'; 100]);
     }
 
     #[test]
@@ -81,35 +86,36 @@ mod tests {
         buffer.write(data);
 
         let mut small_buf = [0u8; 5];
-        let read_len = buffer.read(0, &mut small_buf);
+        let read_len = buffer.read(&mut small_buf);
 
         assert_eq!(read_len, 5);
         assert_eq!(&small_buf, b"01234");
     }
 
     #[test]
-    fn test_ring_buffer_offset_read() {
+    fn test_ring_buffer_multiple_reads() {
         let mut buffer: RingBuffer<u8, 1024> = RingBuffer::new();
         let data = b"hello world";
 
         buffer.write(data);
 
-        let mut read_buf = [0u8; 5];
-        let read_len = buffer.read(6, &mut read_buf);
+        let mut first_buf = [0u8; 5];
+        let first_len = buffer.read(&mut first_buf);
+        assert_eq!(first_len, 5);
+        assert_eq!(&first_buf, b"hello");
 
-        assert_eq!(read_len, 5);
-        assert_eq!(&read_buf, b"world");
+        let mut second_buf = [0u8; 6];
+        let second_len = buffer.read(&mut second_buf);
+        assert_eq!(second_len, 6);
+        assert_eq!(&second_buf, b" world");
     }
 
     #[test]
-    fn test_ring_buffer_out_of_bounds_offset() {
+    fn test_ring_buffer_empty_read() {
         let mut buffer: RingBuffer<u8, 1024> = RingBuffer::new();
-        let data = b"hello";
-
-        buffer.write(data);
 
         let mut read_buf = [0u8; 10];
-        let read_len = buffer.read(10, &mut read_buf);
+        let read_len = buffer.read(&mut read_buf);
 
         assert_eq!(read_len, 0);
     }

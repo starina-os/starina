@@ -70,7 +70,6 @@ fn log_write(
 
 fn log_read(
     current: &SharedRef<Thread>,
-    offset: usize,
     buf_ptr: IsolationPtr,
     buf_len: usize,
 ) -> Result<usize, ErrorCode> {
@@ -82,14 +81,14 @@ fn log_read(
     let mut total_len = 0;
     while let Some(remaining_len) = buf_len.checked_sub(total_len) {
         // Read from log buffer to tmp.
-        let chunk_len = min(remaining_len, tmp.len());
-        let read_len = log_buffer.read(offset + total_len, &mut tmp[..chunk_len]);
+        let max_len = min(remaining_len, tmp.len());
+        let read_len = log_buffer.read(&mut tmp[..max_len]);
         if read_len == 0 {
             break;
         }
 
         // Write tmp to the user buffer.
-        slice.write_bytes(isolation, total_len, &tmp[..chunk_len])?;
+        slice.write_bytes(isolation, total_len, &tmp[..read_len])?;
         total_len += read_len;
     }
 
@@ -606,10 +605,9 @@ fn do_syscall(
             Ok(SyscallResult::Done(now.into()))
         }
         SYS_LOG_READ => {
-            let offset = a0 as usize;
-            let buf_ptr = IsolationPtr::new(a1 as usize);
-            let buf_len = a2 as usize;
-            let bytes_read = log_read(current, offset, buf_ptr, buf_len)?;
+            let buf_ptr = IsolationPtr::new(a0 as usize);
+            let buf_len = a1 as usize;
+            let bytes_read = log_read(current, buf_ptr, buf_len)?;
             Ok(SyscallResult::Done(RetVal::new(bytes_read as isize)))
         }
         _ => {
