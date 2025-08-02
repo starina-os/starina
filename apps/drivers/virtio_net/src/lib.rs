@@ -54,20 +54,10 @@ struct InterruptState(Arc<Mutex<VirtioNet>>);
 impl StartupHandler<Env> for App {
     fn init(ctx: &StartupContext, env: Env) -> Self {
         let mut virtio_net = VirtioNet::init_or_panic(&env.device_tree);
-
-        let mac = virtio_net.mac_addr();
-        debug!(
-            "MAC address: {:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}",
-            mac[0], mac[1], mac[2], mac[3], mac[4], mac[5],
-        );
-
         let interrupt = virtio_net.take_interrupt().unwrap();
-
         let virtio_net = Arc::new(Mutex::new(virtio_net));
-
-        let interrupt_handler = InterruptState(virtio_net.clone());
         ctx.dispatcher
-            .add_interrupt(interrupt, interrupt_handler)
+            .add_interrupt(interrupt, InterruptState(virtio_net.clone()))
             .unwrap();
 
         Self { virtio_net }
