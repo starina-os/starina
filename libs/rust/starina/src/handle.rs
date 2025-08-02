@@ -1,5 +1,6 @@
 pub use starina_types::handle::*;
 
+pub use crate::prelude::*;
 use crate::syscall;
 
 #[derive(Debug)]
@@ -17,7 +18,7 @@ impl OwnedHandle {
 
 impl Drop for OwnedHandle {
     fn drop(&mut self) {
-        debug_warn!("dropping handle {:?}", self.0);
+        trace!("dropping handle {:?}", self.0);
         let _ = syscall::handle_close(self.0);
     }
 }
