@@ -125,7 +125,6 @@ dependencies = [
 name = "echo"
 version = "0.0.0"
 dependencies = [
- "hashbrown 0.15.4",
  "serde",
  "starina",
 ]
