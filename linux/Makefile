@@ -16,13 +16,14 @@ PROGRESS := printf "\\033[1;96m==>\\033[0m \\033[1m%s\\033[0m\\n"
 image_path := arch/riscv/boot/Image
 
 ifeq ($(shell uname),Darwin)
+    gnused_dir    := $(shell brew --prefix gnu-sed)
     gnumake_dir   := $(shell brew --prefix make)
     findutils_dir := $(shell brew --prefix findutils)
     llvm_dir      := $(shell brew --prefix llvm)
     libelf_dir    := $(shell brew --prefix libelf)
 
     linux_make := $(gnumake_dir)/bin/gmake
-    export PATH := $(findutils_dir)/libexec/gnubin:$(llvm_dir)/bin:$(PATH)
+    export PATH := $(findutils_dir)/libexec/gnubin:$(gnused_dir)/libexec/gnubin:$(llvm_dir)/bin:$(PATH)
     export HOSTCFLAGS=-Iscripts/macos-include -I $(libelf_dir)/include
     # Suppress "cpio: Couldn't list extended attributes" warning.
     export COPYFILE_DISABLE=1
