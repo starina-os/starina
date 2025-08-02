@@ -1,4 +1,3 @@
-use starina::prelude::*;
 use starina::syscall;
 
 use crate::http::HeaderName;
@@ -7,7 +6,7 @@ use crate::http::ResponseWriter;
 use crate::http::StatusCode;
 
 pub fn handle_logs(_req: &Request, resp: &mut impl ResponseWriter) -> anyhow::Result<()> {
-    let mut buffer = vec![0u8; 4096];
+    let mut buffer = [0; 4096];
     let read_len = match syscall::log_read(&mut buffer) {
         Ok(len) => len,
         Err(_) => {
@@ -16,13 +15,12 @@ pub fn handle_logs(_req: &Request, resp: &mut impl ResponseWriter) -> anyhow::Re
             return Ok(());
         }
     };
-    buffer.truncate(read_len);
 
     let headers = resp.headers_mut();
     headers.insert(HeaderName::CONTENT_TYPE, "text/plain")?;
 
     resp.write_headers(StatusCode::new(200).unwrap());
-    resp.write_body(buffer.as_slice());
+    resp.write_body(&buffer[..read_len]);
 
     Ok(())
 }
