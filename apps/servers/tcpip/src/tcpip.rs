@@ -137,7 +137,7 @@ fn process_tcp_state(
             // Remote peer closed their side, transition to closing
             trace!("socket {:?} is closed by remote peer", handle);
             sock.state = SocketState::Closing;
-            debug_warn!("socket fully closed, cleaning up channel");
+            trace!("socket fully closed, cleaning up channel");
             if let Err(err) = poll.remove(sock.ch.handle_id()) {
                 debug_warn!(
                     "failed to remove channel from poll (already removed?): {:?}",
@@ -151,7 +151,7 @@ fn process_tcp_state(
         (SocketState::Closing, tcp::State::TimeWait | tcp::State::Closed) => {
             // Graceful shutdown complete, remove the socket
             sock.state = SocketState::Closed;
-            debug_warn!("socket fully closed, cleaning up channel");
+            trace!("socket fully closed, cleaning up channel");
             if let Err(err) = poll.remove(sock.ch.handle_id()) {
                 debug_warn!(
                     "failed to remove channel from poll (already removed?): {:?}",
@@ -254,7 +254,7 @@ impl TcpIp {
             // Remove closed sockets from self.sockets and smoltcp's socket set.
             self.sockets.retain(|handle, sock| {
                 if sock.state == SocketState::Closed {
-                    debug_warn!("closing socket {:?}", handle);
+                    trace!("closing socket {:?}", handle);
                     self.smol_sockets.remove(*handle);
                     false
                 } else {
@@ -494,7 +494,7 @@ impl TcpIp {
     }
 
     pub fn tcp_write(&mut self, poll: &Poll<State>, smol_handle: SocketHandle, data: &[u8]) {
-        debug_warn!(
+        trace!(
             "tcp_write: received {} bytes for socket {:?}",
             data.len(),
             smol_handle
