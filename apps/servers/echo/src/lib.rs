@@ -39,6 +39,6 @@ struct DataChannel {}
 
 impl ChannelHandler for DataChannel {
     fn data(&self, ctx: &ChannelContext, data: &[u8]) {
-        ctx.ch.send(Message::Data { data }).unwrap();
+        ctx.sender.send(Message::Data { data }).unwrap();
     }
 }

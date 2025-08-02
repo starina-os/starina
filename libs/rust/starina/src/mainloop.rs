@@ -7,7 +7,10 @@ use starina_types::handle::HandleId;
 use starina_types::poll::Readiness;
 
 use crate::channel::Channel;
+use crate::channel::ChannelReceiver;
+use crate::channel::ChannelSender;
 use crate::channel::RecvError;
+use crate::interrupt::Interrupt;
 use crate::handle::Handleable;
 use crate::handle::OwnedHandle;
 use crate::message::Message;
@@ -16,11 +19,16 @@ use crate::poll::Poll;
 
 pub enum Item {
     Channel {
-        ch: Channel,
+        receiver: ChannelReceiver,
+        sender: ChannelSender,
         this: Box<dyn ChannelHandler>,
     },
     Startup {
         ch: Channel,
+    },
+    Interrupt {
+        interrupt: Interrupt,
+        this: Box<dyn InterruptHandler>,
     },
 }
 
@@ -29,14 +37,34 @@ pub struct Dispatcher<'a>(&'a Poll<Item>);
 impl<'a> Dispatcher<'a> {
     pub fn add_channel(
         &self,
-        ch: Channel,
+        ch: impl Into<(ChannelSender, ChannelReceiver)>,
         handler: impl ChannelHandler + 'static,
+    ) -> Result<(), Error> {
+        let (sender, receiver) = ch.into();
+        self.0
+            .add(
+                receiver.handle_id(),
+                Item::Channel {
+                    receiver,
+                    sender,
+                    this: Box::new(handler),
+                },
+                Readiness::READABLE | Readiness::CLOSED,
+            )
+            .map_err(Error::PollAdd)?;
+        Ok(())
+    }
+
+    pub fn add_interrupt(
+        &self,
+        interrupt: Interrupt,
+        handler: impl InterruptHandler + 'static,
     ) -> Result<(), Error> {
         self.0
             .add(
-                ch.handle_id(),
-                Item::Channel {
-                    ch,
+                interrupt.handle_id(),
+                Item::Interrupt {
+                    interrupt,
                     this: Box::new(handler),
                 },
                 Readiness::READABLE | Readiness::CLOSED,
@@ -48,11 +76,16 @@ impl<'a> Dispatcher<'a> {
 
 pub struct ChannelContext<'a> {
     pub dispatcher: &'a Dispatcher<'a>,
-    pub ch: &'a Channel,
+    pub sender: &'a ChannelSender,
 }
 
 pub struct StartupContext<'a> {
     pub dispatcher: &'a Dispatcher<'a>,
+}
+
+pub struct InterruptContext<'a> {
+    pub dispatcher: &'a Dispatcher<'a>,
+    pub interrupt: &'a Interrupt,
 }
 
 pub trait StartupHandler<E>
@@ -73,6 +106,10 @@ pub trait ChannelHandler {
 
     fn data(&self, _ctx: &ChannelContext<'_>, _data: &[u8]) {}
     fn disconnected(&self, _ctx: &ChannelContext<'_>) {}
+}
+
+pub trait InterruptHandler {
+    fn interrupt(&self, ctx: &InterruptContext<'_>);
 }
 
 pub struct EventLoop {
@@ -131,16 +168,20 @@ impl EventLoop {
                         }
                     }
                 }
-                Item::Channel { ch, this } => {
+                Item::Channel {
+                    receiver,
+                    sender,
+                    this,
+                } => {
                     let dispatcher = Dispatcher(&self.poll);
                     let ctx = ChannelContext {
                         dispatcher: &dispatcher,
-                        ch,
+                        sender,
                     };
 
                     // Receive a message.
                     if readiness.contains(Readiness::READABLE) && this.is_receivable(&ctx) {
-                        match ch.recv(&mut msgbuffer) {
+                        match receiver.recv(&mut msgbuffer) {
                             Ok(Message::Data { data }) => {
                                 this.data(&ctx, data);
                             }
@@ -155,6 +196,18 @@ impl EventLoop {
                                 debug_warn!("recv error on client: {:?}", err);
                             }
                         }
+                    }
+                }
+                Item::Interrupt { interrupt, this } => {
+                    let dispatcher = Dispatcher(&self.poll);
+                    let ctx = InterruptContext {
+                        dispatcher: &dispatcher,
+                        interrupt,
+                    };
+
+                    if readiness.contains(Readiness::READABLE) {
+                        interrupt.acknowledge().unwrap();
+                        this.interrupt(&ctx);
                     }
                 }
             }

@@ -103,3 +103,9 @@ impl Handleable for ChannelReceiver {
         self.0.handle_id()
     }
 }
+
+impl Into<(ChannelSender, ChannelReceiver)> for Channel {
+    fn into(self) -> (ChannelSender, ChannelReceiver) {
+        self.split()
+    }
+}
