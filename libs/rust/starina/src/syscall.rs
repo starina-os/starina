@@ -353,5 +353,8 @@ pub fn log_read(buf: &mut [u8]) -> Result<usize, ErrorCode> {
         0,
         0,
     )?;
-    Ok(ret.as_isize() as usize)
+
+    let read_len = ret.as_isize() as usize;
+    debug_assert!(read_len <= buf.len());
+    Ok(read_len)
 }
