@@ -26,6 +26,7 @@ pub mod folio;
 pub mod handle;
 pub mod hvspace;
 pub mod interrupt;
+pub mod mainloop;
 pub mod message;
 pub mod mmio;
 pub mod poll;

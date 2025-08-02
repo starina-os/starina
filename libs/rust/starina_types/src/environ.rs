@@ -1,10 +1,14 @@
 pub struct Environ {
-    data: &'static [u8],
+    pub data: &'static [u8],
 }
 
 impl Environ {
     pub unsafe fn from_raw(data: &'static [u8]) -> Self {
         Self { data }
+    }
+
+    pub fn raw(&self) -> &'static [u8] {
+        self.data
     }
 
     /// Parses this environment into the given type.
