@@ -1,6 +1,7 @@
 use starina::prelude::*;
 
 use crate::http::HeaderName;
+use crate::http::Method;
 use crate::http::Request;
 use crate::http::ResponseWriter;
 use crate::http::StatusCode;
@@ -11,9 +12,9 @@ pub mod logs;
 
 pub fn route(req: &Request, resp: &mut impl ResponseWriter) -> anyhow::Result<()> {
     match (&req.method, req.path.as_str()) {
-        (crate::http::Method::Get, "/") => index::handle_index(req, resp),
-        (crate::http::Method::Get, "/big") => big::handle_big(req, resp),
-        (crate::http::Method::Get, "/logs") => logs::handle_logs(req, resp),
+        (Method::Get, "/") => index::handle_index(req, resp),
+        (Method::Get, "/big") => big::handle_big(req, resp),
+        (Method::Get, "/logs") => logs::handle_logs(req, resp),
         _ => {
             error(resp, StatusCode::new(404).unwrap(), "Route not found");
             Ok(())
