@@ -6,7 +6,6 @@ use alloc::sync::Arc;
 
 use serde::Deserialize;
 use starina::channel::Channel;
-use starina::channel::ChannelSender;
 use starina::device_tree::DeviceTree;
 use starina::mainloop::ChannelContext;
 use starina::mainloop::ChannelHandler;
@@ -45,22 +44,12 @@ struct Env {
     pub device_tree: DeviceTree,
 }
 
-struct Mutable {
-    virtio_net: VirtioNet,
-    upstream_sender: Option<ChannelSender>,
-}
-
 struct App {
-    mutable: Arc<Mutex<Mutable>>,
+    virtio_net: Arc<Mutex<VirtioNet>>,
 }
 
-struct UpstreamState {
-    mutable: Arc<Mutex<Mutable>>,
-}
-
-struct InterruptState {
-    mutable: Arc<Mutex<Mutable>>,
-}
+struct UpstreamState(Arc<Mutex<VirtioNet>>);
+struct InterruptState(Arc<Mutex<VirtioNet>>);
 
 impl StartupHandler<Env> for App {
     fn init(ctx: &StartupContext, env: Env) -> Self {
@@ -74,61 +63,27 @@ impl StartupHandler<Env> for App {
 
         let interrupt = virtio_net.take_interrupt().unwrap();
 
-        let mutable = Arc::new(Mutex::new(Mutable {
-            virtio_net,
-            upstream_sender: None,
-        }));
+        let virtio_net = Arc::new(Mutex::new(virtio_net));
 
-        let interrupt_handler = InterruptState {
-            mutable: mutable.clone(),
-        };
+        let interrupt_handler = InterruptState(virtio_net.clone());
         ctx.dispatcher
             .add_interrupt(interrupt, interrupt_handler)
             .unwrap();
 
-        Self { mutable }
+        Self { virtio_net }
     }
 
     fn connected(&self, ctx: &StartupContext, ch: Channel) {
         info!("upstream connected");
         let (sender, receiver) = ch.split();
-        self.mutable.lock().upstream_sender = Some(sender.clone());
         ctx.dispatcher
             .add_channel(
-                (sender, receiver),
-                UpstreamState {
-                    mutable: self.mutable.clone(),
-                },
+                (sender.clone(), receiver),
+                UpstreamState(self.virtio_net.clone()),
             )
             .unwrap();
-    }
-}
 
-impl ChannelHandler for UpstreamState {
-    fn data(&self, _ctx: &ChannelContext, data: &[u8]) {
-        trace!("transmitting {} bytes", data.len());
-        let mut mutable = self.mutable.lock();
-        mutable.virtio_net.transmit(data);
-    }
-
-    fn disconnected(&self, _ctx: &ChannelContext) {
-        warn!("upstream channel disconnected");
-        let mut mutable = self.mutable.lock();
-        mutable.upstream_sender = None;
-    }
-}
-
-impl InterruptHandler for InterruptState {
-    fn interrupt(&self, _ctx: &InterruptContext) {
-        trace!("interrupt: received interrupt");
-        let mut mutable = self.mutable.lock();
-        let upstream_sender = mutable.upstream_sender.clone();
-        mutable.virtio_net.handle_interrupt(|data| {
-            let Some(sender) = upstream_sender.as_ref() else {
-                debug_warn!("upstream channel is not connected, dropping packet");
-                return;
-            };
-
+        self.virtio_net.lock().set_receive_callback(move |data| {
             if let Err(err) = sender.send(Message::Data { data }) {
                 if err == starina::error::ErrorCode::Full {
                     debug_warn!("upstream channel is full, dropping packet");
@@ -137,5 +92,23 @@ impl InterruptHandler for InterruptState {
                 }
             }
         });
+    }
+}
+
+impl ChannelHandler for UpstreamState {
+    fn data(&self, _ctx: &ChannelContext, data: &[u8]) {
+        self.0.lock().transmit(data);
+    }
+
+    fn disconnected(&self, _ctx: &ChannelContext) {
+        self.0.lock().set_receive_callback(|_data| {
+            // No upstream. Drop received packets.
+        });
+    }
+}
+
+impl InterruptHandler for InterruptState {
+    fn interrupt(&self, _ctx: &InterruptContext) {
+        self.0.lock().handle_interrupt();
     }
 }

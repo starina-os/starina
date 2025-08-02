@@ -77,6 +77,7 @@ pub struct VirtioNet {
     transmitq_buffers: DmaBufferPool,
     receiveq_buffers: DmaBufferPool,
     interrupt: Option<Interrupt>,
+    receive: Option<Box<dyn for<'a> Fn(&'a [u8]) + Send + Sync>>,
 }
 
 impl VirtioNet {
@@ -112,6 +113,7 @@ impl VirtioNet {
             receiveq_buffers,
             transmitq_buffers,
             interrupt: Some(interrupt),
+            receive: Some(Box::new(|_| {})),
         }
     }
 
@@ -121,6 +123,13 @@ impl VirtioNet {
 
     pub fn take_interrupt(&mut self) -> Option<Interrupt> {
         self.interrupt.take()
+    }
+
+    pub fn set_receive_callback<F>(&mut self, callback: F)
+    where
+        F: for<'a> Fn(&'a [u8]) + Send + Sync + 'static,
+    {
+        self.receive = Some(Box::new(callback));
     }
 
     pub fn transmit(&mut self, payload: &[u8]) {
@@ -152,10 +161,7 @@ impl VirtioNet {
         self.transmitq.notify(&mut *self.transport);
     }
 
-    pub fn handle_interrupt<F>(&mut self, mut receive: F)
-    where
-        F: FnMut(&[u8]),
-    {
+    pub fn handle_interrupt(&mut self) {
         loop {
             let status = self.transport.read_isr_status();
             self.transport.ack_interrupt(status);
@@ -183,7 +189,7 @@ impl VirtioNet {
                     let _header = buf.read::<VirtioNetModernHeader>();
                     let payload = buf.read_bytes(read_len).unwrap();
 
-                    receive(payload);
+                    (self.receive.as_ref().unwrap())(payload);
                 }
             }
 
