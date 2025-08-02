@@ -11,7 +11,7 @@ pub fn handle_logs(_req: &Request, resp: &mut impl ResponseWriter) -> anyhow::Re
         Ok(len) => len,
         Err(_) => {
             resp.write_headers(StatusCode::new(500).unwrap());
-            resp.write_body(b"failed to read logs");
+            resp.write_body("failed to read logs");
             return Ok(());
         }
     };

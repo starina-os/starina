@@ -37,5 +37,5 @@ pub fn error(resp: &mut impl ResponseWriter, status: StatusCode, message: &str) 
         .unwrap();
 
     resp.write_headers(status);
-    resp.write_body(message.as_bytes());
+    resp.write_body(message);
 }

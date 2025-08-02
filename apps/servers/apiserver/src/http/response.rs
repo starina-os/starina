@@ -17,7 +17,7 @@ pub enum TryFlushResult {
 pub trait ResponseWriter {
     fn headers_mut(&mut self) -> &mut Headers;
     fn write_headers(&mut self, status: StatusCode);
-    fn write_body(&mut self, data: &[u8]);
+    fn write_body(&mut self, data: impl AsRef<[u8]>);
     fn are_headers_sent(&self) -> bool;
     fn try_flush(&mut self) -> TryFlushResult;
 }
@@ -90,7 +90,8 @@ impl ResponseWriter for BufferedResponseWriter {
         }
     }
 
-    fn write_body(&mut self, data: &[u8]) {
+    fn write_body(&mut self, data: impl AsRef<[u8]>) {
+        let data = data.as_ref();
         match &mut self.state {
             ResponseState::BeforeHeaders { body, .. }
             | ResponseState::SendingHeaders { body, .. }
