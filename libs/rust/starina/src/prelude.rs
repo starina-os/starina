@@ -4,19 +4,13 @@
 //! idiomatic way to import the prelude:
 //!
 //! ```
-//! use starina::prelude::*;
+//! use ftl::prelude::*;
 //!
 //! let mut v = Vec::new();
 //! v.push(1);
 //! ```
 //!
-//! # What's in the prelude?
-//!
-//! Since Starina apps are `#![no_std]` crates, this prelude includes types from
-//! [`alloc`](https://doc.rust-lang.org/alloc/index.html) so that experienced
-//! Rust programmers can use familiar types without asking *"Where is `Vec`?"*.
-//!
-//! # Why should I use the prelude?
+//! # Should I use the prelude?
 //!
 //! You don't have to use the prelude. However, it's a convenient way to
 //! reduce the number of your keystrokes.
