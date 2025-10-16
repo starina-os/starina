@@ -12,11 +12,11 @@ The ultimate goal of this project is to create a production-ready OS to be a goo
 
 ## 2025 Roadmap
 
-This year we're focusing on cloud computing, with [starina.dev](https://starina.dev) running on Starina's Linux compatibility layer:
+This year we're focusing on cloud computing running Starina's Linux compatibility layer:
 
 ![Architecture](./docs/architecture.svg)
 
-- [x] Microkernel prototype in Rust ([starina.dev](https://starina.dev) running on Linux/QEMU!)
+- [x] Microkernel prototype in Rust
 - [x] Complete redesign and rewrite
 - [x] Rust-based zero-cost isolation ([unikernel](https://en.wikipedia.org/wiki/Unikernel) style)
 - [x] Device tree support
