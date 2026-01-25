@@ -1,5 +1,9 @@
 # Starina
 
+> [!IMPORTANT]
+>
+> I'm rebuilding a new OS in [nuta/ftl](https://github.com/nuta/ftl). Check [the repository](https://github.com/nuta/ftl) if you are interested in a microkernel OS.
+
 Starina (named after [stellina](https://en.wiktionary.org/wiki/stellina)), is a general-purpose, microkernel-based, modern operating system designed for developers. It aims to be a production-ready OS, and more importantly, a fun and easy-to-understand OS where you can enjoy the development as if you are writing a Web application.
 
 ## Philosophy
